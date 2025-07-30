@@ -53,6 +53,9 @@ class ConfigManager:
             "bot_settings": {
                 "name": "Astra",
                 "version": "1.0.0",
+                "prefix": "!",
+                "description": "An advanced Discord bot for space exploration and Stellaris roleplay",
+                "activity": "the cosmos | !help",
                 "color_palette": {
                     "primary": 0x5865F2,
                     "space": 0x1E1F23,
@@ -75,6 +78,17 @@ class ConfigManager:
                 "space_content": {"enabled": True},
                 "stellaris_features": {"enabled": True},
                 "notion_integration": {"enabled": False}
+            },
+            "development": {
+                "debug_mode": False
+            },
+            "ui_components": {
+                "custom_emojis": {
+                    "error": "❌",
+                    "success": "✅",
+                    "warning": "⚠️",
+                    "info": "ℹ️"
+                }
             }
         }
     
@@ -143,7 +157,7 @@ class ConfigManager:
         elif command_name in mod_only:
             return self.is_moderator(member)
         
-        return True
+        return True  # Default to allow if no specific restriction
     
     def get_color(self, color_name: str) -> int:
         """Get color from palette"""
@@ -196,6 +210,7 @@ class ConfigManager:
         }
         
         self.guild_configs[guild_id] = default_config
+        self.save_guild_config(guild_id)  # Save the default config
         return default_config
     
     def save_guild_config(self, guild_id: int) -> bool:
@@ -277,7 +292,8 @@ class ConfigManager:
         member = ctx.author
         
         # Bot owner always has permission
-        if ctx.bot.is_owner(member):
+        application_info = ctx.bot.application
+        if application_info and application_info.owner and member.id == application_info.owner.id:
             return True
         
         # Check specific permission types
@@ -289,6 +305,36 @@ class ConfigManager:
             return self.has_role_permission(member, required_permission.replace("_master", ""))
         
         return True  # Default to allow if no specific restriction
+    
+    def validate_config(self) -> List[str]:
+        """Validate configuration and return list of errors"""
+        errors = []
+        
+        # Check basic settings
+        if not self.get("bot_settings.prefix"):
+            errors.append("Bot prefix is not set")
+        
+        if not self.get("bot_settings.name"):
+            errors.append("Bot name is not set")
+        
+        # Check required roles
+        if not self.get("permissions.admin_roles"):
+            errors.append("No admin roles defined")
+        
+        return errors
+    
+    def ensure_directories(self) -> None:
+        """Create required directories if they don't exist"""
+        directories = [
+            "data/guilds",
+            "data/quiz",
+            "data/users",
+            "logs",
+            "temp"
+        ]
+        
+        for directory in directories:
+            Path(directory).mkdir(parents=True, exist_ok=True)
 
 
 # Create global config manager instance
