@@ -26,6 +26,9 @@ class PaginatedView(discord.ui.View):
             self.next_button.disabled = True
             self.first_button.disabled = True
             self.last_button.disabled = True
+        else:
+            # Update button states based on current page
+            self.update_buttons()
     
     def update_buttons(self):
         """Update button states based on current page"""
@@ -308,52 +311,43 @@ class CategorySelect(discord.ui.Select):
         await self.callback_func(interaction, selected_category)
 
 
-class SetupModal(discord.ui.Modal):
+class SetupModal(discord.ui.Modal, title="Astra Bot Setup"):
     """Guild setup modal for initial configuration"""
     
-    def __init__(self):
-        super().__init__(title="Astra Bot Setup", timeout=300)
-        
-        self.guild_name = discord.ui.TextInput(
-            label="Server Name (for logs)",
-            placeholder="Your server name...",
-            max_length=100,
-            required=False
-        )
-        
-        self.admin_roles = discord.ui.TextInput(
-            label="Admin Roles (comma separated)",
-            placeholder="Admin, Administrator, Owner",
-            max_length=200,
-            required=False
-        )
-        
-        self.quiz_channel = discord.ui.TextInput(
-            label="Quiz Channel ID (optional)",
-            placeholder="Channel ID for quiz commands",
-            max_length=50,
-            required=False
-        )
-        
-        self.space_channel = discord.ui.TextInput(
-            label="Space Channel ID (optional)",
-            placeholder="Channel ID for space content",
-            max_length=50,
-            required=False
-        )
-        
-        self.features = discord.ui.TextInput(
-            label="Enable Features (comma separated)",
-            placeholder="quiz, space, stellaris, notion",
-            max_length=200,
-            required=False
-        )
-        
-        self.add_item(self.guild_name)
-        self.add_item(self.admin_roles)
-        self.add_item(self.quiz_channel)
-        self.add_item(self.space_channel)
-        self.add_item(self.features)
+    guild_name = discord.ui.TextInput(
+        label="Server Name (for logs)",
+        placeholder="Your server name...",
+        max_length=100,
+        required=False
+    )
+    
+    admin_roles = discord.ui.TextInput(
+        label="Admin Roles (comma separated)",
+        placeholder="Admin, Administrator, Owner",
+        max_length=200,
+        required=False
+    )
+    
+    quiz_channel = discord.ui.TextInput(
+        label="Quiz Channel ID (optional)",
+        placeholder="Channel ID for quiz commands",
+        max_length=50,
+        required=False
+    )
+    
+    space_channel = discord.ui.TextInput(
+        label="Space Channel ID (optional)",
+        placeholder="Channel ID for space content",
+        max_length=50,
+        required=False
+    )
+    
+    features = discord.ui.TextInput(
+        label="Enable Features (comma separated)",
+        placeholder="quiz, space, stellaris, notion",
+        max_length=200,
+        required=False
+    )
     
     async def on_submit(self, interaction: discord.Interaction):
         # Process setup data here
@@ -598,25 +592,4 @@ class LeaderboardView(discord.ui.View):
         await interaction.response.edit_message(embed=embed, view=self)
     
     @discord.ui.button(label="By Streak", emoji="🔥", style=discord.ButtonStyle.secondary)
-    async def sort_by_streak(self, interaction: discord.Interaction, button: discord.ui.Button):
-        embed = self.create_leaderboard_embed("streak")
-        await interaction.response.edit_message(embed=embed, view=self)
-    
-    @discord.ui.button(label="By Questions", emoji="❓", style=discord.ButtonStyle.secondary)
-    async def sort_by_questions(self, interaction: discord.Interaction, button: discord.ui.Button):
-        embed = self.create_leaderboard_embed("questions")
-        await interaction.response.edit_message(embed=embed, view=self)
-    
-    def create_leaderboard_embed(self, sort_type: str) -> discord.Embed:
-        """Create leaderboard embed based on sort type"""
-        embed = discord.Embed(
-            title=f"🏆 Quiz Leaderboard (by {sort_type.title()})",
-            color=0xFFD700,
-            timestamp=datetime.utcnow()
-        )
-        
-        # This would integrate with actual leaderboard data
-        # For now, showing placeholder structure
-        embed.description = f"Sorted by {sort_type}\n\n*Leaderboard data would be displayed here*"
-        
-        return embed
+    async def sort
