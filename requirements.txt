@@ -5,6 +5,3 @@ requests
 beautifulsoup4
 pillow
 pytz
-discord-py-slash-command
-discord-ext-ipc
-discord-ext-menus
