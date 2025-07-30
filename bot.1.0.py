@@ -9,12 +9,12 @@ import os
 import asyncio
 import logging
 from dotenv import load_dotenv
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 from pathlib import Path
 
 # Import our custom modules
-from enhanced_config import config_manager, require_permission, feature_enabled
+from enhanced_config import config_manager, require_permission, feature_enabled, require_channel
 from ui_components import *
 from logger import setup_logger
 
@@ -79,6 +79,66 @@ async def load_extensions():
         f"🎯 Extension loading complete: {loaded_count} loaded, {failed_count} failed"
     )
 
+# Task definitions
+@tasks.loop(time=datetime.time(hour=12, minute=0))  # Runs at 12:00 UTC every day
+async def daily_apod_task():
+    """Task to post daily astronomy picture"""
+    logger.info("🚀 Running daily APOD task")
+    for guild_id, guild_config in bot.config.guild_configs.items():
+        if not bot.config.get_guild_setting(guild_id, "features.space_content.daily_apod", False):
+            continue
+            
+        channel_id = bot.config.get_guild_setting(guild_id, "channels.space_channel", None)
+        if not channel_id:
+            continue
+            
+        try:
+            channel = bot.get_channel(int(channel_id))
+            if not channel:
+                continue
+                
+            # This would call a function from space cog to get APOD
+            # For now, just send placeholder
+            embed = discord.Embed(
+                title="🌌 Astronomy Picture of the Day",
+                description="Today's featured space image from NASA",
+                color=bot.config.get_color("space")
+            )
+            
+            await channel.send(embed=embed)
+            logger.info(f"✅ Posted APOD in guild {guild_id}")
+        except Exception as e:
+            logger.error(f"❌ Error posting APOD in guild {guild_id}: {e}")
+
+
+@tasks.loop(time=datetime.time(hour=15, minute=0))  # Runs at 15:00 UTC every day
+async def daily_quiz_reminder():
+    """Task to post daily quiz reminders"""
+    logger.info("🎮 Running daily quiz reminder task")
+    for guild_id, guild_config in bot.config.guild_configs.items():
+        if not bot.config.get_guild_setting(guild_id, "features.quiz_system.daily_questions", False):
+            continue
+            
+        channel_id = bot.config.get_guild_setting(guild_id, "channels.quiz_channel", None)
+        if not channel_id:
+            continue
+            
+        try:
+            channel = bot.get_channel(int(channel_id))
+            if not channel:
+                continue
+                
+            embed = discord.Embed(
+                title="🎯 Daily Quiz Available!",
+                description="Today's quiz is now available! Use `!quiz` to test your knowledge.",
+                color=bot.config.get_color("primary")
+            )
+            
+            await channel.send(embed=embed)
+            logger.info(f"✅ Posted quiz reminder in guild {guild_id}")
+        except Exception as e:
+            logger.error(f"❌ Error posting quiz reminder in guild {guild_id}: {e}")
+
 
 @bot.event
 async def on_ready():
@@ -121,10 +181,12 @@ async def on_ready():
 
     # Start background tasks
     if config_manager.is_feature_enabled("space_content.daily_apod"):
-        daily_apod_task.start()
+        if not daily_apod_task.is_running():
+            daily_apod_task.start()
 
     if config_manager.is_feature_enabled("quiz_system.daily_questions"):
-        daily_quiz_reminder.start()
+        if not daily_quiz_reminder.is_running():
+            daily_quiz_reminder.start()
 
     logger.info("🎯 All systems operational!")
     logger.info("=" * 60)
@@ -264,6 +326,82 @@ async def on_command_error(ctx, error):
         await ctx.send(embed=embed, delete_after=15)
 
 
+# Function to show category help
+async def show_category_help(interaction, category):
+    """Show detailed help for a specific command category"""
+    categories = {
+        "quiz": {
+            "title": "🎮 Quiz Commands",
+            "description": "Test your knowledge with interactive quizzes and track your progress.",
+            "commands": {
+                "quiz": "Start a new quiz on a random topic",
+                "leaderboard": "View the quiz leaderboard",
+                "mystats": "View your personal quiz statistics",
+                "categories": "List available quiz categories"
+            },
+            "color": "primary"
+        },
+        "space": {
+            "title": "🌌 Space Commands",
+            "description": "Explore the cosmos with NASA data and space information.",
+            "commands": {
+                "apod": "Show NASA's Astronomy Picture of the Day",
+                "fact": "Get a random space fact",
+                "meteor": "Check upcoming meteor showers",
+                "iss": "Track the International Space Station",
+                "launch": "View upcoming space launches"
+            },
+            "color": "space"
+        },
+        "stellaris": {
+            "title": "🏛️ Stellaris Empire Commands",
+            "description": "Manage your galactic empire and role within the cosmos.",
+            "commands": {
+                "empire": "Choose your Stellaris empire role",
+                "lore": "Get lore about your chosen empire",
+                "rolecount": "View distribution of empire roles"
+            },
+            "color": "stellaris"
+        },
+        "stats": {
+            "title": "📊 Server Statistics Commands",
+            "description": "View various statistics about the server and bot.",
+            "commands": {
+                "stats": "View server statistics",
+                "ping": "Check bot latency",
+                "uptime": "Check bot uptime",
+                "membercount": "View member count statistics"
+            },
+            "color": "info"
+        }
+    }
+    
+    if category not in categories:
+        await interaction.response.send_message("Category not found.", ephemeral=True)
+        return
+        
+    cat_info = categories[category]
+    
+    embed = discord.Embed(
+        title=cat_info["title"],
+        description=cat_info["description"],
+        color=config_manager.get_color(cat_info["color"])
+    )
+    
+    prefix = config_manager.get("bot_settings.prefix", "!")
+    
+    for cmd, desc in cat_info["commands"].items():
+        embed.add_field(
+            name=f"`{prefix}{cmd}`",
+            value=desc,
+            inline=False
+        )
+    
+    embed.set_footer(text=f"Use {prefix}help <command> for detailed information on each command.")
+    
+    await interaction.response.edit_message(embed=embed, view=interaction.message.view)
+
+
 @bot.command(name="help")
 async def enhanced_help(ctx, *, command_or_category=None):
     """Enhanced help command with categorized commands and UI components"""
@@ -297,7 +435,7 @@ async def enhanced_help(ctx, *, command_or_category=None):
     # Main help embed with categories
     embed = discord.Embed(
         title=f"🚀 {config_manager.get('bot_settings.name')} Commands",
-        description=config_manager.get("bot_settings.description"),
+        description=config_manager.get('bot_settings.description'),
         color=config_manager.get_color("primary"),
     )
 
@@ -360,11 +498,29 @@ async def enhanced_help(ctx, *, command_or_category=None):
                 "emoji": "📊",
             },
         },
-        callback=lambda interaction, category: show_category_help(
-            interaction, category
-        ),
+        callback=show_category_help,
         placeholder="Select a category for detailed commands...",
     )
 
+    await ctx.send(embed=embed, view=view)
+
+
+# Run the bot with proper error handling
+async def main():
+    async with bot:
+        try:
+            logger.info("🚀 Starting Astra Discord Bot...")
+            await bot.start(TOKEN)
+        except discord.LoginFailure:
+            logger.critical("❌ Invalid token provided. Please check your .env file.")
+        except discord.PrivilegedIntentsRequired:
+            logger.critical("❌ Privileged intents are required but not enabled in the Discord Developer Portal.")
+        except Exception as e:
+            logger.critical(f"❌ Fatal error: {str(e)}")
+        finally:
+            logger.info("👋 Bot is shutting down...")
+
+if __name__ == "__main__":
+    asyncio.run(main())
 
 ## main bot code
