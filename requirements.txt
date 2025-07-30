@@ -1,4 +1,4 @@
-discord.py
+discord.py==2.3.2
 python-dotenv
 aiohttp
 requests
@@ -8,6 +8,3 @@ pytz
 discord-py-slash-command
 discord-ext-ipc
 discord-ext-menus
-discord-embed
-discord-py-interactions
-loguru          
