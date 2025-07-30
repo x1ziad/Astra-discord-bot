@@ -1,0 +1,168 @@
+{
+  "bot_settings": {
+    "name": "Astra",
+    "version": "1.0.0",
+    "description": "A sophisticated Discord bot for space enthusiasts and Stellaris players",
+    "color_palette": {
+      "primary": 6450738,
+      "space": 1972243,
+      "stellaris": 6958255,
+      "success": 65280,
+      "error": 16711680,
+      "warning": 16750848,
+      "info": 39423,
+      "cosmic_blue": 1146190,
+      "nebula_purple": 9436927,
+      "stellar_gold": 16766720
+    }
+  },
+  "permissions": {
+    "admin_roles": ["Admin", "Administrator", "Owner", "Bot Manager"],
+    "moderator_roles": ["Mod", "Moderator", "Staff", "Helper"],
+    "quiz_master_roles": ["Quiz Master", "Educator", "Trivia Host"],
+    "space_expert_roles": ["Space Expert", "Astronomer", "Scientist"],
+    "stellaris_leader_roles": ["Empire Leader", "Grand Admiral", "Stellaris Expert"]
+  },
+  "guild_settings": {
+    "default_guild_id": null,
+    "allowed_guilds": [],
+    "restricted_commands": {
+      "admin_only": ["reload", "shutdown", "sync", "blacklist", "whitelist"],
+      "mod_only": ["purge", "kick", "ban", "mute", "warn"],
+      "quiz_master_only": ["add_question", "edit_quiz", "reset_leaderboard"]
+    }
+  },
+  "channels": {
+    "log_channel": null,
+    "error_channel": null,
+    "announcements_channel": null,
+    "quiz_channel": null,
+    "space_channel": null,
+    "stellaris_channel": null,
+    "allowed_channels": {
+      "quiz": [],
+      "space": [],
+      "stellaris": [],
+      "admin": []
+    }
+  },
+  "features": {
+    "quiz_system": {
+      "enabled": true,
+      "daily_questions": true,
+      "leaderboard_reset_monthly": false,
+      "xp_enabled": true,
+      "achievements_enabled": true,
+      "streak_rewards": true
+    },
+    "space_content": {
+      "enabled": true,
+      "daily_apod": true,
+      "meteor_alerts": true,
+      "iss_tracking": true,
+      "launch_notifications": true
+    },
+    "stellaris_features": {
+      "enabled": true,
+      "empire_roles": true,
+      "lore_system": true,
+      "roleplay_events": false
+    },
+    "notion_integration": {
+      "enabled": false,
+      "auto_sync": true,
+      "reminder_notifications": true
+    },
+    "ai_features": {
+      "enabled": false,
+      "lore_generation": false,
+      "cosmic_names": false
+    }
+  },
+  "user_system": {
+    "profiles_enabled": true,
+    "xp_system": {
+      "enabled": true,
+      "base_xp": 10,
+      "quiz_multiplier": 2,
+      "daily_bonus": 50,
+      "streak_bonus": 5
+    },
+    "achievements": {
+      "enabled": true,
+      "categories": ["quiz", "exploration", "social", "special"]
+    },
+    "homeworld_system": {
+      "enabled": true,
+      "planet_types": ["terran", "desert", "ocean", "arctic", "jungle", "volcanic", "gas_giant", "artificial"]
+    }
+  },
+  "moderation": {
+    "auto_mod": {
+      "enabled": false,
+      "spam_protection": true,
+      "link_filtering": false,
+      "profanity_filter": false
+    },
+    "logging": {
+      "command_usage": true,
+      "errors": true,
+      "user_actions": true,
+      "guild_events": true
+    }
+  },
+  "notifications": {
+    "webhooks": {
+      "error_webhook": null,
+      "log_webhook": null,
+      "announcements_webhook": null
+    },
+    "dm_notifications": {
+      "achievements": true,
+      "daily_reminders": true,
+      "event_alerts": true
+    }
+  },
+  "api_settings": {
+    "nasa": {
+      "cache_duration": 3600,
+      "rate_limit": 1000
+    },
+    "notion": {
+      "sync_interval": 1800,
+      "max_items": 50
+    },
+    "openai": {
+      "model": "gpt-3.5-turbo",
+      "max_tokens": 150,
+      "temperature": 0.7
+    }
+  },
+  "ui_components": {
+    "buttons_enabled": true,
+    "select_menus_enabled": true,
+    "modals_enabled": true,
+    "pagination_enabled": true,
+    "custom_emojis": {
+      "success": "✅",
+      "error": "❌",
+      "warning": "⚠️",
+      "info": "ℹ️",
+      "loading": "⏳",
+      "rocket": "🚀",
+      "star": "⭐",
+      "planet": "🪐",
+      "galaxy": "🌌",
+      "telescope": "🔭",
+      "atom": "⚛️",
+      "dna": "🧬"
+    }
+  },
+  "development": {
+    "debug_mode": false,
+    "test_guild_id": null,
+    "developer_ids": [],
+    "beta_features": false,
+    "command_sync_on_ready": false
+  }
+}
