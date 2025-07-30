@@ -428,6 +428,6 @@ class Stats(commands.Cog):
 
         await ctx.send(embed=embed)
 
-
+## will do add verification and point to point exchange for a puzzile and a light game play
 async def setup(bot):
     await bot.add_cog(Stats(bot))
