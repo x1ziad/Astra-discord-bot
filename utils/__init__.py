@@ -23,5 +23,5 @@ except ImportError:
 except Exception as e:
     import logging
 
-    logging = logging.getLogger("Astra")
-    logging.error(f"Error importing utility functions: {e}")
+    logger = logging.getLogger("Astra")  # ✅ Use 'logger' instead of 'logging'
+    logger.error(f"Error importing utility functions: {e}")
