@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  astra-bot:
+    build: .
+    container_name: astra-discord-bot
+    restart: unless-stopped
+    environment:
+      # Discord Bot Configuration
+      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
+      
+      # OpenAI API Configuration
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      
+      # NASA API Configuration (optional)
+      - NASA_API_KEY=${NASA_API_KEY:-DEMO_KEY}
+      
+      # Notion API Configuration (optional)
+      - NOTION_TOKEN=${NOTION_TOKEN}
+      - NOTION_DATABASE_ID=${NOTION_DATABASE_ID}
+      
+      # Python configuration
+      - PYTHONUNBUFFERED=1
+    volumes:
+      # Mount data directories for persistence
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./personality_profiles:/app/personality_profiles
+    # Uncomment for development with live code changes
+    # volumes:
+    #   - .:/app
+    # ports:
+    #   - "8080:8080"  # For health checks if needed

@@ -5,7 +5,7 @@ import asyncio
 import discord
 from typing import List, Dict, Optional, Union, Any
 from datetime import datetime
-import openai
+from openai import AsyncOpenAI
 from dotenv import load_dotenv
 
 # Set up logging
@@ -32,8 +32,9 @@ class AIChatHandler:
         self.config = self._load_config()
 
         # Set up API clients
+        self.openai_client = None
         if self.openai_api_key:
-            openai.api_key = self.openai_api_key
+            self.openai_client = AsyncOpenAI(api_key=self.openai_api_key)
 
         # Initialize conversation history storage
         self.conversation_history = {}
@@ -150,7 +151,7 @@ class AIChatHandler:
         self, messages: List[Dict], personality_profile: Dict
     ) -> str:
         """Get a response from OpenAI API."""
-        if not self.openai_api_key:
+        if not self.openai_api_key or not self.openai_client:
             return "OpenAI API key is not configured. Please set OPENAI_API_KEY environment variable."
 
         try:
@@ -163,7 +164,7 @@ class AIChatHandler:
                 "max_tokens", self.config.get("max_tokens", 500)
             )
 
-            response = await openai.ChatCompletion.acreate(
+            response = await self.openai_client.chat.completions.create(
                 model=model,
                 messages=messages,
                 temperature=temperature,
@@ -174,6 +175,12 @@ class AIChatHandler:
             return response.choices[0].message.content
         except Exception as e:
             logger.error(f"OpenAI API error: {str(e)}")
+            if "api key" in str(e).lower():
+                return "OpenAI API key is invalid. Please check your OPENAI_API_KEY environment variable."
+            elif "quota" in str(e).lower() or "billing" in str(e).lower():
+                return "OpenAI API quota exceeded. Please check your OpenAI account billing and usage limits."
+            elif "model" in str(e).lower():
+                return f"OpenAI model error. Please check if the model '{personality_profile.get('openai_model', 'gpt-4o-mini')}' is available."
             return f"Sorry, I encountered an error with OpenAI: {str(e)}"
 
     async def set_personality(self, personality_name: str) -> bool:
@@ -193,3 +200,10 @@ class AIChatHandler:
             self._save_config()
             return True
         return False
+
+    def update_openai_client(self) -> None:
+        """Update OpenAI client with current API key."""
+        if self.openai_api_key:
+            self.openai_client = AsyncOpenAI(api_key=self.openai_api_key)
+        else:
+            self.openai_client = None
