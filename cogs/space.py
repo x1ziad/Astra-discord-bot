@@ -6,20 +6,16 @@ Includes NASA APOD, space facts, and astronomy information
 import discord
 from discord import app_commands
 from discord.ext import commands
-import aiohttp
 import random
 from datetime import datetime, timedelta
 import asyncio
 import json
-from typing import Optional, List
+from typing import Optional, List, Set
 from pathlib import Path
 import os
 
-
-
-
-
-# Modified import - remove channel_only
+# Import shared HTTP client
+from utils.http_client import get_session
 from config.enhanced_config import config_manager, feature_enabled
 from logger.logger import log_performance
 from ui.ui_components import PaginatedView
@@ -88,11 +84,17 @@ class Space(commands.GroupCog, name="space"):
         # Get NASA API key from environment or use demo key
         self.nasa_api_key = os.getenv("NASA_API_KEY", "DEMO_KEY")
 
+        # Last API call times for rate limiting
+        self.last_api_calls = {
+            "nasa": datetime.min,
+            "iss": datetime.min,
+        }
+
+        # Track active tasks for proper cleanup
+        self._tasks: Set[asyncio.Task] = set()
+
         # Load space facts
         self.space_facts = self._load_space_facts()
-
-        # Track API rate limits
-        self.last_api_call = datetime.min
 
         self.logger.info(f"Space cog initialized with {len(self.space_facts)} facts")
 
@@ -133,6 +135,36 @@ class Space(commands.GroupCog, name="space"):
 
         return base_facts
 
+    def create_task(self, coro):
+        """Create and track a task for proper cleanup"""
+        task = asyncio.create_task(coro)
+        self._tasks.add(task)
+        task.add_done_callback(self._tasks.discard)
+        return task
+
+    def cog_unload(self):
+        """Clean up resources when cog is unloaded"""
+        self.logger.info("Cleaning up Space cog resources")
+
+        # Cancel all running tasks
+        for task in self._tasks:
+            if not task.done() and not task.cancelled():
+                task.cancel()
+
+    async def _respect_rate_limit(
+        self, api_name: str, min_interval_seconds: float = 1.0
+    ):
+        """Respect rate limits for API calls"""
+        now = datetime.now()
+        time_since_last_call = (
+            now - self.last_api_calls.get(api_name, datetime.min)
+        ).total_seconds()
+
+        if time_since_last_call < min_interval_seconds:
+            await asyncio.sleep(min_interval_seconds - time_since_last_call)
+
+        self.last_api_calls[api_name] = datetime.now()
+
     @app_commands.command(
         name="apod", description="Get NASA's Astronomy Picture of the Day"
     )
@@ -172,15 +204,6 @@ class Space(commands.GroupCog, name="space"):
                     )
                     return
 
-            # Check rate limit
-            now = datetime.now()
-            if (
-                now - self.last_api_call
-            ).total_seconds() < 1.0:  # Minimum 1 second between calls
-                await asyncio.sleep(1)  # Wait to avoid hitting rate limit
-
-            self.last_api_call = now
-
             # Check cache first if we're requesting today's APOD
             if not date:
                 cache_file = (
@@ -198,14 +221,20 @@ class Space(commands.GroupCog, name="space"):
                         self.logger.error(f"Error reading APOD cache: {e}")
                         # Continue to API call if cache read fails
 
-            # Make API request
-            async with aiohttp.ClientSession() as session:
+            # Respect API rate limits
+            await self._respect_rate_limit("nasa", 2.0)  # NASA API has strict limits
+
+            # Make API request using shared session
+            try:
+                session = await get_session()
+
                 params = {"api_key": self.nasa_api_key}
                 if date:
                     params["date"] = date
 
                 url = "https://api.nasa.gov/planetary/apod"
-                async with session.get(url, params=params) as response:
+
+                async with session.get(url, params=params, timeout=15) as response:
                     if response.status == 200:
                         data = await response.json()
 
@@ -218,12 +247,27 @@ class Space(commands.GroupCog, name="space"):
                                 self.logger.error(f"Error caching APOD: {e}")
 
                         await self._send_apod_embed(interaction, data)
+                    elif response.status == 429:
+                        # Rate limited
+                        self.logger.warning("NASA API rate limited")
+                        await interaction.followup.send(
+                            "❌ NASA's API is currently rate limited. Please try again in a few minutes.",
+                            ephemeral=True,
+                        )
+                        return
                     else:
                         error_text = await response.text()
                         self.logger.error(
                             f"NASA API error: {response.status} - {error_text}"
                         )
                         raise Exception(f"NASA API returned status {response.status}")
+            except asyncio.TimeoutError:
+                self.logger.error("NASA API request timed out")
+                await interaction.followup.send(
+                    "❌ The request to NASA's API timed out. Please try again later.",
+                    ephemeral=True,
+                )
+                return
 
         except Exception as e:
             self.logger.error(f"APOD command error: {str(e)}")
@@ -454,10 +498,16 @@ class Space(commands.GroupCog, name="space"):
         await interaction.response.defer()
 
         try:
-            async with aiohttp.ClientSession() as session:
-                # Get ISS current location
+            # Respect rate limits
+            await self._respect_rate_limit("iss", 1.0)
+
+            # Use shared session
+            session = await get_session()
+
+            # Get ISS current location
+            try:
                 async with session.get(
-                    "http://api.open-notify.org/iss-now.json"
+                    "http://api.open-notify.org/iss-now.json", timeout=10
                 ) as response:
                     if response.status == 200:
                         location_data = await response.json()
@@ -466,7 +516,7 @@ class Space(commands.GroupCog, name="space"):
                         crew_data = {"people": []}
                         try:
                             async with session.get(
-                                "http://api.open-notify.org/astros.json"
+                                "http://api.open-notify.org/astros.json", timeout=10
                             ) as crew_response:
                                 if crew_response.status == 200:
                                     crew_data = await crew_response.json()
@@ -537,6 +587,12 @@ class Space(commands.GroupCog, name="space"):
                         await interaction.followup.send(embed=embed)
                     else:
                         raise Exception(f"API returned status {response.status}")
+            except asyncio.TimeoutError:
+                await interaction.followup.send(
+                    "❌ The request to the ISS tracking API timed out. Please try again later.",
+                    ephemeral=True,
+                )
+                return
         except Exception as e:
             self.logger.error(f"Error in ISS tracking command: {e}")
             error_embed = discord.Embed(
