@@ -15,9 +15,57 @@ from typing import Optional, List
 from pathlib import Path
 import os
 
-from config.enhanced_config import config_manager, feature_enabled, channel_only
+# Modified import - remove channel_only
+from config.enhanced_config import config_manager, feature_enabled
 from logger.logger import log_performance
 from ui.ui_components import PaginatedView
+
+
+# Add channel_only decorator directly in this file
+def channel_only(feature_name):
+    """Decorator that restricts commands to specific channels"""
+    from discord import app_commands
+
+    async def predicate(interaction):
+        # Check if the channel is allowed for this feature
+        if not interaction.guild or not interaction.channel:
+            return True  # Allow in DMs or when channel is None
+
+        # Get the channel ID for this feature
+        guild_id = interaction.guild.id if interaction.guild else None
+        channel_id = config_manager.get_guild_setting(
+            guild_id, f"channels.{feature_name}_channel"
+        )
+        allowed_channels = config_manager.get_guild_setting(
+            guild_id, f"channels.allowed_channels.{feature_name}", []
+        )
+
+        # Allow if no restrictions are set or if current channel is allowed
+        if not channel_id and not allowed_channels:
+            return True
+
+        if str(interaction.channel.id) == str(channel_id) or str(
+            interaction.channel.id
+        ) in map(str, allowed_channels):
+            return True
+        else:
+            # Tell user where to use the command
+            if channel_id:
+                await interaction.response.send_message(
+                    f"❌ This command can only be used in <#{channel_id}>",
+                    ephemeral=True,
+                )
+            elif allowed_channels:
+                channels_text = ", ".join([f"<#{ch}>" for ch in allowed_channels[:3]])
+                if len(allowed_channels) > 3:
+                    channels_text += f" and {len(allowed_channels) - 3} more channels"
+                await interaction.response.send_message(
+                    f"❌ This command can only be used in the following channels: {channels_text}",
+                    ephemeral=True,
+                )
+            return False
+
+    return app_commands.check(predicate)
 
 
 class Space(commands.GroupCog, name="space"):
