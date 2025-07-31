@@ -37,74 +37,82 @@ intents = discord.Intents.default()
 intents.members = True
 intents.message_content = True  # Required for certain commands
 
+
 class AstraBot(commands.Bot):
     """Custom bot class with enhanced functionality"""
-    
+
     def __init__(self):
         super().__init__(
             command_prefix=commands.when_mentioned,  # Only respond to @mentions for text commands
             intents=intents,
             help_command=None,  # Disable default help command
-            description=config_manager.get("bot_settings.description", "Astra - Space exploration bot")
+            description=config_manager.get(
+                "bot_settings.description", "Astra - Space exploration bot"
+            ),
         )
         # Store bot start time for uptime tracking
         self.start_time = datetime.utcnow()
         self.config = config_manager
         self.logger = logger
-        
+
         # Global cache for frequently accessed data
         self.user_cache = {}
         self.guild_cache = {}
-        
+
     async def setup_hook(self):
         """Initial setup after bot is ready but before it connects to Discord"""
         # Ensure required directories exist
         self.config.ensure_directories()
-        
+
         # Import UI components here to avoid circular imports
         try:
             from ui.ui_components import SetupModal, QuizView, EmpireRoleView
+
             self.logger.info("✅ UI components loaded")
         except ImportError as e:
             self.logger.error(f"❌ Failed to load UI components: {str(e)}")
-        
+
         # Load all extensions
         await self.load_extensions()
-        
+
         # Sync commands with Discord
         if self.config.get("development.command_sync_on_ready", False):
             self.logger.info("🔄 Syncing commands with Discord...")
             await self.tree.sync()
             self.logger.info("✅ Commands synced")
-    
+
     async def on_ready(self):
         """Bot is connected and ready to use"""
         self.logger.info("=" * 60)
-        self.logger.info(f"🚀 {self.config.get('bot_settings.name', 'Astra')} is online!")
-        
+        self.logger.info(
+            f"🚀 {self.config.get('bot_settings.name', 'Astra')} is online!"
+        )
+
         # Bot information
         self.logger.info(f"🤖 Bot: {self.user} (ID: {self.user.id})")
         self.logger.info(f"🌐 Connected to {len(self.guilds)} guild(s)")
-        
+
         total_members = len(set(self.get_all_members()))
         self.logger.info(f"👥 Serving {total_members} unique users")
-        
+
         # Load guild configurations
         for guild in self.guilds:
             self.config.load_guild_config(guild.id)
             self.logger.info(f"📋 Loaded config for guild: {guild.name}")
-        
+
         # Set bot activity
         activity_text = self.config.get("bot_settings.activity", "the cosmos | /help")
-        activity = discord.Activity(type=discord.ActivityType.watching, name=activity_text)
+        activity = discord.Activity(
+            type=discord.ActivityType.watching, name=activity_text
+        )
         await self.change_presence(activity=activity)
-        
+
         # Start background tasks
         self.start_scheduled_tasks()
-        
+
         self.logger.info("🎯 All systems operational!")
         self.logger.info("=" * 60)
-    
+
     async def load_extensions(self):
         """Load all cogs with enhanced error handling and logging"""
         # Define extensions to load
@@ -116,10 +124,10 @@ class AstraBot(commands.Bot):
             "cogs.notion",
             "cogs.stats",
         ]
-        
+
         loaded_count = 0
         failed_count = 0
-        
+
         for ext in extensions:
             try:
                 await self.load_extension(ext)
