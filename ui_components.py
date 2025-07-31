@@ -20,15 +20,8 @@ class PaginatedView(discord.ui.View):
         self.current_page = 0
         self.max_pages = len(embeds)
         
-        # Disable buttons if only one page
-        if self.max_pages <= 1:
-            self.previous_button.disabled = True
-            self.next_button.disabled = True
-            self.first_button.disabled = True
-            self.last_button.disabled = True
-        else:
-            # Update button states based on current page
-            self.update_buttons()
+        # Initialize button states properly
+        self.update_buttons()
     
     def update_buttons(self):
         """Update button states based on current page"""
@@ -351,6 +344,8 @@ class SetupModal(discord.ui.Modal, title="Astra Bot Setup"):
     
     async def on_submit(self, interaction: discord.Interaction):
         # Process setup data here
+        from enhanced_config import config_manager
+        
         setup_data = {
             'guild_name': self.guild_name.value or interaction.guild.name,
             'admin_roles': [role.strip() for role in self.admin_roles.value.split(',') if role.strip()],
@@ -358,6 +353,33 @@ class SetupModal(discord.ui.Modal, title="Astra Bot Setup"):
             'space_channel': int(self.space_channel.value) if self.space_channel.value.isdigit() else None,
             'features': [feature.strip() for feature in self.features.value.split(',') if feature.strip()]
         }
+        
+        # Save configuration
+        guild_id = interaction.guild.id
+        
+        if setup_data['admin_roles']:
+            config_manager.set_guild_setting(guild_id, "permissions.admin_roles", setup_data['admin_roles'])
+        
+        if setup_data['quiz_channel']:
+            config_manager.set_guild_setting(guild_id, "channels.quiz_channel", setup_data['quiz_channel'])
+        
+        if setup_data['space_channel']:
+            config_manager.set_guild_setting(guild_id, "channels.space_channel", setup_data['space_channel'])
+        
+        # Enable/disable features based on input
+        if "quiz" in setup_data['features']:
+            config_manager.set_guild_setting(guild_id, "features.quiz_system.enabled", True)
+        
+        if "space" in setup_data['features']:
+            config_manager.set_guild_setting(guild_id, "features.space_content.enabled", True)
+        
+        if "stellaris" in setup_data['features']:
+            config_manager.set_guild_setting(guild_id, "features.stellaris_features.enabled", True)
+        
+        if "notion" in setup_data['features']:
+            config_manager.set_guild_setting(guild_id, "features.notion_integration.enabled", True)
+        
+        config_manager.set_guild_setting(guild_id, "setup_completed", True)
         
         embed = discord.Embed(
             title="🚀 Setup Complete!",
@@ -373,6 +395,20 @@ class SetupModal(discord.ui.Modal, title="Astra Bot Setup"):
                 inline=False
             )
         
+        if setup_data['quiz_channel']:
+            embed.add_field(
+                name="Quiz Channel",
+                value=f"<#{setup_data['quiz_channel']}>",
+                inline=True
+            )
+        
+        if setup_data['space_channel']:
+            embed.add_field(
+                name="Space Channel",
+                value=f"<#{setup_data['space_channel']}>",
+                inline=True
+            )
+        
         if setup_data['features']:
             embed.add_field(
                 name="Enabled Features",
@@ -381,9 +417,6 @@ class SetupModal(discord.ui.Modal, title="Astra Bot Setup"):
             )
         
         await interaction.response.send_message(embed=embed, ephemeral=True)
-        
-        # Save configuration (would integrate with config manager)
-        # config_manager.set_guild_setting(interaction.guild.id, "setup_data", setup_data)
 
 
 class ProfileView(discord.ui.View):
@@ -467,7 +500,7 @@ class ProfileView(discord.ui.View):
             )
             embed.color = user_empire.color
         else:
-            embed.description = "No empire chosen yet! Use `/empire` to select your galactic empire."
+            embed.description = "No empire chosen yet! Use `!empire` to select your galactic empire."
         
         homeworld = self.user_data.get('homeworld', 'Unknown')
         embed.add_field(
@@ -550,7 +583,31 @@ class HomeworldSelect(discord.ui.Select):
         selected_world = self.values[0]
         
         # Here you would save the homeworld selection to user data
-        # user_manager.set_user_data(interaction.user.id, 'homeworld', selected_world)
+        from enhanced_config import config_manager
+        
+        # Get or create user data
+        user_id = interaction.user.id
+        guild_id = interaction.guild.id
+        user_key = f"{guild_id}-{user_id}"
+        
+        user_data_path = Path(f"data/users/{user_key}.json")
+        user_data_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Load user data
+        user_data = {}
+        if user_data_path.exists():
+            try:
+                with open(user_data_path, 'r') as f:
+                    user_data = json.load(f)
+            except:
+                user_data = {}
+        
+        # Update homeworld
+        user_data['homeworld'] = selected_world
+        
+        # Save user data
+        with open(user_data_path, 'w') as f:
+            json.dump(user_data, f, indent=2)
         
         world_names = {
             "terran": "Terran World",
@@ -592,4 +649,64 @@ class LeaderboardView(discord.ui.View):
         await interaction.response.edit_message(embed=embed, view=self)
     
     @discord.ui.button(label="By Streak", emoji="🔥", style=discord.ButtonStyle.secondary)
-    async def sort
+    async def sort_by_streak(self, interaction: discord.Interaction, button: discord.ui.Button):
+        embed = self.create_leaderboard_embed("streak")
+        await interaction.response.edit_message(embed=embed, view=self)
+    
+    @discord.ui.button(label="By Questions", emoji="❓", style=discord.ButtonStyle.secondary)
+    async def sort_by_questions(self, interaction: discord.Interaction, button: discord.ui.Button):
+        embed = self.create_leaderboard_embed("questions")
+        await interaction.response.edit_message(embed=embed, view=self)
+    
+    def create_leaderboard_embed(self, sort_type: str) -> discord.Embed:
+        """Create leaderboard embed based on sort type"""
+        self.current_sort = sort_type
+        
+        embed = discord.Embed(
+            title=f"🏆 Quiz Leaderboard (by {sort_type.title()})",
+            color=0xFFD700,
+            timestamp=datetime.utcnow()
+        )
+        
+        # Sort the leaderboard data
+        if not self.leaderboard_data:
+            embed.description = "No quiz data available yet! Start playing to be the first on the leaderboard."
+            return embed
+        
+        # Create sorting key function
+        if sort_type == "points":
+            sort_key = lambda x: x[1].get("points", 0)
+        elif sort_type == "accuracy":
+            sort_key = lambda x: x[1].get("accuracy", 0)
+        elif sort_type == "streak":
+            sort_key = lambda x: x[1].get("best_streak", 0)
+        else:  # questions
+            sort_key = lambda x: x[1].get("total_questions", 0)
+            
+        # Sort the data
+        sorted_data = sorted(self.leaderboard_data.items(), key=sort_key, reverse=True)[:10]
+        
+        # Build the leaderboard text
+        leaderboard_text = ""
+        medals = ["🥇", "🥈", "🥉"]
+        
+        for i, (user_id, stats) in enumerate(sorted_data):
+            medal = medals[i] if i < 3 else f"`{i+1}.`"
+            
+            if sort_type == "points":
+                value = f"{stats.get('points', 0)} pts"
+            elif sort_type == "accuracy":
+                value = f"{stats.get('accuracy', 0):.1f}%"
+            elif sort_type == "streak":
+                value = f"{stats.get('best_streak', 0)} streak"
+            else:  # questions
+                value = f"{stats.get('total_questions', 0)} answered"
+                
+            leaderboard_text += f"{medal} **{user_id}** - {value}\n"
+            
+        if leaderboard_text:
+            embed.description = leaderboard_text
+        else:
+            embed.description = "No quiz data available yet! Start playing to be the first on the leaderboard."
+            
+        return embed
