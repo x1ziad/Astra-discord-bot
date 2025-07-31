@@ -24,9 +24,6 @@ class AIChatHandler:
     def __init__(self):
         # Initialize API keys from environment variables
         self.openai_api_key = os.getenv("OPENAI_API_KEY")
-        self.anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
-        self.cohere_api_key = os.getenv("COHERE_API_KEY")
-        self.mistral_api_key = os.getenv("MISTRAL_API_KEY")
 
         # Set default API provider
         self.current_provider = "openai"
@@ -39,7 +36,6 @@ class AIChatHandler:
             openai.api_key = self.openai_api_key
 
         # Initialize conversation history storage
-        # Key: channel_id, Value: list of message dicts
         self.conversation_history = {}
 
     def _load_config(self) -> Dict[str, Any]:
@@ -71,7 +67,11 @@ class AIChatHandler:
             logger.warning(
                 f"Personality profile '{personality_name}' not found. Using default."
             )
-            return self.load_personality("assistant")
+            return {
+                "system_prompt": "You are Astra, a helpful AI assistant for a Discord server.",
+                "temperature": 0.7,
+                "max_tokens": 500,
+            }
 
     def list_personalities(self) -> List[str]:
         """List all available personality profiles."""
@@ -82,7 +82,7 @@ class AIChatHandler:
         personalities = []
         for file in os.listdir(profiles_dir):
             if file.endswith(".json"):
-                personalities.append(file[:-5])  # Remove .json extension
+                personalities.append(file[:-5])
         return personalities
 
     async def add_message_to_history(
@@ -112,7 +112,7 @@ class AIChatHandler:
 
         self.conversation_history[channel_id].append(message)
 
-    async def clear_history(self, channel_id: int) -> None:
+    async def clear_history(self, channel_id: int) -> bool:
         """Clear the conversation history for a channel."""
         if channel_id in self.conversation_history:
             self.conversation_history[channel_id] = []
@@ -141,19 +141,7 @@ class AIChatHandler:
             messages.append({"role": msg["role"], "content": msg["content"]})
 
         try:
-            # Use the appropriate API based on configuration
-            if self.current_provider == "openai":
-                return await self._get_openai_response(messages, personality_profile)
-            elif self.current_provider == "anthropic":
-                return await self._get_anthropic_response(messages, personality_profile)
-            elif self.current_provider == "cohere":
-                return await self._get_cohere_response(messages, personality_profile)
-            elif self.current_provider == "mistral":
-                return await self._get_mistral_response(messages, personality_profile)
-            elif self.current_provider == "local":
-                return await self._get_local_response(messages, personality_profile)
-            else:
-                return "Error: Invalid AI provider configured."
+            return await self._get_openai_response(messages, personality_profile)
         except Exception as e:
             logger.error(f"Error getting AI response: {str(e)}")
             return f"Sorry, I encountered an error: {str(e)}"
@@ -163,11 +151,11 @@ class AIChatHandler:
     ) -> str:
         """Get a response from OpenAI API."""
         if not self.openai_api_key:
-            return "OpenAI API key is not configured."
+            return "OpenAI API key is not configured. Please set OPENAI_API_KEY environment variable."
 
         try:
-            # Get model preference from personality or default to GPT-4o
-            model = personality_profile.get("openai_model", "gpt-4o")
+            # Get model preference from personality or default to GPT-4o-mini (cheaper)
+            model = personality_profile.get("openai_model", "gpt-4o-mini")
             temperature = personality_profile.get(
                 "temperature", self.config.get("temperature", 0.7)
             )
@@ -188,44 +176,6 @@ class AIChatHandler:
             logger.error(f"OpenAI API error: {str(e)}")
             return f"Sorry, I encountered an error with OpenAI: {str(e)}"
 
-    async def _get_anthropic_response(
-        self, messages: List[Dict], personality_profile: Dict
-    ) -> str:
-        """Get a response from Anthropic Claude API."""
-        # This is a placeholder. You'll need the actual Anthropic API client
-        if not self.anthropic_api_key:
-            return "Anthropic API key is not configured."
-
-        # Placeholder for actual implementation
-        return "Anthropic API support is not yet implemented."
-
-    async def _get_cohere_response(
-        self, messages: List[Dict], personality_profile: Dict
-    ) -> str:
-        """Get a response from Cohere API."""
-        if not self.cohere_api_key:
-            return "Cohere API key is not configured."
-
-        # Placeholder for actual implementation
-        return "Cohere API support is not yet implemented."
-
-    async def _get_mistral_response(
-        self, messages: List[Dict], personality_profile: Dict
-    ) -> str:
-        """Get a response from Mistral API."""
-        if not self.mistral_api_key:
-            return "Mistral API key is not configured."
-
-        # Placeholder for actual implementation
-        return "Mistral API support is not yet implemented."
-
-    async def _get_local_response(
-        self, messages: List[Dict], personality_profile: Dict
-    ) -> str:
-        """Get a response from local LLM."""
-        # This would integrate with something like llama.cpp or Ollama
-        return "Local LLM support is not yet implemented."
-
     async def set_personality(self, personality_name: str) -> bool:
         """Set the default personality for the bot."""
         if personality_name in self.list_personalities():
@@ -236,7 +186,7 @@ class AIChatHandler:
 
     async def change_provider(self, provider: str) -> bool:
         """Change the AI provider."""
-        valid_providers = ["openai", "anthropic", "cohere", "mistral", "local"]
+        valid_providers = ["openai"]  # Add others when implemented
         if provider in valid_providers:
             self.current_provider = provider
             self.config["provider"] = provider
