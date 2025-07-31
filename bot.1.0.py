@@ -23,6 +23,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+
 # Try to load dotenv if available
 try:
     from dotenv import load_dotenv
@@ -362,6 +363,19 @@ class AstraBot(commands.Bot):
         await super().close()
 
 
+async def load_cogs(bot):
+    # Make sure directories exist
+    if not os.path.exists("cogs"):
+        os.makedirs("cogs")
+
+    # Load the AI commands cog
+    try:
+        await bot.load_extension("cogs.ai_commands")
+        print("AI Commands cog loaded successfully")
+    except Exception as e:
+        print(f"Failed to load AI Commands cog: {e}")
+
+
 # Register global commands
 def register_global_commands(bot):
     """Register global commands that aren't part of cogs"""
@@ -612,6 +626,9 @@ async def main():
 
         # Register global commands
         register_global_commands(bot)
+
+        # Load all cogs including AI
+        await load_cogs(bot)
 
         # Setup HTTP client
         await setup_http_client()
