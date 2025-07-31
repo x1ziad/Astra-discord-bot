@@ -1,51 +1,65 @@
+"""
+Statistics and information commands for Astra Bot
+Provides server stats, bot info, and system monitoring
+"""
+
 import discord
+from discord import app_commands
 from discord.ext import commands
 from datetime import datetime, timedelta
+import platform
+import os
 import psutil
-import asyncio
+from typing import Optional, Dict, List, Any, Union
+
+from config.enhanced_config import config_manager
 
 
-
-class Stats(commands.Cog):
+class Stats(commands.GroupCog, name="stats"):
+    """Server and bot statistics commands"""
+    
     def __init__(self, bot):
+        super().__init__()
         self.bot = bot
-
-    @commands.command(name="ping")
-    @commands.cooldown(1, 5, commands.BucketType.user)
-    async def ping(self, ctx):
+        self.config = config_manager
+        self.logger = bot.logger
+    
+    @app_commands.command(name="ping", description="Check bot latency and response time")
+    @app_commands.checks.cooldown(1, 5)
+    async def ping_command(self, interaction: discord.Interaction):
         """Check bot latency and response time"""
         start_time = datetime.utcnow()
-
-        # Create initial embed
-        embed = discord.Embed(
-            title="🏓 Pong!", description="Calculating latency...", color=0xFFFF00
-        )
-        message = await ctx.send(embed=embed)
-
+        
+        # Initial response
+        await interaction.response.defer()
+        
         # Calculate response time
         end_time = datetime.utcnow()
         response_time = (end_time - start_time).total_seconds() * 1000
-
-        # Update embed with results
+        
+        # Create embed with results
         embed = discord.Embed(
             title="🏓 Pong!",
             color=(
-                0x00FF00
+                self.config.get_color("success")
                 if self.bot.latency * 1000 < 100
-                else 0xFFFF00 if self.bot.latency * 1000 < 200 else 0xFF0000
+                else self.config.get_color("warning") if self.bot.latency * 1000 < 200 
+                else self.config.get_color("error")
             ),
         )
-
+        
         embed.add_field(
             name="📡 WebSocket Latency",
             value=f"{self.bot.latency * 1000:.2f}ms",
             inline=True,
         )
-
+        
         embed.add_field(
-            name="⚡ Response Time", value=f"{response_time:.2f}ms", inline=True
+            name="⚡ Response Time", 
+            value=f"{response_time:.2f}ms", 
+            inline=True
         )
-
+        
         # Add status indicator
         if self.bot.latency * 1000 < 100:
             status = "🟢 Excellent"
@@ -53,124 +67,134 @@ class Stats(commands.Cog):
             status = "🟡 Good"
         else:
             status = "🔴 Poor"
-
+            
         embed.add_field(name="📊 Status", value=status, inline=True)
-
-        embed.set_footer(text=f"Shard ID: {ctx.guild.shard_id if ctx.guild else 'N/A'}")
-
-        await message.edit(embed=embed)
-
-    @commands.command(name="uptime")
-    @commands.cooldown(1, 10, commands.BucketType.user)
-    async def uptime(self, ctx):
+        
+        # Add shard info if applicable
+        if interaction.guild:
+            embed.set_footer(text=f"Shard ID: {interaction.guild.shard_id}")
+        
+        await interaction.followup.send(embed=embed)
+    
+    @app_commands.command(name="uptime", description="Show bot uptime and system information")
+    @app_commands.checks.cooldown(1, 10)
+    async def uptime_command(self, interaction: discord.Interaction):
         """Show bot uptime and system information"""
         current_time = datetime.utcnow()
         uptime_duration = current_time - self.bot.start_time
-
+        
         # Format uptime
         days = uptime_duration.days
         hours, remainder = divmod(uptime_duration.seconds, 3600)
         minutes, seconds = divmod(remainder, 60)
-
+        
         uptime_str = f"{days}d {hours}h {minutes}m {seconds}s"
-
+        
         embed = discord.Embed(
-            title="⏰ Astra Bot Uptime", color=0x5865F2, timestamp=current_time
+            title=f"⏰ {self.config.get('bot_settings.name', 'Astra')} Uptime",
+            color=self.config.get_color("primary"),
+            timestamp=current_time,
         )
-
+        
         embed.add_field(
             name="🚀 Online Since",
             value=f"<t:{int(self.bot.start_time.timestamp())}:F>",
             inline=False,
         )
-
+        
         embed.add_field(name="⏱️ Total Uptime", value=uptime_str, inline=True)
-
+        
         # System information
         try:
             cpu_percent = psutil.cpu_percent()
             memory = psutil.virtual_memory()
-
+            
             embed.add_field(
                 name="💻 System Stats",
-                value=f"**CPU:** {cpu_percent}%\n**RAM:** {memory.percent}%",
+                value=f"**CPU:** {cpu_percent}%\n**RAM:** {memory.percent}%\n**Python:** {platform.python_version()}",
                 inline=True,
             )
         except:
-            embed.add_field(
-                name="💻 System Stats", value="Data unavailable", inline=True
-            )
-
+            embed.add_field(name="💻 System Stats", value="Data unavailable", inline=True)
+        
         embed.add_field(
             name="📊 Bot Stats",
             value=f"**Servers:** {len(self.bot.guilds)}\n**Users:** {len(set(self.bot.get_all_members()))}",
             inline=True,
         )
-
-        embed.set_footer(text="Astra has been watching the cosmos")
-
-        await ctx.send(embed=embed)
-
-    @commands.command(name="stats")
-    @commands.cooldown(1, 30, commands.BucketType.guild)
-    async def server_stats(self, ctx):
+        
+        embed.set_footer(text=f"Version: {self.config.get('bot_settings.version', '1.0.0')}")
+        
+        await interaction.response.send_message(embed=embed)
+    
+    @app_commands.command(name="server", description="Display comprehensive server statistics")
+    @app_commands.checks.cooldown(1, 30)
+    async def server_stats_command(self, interaction: discord.Interaction):
         """Display comprehensive server statistics"""
-        guild = ctx.guild
+        guild = interaction.guild
         if not guild:
-            await ctx.send("This command can only be used in a server!")
+            await interaction.response.send_message(
+                "This command can only be used in a server!",
+                ephemeral=True
+            )
             return
-
+            
+        await interaction.response.defer()
+        
         # Calculate member statistics
         total_members = guild.member_count
         online_members = sum(
-            1 for member in guild.members if member.status != discord.Status.offline
+            1 for member in guild.members 
+            if member.status != discord.Status.offline 
+            if hasattr(member, 'status')
         )
         bots = sum(1 for member in guild.members if member.bot)
         humans = total_members - bots
-
+        
         # Channel statistics
         text_channels = len(guild.text_channels)
         voice_channels = len(guild.voice_channels)
         categories = len(guild.categories)
-
+        
         # Role statistics
         total_roles = len(guild.roles) - 1  # Exclude @everyone
-
+        
         # Server boost information
         boost_level = guild.premium_tier
         boost_count = guild.premium_subscription_count
-
+        
         embed = discord.Embed(
             title=f"📊 {guild.name} Statistics",
-            color=0x5865F2,
+            color=self.config.get_color("primary"),
             timestamp=datetime.utcnow(),
         )
-
+        
         # Set server icon as thumbnail
         if guild.icon:
             embed.set_thumbnail(url=guild.icon.url)
-
+            
         # Member statistics
         embed.add_field(
             name="👥 Members",
             value=f"**Total:** {total_members:,}\n**Humans:** {humans:,}\n**Bots:** {bots:,}\n**Online:** {online_members:,}",
             inline=True,
         )
-
+        
         # Channel statistics
         embed.add_field(
             name="📝 Channels",
             value=f"**Text:** {text_channels}\n**Voice:** {voice_channels}\n**Categories:** {categories}",
             inline=True,
         )
-
+        
         # Server information
+        owner_mention = guild.owner.mention if guild.owner else "Unknown"
         embed.add_field(
             name="🏛️ Server Info",
-            value=f"**Created:** <t:{int(guild.created_at.timestamp())}:R>\n**Owner:** {guild.owner.mention if guild.owner else 'Unknown'}\n**Roles:** {total_roles}",
+            value=f"**Created:** <t:{int(guild.created_at.timestamp())}:R>\n**Owner:** {owner_mention}\n**Roles:** {total_roles}",
             inline=True,
         )
-
+        
         # Boost information
         if boost_count > 0:
             embed.add_field(
@@ -178,7 +202,7 @@ class Stats(commands.Cog):
                 value=f"**Level:** {boost_level}\n**Boosts:** {boost_count}",
                 inline=True,
             )
-
+            
         # Features
         features = []
         if "COMMUNITY" in guild.features:
@@ -189,10 +213,10 @@ class Stats(commands.Cog):
             features.append("✅ Verified")
         if "VANITY_URL" in guild.features:
             features.append("🔗 Vanity URL")
-
+            
         if features:
             embed.add_field(name="🎯 Features", value="\n".join(features), inline=True)
-
+            
         # Verification level
         verification_levels = {
             discord.VerificationLevel.none: "None",
@@ -201,120 +225,118 @@ class Stats(commands.Cog):
             discord.VerificationLevel.high: "High",
             discord.VerificationLevel.highest: "Highest",
         }
-
+        
         embed.add_field(
             name="🔒 Security",
             value=f"**Verification:** {verification_levels.get(guild.verification_level, 'Unknown')}",
             inline=True,
         )
-
+        
         embed.set_footer(text=f"Server ID: {guild.id}")
-
-        await ctx.send(embed=embed)
-
-    @commands.command(name="membercount")
-    @commands.cooldown(1, 10, commands.BucketType.guild)
-    async def member_count(self, ctx):
+        
+        await interaction.followup.send(embed=embed)
+    
+    @app_commands.command(name="members", description="Show a detailed member count breakdown")
+    @app_commands.checks.cooldown(1, 10)
+    async def member_count_command(self, interaction: discord.Interaction):
         """Show a detailed member count breakdown"""
-        guild = ctx.guild
+        guild = interaction.guild
         if not guild:
-            await ctx.send("This command can only be used in a server!")
+            await interaction.response.send_message(
+                "This command can only be used in a server!",
+                ephemeral=True
+            )
             return
-
+        
+        await interaction.response.defer()
+        
         # Count members by status
-        online = sum(
-            1 for member in guild.members if member.status == discord.Status.online
-        )
-        idle = sum(
-            1 for member in guild.members if member.status == discord.Status.idle
-        )
-        dnd = sum(1 for member in guild.members if member.status == discord.Status.dnd)
-        offline = sum(
-            1 for member in guild.members if member.status == discord.Status.offline
-        )
-
+        try:
+            online = sum(1 for member in guild.members if str(member.status) == "online")
+            idle = sum(1 for member in guild.members if str(member.status) == "idle")
+            dnd = sum(1 for member in guild.members if str(member.status) == "dnd")
+            offline = sum(1 for member in guild.members if str(member.status) == "offline")
+        except:
+            # Fallback if status checking fails
+            online = idle = dnd = 0
+            offline = guild.member_count
+        
         # Count bots vs humans
         bots = sum(1 for member in guild.members if member.bot)
         humans = guild.member_count - bots
-
+        
         embed = discord.Embed(
             title="👥 Member Count Breakdown",
-            color=0x00FF00,
+            color=self.config.get_color("success"),
             timestamp=datetime.utcnow(),
         )
-
+        
         embed.add_field(
             name="📊 Total Members",
             value=f"**{guild.member_count:,}** members",
             inline=False,
         )
-
+        
         embed.add_field(
             name="🟢 Status Breakdown",
             value=f"🟢 Online: **{online:,}**\n🟡 Idle: **{idle:,}**\n🔴 DND: **{dnd:,}**\n⚫ Offline: **{offline:,}**",
             inline=True,
         )
-
+        
         embed.add_field(
             name="🤖 Type Breakdown",
             value=f"👤 Humans: **{humans:,}**\n🤖 Bots: **{bots:,}**",
             inline=True,
         )
-
+        
         # Calculate percentages
-        online_percent = (
-            (online / guild.member_count) * 100 if guild.member_count > 0 else 0
-        )
+        online_percent = (online / guild.member_count) * 100 if guild.member_count > 0 else 0
         embed.add_field(
             name="📈 Activity",
             value=f"**{online_percent:.1f}%** currently online",
             inline=False,
         )
-
+        
         if guild.icon:
             embed.set_thumbnail(url=guild.icon.url)
-
-        await ctx.send(embed=embed)
-
-    @commands.command(name="roleinfo")
-    @commands.cooldown(1, 15, commands.BucketType.guild)
-    async def role_info(self, ctx, *, role_name: str = None):
+            
+        await interaction.followup.send(embed=embed)
+    
+    @app_commands.command(name="roleinfo", description="Get information about server roles")
+    @app_commands.describe(role="The role to get information about (optional)")
+    @app_commands.checks.cooldown(1, 15)
+    async def role_info_command(self, interaction: discord.Interaction, role: Optional[discord.Role] = None):
         """Get information about server roles or a specific role"""
-        guild = ctx.guild
+        guild = interaction.guild
         if not guild:
-            await ctx.send("This command can only be used in a server!")
+            await interaction.response.send_message(
+                "This command can only be used in a server!",
+                ephemeral=True
+            )
             return
-
-        if role_name:
-            # Find specific role
-            role = discord.utils.get(guild.roles, name=role_name)
-            if not role:
-                embed = discord.Embed(
-                    title="❌ Role Not Found",
-                    description=f"No role named '{role_name}' found in this server.",
-                    color=0xFF0000,
-                )
-                await ctx.send(embed=embed)
-                return
-
+            
+        await interaction.response.defer()
+        
+        if role:
+            # Show specific role info
             embed = discord.Embed(
                 title=f"🏷️ Role: {role.name}",
-                color=role.color if role.color != discord.Color.default() else 0x5865F2,
+                color=role.color if role.color != discord.Color.default() else self.config.get_color("primary"),
                 timestamp=datetime.utcnow(),
             )
-
+            
             embed.add_field(
                 name="📊 Info",
                 value=f"**Members:** {len(role.members)}\n**Position:** {role.position}\n**Mentionable:** {'Yes' if role.mentionable else 'No'}\n**Hoisted:** {'Yes' if role.hoist else 'No'}",
                 inline=True,
             )
-
+            
             embed.add_field(
                 name="🎨 Appearance",
                 value=f"**Color:** {str(role.color) if role.color != discord.Color.default() else 'Default'}\n**Created:** <t:{int(role.created_at.timestamp())}:R>",
                 inline=True,
             )
-
+            
             # Show some permissions if they exist
             if role.permissions.administrator:
                 perms = "Administrator (All Permissions)"
@@ -330,104 +352,19 @@ class Stats(commands.Cog):
                     key_perms.append("Kick Members")
                 if role.permissions.ban_members:
                     key_perms.append("Ban Members")
-
-                perms = (
-                    ", ".join(key_perms[:3]) if key_perms else "No special permissions"
-                )
+                    
+                perms = ", ".join(key_perms[:3]) if key_perms else "No special permissions"
                 if len(key_perms) > 3:
                     perms += f" (+{len(key_perms) - 3} more)"
-
+                    
             embed.add_field(name="🔑 Key Permissions", value=perms, inline=False)
-
+            
             embed.set_footer(text=f"Role ID: {role.id}")
-
+            
         else:
             # Show all roles overview
             roles = sorted(
                 guild.roles[1:], key=lambda r: r.position, reverse=True
             )  # Exclude @everyone
-
-            embed = discord.Embed(
-                title=f"🏷️ {guild.name} Roles",
-                description=f"Total roles: **{len(roles)}**",
-                color=0x5865F2,
-                timestamp=datetime.utcnow(),
-            )
-
-            # Show top roles
-            top_roles = roles[:10]
-            role_list = []
-            for role in top_roles:
-                member_count = len(role.members)
-                role_list.append(f"**{role.name}** - {member_count} members")
-
-            embed.add_field(
-                name="🔝 Top Roles",
-                value="\n".join(role_list) if role_list else "No roles found",
-                inline=False,
-            )
-
-            if len(roles) > 10:
-                embed.add_field(
-                    name="ℹ️ Note",
-                    value=f"Showing top 10 of {len(roles)} roles. Use `!roleinfo <role name>` for detailed info.",
-                    inline=False,
-                )
-
-        await ctx.send(embed=embed)
-
-    @commands.command(name="channelstats")
-    @commands.cooldown(1, 20, commands.BucketType.guild)
-    async def channel_stats(self, ctx):
-        """Show channel statistics for the server"""
-        guild = ctx.guild
-        if not guild:
-            await ctx.send("This command can only be used in a server!")
-            return
-
-        # Count different channel types
-        text_channels = len(guild.text_channels)
-        voice_channels = len(guild.voice_channels)
-        stage_channels = len(guild.stage_channels)
-        forum_channels = len(
-            [
-                ch
-                for ch in guild.channels
-                if hasattr(ch, "type") and str(ch.type) == "forum"
-            ]
-        )
-        categories = len(guild.categories)
-
-        embed = discord.Embed(
-            title="📝 Channel Statistics", color=0x5865F2, timestamp=datetime.utcnow()
-        )
-
-        embed.add_field(
-            name="📊 Channel Count",
-            value=f"**Text:** {text_channels}\n**Voice:** {voice_channels}\n**Stage:** {stage_channels}\n**Categories:** {categories}",
-            inline=True,
-        )
-
-        # Find most active text channel (by message count if available)
-        embed.add_field(
-            name="🏆 Most Active",
-            value="Use `!activity` to see message statistics",
-            inline=True,
-        )
-
-        # Voice channel info
-        voice_members = sum(len(vc.members) for vc in guild.voice_channels)
-        embed.add_field(
-            name="🔊 Voice Activity",
-            value=f"**Members in VC:** {voice_members}\n**Active Channels:** {sum(1 for vc in guild.voice_channels if len(vc.members) > 0)}",
-            inline=True,
-        )
-
-        if guild.icon:
-            embed.set_thumbnail(url=guild.icon.url)
-
-        await ctx.send(embed=embed)
-
-## will do add verification and point to point exchange for a puzzile and a light game play
-async def setup(bot):
-    await bot.add_cog(Stats(bot))
+            
+            embed = discord.Embe
