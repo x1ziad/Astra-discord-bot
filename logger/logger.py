@@ -1,5 +1,5 @@
 """
-Enhanced logging system for Astra Discord Bot
+Enhanced logging system for Astra Bot
 Provides colored console output and file logging
 """
 
@@ -14,13 +14,13 @@ import os
 class AstraLogger:
     """Custom logger class for Astra bot"""
 
-    def __init__(self, name="Astra", log_level="INFO", log_file="logs/astra.log"):
+    def __init__(self, name="Astra", log_level="INFO", log_file="data/logs/astra.log"):
         self.name = name
         self.log_level = getattr(logging, log_level.upper())
         self.log_file = Path(log_file)
 
         # Ensure logs directory exists
-        self.log_file.parent.mkdir(exist_ok=True)
+        self.log_file.parent.mkdir(parents=True, exist_ok=True)
 
         # Create logger
         self.logger = logging.getLogger(name)
@@ -84,68 +84,9 @@ class AstraLogger:
         self.logger.info(f"📁 Working directory: {os.getcwd()}")
         self.logger.info(separator)
 
-    def log_cog_status(self, cog_name, status, error=None):
-        """Log cog loading status"""
-        if status == "loaded":
-            self.logger.info(f"✅ Loaded cog: {cog_name}")
-        elif status == "failed":
-            self.logger.error(f"❌ Failed to load cog: {cog_name}")
-            if error:
-                self.logger.error(f"   Error: {error}")
-        elif status == "skipped":
-            self.logger.warning(f"⚠️ Skipped cog: {cog_name} (file not found)")
 
-    def log_command_usage(self, ctx, execution_time=None):
-        """Log command usage"""
-        user = f"{ctx.author.name}#{ctx.author.discriminator}"
-        guild = ctx.guild.name if ctx.guild else "DM"
-        command = ctx.command.name if ctx.command else "Unknown"
-
-        if execution_time:
-            self.logger.info(
-                f"🎯 Command '{command}' used by {user} in {guild} (took {execution_time:.2f}s)"
-            )
-        else:
-            self.logger.info(f"🎯 Command '{command}' used by {user} in {guild}")
-
-    def log_error(self, error, context=None):
-        """Log errors with context"""
-        if context:
-            self.logger.error(f"💥 Error in {context}: {error}")
-        else:
-            self.logger.error(f"💥 Error: {error}")
-
-    def log_api_request(self, api_name, endpoint, status_code, response_time=None):
-        """Log API requests"""
-        if response_time:
-            self.logger.info(
-                f"🌐 {api_name} API: {endpoint} -> {status_code} (took {response_time:.2f}s)"
-            )
-        else:
-            self.logger.info(f"🌐 {api_name} API: {endpoint} -> {status_code}")
-
-    def log_user_action(self, user, action, details=None):
-        """Log user actions"""
-        user_str = (
-            f"{user.name}#{user.discriminator}"
-            if hasattr(user, "discriminator")
-            else str(user)
-        )
-        if details:
-            self.logger.info(f"👤 {user_str}: {action} - {details}")
-        else:
-            self.logger.info(f"👤 {user_str}: {action}")
-
-    def log_guild_event(self, guild, event, details=None):
-        """Log guild events"""
-        if details:
-            self.logger.info(f"🏛️ {guild.name}: {event} - {details}")
-        else:
-            self.logger.info(f"🏛️ {guild.name}: {event}")
-
-
-# Global logger instance
-def setup_logger(name="Astra", log_level="INFO", log_file="logs/astra.log"):
+# Global logger function
+def setup_logger(name="Astra", log_level="INFO", log_file="data/logs/astra.log"):
     """Setup and return a logger instance"""
     logger_instance = AstraLogger(name, log_level, log_file)
     return logger_instance.get_logger()
