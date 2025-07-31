@@ -3,7 +3,11 @@ from discord import app_commands
 from discord.ext import commands
 import logging
 from typing import Optional, List
+import sys
+import os
 
+# Ensure proper import path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from ai_chat import AIChatHandler
 
 # Set up logging
@@ -20,6 +24,7 @@ class AICommands(commands.Cog):
         self.bot = bot
         self.ai_handler = AIChatHandler()
         self.dedicated_channels = self._load_dedicated_channels()
+        logger.info("AI Commands cog initialized")
 
     def _load_dedicated_channels(self) -> List[int]:
         """Load dedicated AI channels from config."""
@@ -254,6 +259,40 @@ class AICommands(commands.Cog):
                 "No conversation history to clear in this channel."
             )
 
+    @app_commands.command(name="testapi", description="Test your OpenAI API connection")
+    async def test_api(self, interaction: discord.Interaction):
+        """Test the OpenAI API connection."""
+        await interaction.response.defer(thinking=True)
+
+        try:
+            # Test API with a simple message
+            test_response = await self.ai_handler._get_openai_response(
+                [
+                    {"role": "system", "content": "You are a helpful assistant."},
+                    {"role": "user", "content": "Say 'API test successful!'"},
+                ],
+                {"temperature": 0.7, "max_tokens": 50},
+            )
+
+            embed = discord.Embed(
+                title="✅ API Test Successful",
+                description=f"Response: {test_response}",
+                color=discord.Color.green(),
+            )
+            await interaction.followup.send(embed=embed)
+
+        except Exception as e:
+            embed = discord.Embed(
+                title="❌ API Test Failed",
+                description=f"Error: {str(e)}",
+                color=discord.Color.red(),
+            )
+            await interaction.followup.send(embed=embed)
+
 
 async def setup(bot):
-    await bot.add_cog(AICommands(bot))
+    try:
+        await bot.add_cog(AICommands(bot))
+        print("✅ AI Commands cog loaded successfully")
+    except Exception as e:
+        print(f"❌ Error loading AI Commands cog: {e}")
