@@ -1,221 +1,156 @@
 """
-Advanced command checks for Astra Bot
+Custom check decorators for Astra Discord Bot
+Includes feature checks, permission checks, and cooldown handling
 """
 
-import discord
 from discord import app_commands
 from discord.ext import commands
-from typing import Callable, TypeVar, Union, Optional
+from typing import Optional, Callable, Union, TypeVar
+import functools
 
 from config.config_manager import config_manager
 
 T = TypeVar("T")
 
 
-def is_owner_or_admin():
-    """Check if user is the bot owner or a server admin"""
+def feature_enabled(feature_path: str):
+    """
+    Check if a feature is enabled in configuration
 
-    async def predicate(interaction: discord.Interaction) -> bool:
-        # Bot owner check
-        if interaction.client.application:
-            if interaction.user.id == interaction.client.application.owner.id:
-                return True
+    Args:
+        feature_path: The path to the feature in config (e.g. "space_content.iss_tracking")
 
-        # Admin check
-        if interaction.user.guild_permissions.administrator:
-            return True
+    Usage:
+        @feature_enabled("space_content")
+        @app_commands.command()
+        async def space_command(self, interaction):
+            ...
+    """
 
-        # Role check
-        admin_roles = config_manager.get("permissions.admin_roles", [])
-        if any(role.name in admin_roles for role in interaction.user.roles):
-            return True
-
-        # Permission denied
-        await interaction.response.send_message(
-            "❌ This command requires administrator permissions.", ephemeral=True
-        )
-        return False
-
-    return app_commands.check(predicate)
-
-
-def is_moderator_or_above():
-    """Check if user is a moderator, admin, or bot owner"""
-
-    async def predicate(interaction: discord.Interaction) -> bool:
-        # First check if user is owner or admin
-        try:
-            # Bot owner check
-            if interaction.client.application:
-                if interaction.user.id == interaction.client.application.owner.id:
-                    return True
-
-            # Admin check
-            if interaction.user.guild_permissions.administrator:
-                return True
-
-            admin_roles = config_manager.get("permissions.admin_roles", [])
-            if any(role.name in admin_roles for role in interaction.user.roles):
-                return True
-
-            # Mod check
-            mod_roles = config_manager.get("permissions.moderator_roles", [])
-            if any(role.name in mod_roles for role in interaction.user.roles):
-                return True
-        except:
-            # If any error occurs, default to permissions check
-            if interaction.user.guild_permissions.manage_messages:
-                return True
-
-        # Permission denied
-        await interaction.response.send_message(
-            "❌ This command requires moderator permissions.", ephemeral=True
-        )
-        return False
-
-    return app_commands.check(predicate)
-
-
-def has_role(role_name: str):
-    """Check if user has a specific role"""
-
-    async def predicate(interaction: discord.Interaction) -> bool:
-        # Admin bypass
-        if interaction.user.guild_permissions.administrator:
-            return True
-
-        if any(role.name == role_name for role in interaction.user.roles):
-            return True
-
-        # Permission denied
-        await interaction.response.send_message(
-            f"❌ This command requires the `{role_name}` role.", ephemeral=True
-        )
-        return False
-
-    return app_commands.check(predicate)
-
-
-def has_any_role(role_names: list):
-    """Check if user has any of the specified roles"""
-
-    async def predicate(interaction: discord.Interaction) -> bool:
-        # Admin bypass
-        if interaction.user.guild_permissions.administrator:
-            return True
-
-        if any(role.name in role_names for role in interaction.user.roles):
-            return True
-
-        # Permission denied
-        await interaction.response.send_message(
-            f"❌ This command requires one of these roles: {', '.join(role_names)}",
-            ephemeral=True,
-        )
-        return False
-
-    return app_commands.check(predicate)
-
-
-def in_channel(channel_ids: Union[int, list]):
-    """Check if command is used in specific channel(s)"""
-    if isinstance(channel_ids, int):
-        channel_ids = [channel_ids]
-
-    async def predicate(interaction: discord.Interaction) -> bool:
-        # Admin bypass
-        if interaction.user.guild_permissions.administrator:
-            return True
-
-        if interaction.channel_id in channel_ids:
-            return True
-
-        # Get channel mentions for error message
-        channel_mentions = []
-        for channel_id in channel_ids:
-            channel_mentions.append(f"<#{channel_id}>")
-
-        # Permission denied
-        await interaction.response.send_message(
-            f"❌ This command can only be used in: {', '.join(channel_mentions)}",
-            ephemeral=True,
-        )
-        return False
-
-    return app_commands.check(predicate)
-
-
-def is_feature_enabled(feature_path: str):
-    """Check if a feature is enabled"""
-
-    async def predicate(interaction: discord.Interaction) -> bool:
-        # Admin bypass for testing
-        if interaction.client.application:
-            if interaction.user.id == interaction.client.application.owner.id:
-                return True
-
-        # Check global setting
+    async def predicate(interaction) -> bool:
         if not config_manager.is_feature_enabled(feature_path):
-            # Check guild-specific setting
-            guild_enabled = config_manager.get_guild_setting(
-                interaction.guild.id, f"features.{feature_path}.enabled", False
+            # Check if the user is an admin and in development mode
+            if (
+                config_manager.get("development.debug_mode", False)
+                and interaction.user.guild_permissions.administrator
+            ):
+                return True
+
+            # Feature is disabled
+            feature_name = feature_path.split(".")[-1].replace("_", " ").title()
+            raise app_commands.CheckFailure(
+                f"The {feature_name} feature is currently disabled."
             )
-
-            if not guild_enabled:
-                await interaction.response.send_message(
-                    f"❌ The `{feature_path}` feature is currently disabled.",
-                    ephemeral=True,
-                )
-                return False
-
         return True
 
     return app_commands.check(predicate)
 
 
+def guild_admin_only():
+    """Check that restricts commands to guild administrators only"""
+
+    async def predicate(interaction) -> bool:
+        if not interaction.guild:
+            return False  # Not in a guild
+
+        return interaction.user.guild_permissions.administrator
+
+    return app_commands.check(predicate)
+
+
+def bot_owner_only():
+    """Check that restricts commands to the bot owner only"""
+
+    async def predicate(interaction) -> bool:
+        bot_owner_id = config_manager.get("bot_settings.owner_id")
+        if bot_owner_id and str(interaction.user.id) == str(bot_owner_id):
+            return True
+
+        # Check application owner
+        app = interaction.client.application
+        if app and app.owner and app.owner.id == interaction.user.id:
+            return True
+
+        return False
+
+    return app_commands.check(predicate)
+
+
+def channel_only(feature_name: str):
+    """
+    Decorator that restricts commands to specific channels
+
+    Args:
+        feature_name: The feature to check allowed channels for
+    """
+
+    async def predicate(interaction) -> bool:
+        # Check if the channel is allowed for this feature
+        if not interaction.guild or not interaction.channel:
+            return True  # Allow in DMs or when channel is None
+
+        # Get the channel ID for this feature
+        guild_id = interaction.guild.id if interaction.guild else None
+        channel_id = config_manager.get_guild_setting(
+            guild_id, f"channels.{feature_name}_channel"
+        )
+        allowed_channels = config_manager.get_guild_setting(
+            guild_id, f"channels.allowed_channels.{feature_name}", []
+        )
+
+        # Allow if no restrictions are set or if current channel is allowed
+        if not channel_id and not allowed_channels:
+            return True
+
+        if str(interaction.channel.id) == str(channel_id) or str(
+            interaction.channel.id
+        ) in map(str, allowed_channels):
+            return True
+        else:
+            # Tell user where to use the command
+            if channel_id:
+                await interaction.response.send_message(
+                    f"❌ This command can only be used in <#{channel_id}>",
+                    ephemeral=True,
+                )
+            elif allowed_channels:
+                channels_text = ", ".join([f"<#{ch}>" for ch in allowed_channels[:3]])
+                if len(allowed_channels) > 3:
+                    channels_text += f" and {len(allowed_channels) - 3} more channels"
+                await interaction.response.send_message(
+                    f"❌ This command can only be used in the following channels: {channels_text}",
+                    ephemeral=True,
+                )
+            return False
+
+    return app_commands.check(predicate)
+
+
+# Custom cooldown for application commands
 def cooldown(
     rate: int,
     per: float,
-    key_type: app_commands.BucketType = app_commands.BucketType.user,
+    key: Optional[Callable[[discord.Interaction], str]] = None,
+    # Use commands.BucketType instead of app_commands.BucketType
+    key_type: commands.BucketType = commands.BucketType.user,
 ):
-    """Custom cooldown with better error message"""
-    cooldown_mapping = app_commands.Cooldown(rate, per)
+    """
+    Custom cooldown decorator for application commands
+    Provides more flexibility than the built-in cooldown
 
-    async def predicate(interaction: discord.Interaction) -> bool:
-        # Get the cooldown key based on type
-        if key_type == app_commands.BucketType.user:
-            key = interaction.user.id
-        elif key_type == app_commands.BucketType.guild:
-            key = interaction.guild.id
-        elif key_type == app_commands.BucketType.channel:
-            key = interaction.channel.id
-        else:
-            key = interaction.user.id
+    Args:
+        rate: Number of calls allowed within period
+        per: Cooldown period in seconds
+        key: Optional function to customize the cooldown key
+        key_type: Type of bucket to use for cooldown
+    """
+    # Use the built-in app_commands cooldown
+    return app_commands.checks.cooldown(rate, per)
 
-        # Try to acquire the cooldown
-        retry_after = cooldown_mapping.get_retry_after()
-        if retry_after:
-            # Format the remaining time
-            if retry_after < 1:
-                time_str = f"{retry_after*1000:.0f} milliseconds"
-            elif retry_after < 60:
-                time_str = f"{retry_after:.1f} seconds"
-            elif retry_after < 3600:
-                minutes, seconds = divmod(retry_after, 60)
-                time_str = f"{int(minutes)}m {int(seconds)}s"
-            else:
-                hours, remainder = divmod(retry_after, 3600)
-                minutes, seconds = divmod(remainder, 60)
-                time_str = f"{int(hours)}h {int(minutes)}m"
 
-            # Send cooldown message
-            await interaction.response.send_message(
-                f"⏱️ Command on cooldown. Please wait {time_str}.", ephemeral=True
-            )
-            return False
-
-        # Update the cooldown
-        cooldown_mapping.update_rate_limit()
-        return True
-
-    return app_commands.check(predicate)
+# For traditional commands
+def traditional_cooldown(
+    rate: int, per: float, bucket_type: commands.BucketType = commands.BucketType.user
+):
+    """Cooldown for traditional commands"""
+    return commands.cooldown(rate, per, bucket_type)
