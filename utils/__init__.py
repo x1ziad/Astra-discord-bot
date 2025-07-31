@@ -1,3 +1,5 @@
+import discord
+
 """Utility functions for Astra bot"""
 
 # Safe imports that won't fail
