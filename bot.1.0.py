@@ -316,85 +316,118 @@ class AstraBot(commands.Bot):
                         async with session.get(url) as response:
                             if response.status == 200:
                                 data = await response.json()
-                                
+
                                 # Create embed with APOD data
                                 embed = discord.Embed(
                                     title=f"🌌 {data['title']}",
-                                    description=(data.get('explanation', 'No description available')[:1000] + 
-                                                "..." if len(data.get('explanation', '')) > 1000 
-                                                else data.get('explanation', 'No description available')),
+                                    description=(
+                                        data.get(
+                                            "explanation", "No description available"
+                                        )[:1000]
+                                        + "..."
+                                        if len(data.get("explanation", "")) > 1000
+                                        else data.get(
+                                            "explanation", "No description available"
+                                        )
+                                    ),
                                     color=self.config.get_color("space"),
-                                    timestamp=datetime.strptime(data['date'], "%Y-%m-%d") if 'date' in data else datetime.utcnow()
+                                    timestamp=(
+                                        datetime.strptime(data["date"], "%Y-%m-%d")
+                                        if "date" in data
+                                        else datetime.utcnow()
+                                    ),
                                 )
-                                
-                                if data.get('media_type') == 'image':
-                                    embed.set_image(url=data['url'])
-                                elif data.get('media_type') == 'video':
-                                    embed.add_field(name="🎥 Video Link", value=f"[Watch Here]({data['url']})", inline=False)
-                                
-                                embed.set_footer(text="NASA Astronomy Picture of the Day")
-                                
+
+                                if data.get("media_type") == "image":
+                                    embed.set_image(url=data["url"])
+                                elif data.get("media_type") == "video":
+                                    embed.add_field(
+                                        name="🎥 Video Link",
+                                        value=f"[Watch Here]({data['url']})",
+                                        inline=False,
+                                    )
+
+                                embed.set_footer(
+                                    text="NASA Astronomy Picture of the Day"
+                                )
+
                                 await channel.send(embed=embed)
                                 self.logger.info(f"✅ Posted APOD in guild {guild_id}")
                             else:
-                                self.logger.error(f"NASA API returned status {response.status}")
+                                self.logger.error(
+                                    f"NASA API returned status {response.status}"
+                                )
                 except Exception as e:
                     self.logger.error(f"Error fetching APOD data: {str(e)}")
                     continue
-                    
+
             except Exception as e:
-                self.logger.error(f"❌ Error posting APOD in guild {guild_id}: {str(e)}")
-    
+                self.logger.error(
+                    f"❌ Error posting APOD in guild {guild_id}: {str(e)}"
+                )
+
     @tasks.loop(time=datetime.time(hour=15, minute=0))  # Runs at 15:00 UTC every day
     async def daily_quiz_reminder(self):
         """Task to post daily quiz reminders"""
         self.logger.info("🎮 Running daily quiz reminder task")
-        
+
         # Process each guild configuration
         for guild_id, guild_config in self.config.guild_configs.items():
             # Check if quiz feature is enabled for this guild
-            if not self.config.get_guild_setting(guild_id, "features.quiz_system.daily_questions", False):
-                self.logger.debug(f"Skipping quiz reminder for guild {guild_id}: feature disabled")
+            if not self.config.get_guild_setting(
+                guild_id, "features.quiz_system.daily_questions", False
+            ):
+                self.logger.debug(
+                    f"Skipping quiz reminder for guild {guild_id}: feature disabled"
+                )
                 continue
-                
+
             # Get the configured quiz channel
-            channel_id = self.config.get_guild_setting(guild_id, "channels.quiz_channel", None)
+            channel_id = self.config.get_guild_setting(
+                guild_id, "channels.quiz_channel", None
+            )
             if not channel_id:
-                self.logger.debug(f"Skipping quiz reminder for guild {guild_id}: no quiz channel configured")
+                self.logger.debug(
+                    f"Skipping quiz reminder for guild {guild_id}: no quiz channel configured"
+                )
                 continue
-                
+
             try:
                 # Get channel object
                 channel = self.get_channel(int(channel_id))
                 if not channel:
-                    self.logger.warning(f"Could not find channel {channel_id} for guild {guild_id}")
+                    self.logger.warning(
+                        f"Could not find channel {channel_id} for guild {guild_id}"
+                    )
                     continue
-                    
+
                 # Create and send quiz reminder embed
                 embed = discord.Embed(
                     title="🎯 Daily Quiz Available!",
                     description="Today's quiz is now available! Use `/quiz` to test your knowledge.",
-                    color=self.config.get_color("primary")
+                    color=self.config.get_color("primary"),
                 )
-                
+
                 embed.add_field(
                     name="💡 How to Play",
                     value="Use `/quiz` to get a random question or `/quiz category:space` for a space-themed question.",
-                    inline=False
+                    inline=False,
                 )
-                
+
                 embed.add_field(
                     name="🏆 Leaderboard",
                     value="Check your ranking with `/leaderboard` or `/mystats`.",
-                    inline=False
+                    inline=False,
                 )
-                
+
                 await channel.send(embed=embed)
                 self.logger.info(f"✅ Posted quiz reminder in guild {guild_id}")
-                    
+
             except Exception as e:
-                self.logger.error(f"❌ Error posting quiz reminder in guild {guild_id}: {str(e)}")
-    
+                self.logger.error(
+                    f"❌ Error posting quiz reminder in guild {guild_id}: {str(e)}"
+                )
+
     @daily_apod_task.before_loop
     @daily_quiz_reminder.before_loop
     async def before_tasks(self):
