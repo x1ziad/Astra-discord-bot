@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  astra-bot:
+    container_name: astra-discord-bot-dev
+    volumes:
+      # Mount entire source code for live development
+      - .:/app
+      # Exclude node_modules and other generated files
+      - /app/__pycache__
+      - /app/**/__pycache__
+    environment:
+      # Enable debug mode
+      - DEBUG=true
+      - LOG_LEVEL=DEBUG
+    # Override restart policy for development
+    restart: "no"
+    # Interactive terminal for debugging
+    stdin_open: true
+    tty: true

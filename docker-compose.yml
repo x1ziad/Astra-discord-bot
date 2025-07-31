@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  astra-bot:
+    build: .
+    container_name: astra-discord-bot
+    restart: unless-stopped
+    environment:
+      # Discord Bot Token (Required)
+      - DISCORD_TOKEN=${DISCORD_TOKEN}
+      
+      # OpenAI API Key (Required for AI commands)
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      
+      # Optional: NASA API Key (for space commands)
+      - NASA_API_KEY=${NASA_API_KEY:-DEMO_KEY}
+      
+      # Optional: Notion Integration Keys
+      - NOTION_TOKEN=${NOTION_TOKEN}
+      - NOTION_DATABASE_ID=${NOTION_DATABASE_ID}
+      
+      # Python environment settings
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+    volumes:
+      # Persist logs and data
+      - ./logs:/app/logs
+      - ./data:/app/data
+      
+      # Optional: Mount config files for live updates
+      - ./ai_config.json:/app/ai_config.json
+      - ./personality_profiles:/app/personality_profiles
+    env_file:
+      - .env
+    # Optional: Override the default command
+    # command: python bot.1.0.py
+
+# Optional: Add a development override
+# Use: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+---
+version: '3.8'
+
+services:
+  astra-bot-dev:
+    extends:
+      service: astra-bot
+    container_name: astra-discord-bot-dev
+    volumes:
+      # Mount entire source for development
+      - .:/app
+    environment:
+      # Enable debug mode for development
+      - DEBUG=true

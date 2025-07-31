@@ -5,7 +5,7 @@ import asyncio
 import discord
 from typing import List, Dict, Optional, Union, Any
 from datetime import datetime
-import openai
+from openai import AsyncOpenAI
 from dotenv import load_dotenv
 
 # Set up logging
@@ -32,8 +32,9 @@ class AIChatHandler:
         self.config = self._load_config()
 
         # Set up API clients
+        self.openai_client = None
         if self.openai_api_key:
-            openai.api_key = self.openai_api_key
+            self.openai_client = AsyncOpenAI(api_key=self.openai_api_key)
 
         # Initialize conversation history storage
         self.conversation_history = {}
@@ -150,8 +151,16 @@ class AIChatHandler:
         self, messages: List[Dict], personality_profile: Dict
     ) -> str:
         """Get a response from OpenAI API."""
-        if not self.openai_api_key:
-            return "OpenAI API key is not configured. Please set OPENAI_API_KEY environment variable."
+        if not self.openai_api_key or not self.openai_client:
+            return (
+                "❌ **OpenAI API key is not configured**\n\n"
+                "To use AI commands, you need to:\n"
+                "1. Get an API key from https://platform.openai.com/api-keys\n"
+                "2. Set the `OPENAI_API_KEY` environment variable\n"
+                "3. Restart the bot\n\n"
+                "**Docker users:** Add `OPENAI_API_KEY=sk-your-key-here` to your `.env` file\n"
+                "**Manual setup:** Export `OPENAI_API_KEY=sk-your-key-here` in your shell"
+            )
 
         try:
             # Get model preference from personality or default to GPT-4o-mini (cheaper)
@@ -163,7 +172,7 @@ class AIChatHandler:
                 "max_tokens", self.config.get("max_tokens", 500)
             )
 
-            response = await openai.ChatCompletion.acreate(
+            response = await self.openai_client.chat.completions.create(
                 model=model,
                 messages=messages,
                 temperature=temperature,
@@ -173,8 +182,39 @@ class AIChatHandler:
 
             return response.choices[0].message.content
         except Exception as e:
-            logger.error(f"OpenAI API error: {str(e)}")
-            return f"Sorry, I encountered an error with OpenAI: {str(e)}"
+            error_str = str(e).lower()
+            
+            if "authentication" in error_str or "unauthorized" in error_str or "401" in error_str:
+                logger.error("OpenAI authentication failed - invalid API key")
+                return (
+                    "❌ **OpenAI authentication failed**\n\n"
+                    "Your API key appears to be invalid. Please:\n"
+                    "1. Check that your key starts with `sk-`\n"
+                    "2. Verify the key at https://platform.openai.com/api-keys\n"
+                    "3. Update your `OPENAI_API_KEY` environment variable\n"
+                    "4. Restart the bot"
+                )
+            elif "rate" in error_str and "limit" in error_str:
+                logger.error("OpenAI rate limit exceeded")
+                return (
+                    "⏳ **Rate limit exceeded**\n\n"
+                    "You've hit the OpenAI API rate limit. Please:\n"
+                    "- Wait a few minutes before trying again\n"
+                    "- Consider upgrading your OpenAI plan for higher limits\n"
+                    "- Check your usage at https://platform.openai.com/usage"
+                )
+            elif "quota" in error_str or "insufficient" in error_str:
+                logger.error("OpenAI quota exceeded")
+                return (
+                    "💳 **Quota exceeded**\n\n"
+                    "You've exceeded your OpenAI API quota. Please:\n"
+                    "- Check your billing at https://platform.openai.com/account/billing\n"
+                    "- Add payment method if needed\n"
+                    "- Monitor your usage at https://platform.openai.com/usage"
+                )
+            else:
+                logger.error(f"OpenAI API error: {str(e)}")
+                return f"❌ **API Error**: {str(e)}\n\nPlease try again or contact support if the issue persists."
 
     async def set_personality(self, personality_name: str) -> bool:
         """Set the default personality for the bot."""
