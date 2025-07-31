@@ -32,30 +32,24 @@ def channel_only(feature_name):
         if not interaction.guild or not interaction.channel:
             return True  # Allow in DMs or when channel is None
 
-        if config_manager.is_channel_allowed(interaction.channel, feature_name):
+        # Get the channel ID for this feature
+        guild_id = interaction.guild.id if interaction.guild else None
+        channel_id = config_manager.get_guild_setting(
+            guild_id, f"channels.{feature_name}_channel"
+        )
+
+        # If no channel is configured, allow anywhere
+        if not channel_id:
+            return True
+
+        # Check if current channel matches configured channel
+        if str(interaction.channel.id) == str(channel_id):
             return True
         else:
-            # Get the list of allowed channels
-            guild_id = interaction.guild.id if interaction.guild else None
-            allowed_channels = config_manager.get_allowed_channels(
-                feature_name, guild_id
+            # Tell user where to use the command
+            await interaction.response.send_message(
+                f"❌ This command can only be used in <#{channel_id}>", ephemeral=True
             )
-
-            # If there are allowed channels, mention them
-            if allowed_channels:
-                channel_mentions = [
-                    f"<#{channel_id}>" for channel_id in allowed_channels
-                ]
-                channels_text = ", ".join(channel_mentions)
-                await interaction.response.send_message(
-                    f"❌ This command can only be used in the following channels: {channels_text}",
-                    ephemeral=True,
-                )
-            else:
-                await interaction.response.send_message(
-                    f"❌ This command can only be used in designated channels. Please ask an admin to set up channels for {feature_name}.",
-                    ephemeral=True,
-                )
             return False
 
     return app_commands.check(predicate)
