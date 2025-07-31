@@ -1,22 +1,38 @@
+"""
+Stellaris empire roles system for Astra Bot
+Allows users to select empire roles and get lore information
+"""
+
 import discord
+from discord import app_commands
 from discord.ext import commands
+import json
 import asyncio
 from datetime import datetime
-import json
-import os
+from typing import Optional, Dict, List, Any, Union
+from pathlib import Path
+
+from config.enhanced_config import config_manager, feature_enabled
+from ui.ui_components import EmpireRoleView, HomeworldSelectView
 
 
-class Roles(commands.Cog):
+class Roles(commands.GroupCog, name="empire"):
+    """Stellaris empire role and lore commands"""
+    
     def __init__(self, bot):
+        super().__init__()
         self.bot = bot
-        self.lore_file = "data/stellaris_lore.json"
-
-        # Create data directory if it doesn't exist
-        os.makedirs("data", exist_ok=True)
-
+        self.config = config_manager
+        self.logger = bot.logger
+        
+        # Data directory
+        self.data_dir = Path("data")
+        self.data_dir.mkdir(exist_ok=True)
+        self.lore_file = self.data_dir / "stellaris_lore.json"
+        
         # Load Stellaris lore data
         self.stellaris_lore = self.load_lore_data()
-
+        
         # Stellaris empire types with emojis and descriptions
         self.empire_types = {
             "🏛️": {
@@ -80,9 +96,11 @@ class Roles(commands.Cog):
                 "government": "Imperial",
             },
         }
-
-    def load_lore_data(self):
-        """Load Stellaris lore from JSON file"""
+        
+        self.logger.info(f"Roles cog initialized with {len(self.empire_types)} empire types")
+    
+    def load_lore_data(self) -> Dict[str, Dict[str, str]]:
+        """Load Stellaris lore from JSON file or create default"""
         default_lore = {
             "origins": {
                 "void_dwellers": "Your species has spent generations living in massive space habitats orbiting your homeworld.",
@@ -123,227 +141,97 @@ class Roles(commands.Cog):
                 "war_in_heaven": "When two Fallen Empires awaken and wage war, smaller empires must choose sides.",
             },
         }
-
+        
         try:
-            with open(self.lore_file, "r") as f:
-                return json.load(f)
-        except (FileNotFoundError, json.JSONDecodeError):
-            # Save default lore and return it
+            if self.lore_file.exists():
+                with open(self.lore_file, "r") as f:
+                    return json.load(f)
+                    
+            # If file doesn't exist, create it with default data
             with open(self.lore_file, "w") as f:
                 json.dump(default_lore, f, indent=2)
+                
             return default_lore
-
-    @commands.command(name="empire")
-    @commands.cooldown(1, 60, commands.BucketType.guild)
-    async def empire_role_picker(self, ctx):
-        """Choose your Stellaris empire type with an interactive role picker"""
-
+        except Exception as e:
+            self.logger.error(f"Error loading lore data: {e}")
+            return default_lore
+    
+    @app_commands.command(name="choose", description="Choose your Stellaris empire type")
+    @feature_enabled("stellaris_features.empire_roles")
+    async def empire_role_command(self, interaction: discord.Interaction):
+        """Choose your Stellaris empire type from a selection of options"""
+        # Create the empire role selection view
+        view = EmpireRoleView(self.empire_types)
+        
         embed = discord.Embed(
             title="🌌 Choose Your Stellaris Empire Type",
-            description="React with an emoji to get the corresponding empire role!\n\n"
-            + "Each empire type represents different playstyles and philosophies in Stellaris.",
-            color=0x6A0DAD,
+            description="Select your empire from the dropdown menu below!\n\n" +
+                        "Each empire type represents different playstyles and philosophies in Stellaris.",
+            color=self.config.get_color("stellaris"),
             timestamp=datetime.utcnow(),
         )
-
-        # Add fields for each empire type
-        for emoji, empire_data in self.empire_types.items():
-            embed.add_field(
-                name=f"{emoji} {empire_data['name']}",
-                value=f"*{empire_data['description']}*\n**Ethics:** {empire_data['ethics']}\n**Gov:** {empire_data['government']}",
-                inline=True,
-            )
-
+        
+        # Add brief descriptions of each empire type
+        empires_text = ""
+        for emoji, empire in self.empire_types.items():
+            empires_text += f"{emoji} **{empire['name']}**: {empire['description']}\n"
+        
         embed.add_field(
-            name="🗑️ Remove Role",
-            value="React with 🗑️ to remove your current empire role",
-            inline=False,
+            name="Available Empires",
+            value=empires_text,
+            inline=False
         )
-
+        
         embed.set_footer(
-            text="💡 Tip: Use !lore <topic> to learn more about Stellaris lore",
-            icon_url=ctx.author.display_avatar.url,
+            text="💡 Tip: Use /empire lore to learn more about Stellaris lore",
         )
-
-        message = await ctx.send(embed=embed)
-
-        # Add all reaction emojis
-        emoji_list = list(self.empire_types.keys()) + ["🗑️"]
-        for emoji in emoji_list:
-            await message.add_reaction(emoji)
-
-        def check(reaction, user):
-            return (
-                user != self.bot.user
-                and str(reaction.emoji) in emoji_list
-                and reaction.message.id == message.id
-            )
-
-        try:
-            reaction, user = await self.bot.wait_for(
-                "reaction_add", timeout=300.0, check=check
-            )
-        except asyncio.TimeoutError:
-            timeout_embed = discord.Embed(
-                title="⏰ Empire Selection Timeout",
-                description="The empire selection has timed out. Use `!empire` to try again.",
-                color=0xFF9900,
-            )
-            await ctx.send(embed=timeout_embed, delete_after=10)
-            return
-
-        selected_emoji = str(reaction.emoji)
-        member = ctx.guild.get_member(user.id)
-
-        if not member:
-            return
-
-        # Handle role removal
-        if selected_emoji == "🗑️":
-            removed_roles = []
-            for emoji, empire_data in self.empire_types.items():
-                role = discord.utils.get(ctx.guild.roles, name=empire_data["name"])
-                if role and role in member.roles:
-                    await member.remove_roles(role)
-                    removed_roles.append(role.name)
-
-            if removed_roles:
-                result_embed = discord.Embed(
-                    title="🗑️ Empire Role Removed",
-                    description=f"{user.mention}, your empire roles have been removed: {', '.join(removed_roles)}",
-                    color=0xFF6600,
-                )
-            else:
-                result_embed = discord.Embed(
-                    title="ℹ️ No Empire Roles",
-                    description=f"{user.mention}, you don't have any empire roles to remove.",
-                    color=0x999999,
-                )
-
-            await ctx.send(embed=result_embed, delete_after=15)
-            return
-
-        # Handle role assignment
-        if selected_emoji in self.empire_types:
-            empire_data = self.empire_types[selected_emoji]
-            role_name = empire_data["name"]
-
-            # Try to find existing role or create it
-            role = discord.utils.get(ctx.guild.roles, name=role_name)
-
-            if not role:
-                try:
-                    # Create the role with a color based on empire type
-                    role_colors = {
-                        "Democratic Empire": 0x0066CC,
-                        "Imperial Authority": 0x800080,
-                        "Machine Intelligence": 0x888888,
-                        "Hive Mind": 0x663399,
-                        "Military Junta": 0xCC0000,
-                        "Criminal Syndicate": 0x000000,
-                        "Enlightened Republic": 0x00CC66,
-                        "Defensive Coalition": 0x0099FF,
-                        "Science Directorate": 0x00FFFF,
-                        "Divine Empire": 0xFFCC00,
-                    }
-
-                    color = discord.Color(role_colors.get(role_name, 0x6A0DAD))
-                    role = await ctx.guild.create_role(
-                        name=role_name,
-                        color=color,
-                        mentionable=True,
-                        reason=f"Stellaris empire role created by {ctx.author}",
-                    )
-
-                except discord.Forbidden:
-                    error_embed = discord.Embed(
-                        title="❌ Permission Error",
-                        description="I don't have permission to create roles. Please ask an administrator to create the role manually.",
-                        color=0xFF0000,
-                    )
-                    await ctx.send(embed=error_embed, delete_after=15)
-                    return
-
-            # Remove other empire roles first
-            for other_emoji, other_empire_data in self.empire_types.items():
-                if other_emoji != selected_emoji:
-                    other_role = discord.utils.get(
-                        ctx.guild.roles, name=other_empire_data["name"]
-                    )
-                    if other_role and other_role in member.roles:
-                        await member.remove_roles(other_role)
-
-            # Add the selected role
-            if role not in member.roles:
-                await member.add_roles(role)
-
-                result_embed = discord.Embed(
-                    title=f"{selected_emoji} Empire Role Assigned!",
-                    description=f"Welcome to the **{empire_data['name']}**, {user.mention}!\n\n*{empire_data['description']}*",
-                    color=role.color,
-                )
-
-                result_embed.add_field(
-                    name="📋 Empire Details",
-                    value=f"**Ethics:** {empire_data['ethics']}\n**Government:** {empire_data['government']}",
-                    inline=False,
-                )
-
-                result_embed.set_footer(
-                    text="May your empire prosper among the stars! ⭐"
-                )
-
-            else:
-                result_embed = discord.Embed(
-                    title="ℹ️ Role Already Assigned",
-                    description=f"{user.mention}, you already have the **{empire_data['name']}** role!",
-                    color=0x999999,
-                )
-
-            await ctx.send(embed=result_embed, delete_after=30)
-
-    @commands.command(name="lore")
-    @commands.cooldown(1, 10, commands.BucketType.user)
-    async def stellaris_lore(self, ctx, *, topic: str = None):
-        """Get Stellaris lore information about various topics"""
-
+        
+        await interaction.response.send_message(embed=embed, view=view)
+    
+    @app_commands.command(name="lore", description="Get Stellaris lore information")
+    @app_commands.describe(topic="Lore topic to look up")
+    @app_commands.checks.cooldown(1, 10)
+    @feature_enabled("stellaris_features.lore_system")
+    async def lore_command(self, interaction: discord.Interaction, topic: Optional[str] = None):
+        """Get information about Stellaris lore topics"""
         if not topic:
             # Show available categories
             embed = discord.Embed(
                 title="📖 Stellaris Lore Database",
-                description="Explore the rich lore of Stellaris! Use `!lore <topic>` to learn more.",
-                color=0x6A0DAD,
+                description="Explore the rich lore of Stellaris! Specify a topic to learn more.",
+                color=self.config.get_color("stellaris"),
             )
-
+            
             categories = list(self.stellaris_lore.keys())
             for category in categories:
                 items = list(self.stellaris_lore[category].keys())
                 embed.add_field(
                     name=f"🔍 {category.replace('_', ' ').title()}",
-                    value=", ".join(items[:5])
+                    value=", ".join([item.replace('_', ' ').title() for item in items[:5]])
                     + (f" (+{len(items)-5} more)" if len(items) > 5 else ""),
                     inline=False,
                 )
-
+            
             embed.add_field(
                 name="💡 Examples",
-                value="`!lore dyson sphere` • `!lore prethoryn scourge` • `!lore void dwellers`",
+                value="`/empire lore topic:dyson_sphere` • `/empire lore topic:prethoryn_scourge` • `/empire lore topic:void_dwellers`",
                 inline=False,
             )
-
-            await ctx.send(embed=embed)
+            
+            await interaction.response.send_message(embed=embed)
             return
-
+        
         # Search for the topic
         topic = topic.lower().replace(" ", "_")
         found_lore = None
         found_category = None
-
+        
         for category, items in self.stellaris_lore.items():
             if topic in items:
                 found_lore = items[topic]
                 found_category = category
                 break
+            
             # Also try partial matches
             for key in items.keys():
                 if topic in key or key in topic:
@@ -351,113 +239,140 @@ class Roles(commands.Cog):
                     found_category = category
                     topic = key  # Update topic to the actual key
                     break
+                    
             if found_lore:
                 break
-
+        
         if not found_lore:
             # Search suggestions
             all_topics = []
             for items in self.stellaris_lore.values():
                 all_topics.extend(items.keys())
-
-            suggestions = [
-                t for t in all_topics if topic.replace("_", "") in t.replace("_", "")
-            ][:3]
-
+                
+            suggestions = [t for t in all_topics if topic.replace("_", "") in t.replace("_", "")][:3]
+            
             embed = discord.Embed(
                 title="❌ Lore Not Found",
                 description=f"No lore found for '{topic.replace('_', ' ')}'.",
-                color=0xFF0000,
+                color=self.config.get_color("error"),
             )
-
+            
             if suggestions:
                 embed.add_field(
                     name="💡 Did you mean?",
-                    value="\n".join(
-                        [f"`!lore {s.replace('_', ' ')}`" for s in suggestions]
-                    ),
+                    value="\n".join([f"`/empire lore topic:{s}`" for s in suggestions]),
                     inline=False,
                 )
-
+                
             embed.add_field(
                 name="📚 Available Topics",
-                value="Use `!lore` to see all available categories and topics.",
+                value="Use `/empire lore` without a topic to see all available categories.",
                 inline=False,
             )
-
-            await ctx.send(embed=embed, delete_after=15)
+            
+            await interaction.response.send_message(embed=embed, ephemeral=True)
             return
-
+        
         # Display the lore
         embed = discord.Embed(
             title=f"📖 {topic.replace('_', ' ').title()}",
             description=found_lore,
-            color=0x6A0DAD,
+            color=self.config.get_color("stellaris"),
             timestamp=datetime.utcnow(),
         )
-
+        
         embed.add_field(
             name="📂 Category",
             value=found_category.replace("_", " ").title(),
             inline=True,
         )
-
+        
         # Add related topics from the same category
         related_topics = list(self.stellaris_lore[found_category].keys())
         if len(related_topics) > 1:
             related = [t for t in related_topics if t != topic][:3]
             if related:
+                related_commands = [f"`/empire lore topic:{r}`" for r in related]
                 embed.add_field(
                     name="🔗 Related Topics",
-                    value=", ".join([t.replace("_", " ").title() for t in related]),
+                    value=", ".join(related_commands),
                     inline=True,
                 )
-
+        
         embed.set_footer(
             text="🌌 Knowledge is power in the galaxy",
-            icon_url=ctx.author.display_avatar.url,
         )
-
-        await ctx.send(embed=embed)
-
-    @commands.command(name="rolecount")
-    @commands.cooldown(1, 15, commands.BucketType.guild)
-    async def empire_role_count(self, ctx):
-        """Show the count of members with each Stellaris empire role"""
-
+        
+        await interaction.response.send_message(embed=embed)
+    
+    @app_commands.command(name="homeworld", description="Choose your homeworld planet type")
+    @feature_enabled("stellaris_features")
+    async def homeworld_command(self, interaction: discord.Interaction):
+        """Choose your homeworld planet type"""
+        # Create the homeworld selection view
+        view = HomeworldSelectView()
+        
+        embed = discord.Embed(
+            title="🌍 Choose Your Homeworld",
+            description="Select the type of planet your species evolved on.\n\n" +
+                        "This selection is purely for roleplay and helps define your empire's background.",
+            color=self.config.get_color("stellaris"),
+        )
+        
+        # Show planet types
+        embed.add_field(
+            name="Planet Types",
+            value="• 🌍 **Terran World**: Earth-like planet with balanced conditions\n" +
+                  "• 🏜️ **Desert World**: Arid planet with harsh, dry conditions\n" +
+                  "• 🌊 **Ocean World**: Water-covered planet with deep seas\n" +
+                  "• 🧊 **Arctic World**: Frozen planet with icy landscapes\n" +
+                  "• 🌴 **Jungle World**: Dense tropical world teeming with life\n" +
+                  "• 🌋 **Volcanic World**: Geologically active planet with lava flows\n" +
+                  "• 🪐 **Gas Giant Moon**: Moon orbiting a massive gas giant\n" +
+                  "• 🛰️ **Artificial World**: Constructed habitat or ring world",
+            inline=False
+        )
+        
+        await interaction.response.send_message(embed=embed, view=view)
+    
+    @app_commands.command(name="count", description="Show the count of members with each empire role")
+    @app_commands.checks.cooldown(1, 15)
+    @feature_enabled("stellaris_features.empire_roles")
+    async def empire_role_count(self, interaction: discord.Interaction):
+        """Show distribution of empire roles in the server"""
+        await interaction.response.defer()
+        
         embed = discord.Embed(
             title="📊 Stellaris Empire Census",
             description="Current distribution of empire roles in this server",
-            color=0x6A0DAD,
+            color=self.config.get_color("stellaris"),
             timestamp=datetime.utcnow(),
         )
-
+        
         total_members = 0
         role_data = []
-
+        
         for emoji, empire_data in self.empire_types.items():
-            role = discord.utils.get(ctx.guild.roles, name=empire_data["name"])
+            role = discord.utils.get(interaction.guild.roles, name=empire_data["name"])
             count = len(role.members) if role else 0
             total_members += count
-
+            
             if count > 0:
                 role_data.append((emoji, empire_data["name"], count))
-
+        
         # Sort by member count
         role_data.sort(key=lambda x: x[2], reverse=True)
-
+        
         if role_data:
             census_text = ""
             for emoji, name, count in role_data:
                 percentage = (count / total_members * 100) if total_members > 0 else 0
-                census_text += (
-                    f"{emoji} **{name}**: {count} members ({percentage:.1f}%)\n"
-                )
-
+                census_text += f"{emoji} **{name}**: {count} members ({percentage:.1f}%)\n"
+                
             embed.add_field(
                 name="🏛️ Empire Distribution", value=census_text, inline=False
             )
-
+            
             embed.add_field(
                 name="📈 Summary",
                 value=f"**Total Empire Members:** {total_members}\n**Most Popular:** {role_data[0][1] if role_data else 'None'}",
@@ -466,68 +381,91 @@ class Roles(commands.Cog):
         else:
             embed.add_field(
                 name="🌌 No Empires Yet",
-                value="No members have chosen empire roles yet! Use `!empire` to get started.",
+                value="No members have chosen empire roles yet! Use `/empire choose` to get started.",
                 inline=False,
             )
-
-        if ctx.guild.icon:
-            embed.set_thumbnail(url=ctx.guild.icon.url)
-
-        await ctx.send(embed=embed)
-
-    @commands.command(name="addrole")
-    @commands.has_permissions(manage_roles=True)
-    async def add_custom_role(self, ctx, role_name: str, emoji: str = None):
+        
+        if interaction.guild.icon:
+            embed.set_thumbnail(url=interaction.guild.icon.url)
+        
+        await interaction.followup.send(embed=embed)
+    
+    @app_commands.command(name="add_role", description="Add a custom empire role (Admin only)")
+    @app_commands.describe(role_name="Name of the role to create", emoji="Emoji for the role")
+    @app_commands.default_permissions(manage_roles=True)
+    @feature_enabled("stellaris_features.empire_roles")
+    async def add_custom_role(
+        self, 
+        interaction: discord.Interaction, 
+        role_name: str, 
+        emoji: Optional[str] = None
+    ):
         """Add a custom empire role (Admin only)"""
-
-        # Check if role already exists
-        existing_role = discord.utils.get(ctx.guild.roles, name=role_name)
-        if existing_role:
-            embed = discord.Embed(
-                title="❌ Role Already Exists",
-                description=f"A role named '{role_name}' already exists in this server.",
-                color=0xFF0000,
+        # Check if user has permission
+        if not interaction.user.guild_permissions.manage_roles:
+            await interaction.response.send_message(
+                "❌ You need 'Manage Roles' permission to use this command.",
+                ephemeral=True
             )
-            await ctx.send(embed=embed, delete_after=10)
             return
-
+        
+        # Check if role already exists
+        existing_role = discord.utils.get(interaction.guild.roles, name=role_name)
+        if existing_role:
+            await interaction.response.send_message(
+                f"❌ A role named '{role_name}' already exists in this server.",
+                ephemeral=True
+            )
+            return
+        
         try:
             # Create the role
-            role = await ctx.guild.create_role(
+            role = await interaction.guild.create_role(
                 name=role_name,
                 color=discord.Color.random(),
                 mentionable=True,
-                reason=f"Custom empire role created by {ctx.author}",
+                reason=f"Custom empire role created by {interaction.user}"
             )
-
+            
             embed = discord.Embed(
                 title="✅ Role Created",
                 description=f"Successfully created the **{role_name}** role!",
-                color=0x00FF00,
+                color=self.config.get_color("success"),
             )
-
+            
             embed.add_field(
                 name="🎨 Role Details",
                 value=f"**Name:** {role.name}\n**Color:** {role.color}\n**Mentionable:** Yes",
                 inline=True,
             )
-
-            await ctx.send(embed=embed)
-
+            
+            # Add to empire types if emoji provided
+            if emoji:
+                self.empire_types[emoji] = {
+                    "name": role_name,
+                    "description": f"Custom empire role created by {interaction.user.display_name}",
+                    "ethics": "Custom",
+                    "government": "Custom",
+                }
+                
+                embed.add_field(
+                    name="🔄 Empire System",
+                    value=f"Role added to empire selection with emoji {emoji}",
+                    inline=True
+                )
+            
+            await interaction.response.send_message(embed=embed)
+            
         except discord.Forbidden:
-            embed = discord.Embed(
-                title="❌ Permission Error",
-                description="I don't have permission to create roles.",
-                color=0xFF0000,
+            await interaction.response.send_message(
+                "❌ I don't have permission to create roles.",
+                ephemeral=True
             )
-            await ctx.send(embed=embed, delete_after=10)
         except Exception as e:
-            embed = discord.Embed(
-                title="❌ Error",
-                description=f"Failed to create role: {str(e)}",
-                color=0xFF0000,
+            await interaction.response.send_message(
+                f"❌ Failed to create role: {str(e)}",
+                ephemeral=True
             )
-            await ctx.send(embed=embed, delete_after=10)
 
 
 async def setup(bot):
