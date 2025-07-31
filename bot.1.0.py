@@ -577,6 +577,51 @@ async def ping_command(interaction: discord.Interaction):
     await interaction.followup.send(embed=embed)
 
 
+# Add after the existing ping_command and help_command but before the main() function
+
+
+@bot.tree.command(name="invite", description="Get an invite link for the bot")
+async def invite_command(interaction: discord.Interaction):
+    """Generate an invite link for the bot"""
+    permissions = discord.Permissions(
+        send_messages=True,
+        embed_links=True,
+        attach_files=True,
+        read_messages=True,
+        read_message_history=True,
+        add_reactions=True,
+        use_external_emojis=True,
+        manage_messages=True,  # For deleting command invocations, etc.
+    )
+
+    # Generate the invite link
+    invite_url = discord.utils.oauth_url(
+        bot.user.id, permissions=permissions, scopes=("bot", "applications.commands")
+    )
+
+    # Create embed
+    embed = discord.Embed(
+        title="🚀 Invite Me To Your Server!",
+        description=f"Click the button below to add {bot.config.get('bot_settings.name')} to your server:",
+        color=bot.config.get_color("primary"),
+        timestamp=datetime.utcnow(),
+    )
+
+    # Create view with button
+    class InviteView(discord.ui.View):
+        def __init__(self):
+            super().__init__(timeout=None)
+            self.add_item(
+                discord.ui.Button(
+                    label="Invite Bot", url=invite_url, style=discord.ButtonStyle.url
+                )
+            )
+
+    await interaction.response.send_message(
+        embed=embed, view=InviteView(), ephemeral=True
+    )
+
+
 # Quick help command
 @bot.tree.command(name="help", description="View available commands and information")
 async def help_command(interaction: discord.Interaction):
