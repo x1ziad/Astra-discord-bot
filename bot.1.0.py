@@ -438,6 +438,7 @@ class AstraBot(commands.Bot):
 # Create bot instance
 bot = AstraBot()
 
+
 # Run the bot with proper error handling
 async def main():
     """Main function to start and run the bot with proper error handling"""
@@ -447,7 +448,9 @@ async def main():
     except discord.LoginFailure:
         logger.critical("❌ Invalid token provided. Please check your .env file.")
     except discord.PrivilegedIntentsRequired:
-        logger.critical("❌ Privileged intents are required but not enabled in the Discord Developer Portal.")
+        logger.critical(
+            "❌ Privileged intents are required but not enabled in the Discord Developer Portal."
+        )
     except Exception as e:
         logger.critical(f"❌ Fatal error: {str(e)}")
         logger.critical(traceback.format_exc())
@@ -460,4 +463,3 @@ async def main():
 # Entry point
 if __name__ == "__main__":
     asyncio.run(main())
-## main bot code
