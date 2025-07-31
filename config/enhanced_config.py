@@ -21,3 +21,5 @@ def feature_enabled(feature_path):
             return False
 
     return app_commands.check(predicate)
+
+## This is a placeholder for the enhanced_config.py file.
