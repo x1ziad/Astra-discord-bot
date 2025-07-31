@@ -1,18 +1,18 @@
 """
 Discord UI Components for Astra Bot
-Includes buttons, select menus, modals, and interactive views
+Includes buttons, select menus, modals, and interactive views for slash commands
 """
 
 import discord
-from discord.ext import commands
 from discord import ui
-from typing import List, Dict, Any, Optional, Callable
+from typing import List, Dict, Any, Optional, Callable, Union
 import asyncio
 from datetime import datetime
 import json
+from pathlib import Path
 
 class PaginatedView(discord.ui.View):
-    """Paginated embed view with buttons"""
+    """Paginated embed view with navigation buttons"""
     
     def __init__(self, embeds: List[discord.Embed], timeout: float = 180):
         super().__init__(timeout=timeout)
@@ -20,7 +20,7 @@ class PaginatedView(discord.ui.View):
         self.current_page = 0
         self.max_pages = len(embeds)
         
-        # Initialize button states properly
+        # Initialize button states based on pages
         self.update_buttons()
     
     def update_buttons(self):
@@ -32,12 +32,14 @@ class PaginatedView(discord.ui.View):
     
     @discord.ui.button(emoji="⏪", style=discord.ButtonStyle.secondary)
     async def first_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Go to first page"""
         self.current_page = 0
         self.update_buttons()
         await interaction.response.edit_message(embed=self.embeds[self.current_page], view=self)
     
     @discord.ui.button(emoji="◀️", style=discord.ButtonStyle.primary)
     async def previous_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Go to previous page"""
         if self.current_page > 0:
             self.current_page -= 1
         self.update_buttons()
@@ -45,10 +47,12 @@ class PaginatedView(discord.ui.View):
     
     @discord.ui.button(emoji="🗑️", style=discord.ButtonStyle.danger)
     async def delete_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Delete the message"""
         await interaction.response.edit_message(content="*Message deleted by user*", embed=None, view=None)
     
     @discord.ui.button(emoji="▶️", style=discord.ButtonStyle.primary)
     async def next_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Go to next page"""
         if self.current_page < self.max_pages - 1:
             self.current_page += 1
         self.update_buttons()
@@ -56,6 +60,7 @@ class PaginatedView(discord.ui.View):
     
     @discord.ui.button(emoji="⏩", style=discord.ButtonStyle.secondary)
     async def last_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Go to last page"""
         self.current_page = self.max_pages - 1
         self.update_buttons()
         await interaction.response.edit_message(embed=self.embeds[self.current_page], view=self)
@@ -68,9 +73,9 @@ class PaginatedView(discord.ui.View):
 
 
 class QuizView(discord.ui.View):
-    """Interactive quiz view with buttons"""
+    """Interactive quiz view with answer buttons"""
     
-    def __init__(self, question_data: Dict, callback: Callable, timeout: float = 15):
+    def __init__(self, question_data: Dict[str, Any], callback: Callable, timeout: float = 30):
         super().__init__(timeout=timeout)
         self.question_data = question_data
         self.callback = callback
@@ -78,8 +83,13 @@ class QuizView(discord.ui.View):
         
         # Create buttons for each option
         for i, option in enumerate(question_data['options']):
+            # Clean up option text if it has a letter prefix
+            option_text = option
+            if option.startswith(chr(65 + i) + ".") or option.startswith(chr(65 + i) + ":"):
+                option_text = option[2:].strip()
+                
             button = QuizButton(
-                label=option,
+                label=option_text[:80],  # Limit length to fit on button
                 custom_id=f"quiz_{chr(65 + i)}",  # A, B, C, D
                 style=discord.ButtonStyle.secondary,
                 row=i // 2  # 2 buttons per row
@@ -92,11 +102,11 @@ class QuizView(discord.ui.View):
             self.answered = True
             for item in self.children:
                 item.disabled = True
-            await self.callback(None, timeout=True)
+            await self.callback(None, True)
 
 
 class QuizButton(discord.ui.Button):
-    """Quiz answer button"""
+    """Button for quiz answers"""
     
     async def callback(self, interaction: discord.Interaction):
         view: QuizView = self.view
@@ -123,9 +133,9 @@ class QuizButton(discord.ui.Button):
 
 
 class EmpireRoleSelect(discord.ui.Select):
-    """Stellaris empire role selector"""
+    """Dropdown for selecting a Stellaris empire role"""
     
-    def __init__(self, empire_data: Dict):
+    def __init__(self, empire_data: Dict[str, Dict[str, Any]]):
         options = []
         for emoji, empire_info in empire_data.items():
             options.append(discord.SelectOption(
@@ -143,6 +153,7 @@ class EmpireRoleSelect(discord.ui.Select):
         self.empire_data = empire_data
     
     async def callback(self, interaction: discord.Interaction):
+        """Handle empire selection"""
         selected_empire = self.values[0]
         
         # Find the empire data
@@ -153,6 +164,7 @@ class EmpireRoleSelect(discord.ui.Select):
                 break
         
         if not empire_info:
+            await interaction.response.send_message("Error: Empire data not found.", ephemeral=True)
             return
         
         # Handle role assignment logic here
@@ -210,19 +222,27 @@ class EmpireRoleSelect(discord.ui.Select):
             color=role.color if role else 0x6a0dad
         )
         
+        embed.add_field(
+            name="📋 Empire Details",
+            value=f"**Ethics:** {empire_info.get('ethics', 'Unknown')}\n" +
+                  f"**Government:** {empire_info.get('government', 'Unknown')}",
+            inline=False
+        )
+        
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
 class EmpireRoleView(discord.ui.View):
-    """View containing empire role selector"""
+    """View containing empire role selector and remove button"""
     
-    def __init__(self, empire_data: Dict):
+    def __init__(self, empire_data: Dict[str, Dict[str, Any]]):
         super().__init__(timeout=300)
         self.add_item(EmpireRoleSelect(empire_data))
         self.empire_data = empire_data
     
     @discord.ui.button(label="Remove Empire Role", emoji="🗑️", style=discord.ButtonStyle.danger, row=1)
     async def remove_role(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Remove all empire roles from the user"""
         guild = interaction.guild
         member = guild.get_member(interaction.user.id)
         
@@ -259,30 +279,32 @@ class ConfirmationView(discord.ui.View):
     
     @discord.ui.button(label="Yes", emoji="✅", style=discord.ButtonStyle.success)
     async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Confirm action"""
         self.result = True
         self.stop()
         await self.callback(interaction, True)
     
     @discord.ui.button(label="No", emoji="❌", style=discord.ButtonStyle.danger)
     async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Cancel action"""
         self.result = False
         self.stop()
         await self.callback(interaction, False)
 
 
 class CategorySelectView(discord.ui.View):
-    """Category selection view for various features"""
+    """View for selecting command categories"""
     
-    def __init__(self, categories: Dict[str, Dict], callback: Callable, placeholder: str = "Select a category..."):
+    def __init__(self, categories: Dict[str, Dict[str, str]], callback: Callable, placeholder: str = "Select a category..."):
         super().__init__(timeout=180)
         self.callback = callback
         self.add_item(CategorySelect(categories, callback, placeholder))
 
 
 class CategorySelect(discord.ui.Select):
-    """Category selection dropdown"""
+    """Dropdown for selecting command categories"""
     
-    def __init__(self, categories: Dict[str, Dict], callback: Callable, placeholder: str):
+    def __init__(self, categories: Dict[str, Dict[str, str]], callback: Callable, placeholder: str):
         options = []
         for key, category in categories.items():
             options.append(discord.SelectOption(
@@ -300,12 +322,13 @@ class CategorySelect(discord.ui.Select):
         self.callback_func = callback
     
     async def callback(self, interaction: discord.Interaction):
+        """Handle category selection"""
         selected_category = self.values[0]
         await self.callback_func(interaction, selected_category)
 
 
 class SetupModal(discord.ui.Modal, title="Astra Bot Setup"):
-    """Guild setup modal for initial configuration"""
+    """Modal for initial server setup"""
     
     guild_name = discord.ui.TextInput(
         label="Server Name (for logs)",
@@ -343,14 +366,15 @@ class SetupModal(discord.ui.Modal, title="Astra Bot Setup"):
     )
     
     async def on_submit(self, interaction: discord.Interaction):
-        # Process setup data here
-        from enhanced_config import config_manager
+        """Process setup form submission"""
+        # Import config manager here to avoid circular imports
+        from config.enhanced_config import config_manager
         
         setup_data = {
             'guild_name': self.guild_name.value or interaction.guild.name,
             'admin_roles': [role.strip() for role in self.admin_roles.value.split(',') if role.strip()],
-            'quiz_channel': int(self.quiz_channel.value) if self.quiz_channel.value.isdigit() else None,
-            'space_channel': int(self.space_channel.value) if self.space_channel.value.isdigit() else None,
+            'quiz_channel': int(self.quiz_channel.value) if self.quiz_channel.value and self.quiz_channel.value.isdigit() else None,
+            'space_channel': int(self.space_channel.value) if self.space_channel.value and self.space_channel.value.isdigit() else None,
             'features': [feature.strip() for feature in self.features.value.split(',') if feature.strip()]
         }
         
@@ -420,15 +444,16 @@ class SetupModal(discord.ui.Modal, title="Astra Bot Setup"):
 
 
 class ProfileView(discord.ui.View):
-    """User profile view with interactive buttons"""
+    """Interactive user profile view with tabs"""
     
-    def __init__(self, user_data: Dict, user: discord.Member):
+    def __init__(self, user_data: Dict[str, Any], user: discord.Member):
         super().__init__(timeout=300)
         self.user_data = user_data
         self.user = user
     
     @discord.ui.button(label="Quiz Stats", emoji="🎯", style=discord.ButtonStyle.primary)
     async def quiz_stats(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Show quiz statistics tab"""
         embed = discord.Embed(
             title=f"🎯 {self.user.display_name}'s Quiz Statistics",
             color=0x5865F2
@@ -456,6 +481,7 @@ class ProfileView(discord.ui.View):
     
     @discord.ui.button(label="Achievements", emoji="🏅", style=discord.ButtonStyle.success)
     async def achievements(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Show achievements tab"""
         embed = discord.Embed(
             title=f"🏅 {self.user.display_name}'s Achievements",
             color=0x00ff00
@@ -476,6 +502,7 @@ class ProfileView(discord.ui.View):
     
     @discord.ui.button(label="Empire Info", emoji="🏛️", style=discord.ButtonStyle.secondary)
     async def empire_info(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Show empire info tab"""
         embed = discord.Embed(
             title=f"🏛️ {self.user.display_name}'s Empire",
             color=0x6a0dad
@@ -500,7 +527,7 @@ class ProfileView(discord.ui.View):
             )
             embed.color = user_empire.color
         else:
-            embed.description = "No empire chosen yet! Use `!empire` to select your galactic empire."
+            embed.description = "No empire chosen yet! Use `/empire` to select your galactic empire."
         
         homeworld = self.user_data.get('homeworld', 'Unknown')
         embed.add_field(
@@ -513,6 +540,7 @@ class ProfileView(discord.ui.View):
     
     @discord.ui.button(label="Back to Profile", emoji="👤", style=discord.ButtonStyle.secondary, row=1)
     async def back_to_profile(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Show main profile overview"""
         embed = discord.Embed(
             title=f"👤 {self.user.display_name}'s Profile",
             color=0x5865F2
@@ -542,7 +570,7 @@ class ProfileView(discord.ui.View):
 
 
 class HomeworldSelectView(discord.ui.View):
-    """Homeworld selection view"""
+    """View for selecting a homeworld"""
     
     def __init__(self):
         super().__init__(timeout=180)
@@ -550,7 +578,7 @@ class HomeworldSelectView(discord.ui.View):
 
 
 class HomeworldSelect(discord.ui.Select):
-    """Homeworld selection dropdown"""
+    """Dropdown for selecting a homeworld type"""
     
     def __init__(self):
         planet_types = {
@@ -580,10 +608,11 @@ class HomeworldSelect(discord.ui.Select):
         )
     
     async def callback(self, interaction: discord.Interaction):
+        """Handle homeworld selection"""
         selected_world = self.values[0]
         
-        # Here you would save the homeworld selection to user data
-        from enhanced_config import config_manager
+        # Import here to avoid circular imports
+        from config.enhanced_config import config_manager
         
         # Get or create user data
         user_id = interaction.user.id
@@ -604,6 +633,7 @@ class HomeworldSelect(discord.ui.Select):
         
         # Update homeworld
         user_data['homeworld'] = selected_world
+        user_data['last_updated'] = datetime.utcnow().isoformat()
         
         # Save user data
         with open(user_data_path, 'w') as f:
@@ -633,28 +663,32 @@ class HomeworldSelect(discord.ui.Select):
 class LeaderboardView(discord.ui.View):
     """Interactive leaderboard with sorting options"""
     
-    def __init__(self, leaderboard_data: Dict, current_sort: str = "points"):
+    def __init__(self, leaderboard_data: Dict[str, Dict[str, Any]], current_sort: str = "points"):
         super().__init__(timeout=300)
         self.leaderboard_data = leaderboard_data
         self.current_sort = current_sort
     
     @discord.ui.button(label="By Points", emoji="🏆", style=discord.ButtonStyle.primary)
     async def sort_by_points(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Sort leaderboard by points"""
         embed = self.create_leaderboard_embed("points")
         await interaction.response.edit_message(embed=embed, view=self)
     
     @discord.ui.button(label="By Accuracy", emoji="🎯", style=discord.ButtonStyle.secondary)
     async def sort_by_accuracy(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Sort leaderboard by accuracy"""
         embed = self.create_leaderboard_embed("accuracy")
         await interaction.response.edit_message(embed=embed, view=self)
     
     @discord.ui.button(label="By Streak", emoji="🔥", style=discord.ButtonStyle.secondary)
     async def sort_by_streak(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Sort leaderboard by streak"""
         embed = self.create_leaderboard_embed("streak")
         await interaction.response.edit_message(embed=embed, view=self)
     
     @discord.ui.button(label="By Questions", emoji="❓", style=discord.ButtonStyle.secondary)
     async def sort_by_questions(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """Sort leaderboard by questions answered"""
         embed = self.create_leaderboard_embed("questions")
         await interaction.response.edit_message(embed=embed, view=self)
     
@@ -693,6 +727,13 @@ class LeaderboardView(discord.ui.View):
         for i, (user_id, stats) in enumerate(sorted_data):
             medal = medals[i] if i < 3 else f"`{i+1}.`"
             
+            # Try to get user name
+            try:
+                user_id_int = int(user_id)
+                user = f"<@{user_id_int}>"
+            except:
+                user = user_id
+                
             if sort_type == "points":
                 value = f"{stats.get('points', 0)} pts"
             elif sort_type == "accuracy":
@@ -702,7 +743,7 @@ class LeaderboardView(discord.ui.View):
             else:  # questions
                 value = f"{stats.get('total_questions', 0)} answered"
                 
-            leaderboard_text += f"{medal} **{user_id}** - {value}\n"
+            leaderboard_text += f"{medal} {user} - {value}\n"
             
         if leaderboard_text:
             embed.description = leaderboard_text
