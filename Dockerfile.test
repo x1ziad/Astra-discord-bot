@@ -1,0 +1,19 @@
+# Minimal test Dockerfile to verify environment variable passing
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Install only python-dotenv for testing
+RUN pip install python-dotenv
+
+# Copy only the test files
+COPY .env.example .
+COPY test_env_vars.py .
+COPY ai_*.py ./
+COPY ai_config.json .
+
+# Create minimal personality profiles directory
+RUN mkdir -p personality_profiles
+
+# Test environment variable handling
+CMD ["python", "test_env_vars.py"]
