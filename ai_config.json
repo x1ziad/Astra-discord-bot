@@ -1,0 +1,23 @@
+{
+  "default_personality": "assistant",
+  "provider": "openai",
+  "max_history": 10,
+  "temperature": 0.7,
+  "max_tokens": 500,
+  "trigger_modes": {
+    "mention": true,
+    "dm": true,
+    "dedicated_channels": [],
+    "keyword": "astra"
+  },
+  "response_settings": {
+    "typing_indicator": true,
+    "thinking_emoji": "🤔",
+    "success_emoji": "✅",
+    "error_emoji": "❌"
+  },
+  "cooldown": {
+    "enabled": false,
+    "seconds": 5
+  }
+}
