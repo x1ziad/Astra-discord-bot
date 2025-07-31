@@ -621,6 +621,51 @@ async def invite_command(interaction: discord.Interaction):
         embed=embed, view=InviteView(), ephemeral=True
     )
 
+@bot.event
+async def on_ready():
+    """Handle bot ready event"""
+    # Get bot info
+    bot_name = config_manager.get('bot_settings.name', 'Astra')
+    bot_version = config_manager.get('bot_settings.version', '1.0.0')
+    
+    # Calculate unique members across all guilds
+    unique_members = set()
+    for guild in bot.guilds:
+        for member in guild.members:
+            unique_members.add(member.id)
+    
+    # Log bot stats
+    logger.info("============================================================")
+    logger.info(f"🚀 {bot_name} v{bot_version} is online!")
+    logger.info(f"🤖 Bot: {bot.user.name}#{bot.user.discriminator} (ID: {bot.user.id})")
+    logger.info(f"🌐 Connected to {len(bot.guilds)} guild(s)")
+    logger.info(f"👥 Serving {sum(g.member_count for g in bot.guilds)} total members ({len(unique_members)} unique)")
+    
+    # Load guild configurations
+    for guild in bot.guilds:
+        logger.info(f"📋 Loaded config for guild: {guild.name} (ID: {guild.id})")
+    
+    # Force sync all commands to fix registration issues
+    if config_manager.get('bot_settings.command_sync_on_ready', True):
+        logger.info("🔄 Syncing application commands...")
+        await bot.tree.sync()
+        logger.info("✅ Application commands synchronized!")
+    
+    logger.info("🎯 All systems operational!")
+    logger.info(f"Started at {bot.start_time.strftime('%Y-%m-%d %H:%M:%S')} UTC")
+    logger.info("============================================================")
+
+
+
+
+
+
+
+
+
+
+
+
 
 # Quick help command
 @bot.tree.command(name="help", description="View available commands and information")
