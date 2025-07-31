@@ -5,7 +5,7 @@ import asyncio
 import discord
 from typing import List, Dict, Optional, Union, Any
 from datetime import datetime
-import openai
+from openai import AsyncOpenAI
 from dotenv import load_dotenv
 
 # Set up logging
@@ -31,9 +31,11 @@ class AIChatHandler:
         # Load configuration
         self.config = self._load_config()
 
-        # Set up API clients
+        # Set up API clients - UPDATED FOR OPENAI v1.0+
         if self.openai_api_key:
-            openai.api_key = self.openai_api_key
+            self.openai_client = AsyncOpenAI(api_key=self.openai_api_key)
+        else:
+            self.openai_client = None
 
         # Initialize conversation history storage
         self.conversation_history = {}
@@ -150,7 +152,7 @@ class AIChatHandler:
         self, messages: List[Dict], personality_profile: Dict
     ) -> str:
         """Get a response from OpenAI API."""
-        if not self.openai_api_key:
+        if not self.openai_api_key or not self.openai_client:
             return "OpenAI API key is not configured. Please set OPENAI_API_KEY environment variable."
 
         try:
@@ -163,12 +165,12 @@ class AIChatHandler:
                 "max_tokens", self.config.get("max_tokens", 500)
             )
 
-            response = await openai.ChatCompletion.acreate(
+            # UPDATED FOR OPENAI v1.0+ API
+            response = await self.openai_client.chat.completions.create(
                 model=model,
                 messages=messages,
                 temperature=temperature,
                 max_tokens=max_tokens,
-                n=1,
             )
 
             return response.choices[0].message.content
