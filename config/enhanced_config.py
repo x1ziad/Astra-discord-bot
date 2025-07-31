@@ -1,8 +1,4 @@
-"""
-Adapter module for backward compatibility
-Allows cogs to import from the old path while using the new config system
-"""
-
+# config/enhanced_config.py
 from config.config_manager import config_manager
 
 
@@ -21,5 +17,3 @@ def feature_enabled(feature_path):
             return False
 
     return app_commands.check(predicate)
-
-## This is a placeholder for the enhanced_config.py file.
