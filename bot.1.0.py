@@ -139,43 +139,52 @@ class AstraBot(commands.Bot):
                 self.logger.error(f"❌ Failed to load {ext}: {str(e)}")
                 self.logger.error(traceback.format_exc())
                 failed_count += 1
-        
+
         self.logger.info(
             f"🎯 Extension loading complete: {loaded_count} loaded, {failed_count} failed"
         )
-    
+
     def start_scheduled_tasks(self):
         """Start all background tasks if they're enabled"""
         # Start space APOD task
         if self.config.is_feature_enabled("space_content.daily_apod"):
-            if not hasattr(self, 'daily_apod_task') or not self.daily_apod_task.is_running():
+            if (
+                not hasattr(self, "daily_apod_task")
+                or not self.daily_apod_task.is_running()
+            ):
                 self.daily_apod_task.start()
                 self.logger.info("✅ Started daily APOD task")
-        
+
         # Start quiz reminder task
         if self.config.is_feature_enabled("quiz_system.daily_questions"):
-            if not hasattr(self, 'daily_quiz_reminder') or not self.daily_quiz_reminder.is_running():
+            if (
+                not hasattr(self, "daily_quiz_reminder")
+                or not self.daily_quiz_reminder.is_running()
+            ):
                 self.daily_quiz_reminder.start()
                 self.logger.info("✅ Started daily quiz reminder task")
-    
+
     async def on_guild_join(self, guild):
         """Handle bot joining a new guild"""
         self.logger.info(
             f"🏛️ Joined new guild: {guild.name} (ID: {guild.id}, Members: {guild.member_count})"
         )
-        
+
         # Load/create guild configuration
         self.config.load_guild_config(guild.id)
-        
+
         # Send welcome message if possible
-        if guild.system_channel and guild.system_channel.permissions_for(guild.me).send_messages:
+        if (
+            guild.system_channel
+            and guild.system_channel.permissions_for(guild.me).send_messages
+        ):
             embed = discord.Embed(
                 title="🚀 Astra Has Arrived!",
                 description=f"Thank you for adding **{self.config.get('bot_settings.name')}** to {guild.name}!\n\n"
                 "I'm here to help with space content, Stellaris gameplay, and interactive quizzes.",
                 color=self.config.get_color("primary"),
             )
-            
+
             embed.add_field(
                 name="🎯 Getting Started",
                 value="• Use `/help` to see all commands\n"
