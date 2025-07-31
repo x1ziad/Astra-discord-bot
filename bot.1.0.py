@@ -192,66 +192,67 @@ class AstraBot(commands.Bot):
                 "• Use `/empire` to choose your Stellaris role",
                 inline=False,
             )
-            
+
             embed.add_field(
                 name="🔧 Setup Required",
                 value="Administrators should run `/setup` to configure channels and permissions.",
                 inline=False,
             )
-            
+
             embed.set_footer(text="May your journey among the stars be prosperous! ⭐")
-            
+
             try:
                 await guild.system_channel.send(embed=embed)
             except discord.Forbidden:
-                self.logger.warning(f"Cannot send welcome message in {guild.name} - no permissions")
-    
+                self.logger.warning(
+                    f"Cannot send welcome message in {guild.name} - no permissions"
+                )
+
     async def on_guild_remove(self, guild):
         """Handle bot leaving a guild"""
         self.logger.info(f"🏛️ Left guild: {guild.name} (ID: {guild.id})")
-        
+
         # Clean up guild cache
         if guild.id in self.guild_cache:
             del self.guild_cache[guild.id]
-    
-    async def on_app_command_error(self, interaction: discord.Interaction, error: app_commands.AppCommandError):
+
+    async def on_app_command_error(
+        self, interaction: discord.Interaction, error: app_commands.AppCommandError
+    ):
         """Global error handler for slash commands"""
         # Get the original error
         error = getattr(error, "original", error)
-        
+
         # Log the error
         self.logger.error(f"Command error in {interaction.command.name}: {str(error)}")
-        
+
         if isinstance(error, app_commands.CommandOnCooldown):
             await interaction.response.send_message(
                 f"⏱️ This command is on cooldown. Try again in {error.retry_after:.1f} seconds.",
-                ephemeral=True
+                ephemeral=True,
             )
-        
+
         elif isinstance(error, app_commands.MissingPermissions):
             await interaction.response.send_message(
-                "❌ You don't have permission to use this command.",
-                ephemeral=True
+                "❌ You don't have permission to use this command.", ephemeral=True
             )
-        
+
         elif isinstance(error, app_commands.BotMissingPermissions):
             await interaction.response.send_message(
                 f"❌ I'm missing required permissions: {', '.join(error.missing_permissions)}",
-                ephemeral=True
+                ephemeral=True,
             )
-        
+
         elif isinstance(error, app_commands.CheckFailure):
             await interaction.response.send_message(
-                "❌ You don't have permission to use this command.",
-                ephemeral=True
+                "❌ You don't have permission to use this command.", ephemeral=True
             )
-        
+
         elif isinstance(error, discord.Forbidden):
             await interaction.response.send_message(
-                "❌ I don't have permission to do that.",
-                ephemeral=True
+                "❌ I don't have permission to do that.", ephemeral=True
             )
-        
+
         else:
             # Send a generic error message for unhandled errors
             try:
@@ -259,43 +260,55 @@ class AstraBot(commands.Bot):
                     embed = discord.Embed(
                         title=f"{self.config.get_emoji('error')} Error",
                         description="An unexpected error occurred. The error has been logged.",
-                        color=self.config.get_color("error")
+                        color=self.config.get_color("error"),
                     )
-                    
+
                     # Include error details if debug mode is on
                     if self.config.get("development.debug_mode", False):
-                        embed.add_field(name="Details", value=f"```{str(error)[:1000]}```")
-                    
+                        embed.add_field(
+                            name="Details", value=f"```{str(error)[:1000]}```"
+                        )
+
                     await interaction.response.send_message(embed=embed, ephemeral=True)
             except:
                 # In case responding fails (e.g., interaction already responded to)
                 pass
-    
+
     @tasks.loop(time=datetime.time(hour=12, minute=0))  # Runs at 12:00 UTC every day
     async def daily_apod_task(self):
         """Task to post daily astronomy picture"""
         self.logger.info("🚀 Running daily APOD task")
-        
+
         # Get guild configurations and process each enabled guild
         for guild_id, guild_config in self.config.guild_configs.items():
             # Check if APOD feature is enabled for this guild
-            if not self.config.get_guild_setting(guild_id, "features.space_content.daily_apod", False):
-                self.logger.debug(f"Skipping APOD for guild {guild_id}: feature disabled")
+            if not self.config.get_guild_setting(
+                guild_id, "features.space_content.daily_apod", False
+            ):
+                self.logger.debug(
+                    f"Skipping APOD for guild {guild_id}: feature disabled"
+                )
                 continue
-                
+
             # Get the configured space channel
-            channel_id = self.config.get_guild_setting(guild_id, "channels.space_channel", None)
+            channel_id = self.config.get_guild_setting(
+                guild_id, "channels.space_channel", None
+            )
             if not channel_id:
-                self.logger.debug(f"Skipping APOD for guild {guild_id}: no space channel configured")
+                self.logger.debug(
+                    f"Skipping APOD for guild {guild_id}: no space channel configured"
+                )
                 continue
-                
+
             try:
                 # Get channel object
                 channel = self.get_channel(int(channel_id))
                 if not channel:
-                    self.logger.warning(f"Could not find channel {channel_id} for guild {guild_id}")
+                    self.logger.warning(
+                        f"Could not find channel {channel_id} for guild {guild_id}"
+                    )
                     continue
-                    
+
                 # Fetch APOD data
                 try:
                     async with aiohttp.ClientSession() as session:
