@@ -23,9 +23,9 @@ if not TOKEN:
     print("❌ ERROR: DISCORD_TOKEN not found in .env file")
     exit(1)
 
-# Import our custom modules - added absolute imports to match your structure
-from logger.logger import setup_logger
-from config.enhanced_config import config_manager
+# Import our custom modules - fixed the import path
+from logger.logger_setup import setup_logger
+from config.config_manager import config_manager
 
 # Setup enhanced logging
 logger = setup_logger(
