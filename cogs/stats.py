@@ -12,7 +12,7 @@ import os
 import psutil
 from typing import Optional, Dict, List, Any, Union
 
-from config.enhanced_config import config_manager
+from config.config_manager import config_manager
 
 
 class Stats(commands.GroupCog, name="stats"):
@@ -360,6 +360,7 @@ class Stats(commands.GroupCog, name="stats"):
             embed.add_field(name="🔑 Key Permissions", value=perms, inline=False)
             
             embed.set_footer(text=f"Role ID: {role.id}")
+            await interaction.followup.send(embed=embed)
             
         else:
             # Show all roles overview
@@ -367,4 +368,124 @@ class Stats(commands.GroupCog, name="stats"):
                 guild.roles[1:], key=lambda r: r.position, reverse=True
             )  # Exclude @everyone
             
-            embed = discord.Embe
+            embed = discord.Embed(
+                title="🎭 Server Roles Overview",
+                description=f"This server has **{len(roles)}** roles",
+                color=self.config.get_color("primary"),
+                timestamp=datetime.utcnow(),
+            )
+            
+            # Group roles by type
+            admin_roles = []
+            mod_roles = []
+            color_roles = []
+            other_roles = []
+            
+            for r in roles[:20]:  # Limit to prevent embed overflow
+                if r.permissions.administrator:
+                    admin_roles.append(r)
+                elif r.permissions.kick_members or r.permissions.ban_members or r.permissions.manage_messages:
+                    mod_roles.append(r)
+                elif r.color != discord.Color.default() and len(r.name) <= 12:
+                    color_roles.append(r)
+                else:
+                    other_roles.append(r)
+            
+            if admin_roles:
+                embed.add_field(
+                    name="🔑 Admin Roles",
+                    value=", ".join([r.mention for r in admin_roles[:5]]) +
+                          (f" (+{len(admin_roles) - 5} more)" if len(admin_roles) > 5 else ""),
+                    inline=False
+                )
+                
+            if mod_roles:
+                embed.add_field(
+                    name="🛡️ Moderation Roles",
+                    value=", ".join([r.mention for r in mod_roles[:5]]) +
+                          (f" (+{len(mod_roles) - 5} more)" if len(mod_roles) > 5 else ""),
+                    inline=False
+                )
+                
+            if color_roles:
+                embed.add_field(
+                    name="🎨 Color Roles",
+                    value=", ".join([r.mention for r in color_roles[:8]]) +
+                          (f" (+{len(color_roles) - 8} more)" if len(color_roles) > 8 else ""),
+                    inline=False
+                )
+                
+            if len(roles) > 20:
+                embed.set_footer(text=f"Showing 20/{len(roles)} roles • Use /stats roleinfo @role for details")
+            else:
+                embed.set_footer(text="Use /stats roleinfo @role for details on a specific role")
+                
+            await interaction.followup.send(embed=embed)
+    
+    @app_commands.command(name="bot", description="Show information about the bot")
+    @app_commands.checks.cooldown(1, 10)
+    async def bot_info_command(self, interaction: discord.Interaction):
+        """Show information about the bot"""
+        bot_name = self.config.get('bot_settings.name', 'Astra')
+        bot_version = self.config.get('bot_settings.version', '1.0.0')
+        
+        embed = discord.Embed(
+            title=f"🤖 {bot_name} Information",
+            description=self.config.get('bot_settings.description', 'A Discord bot for space exploration and Stellaris roleplay'),
+            color=self.config.get_color("primary"),
+            timestamp=datetime.utcnow(),
+        )
+        
+        # Set bot avatar as thumbnail
+        if self.bot.user.avatar:
+            embed.set_thumbnail(url=self.bot.user.avatar.url)
+        
+        # Uptime
+        uptime_duration = datetime.utcnow() - self.bot.start_time
+        days = uptime_duration.days
+        hours, remainder = divmod(uptime_duration.seconds, 3600)
+        minutes, seconds = divmod(remainder, 60)
+        
+        uptime_str = f"{days}d {hours}h {minutes}m {seconds}s"
+        
+        embed.add_field(
+            name="⚙️ System",
+            value=f"**Version:** {bot_version}\n**Python:** {platform.python_version()}\n**discord.py:** {discord.__version__}\n**Uptime:** {uptime_str}",
+            inline=True,
+        )
+        
+        embed.add_field(
+            name="📊 Stats",
+            value=f"**Servers:** {len(self.bot.guilds):,}\n**Users:** {len(set(self.bot.get_all_members())):,}\n**Channels:** {sum(len(g.channels) for g in self.bot.guilds):,}",
+            inline=True,
+        )
+        
+        # Try to get owner info
+        try:
+            app_info = await self.bot.application_info()
+            if app_info.team:
+                owner = "Team: " + app_info.team.name
+            else:
+                owner = str(app_info.owner)
+        except:
+            owner = "Unknown"
+            
+        embed.add_field(
+            name="👑 Creator",
+            value=f"{owner}",
+            inline=True,
+        )
+        
+        embed.add_field(
+            name="🔗 Links",
+            value="[Support Server](https://discord.gg/astra) • [GitHub](https://github.com/astra-bot) • [Documentation](https://astra-bot.com)",
+            inline=False,
+        )
+        
+        embed.set_footer(text="Thanks for using Astra! 💫")
+        
+        await interaction.response.send_message(embed=embed)
+
+
+async def setup(bot):
+    await bot.add_cog(Stats(bot))
