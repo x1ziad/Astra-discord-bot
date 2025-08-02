@@ -1,27 +1,32 @@
-import discord
+"""
+Utility modules for Astra Bot
+Provides database, error handling, permissions, and HTTP utilities
+"""
 
-"""Utility functions for Astra bot"""
+# Import all utility modules to ensure they're available
+from utils.database import db, DatabaseManager
+from utils.error_handler import ErrorHandler, ErrorSeverity, setup_error_handler
+from utils.permissions import (
+    PermissionLevel,
+    PermissionManager,
+    has_permission,
+    setup_permissions,
+)
+from utils.http_client import HTTPClient, get_session, get_json, post_json, cleanup_http
 
-# Safe imports that won't fail
-try:
-    from utils.http_client import get_session, close_session
-except ImportError:
-    # Will be created later if missing
-    pass
-
-# Import checks if available, but don't fail if there are issues
-try:
-    from utils.checks import (
-        feature_enabled,
-        guild_admin_only,
-        bot_owner_only,
-        channel_only,
-        cooldown,
-    )
-except ImportError:
-    pass
-except Exception as e:
-    import logging
-
-    logger = logging.getLogger("Astra")  # ✅ Use 'logger' instead of 'logging'
-    logger.error(f"Error importing utility functions: {e}")
+__all__ = [
+    "db",
+    "DatabaseManager",
+    "ErrorHandler",
+    "ErrorSeverity",
+    "setup_error_handler",
+    "PermissionLevel",
+    "PermissionManager",
+    "has_permission",
+    "setup_permissions",
+    "HTTPClient",
+    "get_session",
+    "get_json",
+    "post_json",
+    "cleanup_http",
+]
