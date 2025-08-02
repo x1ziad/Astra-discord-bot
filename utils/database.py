@@ -186,6 +186,38 @@ class DatabaseManager:
             )
             await db.commit()
 
+    # Add these methods to your DatabaseManager class:
+
+
+async def get(self, table: str, key: str, default: dict = None) -> dict:
+    """Get data from a table with key"""
+    if default is None:
+        default = {}
+
+    if table == "guild_configs":
+        return await self.get_guild_setting(int(key), "config", default)
+    # Add other table mappings as needed
+    return default
+
+
+async def set(self, table: str, key: str, value: dict):
+    """Set data in a table with key"""
+    if table == "guild_configs":
+        await self.set_guild_setting(int(key), "config", value)
+    # Add other table mappings as needed
+
+
+async def get_table(self, table: str) -> dict:
+    """Get entire table (creates if doesn't exist)"""
+    # This method should return table data or empty dict
+    return {}
+
+
+async def delete(self, table: str, key: str):
+    """Delete entry from table"""
+    # Implement deletion logic
+    pass
+
 
 # Global database instance
 db = DatabaseManager()
