@@ -9,7 +9,7 @@ from discord.ext import commands, tasks
 from typing import Dict, List, Optional, Any, Tuple
 import json
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 from pathlib import Path
 from collections import defaultdict, Counter
 import matplotlib.pyplot as plt
@@ -509,7 +509,7 @@ class Analytics(commands.GroupCog, name="analytics"):
         except Exception as e:
             self.logger.error(f"Error saving analytics data: {e}")
 
-    @tasks.loop(time=datetime.time(0, 0))  # Run at midnight UTC
+    @tasks.loop(time=time(0, 0))  # Run at midnight UTC
     async def generate_daily_report(self):
         """Generate daily analytics reports"""
         try:

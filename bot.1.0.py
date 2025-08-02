@@ -136,6 +136,7 @@ class AstraBot(commands.Bot):
 
         # Bot state and tracking
         self.stats = BotStats()
+        self.start_time = datetime.utcnow()  # Add missing start_time attribute
         self.session: Optional[aiohttp.ClientSession] = None
         self._tasks: Set[asyncio.Task] = set()
         self._bot_ready = False

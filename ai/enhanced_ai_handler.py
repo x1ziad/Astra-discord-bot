@@ -72,11 +72,21 @@ class EnhancedAIHandler:
         logger.info("Enhanced AI Handler initialized")
 
     def _load_config(self) -> Dict[str, Any]:
-        """Load AI configuration"""
+        """Load AI configuration with error handling"""
         config_path = Path("ai/ai_config.json")
-        if config_path.exists():
-            with open(config_path, "r") as f:
-                return json.load(f)
+        
+        try:
+            if config_path.exists():
+                with open(config_path, "r", encoding='utf-8') as f:
+                    content = f.read().strip()
+                    if content:  # Check if file is not empty
+                        return json.loads(content)
+                    else:
+                        logger.warning("AI config file is empty, using defaults")
+        except json.JSONDecodeError as e:
+            logger.error(f"Invalid JSON in AI config file: {e}")
+        except Exception as e:
+            logger.error(f"Error loading AI config: {e}")
 
         # Default configuration
         default_config = {
@@ -106,11 +116,19 @@ class EnhancedAIHandler:
         return default_config
 
     def _load_usage_stats(self) -> Dict[str, int]:
-        """Load usage statistics"""
+        """Load usage statistics with error handling"""
         stats_path = Path("data/ai/usage_stats.json")
-        if stats_path.exists():
-            with open(stats_path, "r") as f:
-                return json.load(f)
+        
+        try:
+            if stats_path.exists():
+                with open(stats_path, "r", encoding='utf-8') as f:
+                    content = f.read().strip()
+                    if content:
+                        return json.loads(content)
+        except json.JSONDecodeError as e:
+            logger.error(f"Invalid JSON in usage stats file: {e}")
+        except Exception as e:
+            logger.error(f"Error loading usage stats: {e}")
 
         return {
             "chat_messages": 0,
@@ -126,12 +144,19 @@ class EnhancedAIHandler:
             json.dump(self.usage_stats, f, indent=2)
 
     def _load_personality(self, name: str) -> Dict[str, Any]:
-        """Load personality profile"""
+        """Load personality profile with error handling"""
         personality_path = Path(f"ai/personalities/{name}.json")
 
-        if personality_path.exists():
-            with open(personality_path, "r") as f:
-                return json.load(f)
+        try:
+            if personality_path.exists():
+                with open(personality_path, "r", encoding='utf-8') as f:
+                    content = f.read().strip()
+                    if content:
+                        return json.loads(content)
+        except json.JSONDecodeError as e:
+            logger.error(f"Invalid JSON in personality file {name}: {e}")
+        except Exception as e:
+            logger.error(f"Error loading personality {name}: {e}")
 
         # Create default personality if it doesn't exist
         default_personality = {
