@@ -164,11 +164,13 @@ class EnhancedConfig:
     def is_feature_enabled(self, feature: str) -> bool:
         """Check if a feature is enabled"""
         return self.get(f"features.{feature}", False)
-    
-    def get_guild_setting(self, guild_id: int, setting: str, default: Any = None) -> Any:
+
+    def get_guild_setting(
+        self, guild_id: int, setting: str, default: Any = None
+    ) -> Any:
         """Get guild-specific setting"""
         return self.get(f"guilds.{guild_id}.{setting}", default)
-    
+
     def set_guild_setting(self, guild_id: int, setting: str, value: Any) -> None:
         """Set guild-specific setting"""
         self.set(f"guilds.{guild_id}.{setting}", value)
@@ -216,6 +218,7 @@ config = enhanced_config
 config_manager = enhanced_config  # Add this for cogs that expect config_manager
 get_config = enhanced_config.get
 set_config = enhanced_config.set
+
 
 # Function aliases for compatibility
 def feature_enabled(feature: str) -> bool:
