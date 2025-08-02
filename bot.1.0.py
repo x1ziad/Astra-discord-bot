@@ -615,52 +615,60 @@ class AstraBot(commands.Bot):
         return task
 
     # Optimized Background Tasks with Resource Management
-    
+
     @tasks.loop(hours=2)  # Reduced from frequent calls
     async def monitor_system_health(self):
         """Enhanced resource monitoring with performance optimization"""
         try:
             import psutil
             import gc
-            
+
             # Memory management
             process = psutil.Process()
             memory_info = process.memory_info()
             memory_percent = process.memory_percent()
-            
+
             # Force garbage collection if memory usage is high
             if memory_percent > 75:
                 collected = gc.collect()
-                self.logger.warning(f"High memory usage ({memory_percent:.1f}%), collected {collected} objects")
-            
+                self.logger.warning(
+                    f"High memory usage ({memory_percent:.1f}%), collected {collected} objects"
+                )
+
             # CPU monitoring
             cpu_percent = process.cpu_percent(interval=1)
-            
+
             # Update stats efficiently
             self.stats.memory_usage_mb = memory_info.rss / 1024 / 1024
             self.stats.cpu_usage_percent = cpu_percent
-            
+
             # Log performance metrics efficiently
-            await db.set("performance_metrics", 
-                datetime.utcnow().strftime("%Y%m%d_%H"), {
+            await db.set(
+                "performance_metrics",
+                datetime.utcnow().strftime("%Y%m%d_%H"),
+                {
                     "memory_usage_mb": self.stats.memory_usage_mb,
                     "memory_percent": memory_percent,
                     "cpu_percent": cpu_percent,
                     "open_files": len(process.open_files()),
                     "guild_count": len(self.guilds),
                     "user_count": len(self.users),
-                    "uptime_hours": (datetime.utcnow() - self.start_time).total_seconds() / 3600
-                })
-            
+                    "uptime_hours": (
+                        datetime.utcnow() - self.start_time
+                    ).total_seconds()
+                    / 3600,
+                },
+            )
+
             # Performance warnings
             if memory_percent > 85:
                 self.logger.error(f"Critical memory usage: {memory_percent:.1f}%")
             elif memory_percent > 70:
                 self.logger.warning(f"High memory usage: {memory_percent:.1f}%")
-            
+
             if cpu_percent > 80:
                 self.logger.warning(f"High CPU usage: {cpu_percent:.1f}%")
-                
+
         except ImportError:
             self.logger.warning("psutil not available for resource monitoring")
         except Exception as e:
@@ -681,7 +689,9 @@ class AstraBot(commands.Bot):
                 "memory_usage_mb": self.stats.memory_usage_mb,
                 "cpu_usage_percent": self.stats.cpu_usage_percent,
                 "latency_ms": round(self.latency * 1000, 2),
-                "extension_health": sum(1 for health in self.extension_health.values() if health)
+                "extension_health": sum(
+                    1 for health in self.extension_health.values() if health
+                ),
             }
 
             # Use hourly keys to reduce database entries
@@ -696,19 +706,20 @@ class AstraBot(commands.Bot):
         """Enhanced cleanup with automatic optimization"""
         try:
             # Database cleanup with connection pooling
-            if hasattr(db, 'cleanup_old_data'):
+            if hasattr(db, "cleanup_old_data"):
                 await db.cleanup_old_data(days=30)
-            
+
             # Clean old performance metrics (keep last 7 days)
             cutoff_date = datetime.utcnow() - timedelta(days=7)
             old_keys = []
-            
+
             # This would be implemented with proper key iteration
             # For now, log cleanup action
             self.logger.info("🧹 Enhanced cleanup task executed - removed old metrics")
-            
+
             # Force garbage collection after cleanup
             import gc
+
             collected = gc.collect()
             self.logger.debug(f"🗑️ Post-cleanup garbage collection: {collected} objects")
 
@@ -720,41 +731,43 @@ class AstraBot(commands.Bot):
         """Optimized guild configuration synchronization"""
         try:
             guild_updates = []
-            
+
             for guild in self.guilds:
                 try:
                     guild_config = await db.get("guild_configs", str(guild.id))
                     needs_update = False
-                    
+
                     if guild_config:
                         # Batch check for changes
                         if guild_config.get("guild_name") != guild.name:
                             guild_config["guild_name"] = guild.name
                             needs_update = True
-                        
+
                         if guild_config.get("member_count") != guild.member_count:
                             guild_config["member_count"] = guild.member_count
                             needs_update = True
-                            
+
                         if needs_update:
                             guild_updates.append((guild.id, guild_config))
                     else:
                         # Initialize config for new guilds
                         await self._initialize_guild_config(guild)
-                        
+
                     # Rate limiting for large servers
                     if len(self.guilds) > 100:
                         await asyncio.sleep(0.05)
-                        
+
                 except Exception as e:
                     self.logger.error(f"Error syncing guild {guild.id}: {e}")
-            
+
             # Batch update configurations
             for guild_id, config in guild_updates:
                 await db.set("guild_configs", str(guild_id), config)
-                
+
             if guild_updates:
-                self.logger.debug(f"🔄 Updated {len(guild_updates)} guild configurations")
+                self.logger.debug(
+                    f"🔄 Updated {len(guild_updates)} guild configurations"
+                )
 
         except Exception as e:
             self.logger.error(f"Error syncing guild configs: {e}")
@@ -764,36 +777,42 @@ class AstraBot(commands.Bot):
         """Enhanced extension health monitoring with recovery"""
         try:
             unhealthy_extensions = []
-            
+
             for extension_name in list(self.loaded_extensions.keys()):
                 try:
                     # Check extension health efficiently
                     cog_name = extension_name.split(".")[-1].title().replace("_", "")
                     ext = self.get_cog(cog_name)
-                    
+
                     if ext is None:
                         self.extension_health[extension_name] = False
                         unhealthy_extensions.append(extension_name)
                     else:
                         # Additional health checks
-                        if hasattr(ext, 'health_check'):
+                        if hasattr(ext, "health_check"):
                             try:
                                 health = await ext.health_check()
                                 self.extension_health[extension_name] = health
                             except:
-                                self.extension_health[extension_name] = True  # Default healthy
+                                self.extension_health[extension_name] = (
+                                    True  # Default healthy
+                                )
                         else:
                             self.extension_health[extension_name] = True
-                            
+
                 except Exception as e:
                     self.extension_health[extension_name] = False
                     unhealthy_extensions.append(extension_name)
-                    self.logger.error(f"❌ Extension {extension_name} health check failed: {e}")
-            
+                    self.logger.error(
+                        f"❌ Extension {extension_name} health check failed: {e}"
+                    )
+
             # Attempt recovery for unhealthy extensions
             if unhealthy_extensions:
-                self.logger.warning(f"⚠️ Unhealthy extensions detected: {', '.join(unhealthy_extensions)}")
-                
+                self.logger.warning(
+                    f"⚠️ Unhealthy extensions detected: {', '.join(unhealthy_extensions)}"
+                )
+
                 # Optional: Attempt automatic recovery
                 for ext_name in unhealthy_extensions[:2]:  # Limit recovery attempts
                     try:
@@ -811,29 +830,40 @@ class AstraBot(commands.Bot):
         """Daily performance optimization routine"""
         try:
             # Database optimization
-            if hasattr(db, 'pool'):
+            if hasattr(db, "pool"):
                 # Optimize database connections
                 stats = await db.get_performance_stats()
-                self.logger.info(f"📊 DB Stats: {stats['connection_pool']['hit_ratio']:.2%} hit ratio")
-            
+                self.logger.info(
+                    f"📊 DB Stats: {stats['connection_pool']['hit_ratio']:.2%} hit ratio"
+                )
+
             # Memory optimization
             import gc
+
             collected = gc.collect()
-            
+
             # Extension health summary
-            healthy_count = sum(1 for health in self.extension_health.values() if health)
+            healthy_count = sum(
+                1 for health in self.extension_health.values() if health
+            )
             total_count = len(self.extension_health)
-            
+
             optimization_data = {
                 "database_optimized": True,
                 "garbage_collected": collected,
                 "extensions_healthy": f"{healthy_count}/{total_count}",
-                "optimization_time": datetime.utcnow().isoformat()
+                "optimization_time": datetime.utcnow().isoformat(),
             }
-            
-            await db.set("performance_metrics", f"optimization_{datetime.utcnow().strftime('%Y%m%d')}", optimization_data)
-            self.logger.info(f"🚀 Daily optimization completed - collected {collected} objects")
-            
+
+            await db.set(
+                "performance_metrics",
+                f"optimization_{datetime.utcnow().strftime('%Y%m%d')}",
+                optimization_data,
+            )
+            self.logger.info(
+                f"🚀 Daily optimization completed - collected {collected} objects"
+            )
+
         except Exception as e:
             self.logger.error(f"Performance optimization error: {e}")
 

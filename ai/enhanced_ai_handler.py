@@ -74,10 +74,10 @@ class EnhancedAIHandler:
     def _load_config(self) -> Dict[str, Any]:
         """Load AI configuration with error handling"""
         config_path = Path("ai/ai_config.json")
-        
+
         try:
             if config_path.exists():
-                with open(config_path, "r", encoding='utf-8') as f:
+                with open(config_path, "r", encoding="utf-8") as f:
                     content = f.read().strip()
                     if content:  # Check if file is not empty
                         return json.loads(content)
@@ -118,10 +118,10 @@ class EnhancedAIHandler:
     def _load_usage_stats(self) -> Dict[str, int]:
         """Load usage statistics with error handling"""
         stats_path = Path("data/ai/usage_stats.json")
-        
+
         try:
             if stats_path.exists():
-                with open(stats_path, "r", encoding='utf-8') as f:
+                with open(stats_path, "r", encoding="utf-8") as f:
                     content = f.read().strip()
                     if content:
                         return json.loads(content)
@@ -149,7 +149,7 @@ class EnhancedAIHandler:
 
         try:
             if personality_path.exists():
-                with open(personality_path, "r", encoding='utf-8') as f:
+                with open(personality_path, "r", encoding="utf-8") as f:
                     content = f.read().strip()
                     if content:
                         return json.loads(content)
@@ -440,12 +440,14 @@ Always stay in character as Astra and provide helpful, accurate information whil
         return self.current_personality.copy()
 
     # Enhanced API methods for compatibility
-    
-    async def get_chat_completion(self, 
-                                 messages: List[Dict[str, str]], 
-                                 model: str = "gpt-4o-mini",
-                                 temperature: float = 0.7,
-                                 max_tokens: int = 1000) -> Dict[str, Any]:
+
+    async def get_chat_completion(
+        self,
+        messages: List[Dict[str, str]],
+        model: str = "gpt-4o-mini",
+        temperature: float = 0.7,
+        max_tokens: int = 1000,
+    ) -> Dict[str, Any]:
         """Enhanced chat completion with comprehensive error handling"""
         try:
             if not self.client:
@@ -453,83 +455,87 @@ Always stay in character as Astra and provide helpful, accurate information whil
                     "content": "AI service not available",
                     "tokens_used": 0,
                     "model": model,
-                    "error": "Client not initialized"
+                    "error": "Client not initialized",
                 }
-            
+
             # Use existing get_ai_response method but with enhanced return
             response = await self.client.chat.completions.create(
                 model=self.chat_deployment,
                 messages=messages,
                 temperature=temperature,
                 max_tokens=max_tokens,
-                timeout=30.0
+                timeout=30.0,
             )
-            
+
             result = {
                 "content": response.choices[0].message.content,
                 "tokens_used": response.usage.total_tokens,
                 "model": self.chat_deployment,
-                "finish_reason": response.choices[0].finish_reason
+                "finish_reason": response.choices[0].finish_reason,
             }
-            
+
             # Update usage stats
             self.usage_stats["chat_messages"] += 1
             self.usage_stats["total_tokens_used"] += response.usage.total_tokens
             self._save_usage_stats()
-            
+
             return result
-            
+
         except Exception as e:
             logger.error(f"Chat completion failed: {e}")
             return {
                 "content": "I apologize, but I'm currently unable to process your request.",
                 "tokens_used": 0,
                 "model": model,
-                "error": str(e)
+                "error": str(e),
             }
 
-    async def generate_embeddings(self, texts: List[str], model: str = "text-embedding-3-small") -> List[List[float]]:
+    async def generate_embeddings(
+        self, texts: List[str], model: str = "text-embedding-3-small"
+    ) -> List[List[float]]:
         """Generate embeddings with Azure OpenAI"""
         try:
             if not self.client or not texts:
                 return []
-            
+
             # Clean texts
-            clean_texts = [str(text).strip()[:8000] for text in texts if str(text).strip()]
+            clean_texts = [
+                str(text).strip()[:8000] for text in texts if str(text).strip()
+            ]
             if not clean_texts:
                 return []
-            
+
             # Process in batches
             batch_size = 100
             all_embeddings = []
-            
+
             for i in range(0, len(clean_texts), batch_size):
-                batch = clean_texts[i:i + batch_size]
-                
+                batch = clean_texts[i : i + batch_size]
+
                 try:
                     response = await self.client.embeddings.create(
                         input=batch,
                         model="text-embedding-ada-002",  # Use available Azure model
-                        timeout=30.0
+                        timeout=30.0,
                     )
-                    
+
                     batch_embeddings = [data.embedding for data in response.data]
                     all_embeddings.extend(batch_embeddings)
-                    
+
                     # Track usage
                     self.usage_stats["total_tokens_used"] += response.usage.total_tokens
-                    
+
                     # Rate limiting
                     if i + batch_size < len(clean_texts):
                         await asyncio.sleep(0.1)
-                        
+
                 except Exception as e:
                     logger.error(f"Embedding batch failed: {e}")
                     all_embeddings.extend([[] for _ in batch])
-            
+
             self._save_usage_stats()
             return all_embeddings
-            
+
         except Exception as e:
             logger.error(f"Embedding generation failed: {e}")
             return [[] for _ in texts]
@@ -542,30 +548,33 @@ Always stay in character as Astra and provide helpful, accurate information whil
                     "flagged": False,
                     "categories": {},
                     "category_scores": {},
-                    "safe": True
+                    "safe": True,
                 }
-            
+
             response = await self.client.moderations.create(
-                input=text.strip()[:32000],
-                timeout=15.0
+                input=text.strip()[:32000], timeout=15.0
             )
-            
+
             result = response.results[0]
-            
+
             moderation_result = {
                 "flagged": result.flagged,
                 "categories": dict(result.categories),
                 "category_scores": dict(result.category_scores),
                 "safe": not result.flagged,
-                "highest_score_category": max(result.category_scores.items(), key=lambda x: x[1])[0] if result.category_scores else "none",
-                "risk_level": self._calculate_risk_level(dict(result.category_scores))
+                "highest_score_category": (
+                    max(result.category_scores.items(), key=lambda x: x[1])[0]
+                    if result.category_scores
+                    else "none"
+                ),
+                "risk_level": self._calculate_risk_level(dict(result.category_scores)),
             }
-            
+
             if result.flagged:
                 logger.warning(f"Content flagged: {list(result.categories.keys())}")
-            
+
             return moderation_result
-            
+
         except Exception as e:
             logger.error(f"Content moderation failed: {e}")
             return {
@@ -573,16 +582,16 @@ Always stay in character as Astra and provide helpful, accurate information whil
                 "categories": {},
                 "category_scores": {},
                 "safe": True,
-                "error": str(e)
+                "error": str(e),
             }
-    
+
     def _calculate_risk_level(self, scores: Dict[str, float]) -> str:
         """Calculate risk level from moderation scores"""
         if not scores:
             return "minimal"
-            
+
         max_score = max(scores.values())
-        
+
         if max_score >= 0.8:
             return "high"
         elif max_score >= 0.5:
@@ -592,7 +601,9 @@ Always stay in character as Astra and provide helpful, accurate information whil
         else:
             return "minimal"
 
-    async def speech_to_text(self, audio_data: bytes, language: str = "en") -> Dict[str, Any]:
+    async def speech_to_text(
+        self, audio_data: bytes, language: str = "en"
+    ) -> Dict[str, Any]:
         """Enhanced speech-to-text with Azure Speech Services"""
         try:
             if not audio_data:
@@ -600,9 +611,9 @@ Always stay in character as Astra and provide helpful, accurate information whil
                     "text": "",
                     "language": language,
                     "confidence": 0.0,
-                    "error": "Empty audio data"
+                    "error": "Empty audio data",
                 }
-            
+
             # Try Azure Speech Service first
             if self.speech_config:
                 try:
@@ -612,78 +623,80 @@ Always stay in character as Astra and provide helpful, accurate information whil
                         "text": "Azure Speech recognition not fully implemented",
                         "language": language,
                         "confidence": 0.0,
-                        "service": "azure_speech"
+                        "service": "azure_speech",
                     }
                 except Exception as e:
                     logger.warning(f"Azure speech-to-text failed: {e}")
-            
+
             # Fallback to OpenAI Whisper
             if self.client:
                 try:
                     import tempfile
                     import os
-                    
-                    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_file:
+
+                    with tempfile.NamedTemporaryFile(
+                        suffix=".wav", delete=False
+                    ) as temp_file:
                         temp_file.write(audio_data)
                         temp_file_path = temp_file.name
-                    
+
                     try:
                         with open(temp_file_path, "rb") as audio_file:
                             response = await self.client.audio.transcriptions.create(
                                 model="whisper-1",
                                 file=audio_file,
                                 language=language,
-                                timeout=60.0
+                                timeout=60.0,
                             )
-                        
+
                         return {
                             "text": response.text,
                             "language": language,
                             "confidence": 0.9,
-                            "service": "openai_whisper"
+                            "service": "openai_whisper",
                         }
-                        
+
                     finally:
                         os.unlink(temp_file_path)
-                        
+
                 except Exception as e:
                     logger.error(f"OpenAI speech-to-text failed: {e}")
-            
+
             return {
                 "text": "",
                 "language": language,
                 "confidence": 0.0,
-                "error": "No speech service available"
+                "error": "No speech service available",
             }
-                
+
         except Exception as e:
             logger.error(f"Speech-to-text failed: {e}")
             return {
                 "text": "",
                 "language": language,
                 "confidence": 0.0,
-                "error": str(e)
+                "error": str(e),
             }
 
     async def get_usage_statistics(self) -> Dict[str, Any]:
         """Get comprehensive usage statistics"""
         base_stats = await self.get_usage_stats()
-        
+
         # Add service health
         service_health = {
             "azure_openai_status": "healthy" if self.client else "unavailable",
             "azure_speech_status": "healthy" if self.speech_config else "unavailable",
-            "last_request_time": getattr(self, '_last_request_time', None),
-            "current_personality": self.current_personality.get("name", "unknown")
+            "last_request_time": getattr(self, "_last_request_time", None),
+            "current_personality": self.current_personality.get("name", "unknown"),
         }
-        
+
         return {
             **base_stats,
             "service_health": service_health,
             "estimated_cost": self._estimate_total_cost(),
-            "conversation_channels": len(self.conversation_history)
+            "conversation_channels": len(self.conversation_history),
         }
-    
+
     def _estimate_total_cost(self) -> float:
         """Estimate total cost based on usage"""
         # Rough cost estimation
@@ -691,12 +704,12 @@ Always stay in character as Astra and provide helpful, accurate information whil
         chat_messages = self.usage_stats.get("chat_messages", 0)
         images_generated = self.usage_stats.get("images_generated", 0)
         tts_requests = self.usage_stats.get("tts_requests", 0)
-        
+
         # Rough pricing (adjust based on actual Azure pricing)
         token_cost = (tokens_used / 1000) * 0.005  # $0.005 per 1K tokens
         image_cost = images_generated * 0.04  # ~$0.04 per image
         tts_cost = tts_requests * 0.015  # ~$0.015 per request
-        
+
         return round(token_cost + image_cost + tts_cost, 4)
 
     async def cleanup(self):
@@ -704,18 +717,18 @@ Always stay in character as Astra and provide helpful, accurate information whil
         try:
             # Save final usage stats
             self._save_usage_stats()
-            
+
             # Clear conversation history
             self.conversation_history.clear()
-            
+
             # Close Azure OpenAI client
-            if self.client and hasattr(self.client, '_client'):
+            if self.client and hasattr(self.client, "_client"):
                 await self.client._client.aclose()
-            
+
             # Clear Azure Speech resources
             self.speech_config = None
-            
+
             logger.info("Enhanced AI handler cleaned up successfully")
-            
+
         except Exception as e:
             logger.error(f"AI handler cleanup error: {e}")
