@@ -3,15 +3,16 @@ Enhanced logging system for Astra Bot
 Provides structured logging with file rotation and performance monitoring
 """
 
+import asyncio
 import logging
 import logging.handlers
 import sys
+import time
+import traceback
+import functools
 from pathlib import Path
 from datetime import datetime
 from typing import Optional
-import traceback
-import functools
-import time
 
 try:
     import colorlog
@@ -67,7 +68,7 @@ def setup_enhanced_logger(
     logger = logging.getLogger(name)
     logger.setLevel(getattr(logging, log_level.upper()))
 
-    # Clear existing handlers
+    # Clear existing handlers to prevent duplicates
     logger.handlers.clear()
 
     # Console handler with colors
