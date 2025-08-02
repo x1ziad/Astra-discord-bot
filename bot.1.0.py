@@ -221,7 +221,6 @@ class AstraBot(commands.Bot):
 
         return prefixes
 
-    @log_performance
     async def setup_hook(self):
         """Enhanced setup hook with comprehensive initialization"""
         self.logger.info("🔧 Running enhanced setup hook...")
