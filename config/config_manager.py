@@ -8,7 +8,7 @@ import os
 import logging
 from pathlib import Path
 from typing import Dict, Any, Optional, Union, List
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 import discord
 from datetime import datetime
 
@@ -34,11 +34,16 @@ class BotConfig:
     ai_temperature: float = 0.7
     ai_max_tokens: int = 1500
 
+    # Bot Settings - FIXED: Use snake_case to match the error
+    command_sync_on_ready: bool = True
+    command_sync_on_join: bool = True
+    cleanup_on_leave: bool = False
+
     # Features
-    features: Dict[str, bool] = None
+    features: Dict[str, bool] = field(default_factory=dict)
 
     def __post_init__(self):
-        if self.features is None:
+        if not self.features:
             self.features = {
                 "ai_chat": True,
                 "image_generation": True,
@@ -70,9 +75,17 @@ class ConfigManager:
             try:
                 with open(self.config_path, "r", encoding="utf-8") as f:
                     data = json.load(f)
-                return BotConfig(**data)
+
+                # Clean the data - remove any unknown fields that would cause errors
+                valid_fields = {
+                    field.name for field in BotConfig.__dataclass_fields__.values()
+                }
+                cleaned_data = {k: v for k, v in data.items() if k in valid_fields}
+
+                return BotConfig(**cleaned_data)
             except Exception as e:
                 logger.error(f"Error loading config: {e}")
+                logger.info("Creating new default configuration...")
                 return self._create_default_config()
         else:
             return self._create_default_config()
@@ -156,8 +169,13 @@ class ConfigManager:
         current[keys[-1]] = value
 
         # Update config object
-        self._config = BotConfig(**config_dict)
-        self.save_config()
+        try:
+            self._config = BotConfig(**config_dict)
+            self.save_config()
+        except TypeError as e:
+            logger.error(f"Error updating config: {e}")
+            # Revert to previous config
+            self._config = self._load_config()
 
     def get_color(self, color_name: str) -> discord.Color:
         """Get Discord color object"""
