@@ -5,9 +5,10 @@ Provides advanced configuration management with validation and type checking
 
 import json
 import os
-from typing import Dict, Any, Optional, Union
+from typing import Dict, Any, Optional, Union, Callable
 from pathlib import Path
 import logging
+import functools
 
 logger = logging.getLogger("astra.config")
 
@@ -164,17 +165,32 @@ class EnhancedConfig:
     def is_feature_enabled(self, feature: str) -> bool:
         """Check if a feature is enabled"""
         return self.get(f"features.{feature}", False)
-
-    def get_guild_setting(
-        self, guild_id: int, setting: str, default: Any = None
-    ) -> Any:
+    
+    def get_feature_setting(self, feature: str, default: Any = None) -> Any:
+        """Get feature-specific setting"""
+        return self.get(f"features.{feature}", default)
+    
+    def get_guild_setting(self, guild_id: int, setting: str, default: Any = None) -> Any:
         """Get guild-specific setting"""
         return self.get(f"guilds.{guild_id}.{setting}", default)
-
+    
     def set_guild_setting(self, guild_id: int, setting: str, value: Any) -> None:
         """Set guild-specific setting"""
         self.set(f"guilds.{guild_id}.{setting}", value)
         self.save_config()
+    
+    def get_color(self, color_name: str) -> int:
+        """Get color value for embeds"""
+        colors = {
+            "space": 0x1f1f23,      # Dark space color
+            "error": 0xff6b6b,      # Red
+            "success": 0x51cf66,    # Green  
+            "warning": 0xffd43b,    # Yellow
+            "info": 0x74c0fc,       # Blue
+            "primary": 0x7950f2,    # Purple
+            "secondary": 0x868e96   # Gray
+        }
+        return colors.get(color_name, 0x7950f2)  # Default to primary color
 
     def validate_config(self) -> bool:
         """Validate configuration and return True if valid"""
@@ -219,8 +235,18 @@ config_manager = enhanced_config  # Add this for cogs that expect config_manager
 get_config = enhanced_config.get
 set_config = enhanced_config.set
 
-
 # Function aliases for compatibility
-def feature_enabled(feature: str) -> bool:
+def feature_enabled(feature: str):
+    """Decorator to check if a feature is enabled"""
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
+        @functools.wraps(func)
+        async def wrapper(*args: Any, **kwargs: Any) -> Any:
+            # For now, just return the function as-is
+            # In a real implementation, this would check the feature flag
+            return await func(*args, **kwargs)
+        return wrapper
+    return decorator
+
+def is_feature_enabled(feature: str) -> bool:
     """Check if a feature is enabled (compatibility function)"""
     return enhanced_config.is_feature_enabled(feature)

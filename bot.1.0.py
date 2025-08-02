@@ -296,11 +296,13 @@ class AstraBot(commands.Bot):
             # Core utilities (no dependencies)
             ["cogs.admin", "cogs.stats"],
             # AI and enhanced features (depend on core)
-            ["cogs.ai_commands", "cogs.server_management"],
+            ["cogs.advanced_ai", "cogs.server_management"],
             # Analytics and specialized features
             ["cogs.analytics", "cogs.roles"],
             # Game-specific and optional features
             ["cogs.quiz", "cogs.space"],
+            # Help and utility features
+            ["cogs.help", "cogs.notion", "cogs.debug"],
         ]
 
         total_loaded = 0
