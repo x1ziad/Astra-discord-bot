@@ -153,7 +153,7 @@ class AstraBot(commands.Bot):
         self._guild_configs: Dict[int, Dict[str, Any]] = {}
         
         # Error handling
-        self.error_handler = ErrorHandler()
+        self.error_handler = ErrorHandler(self)
         
         # Create essential directories
         self._ensure_directories()
