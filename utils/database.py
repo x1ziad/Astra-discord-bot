@@ -1,88 +1,191 @@
 """
-Simple JSON-based database handler for Astra Bot
-For production, consider migrating to PostgreSQL or MongoDB
+Database utilities for Astra Bot
+Provides SQLite database management with connection pooling
 """
 
-import json
+import sqlite3
 import asyncio
-from pathlib import Path
-from typing import Dict, Any, Optional, List
+import aiosqlite
 import logging
+from pathlib import Path
+from typing import Dict, List, Any, Optional, Union
+from contextlib import asynccontextmanager
+import json
 from datetime import datetime
 
 logger = logging.getLogger("astra.database")
 
 
-class JSONDatabase:
-    """Simple JSON-based database with async operations"""
+class DatabaseManager:
+    """Async SQLite database manager with connection pooling"""
 
-    def __init__(self, db_path: str = "data/database"):
+    def __init__(self, db_path: str = "data/astra.db"):
         self.db_path = Path(db_path)
-        self.db_path.mkdir(parents=True, exist_ok=True)
-        self._cache = {}
-        self._locks = {}
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        self._connection_pool = []
+        self._max_connections = 10
+        self._initialized = False
 
-    def _get_lock(self, table: str) -> asyncio.Lock:
-        """Get or create lock for table"""
-        if table not in self._locks:
-            self._locks[table] = asyncio.Lock()
-        return self._locks[table]
+    async def initialize(self):
+        """Initialize database and create tables"""
+        if self._initialized:
+            return
 
-    async def get_table(self, table: str) -> Dict[str, Any]:
-        """Get entire table data"""
-        async with self._get_lock(table):
-            if table not in self._cache:
-                file_path = self.db_path / f"{table}.json"
-                if file_path.exists():
-                    try:
-                        with open(file_path, "r", encoding="utf-8") as f:
-                            self._cache[table] = json.load(f)
-                    except Exception as e:
-                        logger.error(f"Error loading table {table}: {e}")
-                        self._cache[table] = {}
-                else:
-                    self._cache[table] = {}
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.executescript(
+                """
+                CREATE TABLE IF NOT EXISTS guild_settings (
+                    guild_id INTEGER PRIMARY KEY,
+                    settings TEXT NOT NULL DEFAULT '{}',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+                
+                CREATE TABLE IF NOT EXISTS user_data (
+                    user_id INTEGER PRIMARY KEY,
+                    guild_id INTEGER,
+                    data TEXT NOT NULL DEFAULT '{}',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+                
+                CREATE TABLE IF NOT EXISTS analytics (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    guild_id INTEGER,
+                    event_type TEXT NOT NULL,
+                    event_data TEXT NOT NULL DEFAULT '{}',
+                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+                
+                CREATE TABLE IF NOT EXISTS command_usage (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    guild_id INTEGER,
+                    user_id INTEGER,
+                    command_name TEXT NOT NULL,
+                    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+                
+                CREATE INDEX IF NOT EXISTS idx_guild_settings_guild_id ON guild_settings(guild_id);
+                CREATE INDEX IF NOT EXISTS idx_user_data_user_guild ON user_data(user_id, guild_id);
+                CREATE INDEX IF NOT EXISTS idx_analytics_guild_id ON analytics(guild_id);
+                CREATE INDEX IF NOT EXISTS idx_command_usage_guild_id ON command_usage(guild_id);
+            """
+            )
+            await db.commit()
 
-            return self._cache[table].copy()
+        self._initialized = True
+        logger.info("Database initialized successfully")
 
-    async def save_table(self, table: str, data: Dict[str, Any]):
-        """Save table data"""
-        async with self._get_lock(table):
-            try:
-                file_path = self.db_path / f"{table}.json"
-                with open(file_path, "w", encoding="utf-8") as f:
-                    json.dump(data, f, indent=2, default=str)
-                self._cache[table] = data.copy()
-                logger.debug(f"Saved table {table}")
-            except Exception as e:
-                logger.error(f"Error saving table {table}: {e}")
-                raise
+    @asynccontextmanager
+    async def get_connection(self):
+        """Get database connection from pool"""
+        conn = await aiosqlite.connect(self.db_path)
+        try:
+            yield conn
+        finally:
+            await conn.close()
 
-    async def get(self, table: str, key: str, default: Any = None) -> Any:
-        """Get value from table"""
-        data = await self.get_table(table)
-        return data.get(key, default)
+    async def get_guild_setting(
+        self, guild_id: int, key: str, default: Any = None
+    ) -> Any:
+        """Get a specific guild setting"""
+        async with self.get_connection() as db:
+            cursor = await db.execute(
+                "SELECT settings FROM guild_settings WHERE guild_id = ?", (guild_id,)
+            )
+            row = await cursor.fetchone()
 
-    async def set(self, table: str, key: str, value: Any):
-        """Set value in table"""
-        data = await self.get_table(table)
-        data[key] = value
-        await self.save_table(table, data)
+            if row:
+                settings = json.loads(row[0])
+                return settings.get(key, default)
+            return default
 
-    async def delete(self, table: str, key: str) -> bool:
-        """Delete key from table"""
-        data = await self.get_table(table)
-        if key in data:
-            del data[key]
-            await self.save_table(table, data)
-            return True
-        return False
+    async def set_guild_setting(self, guild_id: int, key: str, value: Any):
+        """Set a specific guild setting"""
+        async with self.get_connection() as db:
+            # Get current settings
+            cursor = await db.execute(
+                "SELECT settings FROM guild_settings WHERE guild_id = ?", (guild_id,)
+            )
+            row = await cursor.fetchone()
 
-    async def exists(self, table: str, key: str) -> bool:
-        """Check if key exists in table"""
-        data = await self.get_table(table)
-        return key in data
+            if row:
+                settings = json.loads(row[0])
+                settings[key] = value
+                await db.execute(
+                    "UPDATE guild_settings SET settings = ?, updated_at = CURRENT_TIMESTAMP WHERE guild_id = ?",
+                    (json.dumps(settings), guild_id),
+                )
+            else:
+                settings = {key: value}
+                await db.execute(
+                    "INSERT INTO guild_settings (guild_id, settings) VALUES (?, ?)",
+                    (guild_id, json.dumps(settings)),
+                )
+
+            await db.commit()
+
+    async def get_user_data(
+        self, user_id: int, guild_id: int, key: str, default: Any = None
+    ) -> Any:
+        """Get user data"""
+        async with self.get_connection() as db:
+            cursor = await db.execute(
+                "SELECT data FROM user_data WHERE user_id = ? AND guild_id = ?",
+                (user_id, guild_id),
+            )
+            row = await cursor.fetchone()
+
+            if row:
+                data = json.loads(row[0])
+                return data.get(key, default)
+            return default
+
+    async def set_user_data(self, user_id: int, guild_id: int, key: str, value: Any):
+        """Set user data"""
+        async with self.get_connection() as db:
+            cursor = await db.execute(
+                "SELECT data FROM user_data WHERE user_id = ? AND guild_id = ?",
+                (user_id, guild_id),
+            )
+            row = await cursor.fetchone()
+
+            if row:
+                data = json.loads(row[0])
+                data[key] = value
+                await db.execute(
+                    "UPDATE user_data SET data = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ? AND guild_id = ?",
+                    (json.dumps(data), user_id, guild_id),
+                )
+            else:
+                data = {key: value}
+                await db.execute(
+                    "INSERT INTO user_data (user_id, guild_id, data) VALUES (?, ?, ?)",
+                    (user_id, guild_id, json.dumps(data)),
+                )
+
+            await db.commit()
+
+    async def log_analytics(
+        self, guild_id: int, event_type: str, event_data: Dict[str, Any]
+    ):
+        """Log analytics event"""
+        async with self.get_connection() as db:
+            await db.execute(
+                "INSERT INTO analytics (guild_id, event_type, event_data) VALUES (?, ?, ?)",
+                (guild_id, event_type, json.dumps(event_data)),
+            )
+            await db.commit()
+
+    async def log_command_usage(self, guild_id: int, user_id: int, command_name: str):
+        """Log command usage"""
+        async with self.get_connection() as db:
+            await db.execute(
+                "INSERT INTO command_usage (guild_id, user_id, command_name) VALUES (?, ?, ?)",
+                (guild_id, user_id, command_name),
+            )
+            await db.commit()
 
 
 # Global database instance
-db = JSONDatabase()
+db = DatabaseManager()
