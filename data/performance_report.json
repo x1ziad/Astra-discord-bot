@@ -1,0 +1,61 @@
+{
+  "timestamp": "2025-08-02T21:18:51.653622",
+  "execution_time": 8.492362022399902,
+  "memory_start_mb": 38.484375,
+  "memory_end_mb": 196.96875,
+  "memory_delta_mb": 158.484375,
+  "performance_timings": {
+    "\ud83d\udd27 Core Systems": 2.6133828163146973,
+    "\ud83d\uddc3\ufe0f Database Performance": 0.013895988464355469,
+    "\ud83d\ude80 Space API Performance": 4.735377788543701,
+    "\ud83e\udd16 AI Engine Performance": 0.04317474365234375,
+    "\ud83d\udcca System Performance": 1.083632230758667,
+    "\ud83c\udfaf End-to-End Tests": 0.002399921417236328
+  },
+  "detailed_results": {
+    "database": {
+      "insert_ops_per_sec": 840440.8287580651,
+      "query_time_ms": 0.07128715515136719,
+      "db_size_kb": 292.0
+    },
+    "apis": {
+      "NASA APOD": {
+        "response_time": 1.1068501472473145,
+        "data_size": 1433,
+        "status": "success"
+      },
+      "ISS Location": {
+        "response_time": 3.4183390140533447,
+        "data_size": 113,
+        "status": "success"
+      },
+      "Astronauts": {
+        "response_time": 0.20601606369018555,
+        "data_size": 587,
+        "status": "success"
+      }
+    },
+    "ai": {
+      "init_time": 0.0021948814392089844,
+      "avg_response_time": 0.007680940628051758,
+      "avg_response_chars": 79.4,
+      "analytics_time": 0.001007080078125
+    },
+    "system": {
+      "cpu_percent": 69.4,
+      "memory_percent": 77.2,
+      "process_memory_mb": 196.046875,
+      "memory_delta_mb": 157.5625,
+      "write_time": 0.000644683837890625,
+      "read_time": 0.00012683868408203125,
+      "network_time": 0.5773460865020752
+    },
+    "e2e": {
+      "total_time": 0.002359151840209961,
+      "response_length": 82,
+      "fact_length": 67,
+      "steps_completed": 6
+    }
+  },
+  "bot_ready": false
+}
