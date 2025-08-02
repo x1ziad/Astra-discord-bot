@@ -1,298 +1,449 @@
+"""
+Enhanced AI Commands for Astra Bot
+Provides comprehensive AI features including chat, image generation, and TTS
+"""
+
 import discord
 from discord import app_commands
 from discord.ext import commands
 import logging
-from typing import Optional, List
-import sys
+import asyncio
+import aiohttp
+import io
 import os
+import base64
+import json
+from typing import Optional, List, Dict, Any, Union
+from datetime import datetime, timedelta
+from pathlib import Path
+import re
 
-# Ensure proper import path
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from ai_chat import AIChatHandler
+from ai.enhanced_ai_handler import EnhancedAIHandler
+from config.config_manager import config_manager
 
-# Set up logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
 logger = logging.getLogger("astra.ai_commands")
 
 
-class AICommands(commands.Cog):
-    """Commands for interacting with Astra's AI capabilities."""
+class AICommands(commands.GroupCog, name="ai"):
+    """Advanced AI commands for chat, image generation, and voice synthesis"""
 
     def __init__(self, bot):
+        super().__init__()
         self.bot = bot
-        self.ai_handler = AIChatHandler()
+        self.config = config_manager
+        self.logger = bot.logger
+        self.ai_handler = EnhancedAIHandler()
+
+        # Load configuration
         self.dedicated_channels = self._load_dedicated_channels()
-        logger.info("AI Commands cog initialized")
+        self.active_conversations = {}  # Track active conversations
+        self.conversation_cooldowns = {}  # Prevent spam
+
+        # Initialize data directories
+        Path("data/ai").mkdir(parents=True, exist_ok=True)
+        Path("data/ai/images").mkdir(parents=True, exist_ok=True)
+        Path("data/ai/audio").mkdir(parents=True, exist_ok=True)
+
+        self.logger.info("Enhanced AI Commands cog initialized")
 
     def _load_dedicated_channels(self) -> List[int]:
-        """Load dedicated AI channels from config."""
+        """Load dedicated AI channels from config"""
         return self.ai_handler.config.get("trigger_modes", {}).get(
             "dedicated_channels", []
         )
 
+    async def _check_cooldown(self, user_id: int, cooldown_seconds: int = 3) -> bool:
+        """Check if user is on cooldown"""
+        now = datetime.utcnow()
+        if user_id in self.conversation_cooldowns:
+            if (now - self.conversation_cooldowns[user_id]).seconds < cooldown_seconds:
+                return False
+        self.conversation_cooldowns[user_id] = now
+        return True
+
     @commands.Cog.listener()
     async def on_message(self, message):
-        """Listen for messages that should trigger the AI."""
-        # Ignore messages from bots to prevent loops
+        """Enhanced message listener with intelligent AI triggering"""
+        # Ignore bot messages to prevent loops
         if message.author.bot:
             return
 
-        # Get configuration
+        # Check cooldown to prevent spam
+        if not await self._check_cooldown(message.author.id):
+            return
+
         trigger_modes = self.ai_handler.config.get("trigger_modes", {})
-
         should_respond = False
+        response_type = "text"
 
-        # Check if it's a direct message
+        # Check various trigger conditions
         if trigger_modes.get("dm", True) and isinstance(
             message.channel, discord.DMChannel
         ):
             should_respond = True
-
-        # Check if the bot was mentioned
         elif trigger_modes.get("mention", True) and self.bot.user in message.mentions:
             should_respond = True
-
-        # Check if it's in a dedicated AI channel
-        elif message.channel.id in self._load_dedicated_channels():
+        elif message.channel.id in self.dedicated_channels:
             should_respond = True
-
-        # Check if message contains the trigger keyword
         elif (
             trigger_modes.get("keyword")
             and trigger_modes.get("keyword").lower() in message.content.lower()
         ):
             should_respond = True
 
+        # Smart engagement patterns
+        elif self._should_engage_proactively(message):
+            should_respond = True
+
         if should_respond:
-            await self.process_ai_message(message)
+            await self._process_ai_message(message, response_type)
 
-    async def process_ai_message(self, message):
-        """Process a message that should get an AI response."""
-        # Add typing indicator to show the bot is "thinking"
-        async with message.channel.typing():
-            # Add the user's message to history
-            await self.ai_handler.add_message_to_history(
-                message.channel.id,
-                message.author.id,
-                str(message.author),
-                message.content,
+    def _should_engage_proactively(self, message) -> bool:
+        """Determine if bot should proactively engage based on message patterns"""
+        content = message.content.lower()
+
+        # Engage on questions directed at the server
+        question_patterns = [
+            r"\b(what|who|where|when|why|how)\b.*\?",
+            r"\b(anyone|somebody|someone)\b.*\?",
+            r"\bhelp\b",
+            r"\bquestion\b",
+        ]
+
+        for pattern in question_patterns:
+            if re.search(pattern, content):
+                return True
+
+        # Engage on space/stellaris related topics
+        space_keywords = [
+            "space",
+            "star",
+            "planet",
+            "galaxy",
+            "stellaris",
+            "empire",
+            "alien",
+        ]
+        if any(keyword in content for keyword in space_keywords):
+            return True
+
+        return False
+
+    async def _process_ai_message(self, message, response_type: str = "text"):
+        """Process message and generate AI response"""
+        try:
+            async with message.channel.typing():
+                # Add user message to history
+                await self.ai_handler.add_message_to_history(
+                    message.channel.id,
+                    message.author.id,
+                    str(message.author),
+                    message.content,
+                )
+
+                # Get AI response
+                response = await self.ai_handler.get_ai_response(
+                    message.channel.id, response_type=response_type
+                )
+
+                if response_type == "text":
+                    # Handle long responses with embeds
+                    if len(response) > 2000:
+                        embed = discord.Embed(
+                            title="🤖 Astra AI Response",
+                            description=response[:4000],
+                            color=self.config.get_color("primary"),
+                        )
+                        await message.reply(embed=embed)
+                    else:
+                        await message.reply(response)
+
+                # Add bot response to history
+                await self.ai_handler.add_message_to_history(
+                    message.channel.id, self.bot.user.id, "Astra", response, is_bot=True
+                )
+
+        except Exception as e:
+            self.logger.error(f"Error processing AI message: {e}")
+            await message.reply(
+                "🚫 Sorry, I encountered an error processing your message."
             )
 
-            # Get AI response
-            response = await self.ai_handler.get_ai_response(message.channel.id)
-
-            # Add bot's response to history
-            await self.ai_handler.add_message_to_history(
-                message.channel.id,
-                self.bot.user.id,
-                str(self.bot.user),
-                response,
-                is_bot=True,
-            )
-
-            # Send the response
-            await message.reply(response)
-
-    @app_commands.command(name="ai", description="Ask Astra's AI something directly")
-    @app_commands.describe(question="The question or message for Astra")
-    async def ai_command(self, interaction: discord.Interaction, question: str):
-        """Command to directly ask the AI a question."""
-        await interaction.response.defer(thinking=True)
-
-        # Add the user's message to history
-        await self.ai_handler.add_message_to_history(
-            interaction.channel_id, interaction.user.id, str(interaction.user), question
-        )
-
-        # Get AI response
-        response = await self.ai_handler.get_ai_response(interaction.channel_id)
-
-        # Add bot's response to history
-        await self.ai_handler.add_message_to_history(
-            interaction.channel_id,
-            self.bot.user.id,
-            str(self.bot.user),
-            response,
-            is_bot=True,
-        )
-
-        await interaction.followup.send(response)
-
-    @app_commands.command(
-        name="setpersonality", description="Change Astra's personality"
-    )
-    @app_commands.describe(personality="The personality profile to use")
-    async def set_personality(self, interaction: discord.Interaction, personality: str):
-        """Command to change the AI's personality."""
-        success = await self.ai_handler.set_personality(personality)
-
-        if success:
-            await interaction.response.send_message(
-                f"✅ Personality changed to: {personality}"
-            )
-        else:
-            personalities = self.ai_handler.list_personalities()
-            await interaction.response.send_message(
-                f"❌ Personality '{personality}' not found. Available options: {', '.join(personalities)}"
-            )
-
-    @app_commands.command(
-        name="personalities", description="List available personality profiles"
-    )
-    async def list_personalities(self, interaction: discord.Interaction):
-        """List all available personality profiles."""
-        personalities = self.ai_handler.list_personalities()
-
-        if personalities:
-            current = self.ai_handler.config.get("default_personality", "assistant")
-            embed = discord.Embed(
-                title="Available Personality Profiles", color=discord.Color.blue()
-            )
-
-            for p in personalities:
-                try:
-                    profile = self.ai_handler.load_personality(p)
-                    description = profile.get("description", "No description available")
-                    name = f"{p} {'(current)' if p == current else ''}"
-                    embed.add_field(name=name, value=description, inline=False)
-                except:
-                    embed.add_field(
-                        name=p, value="Error loading profile details", inline=False
-                    )
-
-            await interaction.response.send_message(embed=embed)
-        else:
-            await interaction.response.send_message("No personality profiles found.")
-
-    @app_commands.command(name="aiconfig", description="Configure AI behavior")
+    @app_commands.command(name="chat", description="Have a conversation with Astra AI")
     @app_commands.describe(
-        provider="AI provider to use (openai, anthropic, cohere, mistral, local)",
-        temperature="Response randomness (0.0-2.0)",
-        max_tokens="Maximum response length",
+        message="Your message to Astra", personality="Choose AI personality (optional)"
     )
-    async def ai_config(
+    async def ai_chat(
         self,
         interaction: discord.Interaction,
-        provider: Optional[str] = None,
-        temperature: Optional[float] = None,
-        max_tokens: Optional[int] = None,
+        message: str,
+        personality: Optional[str] = None,
     ):
-        """Configure AI behavior settings."""
-        changes = []
-
-        if provider:
-            valid_providers = ["openai", "anthropic", "cohere", "mistral", "local"]
-            if provider in valid_providers:
-                await self.ai_handler.change_provider(provider)
-                changes.append(f"Provider changed to {provider}")
-            else:
-                return await interaction.response.send_message(
-                    f"❌ Invalid provider. Options are: {', '.join(valid_providers)}"
-                )
-
-        if temperature is not None:
-            if 0.0 <= temperature <= 2.0:
-                self.ai_handler.config["temperature"] = temperature
-                changes.append(f"Temperature set to {temperature}")
-            else:
-                return await interaction.response.send_message(
-                    "❌ Temperature must be between 0.0 and 2.0"
-                )
-
-        if max_tokens is not None:
-            if max_tokens > 0:
-                self.ai_handler.config["max_tokens"] = max_tokens
-                changes.append(f"Max tokens set to {max_tokens}")
-            else:
-                return await interaction.response.send_message(
-                    "❌ Max tokens must be greater than 0"
-                )
-
-        if changes:
-            self.ai_handler._save_config()
-            await interaction.response.send_message(
-                "✅ Configuration updated:\n- " + "\n- ".join(changes)
-            )
-        else:
-            # Show current config
-            config = self.ai_handler.config
-            embed = discord.Embed(
-                title="Current AI Configuration", color=discord.Color.blue()
-            )
-            embed.add_field(
-                name="Provider", value=config.get("provider", "openai"), inline=True
-            )
-            embed.add_field(
-                name="Personality",
-                value=config.get("default_personality", "assistant"),
-                inline=True,
-            )
-            embed.add_field(
-                name="Temperature",
-                value=str(config.get("temperature", 0.7)),
-                inline=True,
-            )
-            embed.add_field(
-                name="Max Tokens", value=str(config.get("max_tokens", 500)), inline=True
-            )
-            embed.add_field(
-                name="Max History",
-                value=str(config.get("max_history", 10)),
-                inline=True,
-            )
-
-            await interaction.response.send_message(embed=embed)
-
-    @app_commands.command(
-        name="clearhistory", description="Clear conversation history with the AI"
-    )
-    async def clear_history(self, interaction: discord.Interaction):
-        """Clear the AI conversation history for this channel."""
-        success = await self.ai_handler.clear_history(interaction.channel_id)
-
-        if success:
-            await interaction.response.send_message("✅ Conversation history cleared.")
-        else:
-            await interaction.response.send_message(
-                "No conversation history to clear in this channel."
-            )
-
-    @app_commands.command(name="testapi", description="Test your OpenAI API connection")
-    async def test_api(self, interaction: discord.Interaction):
-        """Test the OpenAI API connection."""
+        """Enhanced chat command with personality options"""
         await interaction.response.defer(thinking=True)
 
         try:
-            # Test API with a simple message
-            test_response = await self.ai_handler._get_openai_response(
-                [
-                    {"role": "system", "content": "You are a helpful assistant."},
-                    {"role": "user", "content": "Say 'API test successful!'"},
-                ],
-                {"temperature": 0.7, "max_tokens": 50},
+            # Set personality if specified
+            if personality:
+                await self.ai_handler.set_personality(personality)
+
+            # Add message to history
+            await self.ai_handler.add_message_to_history(
+                interaction.channel_id,
+                interaction.user.id,
+                str(interaction.user),
+                message,
             )
 
+            # Get AI response
+            response = await self.ai_handler.get_ai_response(interaction.channel_id)
+
+            # Create rich embed response
             embed = discord.Embed(
-                title="✅ API Test Successful",
-                description=f"Response: {test_response}",
-                color=discord.Color.green(),
+                title="💬 Astra AI Chat",
+                description=response,
+                color=self.config.get_color("primary"),
+                timestamp=datetime.utcnow(),
+            )
+            embed.set_footer(
+                text=f"Personality: {personality or 'Default'} | Requested by {interaction.user.display_name}",
+                icon_url=interaction.user.display_avatar.url,
+            )
+
+            await interaction.followup.send(embed=embed)
+
+            # Add bot response to history
+            await self.ai_handler.add_message_to_history(
+                interaction.channel_id, self.bot.user.id, "Astra", response, is_bot=True
+            )
+
+        except Exception as e:
+            self.logger.error(f"Error in AI chat: {e}")
+            await interaction.followup.send(
+                "🚫 Sorry, I encountered an error. Please try again later."
+            )
+
+    @app_commands.command(name="generate", description="Generate AI images with DALL-E")
+    @app_commands.describe(
+        prompt="Describe the image you want to generate",
+        style="Art style for the image",
+        size="Image size",
+    )
+    async def generate_image(
+        self,
+        interaction: discord.Interaction,
+        prompt: str,
+        style: Optional[str] = "realistic",
+        size: Optional[str] = "1024x1024",
+    ):
+        """Generate images using AI"""
+        await interaction.response.defer(thinking=True)
+
+        try:
+            # Generate image
+            image_url, revised_prompt = await self.ai_handler.generate_image(
+                prompt, style=style, size=size
+            )
+
+            if image_url:
+                # Create embed with generated image
+                embed = discord.Embed(
+                    title="🎨 AI Generated Image",
+                    description=f"**Original Prompt:** {prompt}\n**Revised Prompt:** {revised_prompt}",
+                    color=self.config.get_color("success"),
+                    timestamp=datetime.utcnow(),
+                )
+                embed.set_image(url=image_url)
+                embed.set_footer(
+                    text=f"Generated by {interaction.user.display_name} | Style: {style}",
+                    icon_url=interaction.user.display_avatar.url,
+                )
+
+                await interaction.followup.send(embed=embed)
+
+                # Log generation
+                self.logger.info(
+                    f"Image generated for user {interaction.user.id}: {prompt}"
+                )
+
+            else:
+                await interaction.followup.send(
+                    "🚫 Failed to generate image. Please try a different prompt."
+                )
+
+        except Exception as e:
+            self.logger.error(f"Error generating image: {e}")
+            await interaction.followup.send(
+                "🚫 Image generation failed. Please try again later."
+            )
+
+    @app_commands.command(
+        name="speak", description="Convert text to speech using AI TTS"
+    )
+    @app_commands.describe(text="Text to convert to speech", voice="Voice type for TTS")
+    async def text_to_speech(
+        self,
+        interaction: discord.Interaction,
+        text: str,
+        voice: Optional[str] = "alloy",
+    ):
+        """Convert text to speech using AI TTS"""
+        await interaction.response.defer(thinking=True)
+
+        try:
+            # Generate speech
+            audio_data = await self.ai_handler.text_to_speech(text, voice=voice)
+
+            if audio_data:
+                # Save audio file
+                timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+                filename = f"tts_{interaction.user.id}_{timestamp}.mp3"
+                filepath = Path("data/ai/audio") / filename
+
+                with open(filepath, "wb") as f:
+                    f.write(audio_data)
+
+                # Create embed and send audio file
+                embed = discord.Embed(
+                    title="🔊 Text-to-Speech",
+                    description=f"**Text:** {text[:500]}{'...' if len(text) > 500 else ''}",
+                    color=self.config.get_color("primary"),
+                    timestamp=datetime.utcnow(),
+                )
+                embed.set_footer(
+                    text=f"Generated by {interaction.user.display_name} | Voice: {voice}",
+                    icon_url=interaction.user.display_avatar.url,
+                )
+
+                await interaction.followup.send(
+                    embed=embed,
+                    file=discord.File(filepath, filename=f"astra_tts_{timestamp}.mp3"),
+                )
+
+                # Clean up file after a delay
+                asyncio.create_task(self._cleanup_audio_file(filepath, delay=300))
+
+            else:
+                await interaction.followup.send(
+                    "🚫 Failed to generate speech. Please try again."
+                )
+
+        except Exception as e:
+            self.logger.error(f"Error in TTS: {e}")
+            await interaction.followup.send(
+                "🚫 Text-to-speech failed. Please try again later."
+            )
+
+    async def _cleanup_audio_file(self, filepath: Path, delay: int = 300):
+        """Clean up audio file after delay"""
+        await asyncio.sleep(delay)
+        try:
+            if filepath.exists():
+                filepath.unlink()
+        except Exception as e:
+            self.logger.error(f"Error cleaning up audio file: {e}")
+
+    @app_commands.command(
+        name="personality", description="Manage AI personality settings"
+    )
+    @app_commands.describe(action="Action to perform", name="Personality name")
+    async def manage_personality(
+        self, interaction: discord.Interaction, action: str, name: Optional[str] = None
+    ):
+        """Manage AI personality profiles"""
+        await interaction.response.defer(thinking=True)
+
+        try:
+            if action.lower() == "list":
+                personalities = self.ai_handler.list_personalities()
+                embed = discord.Embed(
+                    title="🎭 Available AI Personalities",
+                    description="\n".join([f"• {p}" for p in personalities])
+                    or "No personalities found",
+                    color=self.config.get_color("info"),
+                )
+                await interaction.followup.send(embed=embed)
+
+            elif action.lower() == "set" and name:
+                success = await self.ai_handler.set_personality(name)
+                if success:
+                    embed = discord.Embed(
+                        title="✅ Personality Set",
+                        description=f"AI personality changed to: **{name}**",
+                        color=self.config.get_color("success"),
+                    )
+                else:
+                    embed = discord.Embed(
+                        title="❌ Personality Not Found",
+                        description=f"Personality '{name}' not found",
+                        color=self.config.get_color("error"),
+                    )
+                await interaction.followup.send(embed=embed)
+
+            else:
+                await interaction.followup.send(
+                    "❌ Invalid action. Use 'list' or 'set <name>'"
+                )
+
+        except Exception as e:
+            self.logger.error(f"Error managing personality: {e}")
+            await interaction.followup.send("🚫 Error managing personality settings.")
+
+    @app_commands.command(name="clear", description="Clear AI conversation history")
+    async def clear_history(self, interaction: discord.Interaction):
+        """Clear conversation history for current channel"""
+        await interaction.response.defer(thinking=True)
+
+        try:
+            await self.ai_handler.clear_history(interaction.channel_id)
+
+            embed = discord.Embed(
+                title="🗑️ History Cleared",
+                description="AI conversation history has been cleared for this channel",
+                color=self.config.get_color("success"),
             )
             await interaction.followup.send(embed=embed)
 
         except Exception as e:
+            self.logger.error(f"Error clearing history: {e}")
+            await interaction.followup.send("🚫 Error clearing conversation history.")
+
+    @app_commands.command(name="stats", description="Show AI usage statistics")
+    async def ai_stats(self, interaction: discord.Interaction):
+        """Show AI usage statistics"""
+        await interaction.response.defer(thinking=True)
+
+        try:
+            stats = await self.ai_handler.get_usage_stats()
+
             embed = discord.Embed(
-                title="❌ API Test Failed",
-                description=f"Error: {str(e)}",
-                color=discord.Color.red(),
+                title="📊 AI Usage Statistics",
+                color=self.config.get_color("info"),
+                timestamp=datetime.utcnow(),
             )
+
+            embed.add_field(
+                name="💬 Chat Messages",
+                value=f"{stats.get('chat_messages', 0):,}",
+                inline=True,
+            )
+            embed.add_field(
+                name="🎨 Images Generated",
+                value=f"{stats.get('images_generated', 0):,}",
+                inline=True,
+            )
+            embed.add_field(
+                name="🔊 TTS Requests",
+                value=f"{stats.get('tts_requests', 0):,}",
+                inline=True,
+            )
+
             await interaction.followup.send(embed=embed)
+
+        except Exception as e:
+            self.logger.error(f"Error getting AI stats: {e}")
+            await interaction.followup.send("🚫 Error retrieving AI statistics.")
 
 
 async def setup(bot):
-    try:
-        await bot.add_cog(AICommands(bot))
-        print("✅ AI Commands cog loaded successfully")
-    except Exception as e:
-        print(f"❌ Error loading AI Commands cog: {e}")
+    await bot.add_cog(AICommands(bot))
