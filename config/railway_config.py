@@ -28,8 +28,15 @@ class RailwayConfig:
             "discord_client_secret": self._get_env("DISCORD_CLIENT_SECRET"),
             # AI Configuration - Support Multiple Providers
             "ai_provider": self._get_env(
-                "AI_PROVIDER", "github"
-            ),  # github, openai, azure
+                "AI_PROVIDER", "openrouter"
+            ),  # openrouter, github, openai, azure
+            # OpenRouter Configuration
+            "openrouter_api_key": self._get_env(
+                "OPENROUTER_API_KEY"
+            ),  # Primary AI provider
+            "openrouter_model": self._get_env("OPENROUTER_MODEL", "deepseek/deepseek-r1:nitro"),
+            "openrouter_max_tokens": int(self._get_env("OPENROUTER_MAX_TOKENS", "2000")),
+            "openrouter_temperature": float(self._get_env("OPENROUTER_TEMPERATURE", "0.7")),
             # GitHub Models Configuration
             "github_token": self._get_env(
                 "GITHUB_TOKEN"
@@ -122,6 +129,16 @@ class RailwayConfig:
             "temperature": self.get("openai_temperature"),
         }
 
+    def get_openrouter_config(self) -> Dict[str, Any]:
+        """Get OpenRouter-specific configuration"""
+        return {
+            "api_key": self.get("openrouter_api_key"),
+            "model": self.get("openrouter_model"),
+            "max_tokens": self.get("openrouter_max_tokens"),
+            "temperature": self.get("openrouter_temperature"),
+            "endpoint": "https://openrouter.ai/api/v1/chat/completions",
+        }
+
     def get_github_config(self) -> Dict[str, Any]:
         """Get GitHub Models configuration"""
         return {
@@ -139,13 +156,15 @@ class RailwayConfig:
     def get_active_ai_config(self) -> Dict[str, Any]:
         """Get configuration for the active AI provider"""
         provider = self.get_ai_provider()
-        if provider == "github":
+        if provider == "openrouter":
+            return self.get_openrouter_config()
+        elif provider == "github":
             return self.get_github_config()
         elif provider == "openai":
             return self.get_openai_config()
         else:
-            # Default to GitHub
-            return self.get_github_config()
+            # Default to OpenRouter
+            return self.get_openrouter_config()
 
     def get_nasa_config(self) -> Dict[str, str]:
         """Get NASA API configuration"""

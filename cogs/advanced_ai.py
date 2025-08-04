@@ -15,14 +15,22 @@ from pathlib import Path
 import re
 import os
 
-# Import GitHub Models client
+# Import AI clients
 try:
-    from ai.github_models_client import (
-        GitHubModelsClient,
+    from ai.openrouter_client import (
+        OpenRouterClient,
         get_ai_client,
         initialize_ai_client,
     )
+    OPENROUTER_AVAILABLE = True
+except ImportError:
+    OPENROUTER_AVAILABLE = False
 
+# Import GitHub Models client (fallback)
+try:
+    from ai.github_models_client import (
+        GitHubModelsClient,
+    )
     GITHUB_MODELS_AVAILABLE = True
 except ImportError:
     GITHUB_MODELS_AVAILABLE = False
@@ -97,27 +105,52 @@ class AdvancedAICog(commands.Cog):
                 provider = railway_config.get_ai_provider()
                 self.logger.info(f"Using AI provider: {provider}")
 
-                if provider == "github":
+                if provider == "openrouter":
+                    openrouter_config = railway_config.get_openrouter_config()
+                    openai_config = railway_config.get_openai_config()
+
+                    # Initialize OpenRouter client with fallback
+                    if OPENROUTER_AVAILABLE:
+                        self.ai_client = OpenRouterClient(
+                            openrouter_api_key=openrouter_config.get("api_key"),
+                            openai_api_key=openai_config.get("api_key"),
+                        )
+
+                        # Store configuration for commands
+                        self.ai_model = openrouter_config.get(
+                            "model", "deepseek/deepseek-r1:nitro"
+                        )
+                        self.max_tokens = openrouter_config.get("max_tokens", 2000)
+                        self.temperature = openrouter_config.get("temperature", 0.7)
+
+                        self.logger.info("OpenRouter AI client configured from Railway environment")
+                    else:
+                        self.logger.error("OpenRouter provider requested but not available")
+
+                elif provider == "github":
                     github_config = railway_config.get_github_config()
                     openai_config = railway_config.get_openai_config()
 
                     # Initialize GitHub Models client with fallback
-                    self.ai_client = GitHubModelsClient(
-                        github_token=github_config.get("token"),
-                        openai_api_key=openai_config.get("api_key"),
-                    )
+                    if GITHUB_MODELS_AVAILABLE:
+                        self.ai_client = GitHubModelsClient(
+                            github_token=github_config.get("token"),
+                            openai_api_key=openai_config.get("api_key"),
+                        )
 
-                    # Store configuration for commands
-                    self.ai_model = github_config.get(
-                        "model", "deepseek/DeepSeek-R1-0528"
-                    )
-                    self.max_tokens = github_config.get("max_tokens", 2000)
-                    self.temperature = github_config.get("temperature", 0.7)
+                        # Store configuration for commands
+                        self.ai_model = github_config.get(
+                            "model", "deepseek/DeepSeek-R1-0528"
+                        )
+                        self.max_tokens = github_config.get("max_tokens", 2000)
+                        self.temperature = github_config.get("temperature", 0.7)
 
-                    self.logger.info("AI client configured from Railway environment")
+                        self.logger.info("GitHub Models client configured from Railway environment")
+                    else:
+                        self.logger.error("GitHub Models provider requested but not available")
 
                 else:
-                    # OpenAI provider
+                    # OpenAI provider (fallback)
                     openai_config = railway_config.get_openai_config()
                     if OPENAI_AVAILABLE:
                         openai.api_key = openai_config.get("api_key")
@@ -130,10 +163,19 @@ class AdvancedAICog(commands.Cog):
 
             else:
                 # Local environment fallback
+                openrouter_api_key = os.getenv("OPENROUTER_API_KEY")
                 github_token = os.getenv("GITHUB_TOKEN")
                 openai_api_key = os.getenv("OPENAI_API_KEY")
 
-                if github_token and GITHUB_MODELS_AVAILABLE:
+                if openrouter_api_key and OPENROUTER_AVAILABLE:
+                    self.ai_client = OpenRouterClient(openrouter_api_key, openai_api_key)
+                    self.ai_model = os.getenv(
+                        "OPENROUTER_MODEL", "deepseek/deepseek-r1:nitro"
+                    )
+                    self.max_tokens = int(os.getenv("OPENROUTER_MAX_TOKENS", "2000"))
+                    self.temperature = float(os.getenv("OPENROUTER_TEMPERATURE", "0.7"))
+                    self.logger.info("OpenRouter configured from local environment")
+                elif github_token and GITHUB_MODELS_AVAILABLE:
                     self.ai_client = GitHubModelsClient(github_token, openai_api_key)
                     self.ai_model = os.getenv(
                         "GITHUB_MODEL", "deepseek/DeepSeek-R1-0528"
