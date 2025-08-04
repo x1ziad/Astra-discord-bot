@@ -338,7 +338,7 @@ class Quiz(commands.GroupCog, name="quiz"):
             title=f"🚀 Quiz Time! ({selected_category.title()})",
             description=f"{question_data['question']}\n\n{options_text}",
             color=self.config.get_color("primary"),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(datetime.UTC),
         )
         
         embed.add_field(
@@ -479,7 +479,7 @@ class Quiz(commands.GroupCog, name="quiz"):
         embed = discord.Embed(
             title=f"📊 {target_user.display_name}'s Quiz Stats",
             color=self.config.get_color("primary"),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(datetime.UTC),
         )
         
         embed.set_thumbnail(url=target_user.display_avatar.url)

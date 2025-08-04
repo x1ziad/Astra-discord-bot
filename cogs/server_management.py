@@ -53,7 +53,7 @@ class ServerManagement(commands.GroupCog, name="server"):
                 title="🔧 Server Optimization Analysis",
                 description=f"Analysis for **{guild.name}**",
                 color=self.config.get_color("info"),
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(datetime.UTC),
             )
 
             # Server Stats
@@ -270,7 +270,7 @@ class ServerManagement(commands.GroupCog, name="server"):
             embed = discord.Embed(
                 title=f"🎭 Server Roles ({i//chunk_size + 1}/{(len(roles_data)-1)//chunk_size + 1})",
                 color=self.config.get_color("primary"),
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(datetime.UTC),
             )
 
             for role_data in chunk:
@@ -410,7 +410,7 @@ class ServerManagement(commands.GroupCog, name="server"):
                     title="🔄 Users Moved",
                     description=f"Moved {len(moved_users)} user(s) to {channel.mention}",
                     color=self.config.get_color("success"),
-                    timestamp=datetime.utcnow(),
+                    timestamp=datetime.now(datetime.UTC),
                 )
 
                 if len(moved_users) <= 20:

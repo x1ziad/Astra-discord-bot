@@ -85,7 +85,7 @@ class BotStats:
 
     def get_uptime(self) -> timedelta:
         """Get current uptime"""
-        return datetime.utcnow() - self.start_time
+        return datetime.now(datetime.UTC) - self.start_time
 
     def update_system_stats(self):
         """Update system resource usage"""
@@ -145,7 +145,7 @@ class AstraBot(commands.Bot):
 
         # Bot state and tracking
         self.stats = BotStats()
-        self.start_time = datetime.utcnow()  # Add missing start_time attribute
+        self.start_time = datetime.now(datetime.UTC)  # Add missing start_time attribute
         self.session: Optional[aiohttp.ClientSession] = None
         self._tasks: Set[asyncio.Task] = set()
         self._bot_ready = False
@@ -323,7 +323,7 @@ class AstraBot(commands.Bot):
             for extension in group:
                 try:
                     await self.load_extension(extension)
-                    self.loaded_extensions[extension] = datetime.utcnow()
+                    self.loaded_extensions[extension] = datetime.now(datetime.UTC)
                     self.extension_health[extension] = True
                     total_loaded += 1
                     self.logger.info(f"✅ Loaded {extension}")
@@ -501,11 +501,11 @@ class AstraBot(commands.Bot):
         """Sync application commands with enhanced error handling"""
         try:
             self.logger.info("🔄 Syncing application commands...")
-            start_time = datetime.utcnow()
+            start_time = datetime.now(datetime.UTC)
 
             synced = await self.tree.sync()
 
-            sync_time = (datetime.utcnow() - start_time).total_seconds()
+            sync_time = (datetime.now(datetime.UTC) - start_time).total_seconds()
             self.logger.info(f"✅ Synced {len(synced)} commands in {sync_time:.2f}s")
 
             # Log command details
@@ -567,7 +567,7 @@ class AstraBot(commands.Bot):
         config = {
             "guild_id": guild.id,
             "guild_name": guild.name,
-            "joined_at": datetime.utcnow().isoformat(),
+            "joined_at": datetime.now(datetime.UTC).isoformat(),
             "prefix": self.config.prefix,
             "features": self.config.features.copy(),
             "ai_personality": "default",
@@ -597,14 +597,14 @@ class AstraBot(commands.Bot):
         )
 
         current_stats["count"] += 1
-        current_stats["last_used"] = datetime.utcnow().isoformat()
+        current_stats["last_used"] = datetime.now(datetime.UTC).isoformat()
 
         await db.set("command_stats", stats_key, current_stats)
 
     async def _log_error_to_database(self, interaction: discord.Interaction, error):
         """Log error details to database for analysis"""
         error_data = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(datetime.UTC).isoformat(),
             "command": interaction.command.name if interaction.command else "unknown",
             "user_id": interaction.user.id,
             "guild_id": interaction.guild_id,
@@ -614,7 +614,7 @@ class AstraBot(commands.Bot):
         }
 
         error_key = (
-            f"{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{interaction.user.id}"
+            f"{datetime.now(datetime.UTC).strftime('%Y%m%d_%H%M%S')}_{interaction.user.id}"
         )
         await db.set("error_logs", error_key, error_data)
 
@@ -656,7 +656,7 @@ class AstraBot(commands.Bot):
             # Log performance metrics efficiently
             await db.set(
                 "performance_metrics",
-                datetime.utcnow().strftime("%Y%m%d_%H"),
+                datetime.now(datetime.UTC).strftime("%Y%m%d_%H"),
                 {
                     "memory_usage_mb": self.stats.memory_usage_mb,
                     "memory_percent": memory_percent,
@@ -665,7 +665,7 @@ class AstraBot(commands.Bot):
                     "guild_count": len(self.guilds),
                     "user_count": len(self.users),
                     "uptime_hours": (
-                        datetime.utcnow() - self.start_time
+                        datetime.now(datetime.UTC) - self.start_time
                     ).total_seconds()
                     / 3600,
                 },
@@ -691,7 +691,7 @@ class AstraBot(commands.Bot):
         try:
             # Batch update statistics
             stats_data = {
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(datetime.UTC).isoformat(),
                 "uptime_seconds": self.stats.uptime_seconds,
                 "commands_executed": self.stats.commands_executed,
                 "messages_processed": self.stats.messages_processed,
@@ -706,7 +706,7 @@ class AstraBot(commands.Bot):
             }
 
             # Use hourly keys to reduce database entries
-            key = datetime.utcnow().strftime("%Y%m%d_%H")
+            key = datetime.now(datetime.UTC).strftime("%Y%m%d_%H")
             await db.set("performance_metrics", key, stats_data)
 
         except Exception as e:
@@ -721,7 +721,7 @@ class AstraBot(commands.Bot):
                 await db.cleanup_old_data(days=30)
 
             # Clean old performance metrics (keep last 7 days)
-            cutoff_date = datetime.utcnow() - timedelta(days=7)
+            cutoff_date = datetime.now(datetime.UTC) - timedelta(days=7)
             old_keys = []
 
             # This would be implemented with proper key iteration
@@ -863,12 +863,12 @@ class AstraBot(commands.Bot):
                 "database_optimized": True,
                 "garbage_collected": collected,
                 "extensions_healthy": f"{healthy_count}/{total_count}",
-                "optimization_time": datetime.utcnow().isoformat(),
+                "optimization_time": datetime.now(datetime.UTC).isoformat(),
             }
 
             await db.set(
                 "performance_metrics",
-                f"optimization_{datetime.utcnow().strftime('%Y%m%d')}",
+                f"optimization_{datetime.now(datetime.UTC).strftime('%Y%m%d')}",
                 optimization_data,
             )
             self.logger.info(
@@ -915,7 +915,7 @@ class AstraBot(commands.Bot):
         try:
             await self.reload_extension(extension_name)
             self.extension_health[extension_name] = True
-            self.loaded_extensions[extension_name] = datetime.utcnow()
+            self.loaded_extensions[extension_name] = datetime.now(datetime.UTC)
             if extension_name in self.failed_extensions:
                 del self.failed_extensions[extension_name]
 
@@ -1002,9 +1002,9 @@ def register_global_commands(bot: AstraBot):
     @bot.tree.command(name="ping", description="Check bot latency and system status")
     async def ping_command(interaction: discord.Interaction):
         """Enhanced ping command with system information"""
-        start_time = datetime.utcnow()
+        start_time = datetime.now(datetime.UTC)
         await interaction.response.defer()
-        response_time = (datetime.utcnow() - start_time).total_seconds() * 1000
+        response_time = (datetime.now(datetime.UTC) - start_time).total_seconds() * 1000
 
         # Determine color based on latency
         latency_ms = bot.latency * 1000
@@ -1022,7 +1022,7 @@ def register_global_commands(bot: AstraBot):
             title="🏓 Pong!",
             description=f"Connection Status: {status}",
             color=color,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(datetime.UTC),
         )
 
         embed.add_field(
@@ -1067,7 +1067,7 @@ def register_global_commands(bot: AstraBot):
         embed = discord.Embed(
             title="🔍 Bot Status Report",
             color=config_manager.get_color("info"),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(datetime.UTC),
         )
 
         # System stats

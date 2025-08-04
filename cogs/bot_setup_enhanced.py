@@ -121,10 +121,10 @@ class BotSetup(commands.Cog):
     def _update_invitation_stats(self):
         """Update invitation statistics"""
         self.stats["total_invitations"] += 1
-        self.stats["last_invitation"] = datetime.utcnow().isoformat()
+        self.stats["last_invitation"] = datetime.now(datetime.UTC).isoformat()
         
         # Daily stats
-        today = datetime.utcnow().strftime("%Y-%m-%d")
+        today = datetime.now(datetime.UTC).strftime("%Y-%m-%d")
         if today not in self.stats["daily_stats"]:
             self.stats["daily_stats"][today] = 0
         self.stats["daily_stats"][today] += 1
@@ -395,7 +395,7 @@ class BotSetup(commands.Cog):
             title="🔍 Bot Diagnostics Report",
             description=f"Comprehensive health check for {interaction.guild.name}",
             color=config_manager.get_color("info"),
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(datetime.UTC)
         )
         
         embed.add_field(

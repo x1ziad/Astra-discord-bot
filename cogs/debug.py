@@ -50,7 +50,7 @@ class Debug(commands.Cog):
             title="🔍 Astra Diagnostic Report",
             description="Current status of bot features and configuration:",
             color=self.config.get_color("primary"),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(datetime.UTC),
         )
 
         # Feature flags section

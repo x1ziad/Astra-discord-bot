@@ -77,7 +77,7 @@ class Analytics(commands.GroupCog, name="analytics"):
         if message.author.bot or not message.guild:
             return
 
-        today = datetime.utcnow().strftime("%Y-%m-%d")
+        today = datetime.now(datetime.UTC).strftime("%Y-%m-%d")
         guild_id = str(message.guild.id)
         user_id = str(message.author.id)
         channel_id = str(message.channel.id)
@@ -168,7 +168,7 @@ class Analytics(commands.GroupCog, name="analytics"):
         if member.bot or not member.guild:
             return
 
-        today = datetime.utcnow().strftime("%Y-%m-%d")
+        today = datetime.now(datetime.UTC).strftime("%Y-%m-%d")
         guild_id = str(member.guild.id)
         user_id = str(member.id)
 
@@ -199,12 +199,12 @@ class Analytics(commands.GroupCog, name="analytics"):
         # This is a simplified voice tracking - in production you'd want more sophisticated time tracking
         if after.channel and not before.channel:
             # User joined voice
-            user_data["voice_join_time"] = datetime.utcnow().timestamp()
+            user_data["voice_join_time"] = datetime.now(datetime.UTC).timestamp()
         elif before.channel and not after.channel:
             # User left voice
             if "voice_join_time" in user_data:
                 session_time = (
-                    datetime.utcnow().timestamp() - user_data["voice_join_time"]
+                    datetime.now(datetime.UTC).timestamp() - user_data["voice_join_time"]
                 )
                 user_data["voice_time"][today] += (
                     session_time / 60
@@ -227,7 +227,7 @@ class Analytics(commands.GroupCog, name="analytics"):
 
         try:
             guild_id = str(interaction.guild.id)
-            end_date = datetime.utcnow()
+            end_date = datetime.now(datetime.UTC)
             start_date = end_date - timedelta(days=days)
 
             stats = self._calculate_overview_stats(guild_id, start_date, end_date)
@@ -236,7 +236,7 @@ class Analytics(commands.GroupCog, name="analytics"):
                 title="📊 Server Analytics Overview",
                 description=f"Analytics for the last {days} days",
                 color=self.config.get_color("primary"),
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(datetime.UTC),
             )
 
             # Activity Stats
@@ -403,7 +403,7 @@ class Analytics(commands.GroupCog, name="analytics"):
             guild_id = str(interaction.guild.id)
 
             # Calculate date range
-            end_date = datetime.utcnow()
+            end_date = datetime.now(datetime.UTC)
             if timeframe.lower() == "day":
                 start_date = end_date - timedelta(days=1)
             elif timeframe.lower() == "week":
@@ -421,7 +421,7 @@ class Analytics(commands.GroupCog, name="analytics"):
                 title=f"🏆 User Activity Leaderboard - {timeframe.title()}",
                 description=f"Most active users in the last {timeframe}",
                 color=self.config.get_color("primary"),
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(datetime.UTC),
             )
 
             if leaderboard_data:
@@ -513,7 +513,7 @@ class Analytics(commands.GroupCog, name="analytics"):
     async def generate_daily_report(self):
         """Generate daily analytics reports"""
         try:
-            yesterday = (datetime.utcnow() - timedelta(days=1)).strftime("%Y-%m-%d")
+            yesterday = (datetime.now(datetime.UTC) - timedelta(days=1)).strftime("%Y-%m-%d")
 
             # Generate reports for all guilds
             for guild in self.bot.guilds:
@@ -541,7 +541,7 @@ class Analytics(commands.GroupCog, name="analytics"):
                 "total_messages": day_data["total_messages"],
                 "active_users": len(day_data["active_users"]),
                 "active_channels": len(day_data["active_channels"]),
-                "generated_at": datetime.utcnow().isoformat(),
+                "generated_at": datetime.now(datetime.UTC).isoformat(),
             }
 
             # Save report

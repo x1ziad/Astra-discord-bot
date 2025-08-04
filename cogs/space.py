@@ -586,7 +586,7 @@ class Space(commands.GroupCog, name="space"):
                             title="🛰️ International Space Station",
                             description="Real-time tracking information for the ISS",
                             color=self.config.get_color("space"),
-                            timestamp=datetime.utcnow(),
+                            timestamp=datetime.now(datetime.UTC),
                         )
 
                         # Location information
@@ -674,7 +674,7 @@ class Space(commands.GroupCog, name="space"):
             title="🚀 Upcoming Space Launches",
             description="Information about upcoming space missions",
             color=self.config.get_color("space"),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(datetime.UTC),
         )
 
         # Launch tracking services

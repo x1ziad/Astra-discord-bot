@@ -38,7 +38,7 @@ class DiagnosticsCog(commands.Cog):
             ai_config = get_active_ai_config()
 
             embed = discord.Embed(
-                title="🤖 AI System Status", color=0x00D4FF, timestamp=datetime.utcnow()
+                title="🤖 AI System Status", color=0x00D4FF, timestamp=datetime.now(datetime.UTC)
             )
 
             # Provider Information
@@ -138,7 +138,7 @@ class DiagnosticsCog(commands.Cog):
             embed = discord.Embed(
                 title="🧪 AI Diagnostic Test",
                 color=0x43B581,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(datetime.UTC),
             )
 
             embed.add_field(
@@ -172,7 +172,7 @@ class DiagnosticsCog(commands.Cog):
                 title="❌ AI Test Failed",
                 description=f"Error: {str(e)}",
                 color=0xF04747,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(datetime.UTC),
             )
             await interaction.followup.send(embed=embed)
 
@@ -209,7 +209,7 @@ This is a diagnostic test to verify DeepSeek R1 functionality."""
             embed = discord.Embed(
                 title="🔬 DeepSeek R1 Verification Test",
                 color=0x7C3AED,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(datetime.UTC),
             )
 
             embed.add_field(
@@ -253,7 +253,7 @@ This is a diagnostic test to verify DeepSeek R1 functionality."""
                 title="❌ DeepSeek Verification Failed",
                 description=f"Error: {str(e)}",
                 color=0xF04747,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(datetime.UTC),
             )
             await interaction.followup.send(embed=embed)
 

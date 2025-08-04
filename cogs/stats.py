@@ -33,13 +33,13 @@ class Stats(commands.GroupCog, name="stats"):
     @app_commands.checks.cooldown(1, 5)
     async def ping_command(self, interaction: discord.Interaction):
         """Check bot latency and response time"""
-        start_time = datetime.utcnow()
+        start_time = datetime.now(datetime.UTC)
 
         # Initial response
         await interaction.response.defer()
 
         # Calculate response time
-        end_time = datetime.utcnow()
+        end_time = datetime.now(datetime.UTC)
         response_time = (end_time - start_time).total_seconds() * 1000
 
         # Create embed with results
@@ -88,7 +88,7 @@ class Stats(commands.GroupCog, name="stats"):
     @app_commands.checks.cooldown(1, 10)
     async def uptime_command(self, interaction: discord.Interaction):
         """Show bot uptime and system information"""
-        current_time = datetime.utcnow()
+        current_time = datetime.now(datetime.UTC)
         uptime_duration = current_time - self.bot.start_time
 
         # Format uptime
@@ -180,7 +180,7 @@ class Stats(commands.GroupCog, name="stats"):
         embed = discord.Embed(
             title=f"📊 {guild.name} Statistics",
             color=self.config.get_color("primary"),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(datetime.UTC),
         )
 
         # Set server icon as thumbnail
@@ -287,7 +287,7 @@ class Stats(commands.GroupCog, name="stats"):
         embed = discord.Embed(
             title="👥 Member Count Breakdown",
             color=self.config.get_color("success"),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(datetime.UTC),
         )
 
         embed.add_field(
@@ -350,7 +350,7 @@ class Stats(commands.GroupCog, name="stats"):
                     if role.color != discord.Color.default()
                     else self.config.get_color("primary")
                 ),
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(datetime.UTC),
             )
 
             embed.add_field(
@@ -402,7 +402,7 @@ class Stats(commands.GroupCog, name="stats"):
                 title="🎭 Server Roles Overview",
                 description=f"This server has **{len(roles)}** roles",
                 color=self.config.get_color("primary"),
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(datetime.UTC),
             )
 
             # Group roles by type
@@ -483,7 +483,7 @@ class Stats(commands.GroupCog, name="stats"):
                 "A Discord bot for space exploration and Stellaris roleplay",
             ),
             color=self.config.get_color("primary"),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(datetime.UTC),
         )
 
         # Set bot avatar as thumbnail
@@ -491,7 +491,7 @@ class Stats(commands.GroupCog, name="stats"):
             embed.set_thumbnail(url=self.bot.user.avatar.url)
 
         # Uptime
-        uptime_duration = datetime.utcnow() - self.bot.start_time
+        uptime_duration = datetime.now(datetime.UTC) - self.bot.start_time
         days = uptime_duration.days
         hours, remainder = divmod(uptime_duration.seconds, 3600)
         minutes, seconds = divmod(remainder, 60)
@@ -555,7 +555,7 @@ class Stats(commands.GroupCog, name="stats"):
 
             # Bot metrics
             latency = round(self.bot.latency * 1000, 2)
-            uptime = datetime.utcnow() - self.bot.start_time
+            uptime = datetime.now(datetime.UTC) - self.bot.start_time
 
             # Format uptime
             days = uptime.days
@@ -588,7 +588,7 @@ class Stats(commands.GroupCog, name="stats"):
                 title="🏥 Bot Health Check",
                 description=f"**Status:** {status}",
                 color=color,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(datetime.UTC),
             )
 
             # System info
@@ -627,7 +627,7 @@ class Stats(commands.GroupCog, name="stats"):
             # Last restart
             embed.add_field(
                 name="🔄 Last Restart",
-                value=f"<t:{int((datetime.utcnow() - uptime).timestamp())}:R>",
+                value=f"<t:{int((datetime.now(datetime.UTC) - uptime).timestamp())}:R>",
                 inline=True,
             )
 
@@ -643,7 +643,7 @@ class Stats(commands.GroupCog, name="stats"):
                 title="🏥 Bot Health Check",
                 description="❌ Unable to retrieve health metrics",
                 color=0xF04747,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(datetime.UTC),
             )
             embed.add_field(name="Error", value=str(e), inline=False)
             await interaction.followup.send(embed=embed)
