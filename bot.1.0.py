@@ -990,56 +990,6 @@ class AstraBot(commands.Bot):
 def register_global_commands(bot: AstraBot):
     """Register global utility commands"""
 
-    @bot.tree.command(
-        name="help", description="Show available commands and bot information"
-    )
-    async def help_command(interaction: discord.Interaction):
-        """Enhanced help command with categorized commands"""
-        embed = discord.Embed(
-            title=f"🚀 {bot.config.name} Help",
-            description=f"Version {bot.config.version} - Your cosmic companion",
-            color=config_manager.get_color("primary"),
-            timestamp=datetime.utcnow(),
-        )
-
-        # Get all commands organized by cogs
-        cog_commands = {}
-        for command in bot.tree.get_commands():
-            if isinstance(command, app_commands.Group):
-                cog_name = command.name.title()
-                if cog_name not in cog_commands:
-                    cog_commands[cog_name] = []
-                for subcommand in command.commands:
-                    cog_commands[cog_name].append(f"/{command.name} {subcommand.name}")
-            else:
-                cog_name = "Utility"
-                if cog_name not in cog_commands:
-                    cog_commands[cog_name] = []
-                cog_commands[cog_name].append(f"/{command.name}")
-
-        # Add fields for each category
-        for cog_name, commands in cog_commands.items():
-            if commands:
-                embed.add_field(
-                    name=f"📁 {cog_name}",
-                    value="\n".join(commands[:10])
-                    + ("..." if len(commands) > 10 else ""),
-                    inline=True,
-                )
-
-        # Add bot stats
-        embed.add_field(
-            name="📊 Bot Stats",
-            value=f"Guilds: {len(bot.guilds)}\nUptime: {bot.stats.get_uptime()}",
-            inline=True,
-        )
-
-        embed.set_footer(
-            text=f"Use /command to see specific options | {len(bot.tree.get_commands())} total commands"
-        )
-
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-
     @bot.tree.command(name="ping", description="Check bot latency and system status")
     async def ping_command(interaction: discord.Interaction):
         """Enhanced ping command with system information"""

@@ -755,7 +755,7 @@ class AdvancedAICog(commands.Cog):
             )
 
     @app_commands.command(
-        name="ai_personality", description="Customize AI personality for this server"
+        name="ai_customize", description="Customize AI personality for this server"
     )
     @app_commands.describe(
         trait="Personality trait to adjust", level="Level from 1-10 (10 being maximum)"
@@ -803,8 +803,8 @@ class AdvancedAICog(commands.Cog):
 
                 embed.add_field(
                     name="🔧 Usage",
-                    value="Use `/ai_personality <trait> <level>` to adjust specific traits\n"
-                    "Example: `/ai_personality enthusiastic 9`",
+                    value="Use `/ai_customize <trait> <level>` to adjust specific traits\n"
+                    "Example: `/ai_customize enthusiastic 9`",
                     inline=False,
                 )
 
