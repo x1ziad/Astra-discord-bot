@@ -22,14 +22,14 @@ class RailwayConfig:
         return {
             # Core Discord Configuration
             "discord_token": self._get_env("DISCORD_TOKEN", required=True),
-            "discord_client_id": self._get_env("DISCORD_CLIENT_ID", required=True),
+            "discord_client_id": self._get_env("DISCORD_CLIENT_ID"),  # Optional - not always needed
             "discord_client_secret": self._get_env("DISCORD_CLIENT_SECRET"),
             # AI Configuration - Support Multiple Providers
             "ai_provider": self._get_env(
                 "AI_PROVIDER", "github"
             ),  # github, openai, azure
             # GitHub Models Configuration
-            "github_token": self._get_env("GITHUB_TOKEN", required=True),
+            "github_token": self._get_env("GITHUB_TOKEN"),  # Optional - fallback to OpenAI if not set
             "github_model": self._get_env("GITHUB_MODEL", "deepseek/DeepSeek-R1-0528"),
             "github_max_tokens": int(self._get_env("GITHUB_MAX_TOKENS", "2000")),
             "github_temperature": float(self._get_env("GITHUB_TEMPERATURE", "0.7")),
@@ -81,7 +81,7 @@ class RailwayConfig:
 
     def _validate_required_vars(self):
         """Validate that all required environment variables are present"""
-        required_vars = ["discord_token", "discord_client_id", "github_token"]
+        required_vars = ["discord_token"]  # Only DISCORD_TOKEN is absolutely required
 
         missing_vars = []
         for var in required_vars:
