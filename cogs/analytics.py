@@ -204,7 +204,8 @@ class Analytics(commands.GroupCog, name="analytics"):
             # User left voice
             if "voice_join_time" in user_data:
                 session_time = (
-                    datetime.now(timezone.utc).timestamp() - user_data["voice_join_time"]
+                    datetime.now(timezone.utc).timestamp()
+                    - user_data["voice_join_time"]
                 )
                 user_data["voice_time"][today] += (
                     session_time / 60
@@ -513,7 +514,9 @@ class Analytics(commands.GroupCog, name="analytics"):
     async def generate_daily_report(self):
         """Generate daily analytics reports"""
         try:
-            yesterday = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%d")
+            yesterday = (datetime.now(timezone.utc) - timedelta(days=1)).strftime(
+                "%Y-%m-%d"
+            )
 
             # Generate reports for all guilds
             for guild in self.bot.guilds:

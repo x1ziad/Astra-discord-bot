@@ -613,9 +613,7 @@ class AstraBot(commands.Bot):
             "traceback": traceback.format_exc(),
         }
 
-        error_key = (
-            f"{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_{interaction.user.id}"
-        )
+        error_key = f"{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_{interaction.user.id}"
         await db.set("error_logs", error_key, error_data)
 
     def create_task(self, coro, *, name: str = None) -> asyncio.Task:
