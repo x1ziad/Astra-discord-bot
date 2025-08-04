@@ -6,11 +6,18 @@ Integrates with GitHub Models API using DeepSeek R1 and other models
 import os
 import logging
 import asyncio
-import aiohttp
-import json
 from typing import Dict, List, Optional, Any, Union
 from dataclasses import dataclass
 from datetime import datetime, timezone
+
+# GitHub Models / Azure AI Inference
+try:
+    from azure.ai.inference import ChatCompletionsClient
+    from azure.ai.inference.models import SystemMessage, UserMessage, AssistantMessage
+    from azure.core.credentials import AzureKeyCredential
+    GITHUB_MODELS_AVAILABLE = True
+except ImportError:
+    GITHUB_MODELS_AVAILABLE = False
 
 # Fallback to OpenAI
 try:
@@ -46,7 +53,7 @@ class GitHubModelsClient:
 
         # GitHub Models configuration
         self.github_token = github_token or os.getenv("GITHUB_TOKEN")
-        self.github_endpoint = "https://models.github.ai/inference/chat/completions"
+        self.github_endpoint = "https://models.github.ai/inference"
         self.github_model = "deepseek/DeepSeek-R1-0528"
 
         # OpenAI fallback configuration
@@ -54,7 +61,7 @@ class GitHubModelsClient:
         self.openai_model = "gpt-4"
 
         # Client instances
-        self.github_available = bool(self.github_token)
+        self.github_client = None
         self.openai_client = None
 
         # Initialize clients
@@ -63,7 +70,7 @@ class GitHubModelsClient:
         # Configuration
         self.max_tokens = 2000
         self.temperature = 0.7
-        self.default_provider = "github" if self.github_available else "openai"
+        self.default_provider = "github" if self.github_client else "openai"
 
         self.logger.info(
             f"GitHub Models client initialized (default: {self.default_provider})"
@@ -71,13 +78,19 @@ class GitHubModelsClient:
 
     def _initialize_clients(self):
         """Initialize AI client connections"""
-        # Check GitHub Models availability
-        if self.github_token:
-            self.github_available = True
-            self.logger.info("✅ GitHub Models client configured")
+        # Try GitHub Models first with Azure AI Inference
+        if GITHUB_MODELS_AVAILABLE and self.github_token:
+            try:
+                self.github_client = ChatCompletionsClient(
+                    endpoint=self.github_endpoint,
+                    credential=AzureKeyCredential(self.github_token),
+                )
+                self.logger.info("✅ GitHub Models client initialized with Azure AI Inference")
+            except Exception as e:
+                self.logger.error(f"Failed to initialize GitHub Models client: {e}")
+                self.github_client = None
         else:
-            self.github_available = False
-            self.logger.warning("❌ GitHub token not available")
+            self.logger.warning("❌ GitHub Models not available (missing library or token)")
 
         # Initialize OpenAI fallback
         if OPENAI_AVAILABLE and self.openai_api_key:
@@ -92,11 +105,11 @@ class GitHubModelsClient:
 
     def is_available(self) -> bool:
         """Check if any AI client is available"""
-        return self.github_available or self.openai_client is not None
+        return self.github_client is not None or self.openai_client is not None
 
     def get_available_provider(self) -> Optional[str]:
         """Get the first available provider"""
-        if self.github_available:
+        if self.github_client:
             return "github"
         elif self.openai_client:
             return "openai"
@@ -128,7 +141,7 @@ class GitHubModelsClient:
             provider = self.default_provider
 
         # Use GitHub Models if available and requested
-        if provider == "github" and self.github_available:
+        if provider == "github" and self.github_client:
             return await self._github_chat_completion(
                 messages, model, max_tokens, temperature
             )
@@ -140,7 +153,7 @@ class GitHubModelsClient:
             )
 
         # Auto-fallback
-        elif self.github_available:
+        elif self.github_client:
             return await self._github_chat_completion(
                 messages, model, max_tokens, temperature
             )
@@ -159,8 +172,21 @@ class GitHubModelsClient:
         max_tokens: int = None,
         temperature: float = None,
     ) -> AIResponse:
-        """GitHub Models chat completion using REST API"""
+        """GitHub Models chat completion using Azure AI Inference"""
         try:
+            # Convert messages to Azure AI Inference format
+            ai_messages = []
+            for msg in messages:
+                role = msg.get("role", "user")
+                content = msg.get("content", "")
+
+                if role == "system":
+                    ai_messages.append(SystemMessage(content))
+                elif role == "user":
+                    ai_messages.append(UserMessage(content))
+                elif role == "assistant":
+                    ai_messages.append(AssistantMessage(content))
+
             # Use provided parameters or defaults
             model = model or self.github_model
             max_tokens = max_tokens or self.max_tokens
@@ -170,46 +196,32 @@ class GitHubModelsClient:
                 f"GitHub Models request: {model}, tokens: {max_tokens}, temp: {temperature}"
             )
 
-            # Prepare request payload
-            payload = {
-                "messages": messages,
-                "model": model,
-                "max_tokens": max_tokens,
-                "temperature": temperature
-            }
+            # Make API call using Azure AI Inference (this is synchronous, so we'll wrap in asyncio)
+            def sync_completion():
+                return self.github_client.complete(
+                    messages=ai_messages,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                    model=model,
+                )
 
-            headers = {
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {self.github_token}"
-            }
+            # Run the synchronous call in a thread pool
+            response = await asyncio.get_event_loop().run_in_executor(None, sync_completion)
 
-            # Make HTTP request to GitHub Models API
-            async with aiohttp.ClientSession() as session:
-                async with session.post(
-                    self.github_endpoint,
-                    json=payload,
-                    headers=headers,
-                    timeout=aiohttp.ClientTimeout(total=30)
-                ) as response:
-                    if response.status == 200:
-                        data = await response.json()
-                        
-                        # Extract response content
-                        content = data["choices"][0]["message"]["content"]
-                        finish_reason = data["choices"][0].get("finish_reason")
-                        tokens_used = data.get("usage", {}).get("total_tokens")
+            # Extract response content
+            content = response.choices[0].message.content
+            finish_reason = getattr(response.choices[0], "finish_reason", None)
 
-                        return AIResponse(
-                            content=content,
-                            model=model,
-                            provider="github",
-                            tokens_used=tokens_used,
-                            finish_reason=finish_reason,
-                        )
-                    else:
-                        error_text = await response.text()
-                        self.logger.error(f"GitHub Models API error {response.status}: {error_text}")
-                        raise RuntimeError(f"GitHub Models API error {response.status}: {error_text}")
+            # Calculate tokens used (if available)
+            tokens_used = getattr(response, "usage", {}).get("total_tokens", None) if hasattr(response, "usage") else None
+
+            return AIResponse(
+                content=content,
+                model=model,
+                provider="github",
+                tokens_used=tokens_used,
+                finish_reason=finish_reason,
+            )
 
         except Exception as e:
             self.logger.error(f"GitHub Models API error: {e}")
@@ -279,7 +291,7 @@ class GitHubModelsClient:
     def get_status(self) -> Dict[str, Any]:
         """Get client status information"""
         return {
-            "github_models": "Available" if self.github_available else "Not configured",
+            "github_models": "Available" if self.github_client else "Not configured",
             "openai": "Available" if self.openai_client else "Not configured",
             "default_provider": self.default_provider,
             "github_model": self.github_model,
