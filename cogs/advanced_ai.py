@@ -69,10 +69,23 @@ class AdvancedAICog(commands.Cog):
         self.conversation_history: Dict[int, List[Dict[str, str]]] = {}
         self.max_history_length = 10
 
+        # User conversations tracking (for compatibility)
+        self.user_conversations = self.conversation_history
+
         # Performance tracking
         self.api_calls_made = 0
         self.successful_responses = 0
         self.start_time = datetime.now()
+        self.response_times: List[float] = []
+
+        # Engagement tracking
+        self.engagement_patterns: Dict[int, List[datetime]] = {}
+        self.user_join_timestamps: Dict[int, datetime] = {}
+
+        # Start background tasks
+        self.proactive_engagement_task.start()
+        self.activity_monitor_task.start()
+        self.conversation_cleanup_task.start()
 
     def _setup_ai_client(self):
         """Setup AI client with Railway configuration"""
@@ -254,7 +267,12 @@ class AdvancedAICog(commands.Cog):
 
             # Make API call
             self.api_calls_made += 1
-            response = await openai.ChatCompletion.acreate(
+            
+            # Use modern OpenAI client
+            from openai import AsyncOpenAI
+            client = AsyncOpenAI(api_key=openai.api_key)
+            
+            response = await client.chat.completions.create(
                 model=self.ai_model,
                 messages=messages,
                 max_tokens=self.max_tokens,
@@ -343,11 +361,16 @@ class AdvancedAICog(commands.Cog):
             enhanced_prompt = await self._enhance_image_prompt(prompt)
 
             # Generate image using DALL-E
-            response = await openai.Image.acreate(
-                prompt=enhanced_prompt, n=1, size="1024x1024"
+            from openai import AsyncOpenAI
+            client = AsyncOpenAI(api_key=openai.api_key)
+            
+            response = await client.images.generate(
+                prompt=enhanced_prompt, 
+                n=1, 
+                size="1024x1024"
             )
 
-            image_url = response["data"][0]["url"]
+            image_url = response.data[0].url
 
             embed = discord.Embed(
                 title="🎨 AI Generated Image",
@@ -594,7 +617,13 @@ class AdvancedAICog(commands.Cog):
         self.activity_monitor_task.start()
         self.conversation_cleanup_task.start()
 
-        self.logger.info("Advanced AI Cog initialized with conversation engine")
+        self.logger.info("Advanced AI Cog initialized with GitHub Models integration")
+
+    def cog_unload(self):
+        """Clean up when cog is unloaded"""
+        self.proactive_engagement_task.cancel()
+        self.activity_monitor_task.cancel()
+        self.conversation_cleanup_task.cancel()
 
     def cog_unload(self):
         """Clean up when cog is unloaded"""
@@ -1076,12 +1105,25 @@ class AdvancedAICog(commands.Cog):
             if not trait:
                 # Display current AI configuration
                 personality = {
+                    "name": "Astra AI",
                     "model": getattr(self, "ai_model", "Unknown"),
                     "temperature": getattr(self, "temperature", 0.7),
                     "max_tokens": getattr(self, "max_tokens", 1500),
                     "provider": (
                         "GitHub Models" if hasattr(self, "ai_client") else "OpenAI"
                     ),
+                    "core_traits": [
+                        "Friendly and approachable",
+                        "Knowledgeable about space and science",
+                        "Helpful and supportive",
+                        "Curious and engaging"
+                    ],
+                    "communication_style": {
+                        "tone": "Friendly",
+                        "humor": "Light and appropriate",
+                        "formality": "Casual but informative"
+                    },
+                    "interests": ["Space Exploration", "AI Technology", "Stellaris", "Science", "Discovery"]
                 }
 
                 embed = discord.Embed(
@@ -1109,6 +1151,15 @@ class AdvancedAICog(commands.Cog):
                 embed.add_field(
                     name="🎯 Interests",
                     value=", ".join(personality["interests"][:5]),
+                    inline=True,
+                )
+
+                embed.add_field(
+                    name="⚙️ Configuration",
+                    value=f"**Model:** {personality['model']}\n"
+                    f"**Provider:** {personality['provider']}\n"
+                    f"**Temperature:** {personality['temperature']}\n"
+                    f"**Max Tokens:** {personality['max_tokens']}",
                     inline=True,
                 )
 
@@ -1180,9 +1231,44 @@ class AdvancedAICog(commands.Cog):
                 )
                 return
 
-            mood = context.emotional_context.current_mood
-            confidence = context.emotional_context.mood_confidence
-            engagement = context.engagement_score
+            # Simple mood analysis based on conversation history
+            recent_messages = context[-5:] if context else []
+            
+            # Basic mood assessment
+            positive_keywords = ["great", "awesome", "amazing", "wonderful", "fantastic", "happy", "excited"]
+            negative_keywords = ["sad", "frustrated", "confused", "annoyed", "upset", "disappointed"]
+            question_keywords = ["?", "how", "what", "why", "when", "where"]
+            
+            mood_score = 0.5  # Neutral starting point
+            engagement_score = min(len(context) / 10.0, 1.0)  # Based on conversation length
+            
+            if recent_messages:
+                for msg in recent_messages:
+                    content = msg.get("content", "").lower()
+                    if any(word in content for word in positive_keywords):
+                        mood_score += 0.1
+                    if any(word in content for word in negative_keywords):
+                        mood_score -= 0.1
+                    if any(word in content for word in question_keywords):
+                        engagement_score += 0.05
+            
+            # Clamp values
+            mood_score = max(0.0, min(1.0, mood_score))
+            engagement_score = max(0.0, min(1.0, engagement_score))
+            
+            # Determine mood
+            if mood_score > 0.7:
+                mood = "happy"
+            elif mood_score > 0.6:
+                mood = "content"
+            elif mood_score > 0.4:
+                mood = "neutral"
+            elif mood_score > 0.3:
+                mood = "concerned"
+            else:
+                mood = "frustrated"
+            
+            confidence = min(0.8, len(recent_messages) / 10.0 + 0.3)
 
             # Create mood analysis embed
             embed = discord.Embed(
@@ -1207,27 +1293,26 @@ class AdvancedAICog(commands.Cog):
                 "angry": "😡",
             }
 
-            mood_emoji = mood_emojis.get(mood.value, "😐")
+            mood_emoji = mood_emojis.get(mood, "😐")
 
             embed.add_field(
                 name="Current Mood",
-                value=f"{mood_emoji} **{mood.value.title()}**\nConfidence: {confidence:.1%}",
+                value=f"{mood_emoji} **{mood.title()}**\nConfidence: {confidence:.1%}",
                 inline=True,
             )
 
             embed.add_field(
                 name="Engagement Level",
-                value=f"📊 {engagement:.1%}\n{'🔥' if engagement > 0.7 else '✨' if engagement > 0.4 else '💫'}",
+                value=f"📊 {engagement_score:.1%}\n{'🔥' if engagement_score > 0.7 else '✨' if engagement_score > 0.4 else '💫'}",
                 inline=True,
             )
 
             # Conversation insights
-            if context.active_topics:
-                embed.add_field(
-                    name="Active Topics",
-                    value=", ".join(list(context.active_topics)[:5]),
-                    inline=False,
-                )
+            embed.add_field(
+                name="📈 Conversation Stats",
+                value=f"Messages: {len(context)}\nRecent Activity: {len(recent_messages)} messages",
+                inline=False,
+            )
 
             await interaction.response.send_message(embed=embed)
 
@@ -1243,19 +1328,45 @@ class AdvancedAICog(commands.Cog):
     async def ai_topics(self, interaction: discord.Interaction):
         """Display trending conversation topics"""
         try:
-            # Simple topic analysis
-            popular_topics = [
-                "Space Exploration",
-                "AI Technology",
-                "Discord Bot Development",
-                "Stellaris Gaming"
-            ]
+            # Analyze actual conversation topics from user conversations
+            all_topics = []
             
+            # Extract topics from conversation history
+            for user_id, conversations in self.user_conversations.items():
+                for msg in conversations:
+                    content = msg.get("content", "").lower()
+                    
+                    # Simple topic detection based on keywords
+                    if any(word in content for word in ["space", "cosmos", "universe", "galaxy", "stellar"]):
+                        all_topics.append("Space Exploration")
+                    if any(word in content for word in ["ai", "artificial", "intelligence", "bot", "technology"]):
+                        all_topics.append("AI Technology")
+                    if any(word in content for word in ["stellaris", "empire", "species", "federation"]):
+                        all_topics.append("Stellaris Gaming")
+                    if any(word in content for word in ["science", "research", "discovery", "theory"]):
+                        all_topics.append("Science")
+                    if any(word in content for word in ["discord", "bot", "command", "development"]):
+                        all_topics.append("Discord Bot Development")
+            
+            # Count topic occurrences
+            from collections import Counter
+            topic_counts = Counter(all_topics)
+            popular_topics = topic_counts.most_common(10)
+            
+            # If no topics found, use defaults
+            if not popular_topics:
+                popular_topics = [
+                    ("Space Exploration", 0),
+                    ("AI Technology", 0),
+                    ("Discord Bot Development", 0),
+                    ("Stellaris Gaming", 0),
+                ]
+
             # Basic statistics
             analytics = {
-                'total_conversations': len(self.user_conversations),
-                'total_users': len(set(self.user_conversations.keys())),
-                'avg_response_time_ms': 500
+                "total_conversations": len(self.user_conversations),
+                "total_users": len(set(self.user_conversations.keys())),
+                "avg_response_time_ms": int(sum(self.response_times[-10:]) * 1000) if self.response_times else 500,
             }
 
             embed = discord.Embed(
@@ -1271,7 +1382,7 @@ class AdvancedAICog(commands.Cog):
                         "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else "📊"
                     )
                     topic_text.append(
-                        f"{emoji} **{topic.replace('_', ' ').title()}** ({count} mentions)"
+                        f"{emoji} **{topic}** ({count} mentions)"
                     )
 
                 embed.description = "\n".join(topic_text)
@@ -1417,6 +1528,7 @@ class AdvancedAICog(commands.Cog):
             # Generate proactive engagement message
             # Simple engagement messages
             import random
+
             messages = [
                 f"Hey {target_user.mention}! 🌌 I just learned about an amazing space discovery. Want to hear about it?",
                 f"Hi {target_user.mention}! 🎮 How are things going? I'd love to chat!",
@@ -1440,6 +1552,130 @@ class AdvancedAICog(commands.Cog):
             self.logger.error(f"Manual engage error: {e}")
             await interaction.response.send_message(
                 "Error triggering AI engagement.", ephemeral=True
+            )
+
+    @app_commands.command(name="ai_status", description="Check AI system status")
+    async def ai_status(self, interaction: discord.Interaction):
+        """Check AI system status and configuration"""
+        try:
+            embed = discord.Embed(
+                title="🤖 AI System Status",
+                color=discord.Color.green(),
+                timestamp=datetime.now(timezone.utc)
+            )
+            
+            # Check AI client status
+            if hasattr(self, 'ai_client') and self.ai_client:
+                if self.ai_client.is_available():
+                    status = self.ai_client.get_status()
+                    embed.add_field(
+                        name="✅ Primary AI Service",
+                        value=f"**GitHub Models**: {status['github_models']}\n"
+                              f"**OpenAI Fallback**: {status['openai']}\n"
+                              f"**Model**: {getattr(self, 'ai_model', 'Unknown')}",
+                        inline=False
+                    )
+                else:
+                    embed.add_field(
+                        name="❌ Primary AI Service",
+                        value="GitHub Models client not available",
+                        inline=False
+                    )
+            else:
+                embed.add_field(
+                    name="⚠️ AI Service", 
+                    value="No AI client configured",
+                    inline=False
+                )
+            
+            # Performance stats
+            embed.add_field(
+                name="📊 Performance",
+                value=f"API Calls: {self.api_calls_made}\n"
+                      f"Successful: {self.successful_responses}\n"
+                      f"Success Rate: {(self.successful_responses/max(self.api_calls_made, 1)*100):.1f}%",
+                inline=True
+            )
+            
+            # Active conversations
+            embed.add_field(
+                name="💬 Activity",
+                value=f"Active Conversations: {len(self.active_conversations)}\n"
+                      f"Total Users: {len(self.user_conversations)}\n"
+                      f"Tracked Channels: {len(self.channel_activity)}",
+                inline=True
+            )
+            
+            await interaction.response.send_message(embed=embed)
+            
+        except Exception as e:
+            self.logger.error(f"AI status error: {e}")
+            await interaction.response.send_message(
+                f"❌ Error checking AI status: {str(e)}", ephemeral=True
+            )
+
+    @app_commands.command(name="ai_test", description="Test AI response generation")
+    async def ai_test(self, interaction: discord.Interaction):
+        """Test AI response generation"""
+        try:
+            await interaction.response.defer()
+            
+            test_prompt = "Hello! Please introduce yourself and confirm you're working properly."
+            response = await self._generate_ai_response(test_prompt, interaction.user.id)
+            
+            embed = discord.Embed(
+                title="🧪 AI Test Results",
+                description=response,
+                color=discord.Color.blue(),
+                timestamp=datetime.now(timezone.utc)
+            )
+            
+            embed.add_field(
+                name="✅ Test Status",
+                value="AI response generation successful!",
+                inline=False
+            )
+            
+            await interaction.followup.send(embed=embed)
+            
+        except Exception as e:
+            self.logger.error(f"AI test error: {e}")
+            await interaction.followup.send(
+                f"❌ AI test failed: {str(e)}", ephemeral=True
+            )
+
+    @app_commands.command(name="deepseek_verify", description="Verify DeepSeek R1 model is working")
+    async def deepseek_verify(self, interaction: discord.Interaction):
+        """Verify DeepSeek R1 model functionality"""
+        try:
+            await interaction.response.defer()
+            
+            # Test prompt specifically for DeepSeek R1 to show its reasoning capabilities
+            test_prompt = "Please solve this step by step: If a train travels 120 miles in 2 hours, what is its average speed? Show your reasoning process."
+            
+            response = await self._generate_ai_response(test_prompt, interaction.user.id)
+            
+            embed = discord.Embed(
+                title="🔬 DeepSeek R1 Verification",
+                description=response,
+                color=discord.Color.purple(),
+                timestamp=datetime.now(timezone.utc)
+            )
+            
+            embed.add_field(
+                name="🎯 Model Information",
+                value=f"**Current Model**: {getattr(self, 'ai_model', 'Unknown')}\n"
+                      f"**Provider**: {'GitHub Models' if hasattr(self, 'ai_client') else 'OpenAI'}\n"
+                      f"**Temperature**: {getattr(self, 'temperature', 0.7)}",
+                inline=False
+            )
+            
+            await interaction.followup.send(embed=embed)
+            
+        except Exception as e:
+            self.logger.error(f"DeepSeek verification error: {e}")
+            await interaction.followup.send(
+                f"❌ DeepSeek verification failed: {str(e)}", ephemeral=True
             )
 
 
