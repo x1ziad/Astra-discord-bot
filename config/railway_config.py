@@ -26,17 +26,32 @@ class RailwayConfig:
                 "DISCORD_CLIENT_ID"
             ),  # Optional - not always needed
             "discord_client_secret": self._get_env("DISCORD_CLIENT_SECRET"),
-            # AI Configuration - Support Multiple Providers
+            # AI Configuration - Support Multiple Providers  
             "ai_provider": self._get_env(
-                "AI_PROVIDER", "openrouter"
-            ),  # openrouter, github, openai, azure
-            # OpenRouter Configuration
+                "AI_PROVIDER", "universal"
+            ),  # universal, openrouter, github, openai, azure
+            
+            # Universal AI Configuration (Primary - works with any OpenAI-compatible API)
+            "ai_api_key": self._get_env("AI_API_KEY"),  # Primary universal API key
+            "ai_base_url": self._get_env("AI_BASE_URL", "https://openrouter.ai/api/v1"), 
+            "ai_model": self._get_env("AI_MODEL", "deepseek/deepseek-r1:nitro"),
+            "ai_max_tokens": int(self._get_env("AI_MAX_TOKENS", "2000")),
+            "ai_temperature": float(self._get_env("AI_TEMPERATURE", "0.7")),
+            "ai_provider_name": self._get_env("AI_PROVIDER_NAME", "universal"),
+            
+            # Legacy OpenRouter Configuration (for backward compatibility)
             "openrouter_api_key": self._get_env(
                 "OPENROUTER_API_KEY"
-            ),  # Primary AI provider
-            "openrouter_model": self._get_env("OPENROUTER_MODEL", "deepseek/deepseek-r1:nitro"),
-            "openrouter_max_tokens": int(self._get_env("OPENROUTER_MAX_TOKENS", "2000")),
-            "openrouter_temperature": float(self._get_env("OPENROUTER_TEMPERATURE", "0.7")),
+            ),  # Fallback to universal
+            "openrouter_model": self._get_env(
+                "OPENROUTER_MODEL", "deepseek/deepseek-r1:nitro"
+            ),
+            "openrouter_max_tokens": int(
+                self._get_env("OPENROUTER_MAX_TOKENS", "2000")
+            ),
+            "openrouter_temperature": float(
+                self._get_env("OPENROUTER_TEMPERATURE", "0.7")
+            ),
             # GitHub Models Configuration
             "github_token": self._get_env(
                 "GITHUB_TOKEN"
@@ -139,6 +154,20 @@ class RailwayConfig:
             "endpoint": "https://openrouter.ai/api/v1/chat/completions",
         }
 
+    def get_universal_ai_config(self) -> Dict[str, Any]:
+        """Get Universal AI configuration (works with any OpenAI-compatible API)"""
+        # Use AI_API_KEY or fallback to OPENROUTER_API_KEY for backward compatibility
+        api_key = self.get("ai_api_key") or self.get("openrouter_api_key")
+        
+        return {
+            "api_key": api_key,
+            "base_url": self.get("ai_base_url"),
+            "model": self.get("ai_model"),
+            "max_tokens": self.get("ai_max_tokens"),
+            "temperature": self.get("ai_temperature"),
+            "provider_name": self.get("ai_provider_name"),
+        }
+
     def get_github_config(self) -> Dict[str, Any]:
         """Get GitHub Models configuration"""
         return {
@@ -151,20 +180,22 @@ class RailwayConfig:
 
     def get_ai_provider(self) -> str:
         """Get the active AI provider"""
-        return self.get("ai_provider", "github")
+        return self.get("ai_provider", "universal")
 
     def get_active_ai_config(self) -> Dict[str, Any]:
         """Get configuration for the active AI provider"""
         provider = self.get_ai_provider()
-        if provider == "openrouter":
+        if provider == "universal":
+            return self.get_universal_ai_config()
+        elif provider == "openrouter":
             return self.get_openrouter_config()
         elif provider == "github":
             return self.get_github_config()
         elif provider == "openai":
             return self.get_openai_config()
         else:
-            # Default to OpenRouter
-            return self.get_openrouter_config()
+            # Default to universal
+            return self.get_universal_ai_config()
 
     def get_nasa_config(self) -> Dict[str, str]:
         """Get NASA API configuration"""
