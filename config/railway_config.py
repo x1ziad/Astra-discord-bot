@@ -26,19 +26,17 @@ class RailwayConfig:
                 "DISCORD_CLIENT_ID"
             ),  # Optional - not always needed
             "discord_client_secret": self._get_env("DISCORD_CLIENT_SECRET"),
-            # AI Configuration - Support Multiple Providers  
+            # AI Configuration - Support Multiple Providers
             "ai_provider": self._get_env(
                 "AI_PROVIDER", "universal"
             ),  # universal, openrouter, github, openai, azure
-            
             # Universal AI Configuration (Primary - works with any OpenAI-compatible API)
             "ai_api_key": self._get_env("AI_API_KEY"),  # Primary universal API key
-            "ai_base_url": self._get_env("AI_BASE_URL", "https://openrouter.ai/api/v1"), 
+            "ai_base_url": self._get_env("AI_BASE_URL", "https://openrouter.ai/api/v1"),
             "ai_model": self._get_env("AI_MODEL", "deepseek/deepseek-r1:nitro"),
             "ai_max_tokens": int(self._get_env("AI_MAX_TOKENS", "2000")),
             "ai_temperature": float(self._get_env("AI_TEMPERATURE", "0.7")),
             "ai_provider_name": self._get_env("AI_PROVIDER_NAME", "universal"),
-            
             # Legacy OpenRouter Configuration (for backward compatibility)
             "openrouter_api_key": self._get_env(
                 "OPENROUTER_API_KEY"
@@ -158,7 +156,7 @@ class RailwayConfig:
         """Get Universal AI configuration (works with any OpenAI-compatible API)"""
         # Use AI_API_KEY or fallback to OPENROUTER_API_KEY for backward compatibility
         api_key = self.get("ai_api_key") or self.get("openrouter_api_key")
-        
+
         return {
             "api_key": api_key,
             "base_url": self.get("ai_base_url"),
