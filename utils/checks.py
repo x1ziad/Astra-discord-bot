@@ -29,7 +29,7 @@ def feature_enabled(feature_path: str):
     """
 
     async def predicate(interaction) -> bool:
-        if not config_manager.is_feature_enabled(feature_path):
+        if not config_manager.feature_enabled(feature_path):
             # Check if the user is an admin and in development mode
             if (
                 config_manager.get("development.debug_mode", False)

@@ -183,8 +183,20 @@ class ConfigManager:
         return discord.Color(color_value)
 
     def feature_enabled(self, feature_name: str) -> bool:
-        """Check if a feature is enabled"""
-        return self._config.features.get(feature_name, False)
+        """Check if a feature is enabled. Supports nested features with dot notation."""
+        # First try exact match
+        if feature_name in self._config.features:
+            return self._config.features.get(feature_name, False)
+
+        # For nested features like "space_content.iss_tracking",
+        # check if parent feature "space_content" is enabled
+        if "." in feature_name:
+            parent_feature = feature_name.split(".")[0]
+            if parent_feature in self._config.features:
+                return self._config.features.get(parent_feature, False)
+
+        # Default to False if feature not found
+        return False
 
     def get_bot_config(self) -> BotConfig:
         """Get the complete bot configuration"""

@@ -19,6 +19,9 @@
     "analytics": true,
     "server_management": true,
     "auto_moderation": false,
-    "music": false
+    "music": false,
+    "space_content": true,
+    "space_content.iss_tracking": true,
+    "space_content.launch_notifications": true
   }
 }
