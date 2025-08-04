@@ -320,11 +320,27 @@ class Space(commands.GroupCog, name="space"):
             # Use high-resolution image if available
             image_url = data.get("hdurl", data.get("url"))
             self.logger.info(f"Setting image URL: {image_url}")
-            embed.set_image(url=image_url)
+            
+            # Ensure we have a valid image URL
+            if image_url:
+                embed.set_image(url=image_url)
+                # Also add a thumbnail for better visibility
+                embed.set_thumbnail(url="https://www.nasa.gov/sites/default/files/thumbnails/image/nasa-logo-web-rgb.png")
+            else:
+                self.logger.warning("No image URL available in APOD data")
+                embed.add_field(name="⚠️ Image", value="Image URL not available", inline=False)
 
             # Add credit information
             if "copyright" in data:
                 embed.add_field(name="📸 Credit", value=data["copyright"], inline=True)
+            
+            # Add direct image link as fallback
+            if image_url:
+                embed.add_field(
+                    name="🔗 Direct Image Link", 
+                    value=f"[View Full Resolution Image]({image_url})", 
+                    inline=False
+                )
         elif data.get("media_type") == "video":
             self.logger.info(f"Media is video: {data.get('url')}")
             embed.add_field(
@@ -332,10 +348,22 @@ class Space(commands.GroupCog, name="space"):
                 value=f"[Watch Here]({data['url']})",
                 inline=False,
             )
+            # Add video thumbnail if available
+            embed.set_thumbnail(url="https://www.nasa.gov/sites/default/files/thumbnails/image/nasa-logo-web-rgb.png")
 
         try:
             await interaction.followup.send(embed=embed)
-            self.logger.info("APOD embed sent successfully")
+            self.logger.info(f"APOD embed sent successfully with image: {data.get('media_type') == 'image'}")
+        except discord.HTTPException as e:
+            self.logger.error(f"Discord HTTP error sending APOD embed: {e}")
+            # Try sending without embed as fallback
+            message = f"🌌 **{data.get('title', 'NASA APOD')}**\n\n"
+            if data.get('media_type') == 'image':
+                image_url = data.get("hdurl", data.get("url"))
+                if image_url:
+                    message += f"🖼️ Image: {image_url}\n\n"
+            message += f"{data.get('explanation', '')[:1000]}..."
+            await interaction.followup.send(message)
         except Exception as e:
             self.logger.error(f"Error sending APOD embed: {e}")
             await interaction.followup.send(
