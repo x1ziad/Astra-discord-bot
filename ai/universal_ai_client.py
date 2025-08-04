@@ -137,8 +137,12 @@ class UniversalAIClient:
                 self.logger.error("❌ CRITICAL: No API key available!")
                 self.logger.error("🔧 Check Railway environment variables:")
                 self.logger.error("   - AI_API_KEY should be set")
-                self.logger.error("   - Value: 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")
-                raise RuntimeError("No API key configured - check Railway environment variables")
+                self.logger.error(
+                    "   - Value: YOUR_OPENROUTER_API_KEY_HERE"
+                )
+                raise RuntimeError(
+                    "No API key configured - check Railway environment variables"
+                )
 
             # Prepare request headers
             headers = {
@@ -198,15 +202,19 @@ class UniversalAIClient:
                     else:
                         error_text = await response.text()
                         self.logger.error(f"API Error {response.status}: {error_text}")
-                        
+
                         # Special handling for authentication errors
                         if response.status == 401:
                             self.logger.error("🚨 AUTHENTICATION ERROR!")
                             self.logger.error("🔧 Check Railway environment variables:")
-                            self.logger.error(f"   - Current API key: {'*' * 10}{self.api_key[-10:] if self.api_key else 'None'}")
+                            self.logger.error(
+                                f"   - Current API key: {'*' * 10}{self.api_key[-10:] if self.api_key else 'None'}"
+                            )
                             self.logger.error("   - Expected format: sk-or-v1-...")
-                            self.logger.error("   - Set AI_API_KEY=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")
-                        
+                            self.logger.error(
+                                "   - Set AI_API_KEY=YOUR_OPENROUTER_API_KEY_HERE"
+                            )
+
                         raise RuntimeError(
                             f"AI API error {response.status}: {error_text}"
                         )
@@ -301,7 +309,7 @@ if __name__ == "__main__":
 
         # Test with the provided API key
         test_key = (
-            "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"
+            "YOUR_OPENROUTER_API_KEY_HERE"
         )
 
         # Test different possible endpoints

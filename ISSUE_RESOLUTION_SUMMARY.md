@@ -7,7 +7,7 @@ The Discord bot was showing this error message when AI commands were used:
 ```
 
 This happened even though the Railway environment variables were correctly set:
-- `AI_API_KEY` = "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"
+- `AI_API_KEY` = "YOUR_OPENROUTER_API_KEY_HERE"
 - `AI_BASE_URL` = "https://openrouter.ai/api/v1"  
 - `AI_MODEL` = "deepseek/deepseek-r1:nitro"
 - `AI_PROVIDER` = "universal"
@@ -101,7 +101,7 @@ return await self._generate_universal_response(prompt, user_id)
 The Discord bot is now **100% ready for deployment** with:
 
 1. **Environment Variables Set on Railway:**
-   - `AI_API_KEY` = "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"
+   - `AI_API_KEY` = "YOUR_OPENROUTER_API_KEY_HERE"
    - `AI_BASE_URL` = "https://openrouter.ai/api/v1"
    - `AI_MODEL` = "deepseek/deepseek-r1:nitro"  
    - `AI_PROVIDER` = "universal"

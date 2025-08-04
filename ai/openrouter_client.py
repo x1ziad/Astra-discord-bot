@@ -363,7 +363,7 @@ if __name__ == "__main__":
 
         # Test with the provided API key
         test_key = (
-            "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"
+            "YOUR_OPENROUTER_API_KEY_HERE"
         )
         client = OpenRouterClient(openrouter_api_key=test_key)
         print(f"Status: {client.get_status()}")
