@@ -49,6 +49,38 @@ try:
     from config.railway_config import get_railway_config, setup_railway_logging
 
     RAILWAY_ENABLED = True
+    
+    # Diagnostic: Check Railway environment variables on startup
+    def log_railway_env_diagnostic():
+        """Log Railway environment variables for debugging"""
+        env_vars = {
+            'AI_API_KEY': os.getenv('AI_API_KEY'),
+            'AI_BASE_URL': os.getenv('AI_BASE_URL'),
+            'AI_MODEL': os.getenv('AI_MODEL'),
+            'AI_PROVIDER': os.getenv('AI_PROVIDER'),
+        }
+        
+        logger = logging.getLogger("astra.railway_diagnostic")
+        logger.info("🔍 Railway Environment Diagnostic:")
+        for key, value in env_vars.items():
+            if value:
+                if 'KEY' in key:
+                    masked_value = f"{'*' * 10}{value[-10:]}" if len(value) > 10 else "***SET***"
+                    logger.info(f"   ✅ {key}: {masked_value}")
+                else:
+                    logger.info(f"   ✅ {key}: {value}")
+            else:
+                logger.error(f"   ❌ {key}: NOT SET!")
+    
+    log_railway_env_diagnostic()
+    
+    # Import and run AI credentials debug
+    try:
+        from debug_ai_credentials import debug_ai_credentials
+        debug_ai_credentials()
+    except Exception as e:
+        logging.getLogger("astra.startup").error(f"AI debug failed: {e}")
+    
 except ImportError:
     RAILWAY_ENABLED = False
 
