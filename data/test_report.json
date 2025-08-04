@@ -1,137 +1,20 @@
 {
-  "timestamp": "2025-08-02T21:16:13.027780",
-  "execution_time": 5.7362048625946045,
-  "memory_usage": {
-    "start": 39.796875,
-    "current": 225.53125,
-    "peak": 240.0625,
-    "delta": 185.734375
-  },
-  "performance_metrics": {
-    "\ud83d\udd27 System & Dependencies": 2.4368577003479004,
-    "\u2699\ufe0f Configuration System": 0.0060918331146240234,
-    "\ud83d\uddc3\ufe0f Database Operations": 0.008543968200683594,
-    "\ud83d\ude80 Space Features": 0.02630305290222168,
-    "\ud83e\udd16 AI Conversation Engine": 0.4819779396057129,
-    "\ud83d\udcca Performance Metrics": 1.0115678310394287,
-    "\ud83d\udd17 API Connectivity": 1.739786148071289,
-    "\ud83d\udcbe Memory & Resources": 0.010275840759277344,
-    "\ud83c\udfd7\ufe0f Bot Architecture": 0.011404037475585938,
-    "\ud83c\udfaf Integration Tests": 0.00292205810546875
-  },
+  "test_date": "2025-08-04T15:40:55.057783",
   "test_results": {
-    "dependencies": {
-      "required": {
-        "discord.py": "\u2705 Available",
-        "aiohttp": "\u2705 Available",
-        "sqlite3": "\u2705 Available",
-        "json": "\u2705 Available",
-        "pathlib": "\u2705 Available",
-        "datetime": "\u2705 Available",
-        "asyncio": "\u2705 Available",
-        "logging": "\u2705 Available",
-        "os": "\u2705 Available",
-        "sys": "\u2705 Available",
-        "typing": "\u2705 Available",
-        "psutil": "\u2705 Available"
-      },
-      "optional": {
-        "openai": "\u2705 Available",
-        "anthropic": "\u2705 Available",
-        "sklearn": "\u2705 Available",
-        "numpy": "\u2705 Available",
-        "joblib": "\u2705 Available",
-        "python-dotenv": "\u2705 Available"
-      },
-      "environment": {
-        "DISCORD_TOKEN": null,
-        "NASA_API_KEY": null,
-        "OPENAI_API_KEY": null,
-        "ANTHROPIC_API_KEY": null,
-        "NOTION_TOKEN": null,
-        "NOTION_DATABASE_ID": null
-      }
-    },
-    "configuration": {
-      "status": "success",
-      "sections": 5
-    },
-    "database": {
-      "status": "success",
-      "table_creation_time": 0.002568960189819336,
-      "insert_performance": "525734 records/sec",
-      "query_time": 6.604194641113281e-05,
-      "db_size_kb": 88.0
-    },
-    "space_features": {
-      "status": "failed",
-      "error": "'Space' object has no attribute '_extract_message_topics'"
-    },
-    "ai_engine": {
-      "status": "failed",
-      "error": "'EnhancedAIConversationEngine' object has no attribute 'analyze_sentiment'"
-    },
-    "performance": {
-      "cpu_percent": 28.5,
-      "memory_percent": 75.0,
-      "disk_percent": 5.6,
-      "process_memory_mb": 223.296875,
-      "file_write_time": 0.0029120445251464844,
-      "file_read_time": 0.0015411376953125
-    },
-    "api_connectivity": {
-      "NASA APOD": {
-        "status": "success",
-        "response_time": 1.1207280158996582,
-        "http_status": 200,
-        "data_size": 1433
-      },
-      "ISS Location": {
-        "status": "success",
-        "response_time": 0.4147200584411621,
-        "http_status": 200,
-        "data_size": 113
-      },
-      "Astronauts in Space": {
-        "status": "success",
-        "response_time": 0.2032468318939209,
-        "http_status": 200,
-        "data_size": 587
-      }
-    },
-    "memory": {
-      "initial_mb": 39.796875,
-      "current_mb": 225.53125,
-      "peak_mb": 240.0625,
-      "delta_mb": 185.734375,
-      "allocation_time": 0.00988912582397461
-    },
-    "architecture": {
-      "status": "success",
-      "import_times": {
-        "config.enhanced_config": 1.0967254638671875e-05,
-        "ai.enhanced_conversation_engine": 5.0067901611328125e-06,
-        "cogs.space": 4.0531158447265625e-06,
-        "cogs.advanced_ai": 0.01121211051940918,
-        "utils.http_client": 6.198883056640625e-06,
-        "logger.logger": 4.0531158447265625e-06
-      },
-      "total_import_time": 0.011242389678955078
-    },
-    "integrations": {
-      "status": "success",
-      "config_ai_time": 0.0006248950958251953,
-      "space_config_time": 0.00021076202392578125,
-      "e2e_conversation_time": 0.0013790130615234375,
-      "analytics_time": 0.0006029605865478516,
-      "response_length": 104
-    }
+    "URL Format": "PASSED",
+    "OAuth2 Config": "PASSED",
+    "Permissions": "PASSED",
+    "Configuration": "PASSED",
+    "File Structure": "PASSED",
+    "Imports": "PASSED"
   },
-  "readiness_percentage": 50.0,
-  "summary": {
-    "total_tests": 10,
-    "successful_tests": 4,
-    "failed_tests": 6,
-    "success_rate": 40.0
-  }
+  "recommendations": [
+    "All tests passed! Your bot setup is ready."
+  ],
+  "next_steps": [
+    "1. Run 'python get_bot_info.py' to get your invitation URL",
+    "2. Configure Discord Developer Portal settings",
+    "3. Test bot invitation with the generated URL",
+    "4. Deploy your bot and test all features"
+  ]
 }
