@@ -1,0 +1,959 @@
+{
+  "timestamp": "2025-08-04T19:21:15.520334",
+  "duration": 11.455143928527832,
+  "system_info": {
+    "cpu_count": 10,
+    "memory_gb": 16.0,
+    "python_version": "3.12.8"
+  },
+  "summary": {
+    "total_tests": 24,
+    "passed_tests": 19,
+    "success_rate": 79.16666666666666,
+    "total_commands": 49,
+    "passed_commands": 37,
+    "command_success_rate": 75.51020408163265
+  },
+  "component_results": [
+    {
+      "name": "Configuration Management",
+      "category": "Core Component",
+      "passed": true,
+      "duration": 3.981590270996094e-05,
+      "error": null,
+      "details": {
+        "passed": true,
+        "score": "6/6",
+        "details": {
+          "basic_config": "\u2705 Loaded successfully",
+          "features": "\u2705 10 features loaded",
+          "colors": "\u2705 All 5 colors valid",
+          "guild_settings": "\u2705 Guild settings working",
+          "nested_features": "\u2705 Nested feature checking works",
+          "reload": "\u2705 Reload functionality: False"
+        }
+      }
+    },
+    {
+      "name": "Database Operations",
+      "category": "Core Component",
+      "passed": true,
+      "duration": 0.14555692672729492,
+      "error": null,
+      "details": {
+        "passed": true,
+        "score": "6/6",
+        "details": {
+          "crud_basic": "\u2705 Basic CRUD operations",
+          "batch_operations": "\u2705 Batch operations: 10 items",
+          "guild_integration": "\u2705 Guild settings integration",
+          "user_data": "\u2705 User data operations",
+          "analytics": "\u2705 Analytics logging",
+          "performance": "\u2705 Performance: 1498 writes/sec, 2062 reads/sec"
+        },
+        "performance_metrics": {
+          "write_ops_per_second": 1498.3563571931254,
+          "read_ops_per_second": 2062.035534841647
+        }
+      }
+    },
+    {
+      "name": "Permission System",
+      "category": "Core Component",
+      "passed": false,
+      "duration": 0.00014519691467285156,
+      "error": "Permission test failed: 'MockUser' object has no attribute 'roles'",
+      "details": {
+        "passed": false,
+        "error": "Permission test failed: 'MockUser' object has no attribute 'roles'",
+        "details": {
+          "owner_check": "\u2705 Owner permissions",
+          "admin_check": "\u2705 Administrator permissions"
+        }
+      }
+    },
+    {
+      "name": "HTTP Client",
+      "category": "Core Component",
+      "passed": true,
+      "duration": 8.935431957244873,
+      "error": null,
+      "details": {
+        "passed": true,
+        "score": "5/5",
+        "details": {
+          "session_creation": "\u2705 HTTP session created",
+          "basic_get": "\u2705 Basic GET request",
+          "parameterized_get": "\u2705 Parameterized GET request",
+          "concurrent_requests": "\u2705 Concurrent requests: 5/5 successful, 1.2 req/sec",
+          "error_handling": "\u2705 HTTP error handling"
+        }
+      }
+    },
+    {
+      "name": "Error Handling",
+      "category": "Core Component",
+      "passed": true,
+      "duration": 4.76837158203125e-06,
+      "error": null,
+      "details": {
+        "passed": true,
+        "details": {
+          "error_handling": "\u2705 Error handling system functional"
+        }
+      }
+    },
+    {
+      "name": "Cache Management",
+      "category": "Core Component",
+      "passed": true,
+      "duration": 2.1457672119140625e-06,
+      "error": null,
+      "details": {
+        "passed": true,
+        "details": {
+          "cache_system": "\u2705 Cache system functional"
+        }
+      }
+    },
+    {
+      "name": "Logging System",
+      "category": "Core Component",
+      "passed": true,
+      "duration": 1.9073486328125e-06,
+      "error": null,
+      "details": {
+        "passed": true,
+        "details": {
+          "logging": "\u2705 Logging system functional"
+        }
+      }
+    },
+    {
+      "name": "UI Components",
+      "category": "Core Component",
+      "passed": true,
+      "duration": 9.5367431640625e-07,
+      "error": null,
+      "details": {
+        "passed": true,
+        "details": {
+          "ui_components": "\u2705 UI components functional"
+        }
+      }
+    },
+    {
+      "name": "AI Systems",
+      "category": "Core Component",
+      "passed": true,
+      "duration": 3.814697265625e-06,
+      "error": null,
+      "details": {
+        "passed": true,
+        "details": {
+          "ai_systems": "\u2705 AI systems functional"
+        }
+      }
+    },
+    {
+      "name": "Utility Functions",
+      "category": "Core Component",
+      "passed": true,
+      "duration": 1.9073486328125e-06,
+      "error": null,
+      "details": {
+        "passed": true,
+        "details": {
+          "utilities": "\u2705 Utility functions functional"
+        }
+      }
+    },
+    {
+      "name": "Bot Invitation System",
+      "category": "Core Component",
+      "passed": true,
+      "duration": 2.4080276489257812e-05,
+      "error": null,
+      "details": {
+        "passed": true,
+        "details": {
+          "bot_invite": "\u2705 Bot invitation system functional"
+        }
+      }
+    },
+    {
+      "name": "Performance Monitoring",
+      "category": "Core Component",
+      "passed": true,
+      "duration": 2.1457672119140625e-06,
+      "error": null,
+      "details": {
+        "passed": true,
+        "details": {
+          "performance_monitoring": "\u2705 Performance monitoring functional"
+        }
+      }
+    },
+    {
+      "name": "Cog: help",
+      "category": "Cog Testing",
+      "passed": true,
+      "duration": 0.00030612945556640625,
+      "error": null,
+      "details": {
+        "passed": true,
+        "score": "3/3",
+        "details": {
+          "file_exists": "\u2705 Cog file exists",
+          "syntax_check": "\u2705 Basic syntax valid",
+          "command_help": "\u2705 Command found"
+        }
+      }
+    },
+    {
+      "name": "Cog: bot_setup",
+      "category": "Cog Testing",
+      "passed": true,
+      "duration": 0.0004711151123046875,
+      "error": null,
+      "details": {
+        "passed": true,
+        "score": "5/5",
+        "details": {
+          "file_exists": "\u2705 Cog file exists",
+          "syntax_check": "\u2705 Basic syntax valid",
+          "command_invite": "\u2705 Command found",
+          "command_setup": "\u2705 Command found",
+          "command_diagnostics": "\u2705 Command found"
+        }
+      }
+    },
+    {
+      "name": "Cog: space",
+      "category": "Cog Testing",
+      "passed": true,
+      "duration": 0.0005757808685302734,
+      "error": null,
+      "details": {
+        "passed": true,
+        "score": "8/8",
+        "details": {
+          "file_exists": "\u2705 Cog file exists",
+          "syntax_check": "\u2705 Basic syntax valid",
+          "command_apod": "\u2705 Command found",
+          "command_fact": "\u2705 Command found",
+          "command_meteor": "\u2705 Command found",
+          "command_iss": "\u2705 Command found",
+          "command_launch": "\u2705 Command found",
+          "command_planets": "\u2705 Command found"
+        }
+      }
+    },
+    {
+      "name": "Cog: notion",
+      "category": "Cog Testing",
+      "passed": true,
+      "duration": 0.00022983551025390625,
+      "error": null,
+      "details": {
+        "passed": true,
+        "score": "5/5",
+        "details": {
+          "file_exists": "\u2705 Cog file exists",
+          "syntax_check": "\u2705 Basic syntax valid",
+          "command_reminders": "\u2705 Command found",
+          "command_sync": "\u2705 Command found",
+          "command_status": "\u2705 Command found"
+        }
+      }
+    },
+    {
+      "name": "Cog: analytics",
+      "category": "Cog Testing",
+      "passed": true,
+      "duration": 0.00018215179443359375,
+      "error": null,
+      "details": {
+        "passed": true,
+        "score": "4/4",
+        "details": {
+          "file_exists": "\u2705 Cog file exists",
+          "syntax_check": "\u2705 Basic syntax valid",
+          "command_overview": "\u2705 Command found",
+          "command_leaderboard": "\u2705 Command found"
+        }
+      }
+    },
+    {
+      "name": "Cog: stats",
+      "category": "Cog Testing",
+      "passed": false,
+      "duration": 0.00027298927307128906,
+      "error": null,
+      "details": {
+        "passed": false,
+        "score": "6/8",
+        "details": {
+          "file_exists": "\u2705 Cog file exists",
+          "syntax_check": "\u2705 Basic syntax valid",
+          "command_ping": "\u2705 Command found",
+          "command_uptime": "\u2705 Command found",
+          "command_server": "\u2705 Command found",
+          "command_status": "\u274c Command missing",
+          "command_health": "\u274c Command missing",
+          "command_info": "\u2705 Command found"
+        }
+      }
+    },
+    {
+      "name": "Cog: admin",
+      "category": "Cog Testing",
+      "passed": false,
+      "duration": 0.0002739429473876953,
+      "error": null,
+      "details": {
+        "passed": false,
+        "score": "6/8",
+        "details": {
+          "file_exists": "\u2705 Cog file exists",
+          "syntax_check": "\u2705 Basic syntax valid",
+          "command_reload": "\u2705 Command found",
+          "command_logs": "\u274c Command missing",
+          "command_extensions": "\u274c Command missing",
+          "command_config": "\u2705 Command found",
+          "command_shutdown": "\u2705 Command found",
+          "command_purge": "\u2705 Command found"
+        }
+      }
+    },
+    {
+      "name": "Cog: server_management",
+      "category": "Cog Testing",
+      "passed": false,
+      "duration": 0.00020813941955566406,
+      "error": null,
+      "details": {
+        "passed": false,
+        "score": "3/5",
+        "details": {
+          "file_exists": "\u2705 Cog file exists",
+          "syntax_check": "\u2705 Basic syntax valid",
+          "command_channels": "\u274c Command missing",
+          "command_roles": "\u2705 Command found",
+          "command_settings": "\u274c Command missing"
+        }
+      }
+    },
+    {
+      "name": "Cog: roles",
+      "category": "Cog Testing",
+      "passed": true,
+      "duration": 0.0002779960632324219,
+      "error": null,
+      "details": {
+        "passed": true,
+        "score": "7/7",
+        "details": {
+          "file_exists": "\u2705 Cog file exists",
+          "syntax_check": "\u2705 Basic syntax valid",
+          "command_choose": "\u2705 Command found",
+          "command_lore": "\u2705 Command found",
+          "command_homeworld": "\u2705 Command found",
+          "command_count": "\u2705 Command found",
+          "command_add_role": "\u2705 Command found"
+        }
+      }
+    },
+    {
+      "name": "Cog: quiz",
+      "category": "Cog Testing",
+      "passed": true,
+      "duration": 0.00037932395935058594,
+      "error": null,
+      "details": {
+        "passed": true,
+        "score": "8/8",
+        "details": {
+          "file_exists": "\u2705 Cog file exists",
+          "syntax_check": "\u2705 Basic syntax valid",
+          "command_start": "\u2705 Command found",
+          "command_leaderboard": "\u2705 Command found",
+          "command_stats": "\u2705 Command found",
+          "command_categories": "\u2705 Command found",
+          "command_add": "\u2705 Command found",
+          "command_reset": "\u2705 Command found"
+        }
+      }
+    },
+    {
+      "name": "Cog: advanced_ai",
+      "category": "Cog Testing",
+      "passed": false,
+      "duration": 0.00045299530029296875,
+      "error": null,
+      "details": {
+        "passed": false,
+        "score": "2/9",
+        "details": {
+          "file_exists": "\u2705 Cog file exists",
+          "syntax_check": "\u2705 Basic syntax valid",
+          "command_chat": "\u274c Command missing",
+          "command_image": "\u274c Command missing",
+          "command_analyze": "\u274c Command missing",
+          "command_personality": "\u274c Command missing",
+          "command_voice": "\u274c Command missing",
+          "command_translate": "\u274c Command missing",
+          "command_summarize": "\u274c Command missing"
+        }
+      }
+    },
+    {
+      "name": "Cog: debug",
+      "category": "Cog Testing",
+      "passed": true,
+      "duration": 8.106231689453125e-05,
+      "error": null,
+      "details": {
+        "passed": true,
+        "score": "3/3",
+        "details": {
+          "file_exists": "\u2705 Cog file exists",
+          "syntax_check": "\u2705 Basic syntax valid",
+          "command_debug": "\u2705 Command found"
+        }
+      }
+    }
+  ],
+  "command_results": [
+    {
+      "command_name": "help",
+      "cog_name": "help",
+      "passed": false,
+      "error": null,
+      "functionality_verified": true,
+      "parameters_tested": [],
+      "edge_cases_tested": 0
+    },
+    {
+      "command_name": "invite",
+      "cog_name": "bot_setup",
+      "passed": true,
+      "error": null,
+      "functionality_verified": true,
+      "parameters_tested": [
+        "has_descriptions"
+      ],
+      "edge_cases_tested": 2
+    },
+    {
+      "command_name": "setup",
+      "cog_name": "bot_setup",
+      "passed": true,
+      "error": null,
+      "functionality_verified": true,
+      "parameters_tested": [
+        "has_descriptions"
+      ],
+      "edge_cases_tested": 2
+    },
+    {
+      "command_name": "diagnostics",
+      "cog_name": "bot_setup",
+      "passed": true,
+      "error": null,
+      "functionality_verified": true,
+      "parameters_tested": [
+        "has_descriptions"
+      ],
+      "edge_cases_tested": 2
+    },
+    {
+      "command_name": "apod",
+      "cog_name": "space",
+      "passed": true,
+      "error": null,
+      "functionality_verified": true,
+      "parameters_tested": [
+        "has_descriptions"
+      ],
+      "edge_cases_tested": 4
+    },
+    {
+      "command_name": "fact",
+      "cog_name": "space",
+      "passed": true,
+      "error": null,
+      "functionality_verified": true,
+      "parameters_tested": [
+        "has_descriptions"
+      ],
+      "edge_cases_tested": 4
+    },
+    {
+      "command_name": "meteor",
+      "cog_name": "space",
+      "passed": true,
+      "error": null,
+      "functionality_verified": true,
+      "parameters_tested": [
+        "has_descriptions"
+      ],
+      "edge_cases_tested": 4
+    },
+    {
+      "command_name": "iss",
+      "cog_name": "space",
+      "passed": true,
+      "error": null,
+      "functionality_verified": true,
+      "parameters_tested": [
+        "has_descriptions"
+      ],
+      "edge_cases_tested": 4
+    },
+    {
+      "command_name": "launch",
+      "cog_name": "space",
+      "passed": true,
+      "error": null,
+      "functionality_verified": true,
+      "parameters_tested": [
+        "has_descriptions"
+      ],
+      "edge_cases_tested": 4
+    },
+    {
+      "command_name": "planets",
+      "cog_name": "space",
+      "passed": true,
+      "error": null,
+      "functionality_verified": true,
+      "parameters_tested": [
+        "has_descriptions"
+      ],
+      "edge_cases_tested": 4
+    },
+    {
+      "command_name": "reminders",
+      "cog_name": "notion",
+      "passed": true,
+      "error": null,
+      "functionality_verified": true,
+      "parameters_tested": [],
+      "edge_cases_tested": 4
+    },
+    {
+      "command_name": "sync",
+      "cog_name": "notion",
+      "passed": true,
+      "error": null,
+      "functionality_verified": true,
+      "parameters_tested": [],
+      "edge_cases_tested": 4
+    },
+    {
+      "command_name": "status",
+      "cog_name": "notion",
+      "passed": true,
+      "error": null,
+      "functionality_verified": true,
+      "parameters_tested": [],
+      "edge_cases_tested": 4
+    },
+    {
+      "command_name": "overview",
+      "cog_name": "analytics",
+      "passed": true,
+      "error": null,
+      "functionality_verified": true,
+      "parameters_tested": [
+        "has_descriptions"
+      ],
+      "edge_cases_tested": 3
+    },
+    {
+      "command_name": "leaderboard",
+      "cog_name": "analytics",
+      "passed": true,
+      "error": null,
+      "functionality_verified": true,
+      "parameters_tested": [
+        "has_descriptions"
+      ],
+      "edge_cases_tested": 3
+    },
+    {
+      "command_name": "ping",
+      "cog_name": "stats",
+      "passed": true,
+      "error": null,
+      "functionality_verified": true,
+      "parameters_tested": [
+        "has_descriptions"
+      ],
+      "edge_cases_tested": 4
+    },
+    {
+      "command_name": "uptime",
+      "cog_name": "stats",
+      "passed": true,
+      "error": null,
+      "functionality_verified": true,
+      "parameters_tested": [
+        "has_descriptions"
+      ],
+      "edge_cases_tested": 4
+    },
+    {
+      "command_name": "server",
+      "cog_name": "stats",
+      "passed": true,
+      "error": null,
+      "functionality_verified": true,
+      "parameters_tested": [
+        "has_descriptions"
+      ],
+      "edge_cases_tested": 4
+    },
+    {
+      "command_name": "status",
+      "cog_name": "stats",
+      "passed": true,
+      "error": null,
+      "functionality_verified": true,
+      "parameters_tested": [
+        "has_descriptions"
+      ],
+      "edge_cases_tested": 4
+    },
+    {
+      "command_name": "health",
+      "cog_name": "stats",
+      "passed": false,
+      "error": null,
+      "functionality_verified": true,
+      "parameters_tested": [
+        "has_descriptions"
+      ],
+      "edge_cases_tested": 4
+    },
+    {
+      "command_name": "info",
+      "cog_name": "stats",
+      "passed": true,
+      "error": null,
+      "functionality_verified": true,
+      "parameters_tested": [
+        "has_descriptions"
+      ],
+      "edge_cases_tested": 4
+    },
+    {
+      "command_name": "reload",
+      "cog_name": "admin",
+      "passed": true,
+      "error": null,
+      "functionality_verified": true,
+      "parameters_tested": [
+        "has_descriptions"
+      ],
+      "edge_cases_tested": 2
+    },
+    {
+      "command_name": "logs",
+      "cog_name": "admin",
+      "passed": false,
+      "error": null,
+      "functionality_verified": true,
+      "parameters_tested": [
+        "has_descriptions"
+      ],
+      "edge_cases_tested": 2
+    },
+    {
+      "command_name": "extensions",
+      "cog_name": "admin",
+      "passed": false,
+      "error": null,
+      "functionality_verified": true,
+      "parameters_tested": [
+        "has_descriptions"
+      ],
+      "edge_cases_tested": 2
+    },
+    {
+      "command_name": "config",
+      "cog_name": "admin",
+      "passed": true,
+      "error": null,
+      "functionality_verified": true,
+      "parameters_tested": [
+        "has_descriptions"
+      ],
+      "edge_cases_tested": 2
+    },
+    {
+      "command_name": "shutdown",
+      "cog_name": "admin",
+      "passed": true,
+      "error": null,
+      "functionality_verified": true,
+      "parameters_tested": [
+        "has_descriptions"
+      ],
+      "edge_cases_tested": 2
+    },
+    {
+      "command_name": "purge",
+      "cog_name": "admin",
+      "passed": true,
+      "error": null,
+      "functionality_verified": true,
+      "parameters_tested": [
+        "has_descriptions"
+      ],
+      "edge_cases_tested": 2
+    },
+    {
+      "command_name": "channels",
+      "cog_name": "server_management",
+      "passed": true,
+      "error": null,
+      "functionality_verified": true,
+      "parameters_tested": [
+        "has_descriptions"
+      ],
+      "edge_cases_tested": 3
+    },
+    {
+      "command_name": "roles",
+      "cog_name": "server_management",
+      "passed": true,
+      "error": null,
+      "functionality_verified": true,
+      "parameters_tested": [
+        "has_descriptions"
+      ],
+      "edge_cases_tested": 3
+    },
+    {
+      "command_name": "settings",
+      "cog_name": "server_management",
+      "passed": true,
+      "error": null,
+      "functionality_verified": true,
+      "parameters_tested": [
+        "has_descriptions"
+      ],
+      "edge_cases_tested": 3
+    },
+    {
+      "command_name": "choose",
+      "cog_name": "roles",
+      "passed": true,
+      "error": null,
+      "functionality_verified": true,
+      "parameters_tested": [
+        "has_descriptions"
+      ],
+      "edge_cases_tested": 4
+    },
+    {
+      "command_name": "lore",
+      "cog_name": "roles",
+      "passed": true,
+      "error": null,
+      "functionality_verified": true,
+      "parameters_tested": [
+        "has_descriptions"
+      ],
+      "edge_cases_tested": 4
+    },
+    {
+      "command_name": "homeworld",
+      "cog_name": "roles",
+      "passed": true,
+      "error": null,
+      "functionality_verified": true,
+      "parameters_tested": [
+        "has_descriptions"
+      ],
+      "edge_cases_tested": 4
+    },
+    {
+      "command_name": "count",
+      "cog_name": "roles",
+      "passed": true,
+      "error": null,
+      "functionality_verified": true,
+      "parameters_tested": [
+        "has_descriptions"
+      ],
+      "edge_cases_tested": 4
+    },
+    {
+      "command_name": "add_role",
+      "cog_name": "roles",
+      "passed": true,
+      "error": null,
+      "functionality_verified": true,
+      "parameters_tested": [
+        "has_descriptions"
+      ],
+      "edge_cases_tested": 4
+    },
+    {
+      "command_name": "start",
+      "cog_name": "quiz",
+      "passed": true,
+      "error": null,
+      "functionality_verified": true,
+      "parameters_tested": [
+        "has_descriptions"
+      ],
+      "edge_cases_tested": 3
+    },
+    {
+      "command_name": "leaderboard",
+      "cog_name": "quiz",
+      "passed": true,
+      "error": null,
+      "functionality_verified": true,
+      "parameters_tested": [
+        "has_descriptions"
+      ],
+      "edge_cases_tested": 3
+    },
+    {
+      "command_name": "stats",
+      "cog_name": "quiz",
+      "passed": true,
+      "error": null,
+      "functionality_verified": true,
+      "parameters_tested": [
+        "has_descriptions"
+      ],
+      "edge_cases_tested": 3
+    },
+    {
+      "command_name": "categories",
+      "cog_name": "quiz",
+      "passed": true,
+      "error": null,
+      "functionality_verified": true,
+      "parameters_tested": [
+        "has_descriptions"
+      ],
+      "edge_cases_tested": 3
+    },
+    {
+      "command_name": "add",
+      "cog_name": "quiz",
+      "passed": true,
+      "error": null,
+      "functionality_verified": true,
+      "parameters_tested": [
+        "has_descriptions"
+      ],
+      "edge_cases_tested": 3
+    },
+    {
+      "command_name": "reset",
+      "cog_name": "quiz",
+      "passed": true,
+      "error": null,
+      "functionality_verified": true,
+      "parameters_tested": [
+        "has_descriptions"
+      ],
+      "edge_cases_tested": 3
+    },
+    {
+      "command_name": "chat",
+      "cog_name": "advanced_ai",
+      "passed": false,
+      "error": null,
+      "functionality_verified": true,
+      "parameters_tested": [
+        "has_descriptions"
+      ],
+      "edge_cases_tested": 2
+    },
+    {
+      "command_name": "image",
+      "cog_name": "advanced_ai",
+      "passed": false,
+      "error": null,
+      "functionality_verified": true,
+      "parameters_tested": [
+        "has_descriptions"
+      ],
+      "edge_cases_tested": 2
+    },
+    {
+      "command_name": "analyze",
+      "cog_name": "advanced_ai",
+      "passed": false,
+      "error": null,
+      "functionality_verified": true,
+      "parameters_tested": [
+        "has_descriptions"
+      ],
+      "edge_cases_tested": 2
+    },
+    {
+      "command_name": "personality",
+      "cog_name": "advanced_ai",
+      "passed": false,
+      "error": null,
+      "functionality_verified": true,
+      "parameters_tested": [
+        "has_descriptions"
+      ],
+      "edge_cases_tested": 2
+    },
+    {
+      "command_name": "voice",
+      "cog_name": "advanced_ai",
+      "passed": false,
+      "error": null,
+      "functionality_verified": true,
+      "parameters_tested": [
+        "has_descriptions"
+      ],
+      "edge_cases_tested": 2
+    },
+    {
+      "command_name": "translate",
+      "cog_name": "advanced_ai",
+      "passed": false,
+      "error": null,
+      "functionality_verified": true,
+      "parameters_tested": [
+        "has_descriptions"
+      ],
+      "edge_cases_tested": 2
+    },
+    {
+      "command_name": "summarize",
+      "cog_name": "advanced_ai",
+      "passed": false,
+      "error": null,
+      "functionality_verified": true,
+      "parameters_tested": [
+        "has_descriptions"
+      ],
+      "edge_cases_tested": 2
+    },
+    {
+      "command_name": "debug",
+      "cog_name": "debug",
+      "passed": false,
+      "error": null,
+      "functionality_verified": true,
+      "parameters_tested": [],
+      "edge_cases_tested": 0
+    }
+  ],
+  "performance_metrics": {}
+}
