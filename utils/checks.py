@@ -3,6 +3,7 @@ Custom check decorators for Astra Discord Bot
 Includes feature checks, permission checks, and cooldown handling
 """
 
+import discord
 from discord import app_commands
 from discord.ext import commands
 from typing import Optional, Callable, Union, TypeVar

@@ -3,6 +3,7 @@ Permission system for Astra Bot
 Provides role-based access control and permission checking
 """
 
+import asyncio
 import discord
 from discord.ext import commands
 from enum import Enum
