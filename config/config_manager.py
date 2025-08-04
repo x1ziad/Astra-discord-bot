@@ -203,6 +203,19 @@ class ConfigManager:
         self.reload_if_changed()
         return self._config
 
+    def get_all_features(self) -> Dict[str, bool]:
+        """Get all features dictionary"""
+        self.reload_if_changed()
+        return self._config.features.copy()
+
+    def get_guild_setting(
+        self, guild_id: int, setting_key: str, default: Any = None
+    ) -> Any:
+        """Get guild-specific setting (placeholder for database integration)"""
+        # This would normally query a database for guild-specific settings
+        # For now, return the default value
+        return default
+
 
 # Global configuration manager instance
 config_manager = ConfigManager()

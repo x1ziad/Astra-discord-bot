@@ -40,7 +40,14 @@ def generate_bot_invite_url(
     if disable_guild_select:
         params["disable_guild_select"] = "true"
 
-    return f"{base_url}?{urlencode(params)}"
+    # Use custom encoding to ensure proper space encoding
+    query_string = "&".join(
+        [
+            f"{k}={v.replace(' ', '%20') if isinstance(v, str) else v}"
+            for k, v in params.items()
+        ]
+    )
+    return f"{base_url}?{query_string}"
 
 
 def get_permission_calculator_url() -> str:
@@ -69,7 +76,7 @@ def get_minimal_permissions() -> int:
 def get_recommended_permissions() -> int:
     """Get recommended permissions for Astra bot"""
     permissions = discord.Permissions()
-    
+
     # Essential permissions
     permissions.read_messages = True
     permissions.send_messages = True
@@ -78,25 +85,27 @@ def get_recommended_permissions() -> int:
     permissions.read_message_history = True
     permissions.use_external_emojis = True
     permissions.add_reactions = True
-    
+
     # Thread permissions (Discord.py 2.0+)
     permissions.create_public_threads = True
     permissions.create_private_threads = True
     permissions.send_messages_in_threads = True
-    
+
     # Moderation permissions
     permissions.manage_messages = True
     permissions.manage_channels = True
     permissions.kick_members = True
     permissions.ban_members = True
     permissions.manage_roles = True
-    
+
     # Advanced permissions
     permissions.mention_everyone = True
     permissions.manage_webhooks = True
     permissions.view_audit_log = True
-    
+
     return permissions.value
+
+
 def print_invitation_info(client_id: str):
     """Print invitation URLs and setup information"""
     print("=" * 80)

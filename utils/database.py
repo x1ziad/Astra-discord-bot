@@ -792,7 +792,17 @@ class DatabaseManager:
                 return await self.get_user_data(
                     int(user_id), int(guild_id), "profile", default
                 )
-        # Add other table mappings as needed
+        elif table == "command_stats":
+            # Handle command stats specially
+            if "_" in key:
+                guild_id, command = key.split("_", 1)
+                return await self.get_guild_setting(
+                    int(guild_id), f"command_stats_{command}", default
+                )
+        else:
+            # For arbitrary tables, use guild_settings with table prefix
+            return await self.get_guild_setting(0, f"{table}_{key}", default)
+
         return default
 
     async def set(self, table: str, key: str, value: dict):
@@ -818,6 +828,9 @@ class DatabaseManager:
             await self.log_analytics(
                 0, "performance_metric", {"key": key, "data": value}
             )
+        else:
+            # For arbitrary tables, use guild_settings with table prefix
+            await self.set_guild_setting(0, f"{table}_{key}", value)
 
     async def get_table(self, table: str) -> dict:
         """Get entire table (creates if doesn't exist) - returns empty dict since tables are already created"""

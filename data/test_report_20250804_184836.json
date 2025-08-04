@@ -1,0 +1,47 @@
+{
+  "timestamp": "2025-08-04T18:48:36.964835",
+  "total_duration": 12.934334993362427,
+  "success_rate": 37.5,
+  "tests_passed": 3,
+  "tests_total": 8,
+  "test_results": {
+    "\ud83d\udd27 Configuration Tests": {
+      "passed": false,
+      "duration": 2.193450927734375e-05
+    },
+    "\ud83d\udcbe Database Tests": {
+      "passed": false,
+      "duration": 0.004264116287231445
+    },
+    "\ud83d\udee1\ufe0f Permission System Tests": {
+      "passed": false,
+      "duration": 0.001486063003540039
+    },
+    "\ud83c\udf10 HTTP Client Tests": {
+      "passed": true,
+      "duration": 11.90622091293335
+    },
+    "\ud83d\udd17 Bot Invitation Tests": {
+      "passed": false,
+      "duration": 0.00010323524475097656
+    },
+    "\ud83d\udcca Performance Tests": {
+      "passed": true,
+      "duration": 1.0203192234039307
+    },
+    "\ud83c\udfaf Integration Tests": {
+      "passed": false,
+      "duration": 0.00011610984802246094
+    },
+    "\ud83d\ude80 System Health Tests": {
+      "passed": true,
+      "duration": 0.0015549659729003906
+    }
+  },
+  "performance_metrics": {
+    "memory_mb": 56.921875,
+    "cpu_percent": 0.0,
+    "async_tasks_per_second": 56605.5845715751,
+    "timestamp": "2025-08-04T18:48:36.962809"
+  }
+}
