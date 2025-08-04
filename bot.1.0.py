@@ -73,7 +73,7 @@ except ImportError:
 class BotStats:
     """Bot runtime statistics"""
 
-    start_time: datetime = field(default_factory=datetime.utcnow)
+    start_time: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     commands_executed: int = 0
     messages_processed: int = 0
     errors_handled: int = 0
@@ -145,7 +145,8 @@ class AstraBot(commands.Bot):
 
         # Bot state and tracking
         self.stats = BotStats()
-        self.start_time = datetime.now(timezone.utc)  # Add missing start_time attribute
+        self.stats.start_time = datetime.now(timezone.utc)  # Ensure timezone-aware
+        self.start_time = self.stats.start_time  # Keep both in sync
         self.session: Optional[aiohttp.ClientSession] = None
         self._tasks: Set[asyncio.Task] = set()
         self._bot_ready = False
