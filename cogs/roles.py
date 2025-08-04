@@ -8,7 +8,7 @@ from discord import app_commands
 from discord.ext import commands
 import json
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Dict, List, Any, Union
 from pathlib import Path
 
@@ -168,7 +168,7 @@ class Roles(commands.GroupCog, name="empire"):
             description="Select your empire from the dropdown menu below!\n\n" +
                         "Each empire type represents different playstyles and philosophies in Stellaris.",
             color=self.config.get_color("stellaris"),
-            timestamp=datetime.now(datetime.UTC),
+            timestamp=datetime.now(timezone.utc),
         )
         
         # Add brief descriptions of each empire type
@@ -278,7 +278,7 @@ class Roles(commands.GroupCog, name="empire"):
             title=f"📖 {topic.replace('_', ' ').title()}",
             description=found_lore,
             color=self.config.get_color("stellaris"),
-            timestamp=datetime.now(datetime.UTC),
+            timestamp=datetime.now(timezone.utc),
         )
         
         embed.add_field(
@@ -346,7 +346,7 @@ class Roles(commands.GroupCog, name="empire"):
             title="📊 Stellaris Empire Census",
             description="Current distribution of empire roles in this server",
             color=self.config.get_color("stellaris"),
-            timestamp=datetime.now(datetime.UTC),
+            timestamp=datetime.now(timezone.utc),
         )
         
         total_members = 0

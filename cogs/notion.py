@@ -10,7 +10,7 @@ import aiohttp
 import os
 import asyncio
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, List, Any, Union
 from pathlib import Path
 
@@ -273,7 +273,7 @@ class Notion(commands.GroupCog, name="notion"):
             title="📅 Upcoming Events & Reminders",
             description="Here's a list of upcoming events synced from Notion.",
             color=self.config.get_color("info"),
-            timestamp=datetime.now(datetime.UTC),
+            timestamp=datetime.now(timezone.utc),
         )
 
         # Add upcoming events to embed
@@ -340,7 +340,7 @@ class Notion(commands.GroupCog, name="notion"):
                 title="✅ Notion Sync Complete",
                 description=f"Successfully synced {new_count} events from Notion.",
                 color=self.config.get_color("success"),
-                timestamp=datetime.now(datetime.UTC),
+                timestamp=datetime.now(timezone.utc),
             )
 
             if previous_count != new_count:
@@ -358,7 +358,7 @@ class Notion(commands.GroupCog, name="notion"):
                 title="❌ Sync Failed",
                 description=f"An error occurred while syncing with Notion:\n```\n{str(e)}\n```",
                 color=self.config.get_color("error"),
-                timestamp=datetime.now(datetime.UTC),
+                timestamp=datetime.now(timezone.utc),
             )
             await interaction.followup.send(embed=embed)
             self.logger.error(f"Manual Notion sync failed: {e}")
@@ -371,7 +371,7 @@ class Notion(commands.GroupCog, name="notion"):
         embed = discord.Embed(
             title="📊 Notion Integration Status",
             color=self.config.get_color("info"),
-            timestamp=datetime.now(datetime.UTC),
+            timestamp=datetime.now(timezone.utc),
         )
 
         # Check token configuration

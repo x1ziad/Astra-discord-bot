@@ -7,7 +7,7 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from config.railway_config import (
     get_railway_config,
     get_active_ai_config,
@@ -38,7 +38,7 @@ class DiagnosticsCog(commands.Cog):
             ai_config = get_active_ai_config()
 
             embed = discord.Embed(
-                title="🤖 AI System Status", color=0x00D4FF, timestamp=datetime.now(datetime.UTC)
+                title="🤖 AI System Status", color=0x00D4FF, timestamp=datetime.now(timezone.utc)
             )
 
             # Provider Information
@@ -138,7 +138,7 @@ class DiagnosticsCog(commands.Cog):
             embed = discord.Embed(
                 title="🧪 AI Diagnostic Test",
                 color=0x43B581,
-                timestamp=datetime.now(datetime.UTC),
+                timestamp=datetime.now(timezone.utc),
             )
 
             embed.add_field(
@@ -172,7 +172,7 @@ class DiagnosticsCog(commands.Cog):
                 title="❌ AI Test Failed",
                 description=f"Error: {str(e)}",
                 color=0xF04747,
-                timestamp=datetime.now(datetime.UTC),
+                timestamp=datetime.now(timezone.utc),
             )
             await interaction.followup.send(embed=embed)
 
@@ -209,7 +209,7 @@ This is a diagnostic test to verify DeepSeek R1 functionality."""
             embed = discord.Embed(
                 title="🔬 DeepSeek R1 Verification Test",
                 color=0x7C3AED,
-                timestamp=datetime.now(datetime.UTC),
+                timestamp=datetime.now(timezone.utc),
             )
 
             embed.add_field(
@@ -253,7 +253,7 @@ This is a diagnostic test to verify DeepSeek R1 functionality."""
                 title="❌ DeepSeek Verification Failed",
                 description=f"Error: {str(e)}",
                 color=0xF04747,
-                timestamp=datetime.now(datetime.UTC),
+                timestamp=datetime.now(timezone.utc),
             )
             await interaction.followup.send(embed=embed)
 

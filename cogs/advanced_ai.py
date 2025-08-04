@@ -9,7 +9,7 @@ from discord.ext import commands, tasks
 import asyncio
 import logging
 from typing import Dict, List, Optional, Any, Set
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import json
 from pathlib import Path
 import re
@@ -304,7 +304,7 @@ class AdvancedAICog(commands.Cog):
                 title="🤖 Astra AI Chat",
                 description=response,
                 color=0x7289DA,
-                timestamp=datetime.now(datetime.UTC),
+                timestamp=datetime.now(timezone.utc),
             )
             embed.set_author(
                 name=interaction.user.display_name,
@@ -353,7 +353,7 @@ class AdvancedAICog(commands.Cog):
                 title="🎨 AI Generated Image",
                 description=f"**Original Prompt:** {prompt}\n**Enhanced Prompt:** {enhanced_prompt[:100]}...",
                 color=0x7289DA,
-                timestamp=datetime.now(datetime.UTC),
+                timestamp=datetime.now(timezone.utc),
             )
             embed.set_image(url=image_url)
             embed.set_author(
@@ -412,7 +412,7 @@ class AdvancedAICog(commands.Cog):
                 title="🔍 AI Content Analysis",
                 description=response,
                 color=0x7289DA,
-                timestamp=datetime.now(datetime.UTC),
+                timestamp=datetime.now(timezone.utc),
             )
             embed.add_field(
                 name="📝 Analyzed Content",
@@ -463,7 +463,7 @@ class AdvancedAICog(commands.Cog):
                 title="🎭 Personality Changed",
                 description=f"AI personality set to: **{personality.title()}**",
                 color=0x43B581,
-                timestamp=datetime.now(datetime.UTC),
+                timestamp=datetime.now(timezone.utc),
             )
 
             await interaction.followup.send(embed=embed)
@@ -488,7 +488,7 @@ class AdvancedAICog(commands.Cog):
                 title="🔊 Text to Speech",
                 description="Voice synthesis feature is coming soon! Stay tuned for updates.",
                 color=0xFAA61A,
-                timestamp=datetime.now(datetime.UTC),
+                timestamp=datetime.now(timezone.utc),
             )
             embed.add_field(
                 name="📝 Text",
@@ -526,7 +526,7 @@ class AdvancedAICog(commands.Cog):
             )
 
             embed = discord.Embed(
-                title="🌐 AI Translation", color=0x7289DA, timestamp=datetime.now(datetime.UTC)
+                title="🌐 AI Translation", color=0x7289DA, timestamp=datetime.now(timezone.utc)
             )
             embed.add_field(
                 name="📝 Original Text",
@@ -565,7 +565,7 @@ class AdvancedAICog(commands.Cog):
                 title="📋 AI Summary",
                 description=response,
                 color=0x7289DA,
-                timestamp=datetime.now(datetime.UTC),
+                timestamp=datetime.now(timezone.utc),
             )
             embed.add_field(
                 name="📄 Original Content",
@@ -619,7 +619,7 @@ class AdvancedAICog(commands.Cog):
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
         """Handle member join for proactive engagement"""
-        self.user_join_timestamps[member.id] = datetime.now(datetime.UTC)
+        self.user_join_timestamps[member.id] = datetime.now(timezone.utc)
 
         # Schedule proactive engagement after a delay
         await asyncio.sleep(300)  # 5 minutes delay
@@ -634,7 +634,7 @@ class AdvancedAICog(commands.Cog):
                 "recent_messages": [],
                 "active_users": set(),
                 "recent_topics": [],
-                "last_activity": datetime.now(datetime.UTC),
+                "last_activity": datetime.now(timezone.utc),
             }
 
         activity = self.channel_activity[channel_id]
@@ -642,18 +642,18 @@ class AdvancedAICog(commands.Cog):
             {
                 "user_id": message.author.id,
                 "content": message.content,
-                "timestamp": datetime.now(datetime.UTC),
+                "timestamp": datetime.now(timezone.utc),
             }
         )
         activity["active_users"].add(message.author.id)
-        activity["last_activity"] = datetime.now(datetime.UTC)
+        activity["last_activity"] = datetime.now(timezone.utc)
 
         # Extract topics
         topics = await self._extract_message_topics(message.content)
         activity["recent_topics"].extend(topics)
 
         # Keep only recent data
-        cutoff = datetime.now(datetime.UTC) - timedelta(hours=1)
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=1)
         activity["recent_messages"] = [
             msg for msg in activity["recent_messages"] if msg["timestamp"] > cutoff
         ]
@@ -686,7 +686,7 @@ class AdvancedAICog(commands.Cog):
         # Check cooldown
         user_id = message.author.id
         if user_id in self.conversation_cooldowns:
-            if datetime.now(datetime.UTC) - self.conversation_cooldowns[user_id] < timedelta(
+            if datetime.now(timezone.utc) - self.conversation_cooldowns[user_id] < timedelta(
                 seconds=3
             ):
                 return False
@@ -803,7 +803,7 @@ class AdvancedAICog(commands.Cog):
     async def _process_ai_conversation(self, message: discord.Message):
         """Process AI conversation using the advanced engine"""
         try:
-            start_time = datetime.now(datetime.UTC)
+            start_time = datetime.now(timezone.utc)
             user_id = message.author.id
 
             # Add to active conversations
@@ -836,11 +836,11 @@ class AdvancedAICog(commands.Cog):
                 await message.channel.send(response)
 
             # Track performance
-            response_time = (datetime.now(datetime.UTC) - start_time).total_seconds()
+            response_time = (datetime.now(timezone.utc) - start_time).total_seconds()
             self.response_times.append(response_time)
 
             # Update cooldown
-            self.conversation_cooldowns[user_id] = datetime.now(datetime.UTC)
+            self.conversation_cooldowns[user_id] = datetime.now(timezone.utc)
 
             # Log interaction
             self.logger.info(
@@ -868,7 +868,7 @@ class AdvancedAICog(commands.Cog):
     async def _check_proactive_engagement_opportunities(self, guild: discord.Guild):
         """Check for proactive engagement opportunities in a guild"""
         try:
-            current_time = datetime.now(datetime.UTC)
+            current_time = datetime.now(timezone.utc)
 
             for channel in guild.text_channels:
                 if not channel.permissions_for(guild.me).send_messages:
@@ -968,7 +968,7 @@ class AdvancedAICog(commands.Cog):
     async def activity_monitor_task(self):
         """Monitor and update activity patterns"""
         try:
-            current_time = datetime.now(datetime.UTC)
+            current_time = datetime.now(timezone.utc)
 
             # Clean up old activity data
             for channel_id in list(self.channel_activity.keys()):
@@ -997,7 +997,7 @@ class AdvancedAICog(commands.Cog):
     async def conversation_cleanup_task(self):
         """Clean up old conversation data"""
         try:
-            current_time = datetime.now(datetime.UTC)
+            current_time = datetime.now(timezone.utc)
 
             # Clean up conversation cooldowns
             expired_cooldowns = [
@@ -1034,7 +1034,7 @@ class AdvancedAICog(commands.Cog):
             embed = discord.Embed(
                 title="🤖 AI Conversation Analytics",
                 color=discord.Color.blue(),
-                timestamp=datetime.now(datetime.UTC),
+                timestamp=datetime.now(timezone.utc),
             )
 
             embed.add_field(
@@ -1192,7 +1192,7 @@ class AdvancedAICog(commands.Cog):
             embed = discord.Embed(
                 title="🧠 Conversation Mood Analysis",
                 color=discord.Color.purple(),
-                timestamp=datetime.now(datetime.UTC),
+                timestamp=datetime.now(timezone.utc),
             )
 
             # Mood visualization
@@ -1253,7 +1253,7 @@ class AdvancedAICog(commands.Cog):
             embed = discord.Embed(
                 title="🔥 Trending Conversation Topics",
                 color=discord.Color.orange(),
-                timestamp=datetime.now(datetime.UTC),
+                timestamp=datetime.now(timezone.utc),
             )
 
             if popular_topics:
@@ -1425,7 +1425,7 @@ class AdvancedAICog(commands.Cog):
             # Update engagement tracking
             if target_user.id not in self.engagement_patterns:
                 self.engagement_patterns[target_user.id] = []
-            self.engagement_patterns[target_user.id].append(datetime.now(datetime.UTC))
+            self.engagement_patterns[target_user.id].append(datetime.now(timezone.utc))
 
             self.logger.info(
                 f"Manual AI engagement triggered for user {target_user.id}"

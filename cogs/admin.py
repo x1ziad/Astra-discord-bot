@@ -8,7 +8,7 @@ from discord import app_commands
 from discord.ext import commands
 import asyncio
 import traceback
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import json
 import os
 from typing import Optional, List, Literal
@@ -75,7 +75,7 @@ class Admin(commands.GroupCog, name="admin"):
                     if not failed_cogs
                     else self.config.get_color("warning")
                 ),
-                timestamp=datetime.now(datetime.UTC),
+                timestamp=datetime.now(timezone.utc),
             )
 
             if success_cogs:
@@ -104,7 +104,7 @@ class Admin(commands.GroupCog, name="admin"):
                     title="✅ Cog Reloaded",
                     description=f"Successfully reloaded `{cog_name}`",
                     color=self.config.get_color("success"),
-                    timestamp=datetime.now(datetime.UTC),
+                    timestamp=datetime.now(timezone.utc),
                 )
                 await interaction.followup.send(embed=embed)
 
@@ -113,7 +113,7 @@ class Admin(commands.GroupCog, name="admin"):
                     title="❌ Reload Failed",
                     description=f"Error reloading `{cog_name}`:\n```\n{str(e)}\n```",
                     color=self.config.get_color("error"),
-                    timestamp=datetime.now(datetime.UTC),
+                    timestamp=datetime.now(timezone.utc),
                 )
                 await interaction.followup.send(embed=embed)
                 self.logger.error(
@@ -161,7 +161,7 @@ class Admin(commands.GroupCog, name="admin"):
                     title="✅ Commands Synced",
                     description=f"Successfully synced **{len(synced)}** commands to this server.",
                     color=self.config.get_color("success"),
-                    timestamp=datetime.now(datetime.UTC),
+                    timestamp=datetime.now(timezone.utc),
                 )
 
             else:  # Global sync
@@ -177,7 +177,7 @@ class Admin(commands.GroupCog, name="admin"):
                     title="✅ Commands Synced",
                     description=f"Successfully synced **{len(synced)}** commands globally.\n\n⚠️ **Note:** Global commands may take up to 1 hour to update.",
                     color=self.config.get_color("success"),
-                    timestamp=datetime.now(datetime.UTC),
+                    timestamp=datetime.now(timezone.utc),
                 )
 
             await interaction.followup.send(embed=embed)
@@ -187,7 +187,7 @@ class Admin(commands.GroupCog, name="admin"):
                 title="❌ Sync Failed",
                 description=f"Error syncing commands:\n```\n{str(e)}\n```",
                 color=self.config.get_color("error"),
-                timestamp=datetime.now(datetime.UTC),
+                timestamp=datetime.now(timezone.utc),
             )
             await interaction.followup.send(embed=embed)
             self.logger.error(f"Failed to sync commands: {traceback.format_exc()}")
@@ -253,7 +253,7 @@ class Admin(commands.GroupCog, name="admin"):
                     title=f"⚙️ Configuration: {setting}",
                     description=f"Current value for `{setting}`:",
                     color=self.config.get_color("info"),
-                    timestamp=datetime.now(datetime.UTC),
+                    timestamp=datetime.now(timezone.utc),
                 )
 
                 # Format value based on type
@@ -347,7 +347,7 @@ class Admin(commands.GroupCog, name="admin"):
                     title="✅ Configuration Updated",
                     description=f"Successfully updated `{setting}`.",
                     color=self.config.get_color("success"),
-                    timestamp=datetime.now(datetime.UTC),
+                    timestamp=datetime.now(timezone.utc),
                 )
 
                 embed.add_field(
@@ -537,7 +537,7 @@ class Admin(commands.GroupCog, name="admin"):
                 title="📋 Recent Bot Logs",
                 description=f"```\n{log_content}\n```",
                 color=self.config.get_color("info"),
-                timestamp=datetime.now(datetime.UTC),
+                timestamp=datetime.now(timezone.utc),
             )
             embed.set_footer(text=f"Last {len(recent_logs)} lines")
 
@@ -587,7 +587,7 @@ class Admin(commands.GroupCog, name="admin"):
                     title="📦 Loaded Extensions",
                     description="\n".join([f"• `{ext}`" for ext in extensions]),
                     color=self.config.get_color("info"),
-                    timestamp=datetime.now(datetime.UTC),
+                    timestamp=datetime.now(timezone.utc),
                 )
                 embed.set_footer(text=f"Total: {len(extensions)} extensions")
                 await interaction.followup.send(embed=embed, ephemeral=True)
@@ -618,7 +618,7 @@ class Admin(commands.GroupCog, name="admin"):
                     title="📦 Extension Management",
                     description=message,
                     color=self.config.get_color("success"),
-                    timestamp=datetime.now(datetime.UTC),
+                    timestamp=datetime.now(timezone.utc),
                 )
                 await interaction.followup.send(embed=embed, ephemeral=True)
 

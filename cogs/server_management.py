@@ -9,7 +9,7 @@ from discord.ext import commands
 from typing import Optional, List, Union, Dict, Any
 import asyncio
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import colorsys
 import re
@@ -53,7 +53,7 @@ class ServerManagement(commands.GroupCog, name="server"):
                 title="🔧 Server Optimization Analysis",
                 description=f"Analysis for **{guild.name}**",
                 color=self.config.get_color("info"),
-                timestamp=datetime.now(datetime.UTC),
+                timestamp=datetime.now(timezone.utc),
             )
 
             # Server Stats
@@ -270,7 +270,7 @@ class ServerManagement(commands.GroupCog, name="server"):
             embed = discord.Embed(
                 title=f"🎭 Server Roles ({i//chunk_size + 1}/{(len(roles_data)-1)//chunk_size + 1})",
                 color=self.config.get_color("primary"),
-                timestamp=datetime.now(datetime.UTC),
+                timestamp=datetime.now(timezone.utc),
             )
 
             for role_data in chunk:
@@ -410,7 +410,7 @@ class ServerManagement(commands.GroupCog, name="server"):
                     title="🔄 Users Moved",
                     description=f"Moved {len(moved_users)} user(s) to {channel.mention}",
                     color=self.config.get_color("success"),
-                    timestamp=datetime.now(datetime.UTC),
+                    timestamp=datetime.now(timezone.utc),
                 )
 
                 if len(moved_users) <= 20:

@@ -10,7 +10,7 @@ from utils.bot_invite import generate_bot_invite_url, get_full_permissions, get_
 from config.config_manager import config_manager
 import json
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 import asyncio
 
 class InviteView(discord.ui.View):
@@ -121,10 +121,10 @@ class BotSetup(commands.Cog):
     def _update_invitation_stats(self):
         """Update invitation statistics"""
         self.stats["total_invitations"] += 1
-        self.stats["last_invitation"] = datetime.now(datetime.UTC).isoformat()
+        self.stats["last_invitation"] = datetime.now(timezone.utc).isoformat()
         
         # Daily stats
-        today = datetime.now(datetime.UTC).strftime("%Y-%m-%d")
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         if today not in self.stats["daily_stats"]:
             self.stats["daily_stats"][today] = 0
         self.stats["daily_stats"][today] += 1
@@ -395,7 +395,7 @@ class BotSetup(commands.Cog):
             title="🔍 Bot Diagnostics Report",
             description=f"Comprehensive health check for {interaction.guild.name}",
             color=config_manager.get_color("info"),
-            timestamp=datetime.now(datetime.UTC)
+            timestamp=datetime.now(timezone.utc)
         )
         
         embed.add_field(

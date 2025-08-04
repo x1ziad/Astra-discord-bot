@@ -7,7 +7,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 import random
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import asyncio
 import json
 from typing import Optional, List, Set
@@ -586,7 +586,7 @@ class Space(commands.GroupCog, name="space"):
                             title="🛰️ International Space Station",
                             description="Real-time tracking information for the ISS",
                             color=self.config.get_color("space"),
-                            timestamp=datetime.now(datetime.UTC),
+                            timestamp=datetime.now(timezone.utc),
                         )
 
                         # Location information
@@ -674,7 +674,7 @@ class Space(commands.GroupCog, name="space"):
             title="🚀 Upcoming Space Launches",
             description="Information about upcoming space missions",
             color=self.config.get_color("space"),
-            timestamp=datetime.now(datetime.UTC),
+            timestamp=datetime.now(timezone.utc),
         )
 
         # Launch tracking services

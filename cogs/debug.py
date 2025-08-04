@@ -5,7 +5,7 @@ Debug commands and utilities for Astra
 import discord
 from discord import app_commands
 from discord.ext import commands
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any
 
 from config.config_manager import config_manager
@@ -50,7 +50,7 @@ class Debug(commands.Cog):
             title="🔍 Astra Diagnostic Report",
             description="Current status of bot features and configuration:",
             color=self.config.get_color("primary"),
-            timestamp=datetime.now(datetime.UTC),
+            timestamp=datetime.now(timezone.utc),
         )
 
         # Feature flags section

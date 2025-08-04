@@ -10,7 +10,7 @@ import random
 import json
 import os
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional, Dict, List, Any, Union
 
@@ -338,7 +338,7 @@ class Quiz(commands.GroupCog, name="quiz"):
             title=f"🚀 Quiz Time! ({selected_category.title()})",
             description=f"{question_data['question']}\n\n{options_text}",
             color=self.config.get_color("primary"),
-            timestamp=datetime.now(datetime.UTC),
+            timestamp=datetime.now(timezone.utc),
         )
         
         embed.add_field(
@@ -479,7 +479,7 @@ class Quiz(commands.GroupCog, name="quiz"):
         embed = discord.Embed(
             title=f"📊 {target_user.display_name}'s Quiz Stats",
             color=self.config.get_color("primary"),
-            timestamp=datetime.now(datetime.UTC),
+            timestamp=datetime.now(timezone.utc),
         )
         
         embed.set_thumbnail(url=target_user.display_avatar.url)
