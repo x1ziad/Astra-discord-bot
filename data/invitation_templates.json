@@ -1,10 +1,10 @@
 {
-  "generated_at": "2025-08-04T15:43:03.164370",
+  "generated_at": "2025-08-04T20:00:07.786794",
   "template_client_id": "123456789012345678",
   "urls": {
-    "full": "https://discord.com/api/oauth2/authorize?client_id=123456789012345678&permissions=1099511627775&scope=bot+applications.commands",
-    "recommended": "https://discord.com/api/oauth2/authorize?client_id=123456789012345678&permissions=378762947798&scope=bot+applications.commands",
-    "minimal": "https://discord.com/api/oauth2/authorize?client_id=123456789012345678&permissions=379968&scope=bot+applications.commands"
+    "full": "https://discord.com/api/oauth2/authorize?client_id=123456789012345678&permissions=1099511627775&scope=bot%20applications.commands",
+    "recommended": "https://discord.com/api/oauth2/authorize?client_id=123456789012345678&permissions=378762947798&scope=bot%20applications.commands",
+    "minimal": "https://discord.com/api/oauth2/authorize?client_id=123456789012345678&permissions=379968&scope=bot%20applications.commands"
   },
   "instructions": "Replace the client_id parameter with your actual bot's Client ID"
 }

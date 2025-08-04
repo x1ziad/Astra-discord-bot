@@ -536,6 +536,118 @@ class Stats(commands.GroupCog, name="stats"):
 
         await interaction.response.send_message(embed=embed)
 
+    @app_commands.command(
+        name="health", description="Check bot health and performance metrics"
+    )
+    @app_commands.describe()
+    async def health_command(self, interaction: discord.Interaction):
+        """Check bot health and performance metrics"""
+        await interaction.response.defer()
+
+        try:
+            import psutil
+            import platform
+
+            # Get system metrics
+            cpu_percent = psutil.cpu_percent(interval=1)
+            memory = psutil.virtual_memory()
+            disk = psutil.disk_usage("/")
+
+            # Bot metrics
+            latency = round(self.bot.latency * 1000, 2)
+            uptime = datetime.utcnow() - self.bot.start_time
+
+            # Format uptime
+            days = uptime.days
+            hours, remainder = divmod(uptime.seconds, 3600)
+            minutes, _ = divmod(remainder, 60)
+            uptime_str = f"{days}d {hours}h {minutes}m"
+
+            # Determine health status
+            health_issues = []
+            if latency > 200:
+                health_issues.append("High latency")
+            if cpu_percent > 80:
+                health_issues.append("High CPU usage")
+            if memory.percent > 80:
+                health_issues.append("High memory usage")
+            if disk.percent > 90:
+                health_issues.append("Low disk space")
+
+            if not health_issues:
+                status = "🟢 Healthy"
+                color = 0x43B581
+            elif len(health_issues) <= 2:
+                status = "🟡 Warning"
+                color = 0xFAA61A
+            else:
+                status = "🔴 Critical"
+                color = 0xF04747
+
+            embed = discord.Embed(
+                title="🏥 Bot Health Check",
+                description=f"**Status:** {status}",
+                color=color,
+                timestamp=datetime.utcnow(),
+            )
+
+            # System info
+            embed.add_field(
+                name="💻 System",
+                value=f"**OS:** {platform.system()} {platform.release()}\n**CPU:** {cpu_percent}%\n**Memory:** {memory.percent}%\n**Disk:** {disk.percent}%",
+                inline=True,
+            )
+
+            # Bot performance
+            embed.add_field(
+                name="🤖 Bot Performance",
+                value=f"**Latency:** {latency}ms\n**Uptime:** {uptime_str}\n**Guilds:** {len(self.bot.guilds)}\n**Users:** {len(set(self.bot.get_all_members()))}",
+                inline=True,
+            )
+
+            # Resource usage
+            process = psutil.Process()
+            bot_memory = process.memory_info().rss / 1024 / 1024  # MB
+            bot_cpu = process.cpu_percent()
+
+            embed.add_field(
+                name="📊 Resource Usage",
+                value=f"**Bot Memory:** {bot_memory:.1f} MB\n**Bot CPU:** {bot_cpu}%\n**Threads:** {process.num_threads()}\n**Open Files:** {process.num_fds() if hasattr(process, 'num_fds') else 'N/A'}",
+                inline=True,
+            )
+
+            # Issues (if any)
+            if health_issues:
+                embed.add_field(
+                    name="⚠️ Issues Detected",
+                    value="\n".join([f"• {issue}" for issue in health_issues]),
+                    inline=False,
+                )
+
+            # Last restart
+            embed.add_field(
+                name="🔄 Last Restart",
+                value=f"<t:{int((datetime.utcnow() - uptime).timestamp())}:R>",
+                inline=True,
+            )
+
+            embed.set_footer(
+                text=f"Health check completed • Bot ID: {self.bot.user.id}"
+            )
+
+            await interaction.followup.send(embed=embed)
+
+        except Exception as e:
+            self.logger.error(f"Health command error: {e}")
+            embed = discord.Embed(
+                title="🏥 Bot Health Check",
+                description="❌ Unable to retrieve health metrics",
+                color=0xF04747,
+                timestamp=datetime.utcnow(),
+            )
+            embed.add_field(name="Error", value=str(e), inline=False)
+            await interaction.followup.send(embed=embed)
+
 
 async def setup(bot):
     """Setup function to add the cog to the bot"""

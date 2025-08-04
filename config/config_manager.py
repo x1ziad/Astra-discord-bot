@@ -12,6 +12,14 @@ from dataclasses import dataclass, asdict, field
 import discord
 from datetime import datetime
 
+# Import Railway configuration
+try:
+    from .railway_config import get_railway_config
+
+    RAILWAY_ENABLED = True
+except ImportError:
+    RAILWAY_ENABLED = False
+
 logger = logging.getLogger("astra.config")
 
 
@@ -33,6 +41,8 @@ class BotConfig:
     ai_personality: str = "default"
     ai_temperature: float = 0.7
     ai_max_tokens: int = 1500
+    ai_model: str = "DeepSeek-R1-0528"
+    ai_provider: str = "github_models"
 
     # Bot Settings - FIXED: Use snake_case to match the error
     command_sync_on_ready: bool = True
@@ -93,6 +103,29 @@ class ConfigManager:
     def _create_default_config(self) -> BotConfig:
         """Create and save default configuration"""
         config = BotConfig()
+
+        # Override with Railway environment variables if available
+        if RAILWAY_ENABLED:
+            railway_config = get_railway_config()
+
+            # Update config with Railway values
+            if railway_config.get("bot_prefix"):
+                config.prefix = railway_config.get("bot_prefix")
+
+            if railway_config.get("debug_mode") is not None:
+                config.debug = railway_config.get("debug_mode")
+
+            # AI Configuration from active provider (GitHub Models or OpenAI)
+            ai_config = railway_config.get_active_ai_config()
+            if ai_config.get("temperature"):
+                config.ai_temperature = ai_config["temperature"]
+            if ai_config.get("max_tokens"):
+                config.ai_max_tokens = ai_config["max_tokens"]
+            if ai_config.get("model"):
+                config.ai_model = ai_config.get("model", "DeepSeek-R1-0528")
+
+            logger.info("Configuration updated with Railway environment variables")
+
         self.save_config(config)
         return config
 
@@ -215,6 +248,18 @@ class ConfigManager:
         # This would normally query a database for guild-specific settings
         # For now, return the default value
         return default
+
+    def get_ai_config(self) -> Dict[str, Any]:
+        """Get AI configuration for the active provider"""
+        self.reload_if_changed()
+        return {
+            "provider": self._config.ai_provider,
+            "model": self._config.ai_model,
+            "temperature": self._config.ai_temperature,
+            "max_tokens": self._config.ai_max_tokens,
+            "enabled": self._config.ai_enabled,
+            "personality": self._config.ai_personality,
+        }
 
 
 # Global configuration manager instance

@@ -457,6 +457,18 @@ class ExhaustiveTestSuite:
                 def __init__(self, user_id, permissions=None):
                     self.id = user_id
                     self.guild_permissions = permissions or MockPermissions()
+                    # Add roles attribute for compatibility
+                    self.roles = [MockRole("@everyone", 0)]  # Mock @everyone role
+                    if permissions and (
+                        permissions.administrator or permissions.manage_messages
+                    ):
+                        self.roles.append(MockRole("Admin", 1))
+
+            class MockRole:
+                def __init__(self, name, position):
+                    self.name = name
+                    self.position = position
+                    self.id = hash(name) % (10**18)  # Generate consistent ID
 
             class MockPermissions:
                 def __init__(self, is_admin=False, is_mod=False):

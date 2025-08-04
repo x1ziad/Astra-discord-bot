@@ -1,6 +1,6 @@
 """
 Advanced AI Cog for Astra Bot
-Implements modern AI features with conversation engine integration
+Implements modern AI features with GitHub Models and OpenAI integration
 """
 
 import discord
@@ -13,42 +13,577 @@ from datetime import datetime, timedelta
 import json
 from pathlib import Path
 import re
+import os
 
-from ai.enhanced_conversation_engine import (
-    get_conversation_engine,
-    initialize_conversation_engine,
-    EngagementTrigger,
-    ConversationMood,
-    AIProvider,
-    EnhancedAIConversationEngine,
-)
-from config.enhanced_config import config_manager
+# Import GitHub Models client
+try:
+    from ai.github_models_client import (
+        GitHubModelsClient,
+        get_ai_client,
+        initialize_ai_client,
+    )
+
+    GITHUB_MODELS_AVAILABLE = True
+except ImportError:
+    GITHUB_MODELS_AVAILABLE = False
+
+# Import Railway configuration
+try:
+    from config.railway_config import get_railway_config
+
+    RAILWAY_ENABLED = True
+except ImportError:
+    RAILWAY_ENABLED = False
+
+# Fallback OpenAI import
+try:
+    import openai
+
+    OPENAI_AVAILABLE = True
+except ImportError:
+    OPENAI_AVAILABLE = False
+
+from config.config_manager import config_manager
 
 logger = logging.getLogger("astra.advanced_ai")
 
 
 class AdvancedAICog(commands.Cog):
-    """Advanced AI features with modern conversation capabilities"""
+    """Advanced AI features with GitHub Models and OpenAI integration"""
 
     def __init__(self, bot):
         self.bot = bot
         self.config = config_manager
-        self.logger = bot.logger
+        self.logger = logging.getLogger("astra.advanced_ai")
 
-        # Initialize conversation engine
-        ai_config = self.config.get_ai_config()
-        self.conversation_engine = initialize_conversation_engine(ai_config)
+        # Initialize AI client
+        self.ai_client = None
+        self._setup_ai_client()
 
         # Active conversations tracking
         self.active_conversations: Set[int] = set()
         self.conversation_cooldowns: Dict[int, datetime] = {}
         self.channel_activity: Dict[int, Dict[str, Any]] = {}
 
-        # Proactive engagement
-        self.engagement_patterns: Dict[int, List[datetime]] = {}
-        self.user_join_timestamps: Dict[int, datetime] = {}
+        # Conversation history
+        self.conversation_history: Dict[int, List[Dict[str, str]]] = {}
+        self.max_history_length = 10
 
         # Performance tracking
+        self.api_calls_made = 0
+        self.successful_responses = 0
+        self.start_time = datetime.now()
+
+    def _setup_ai_client(self):
+        """Setup AI client with Railway configuration"""
+        try:
+            if RAILWAY_ENABLED:
+                railway_config = get_railway_config()
+
+                # Get AI provider and configuration
+                provider = railway_config.get_ai_provider()
+                self.logger.info(f"Using AI provider: {provider}")
+
+                if provider == "github":
+                    github_config = railway_config.get_github_config()
+                    openai_config = railway_config.get_openai_config()
+
+                    # Initialize GitHub Models client with fallback
+                    self.ai_client = GitHubModelsClient(
+                        github_token=github_config.get("token"),
+                        openai_api_key=openai_config.get("api_key"),
+                    )
+
+                    # Store configuration for commands
+                    self.ai_model = github_config.get(
+                        "model", "deepseek/DeepSeek-R1-0528"
+                    )
+                    self.max_tokens = github_config.get("max_tokens", 2000)
+                    self.temperature = github_config.get("temperature", 0.7)
+
+                    self.logger.info("AI client configured from Railway environment")
+
+                else:
+                    # OpenAI provider
+                    openai_config = railway_config.get_openai_config()
+                    if OPENAI_AVAILABLE:
+                        openai.api_key = openai_config.get("api_key")
+                        self.ai_model = openai_config.get("model", "gpt-4")
+                        self.max_tokens = openai_config.get("max_tokens", 2000)
+                        self.temperature = openai_config.get("temperature", 0.7)
+                        self.logger.info("OpenAI configured from Railway environment")
+                    else:
+                        self.logger.error("OpenAI provider requested but not available")
+
+            else:
+                # Local environment fallback
+                github_token = os.getenv("GITHUB_TOKEN")
+                openai_api_key = os.getenv("OPENAI_API_KEY")
+
+                if github_token and GITHUB_MODELS_AVAILABLE:
+                    self.ai_client = GitHubModelsClient(github_token, openai_api_key)
+                    self.ai_model = os.getenv(
+                        "GITHUB_MODEL", "deepseek/DeepSeek-R1-0528"
+                    )
+                    self.max_tokens = int(os.getenv("GITHUB_MAX_TOKENS", "2000"))
+                    self.temperature = float(os.getenv("GITHUB_TEMPERATURE", "0.7"))
+                    self.logger.info("GitHub Models configured from local environment")
+
+                elif openai_api_key and OPENAI_AVAILABLE:
+                    openai.api_key = openai_api_key
+                    self.ai_model = os.getenv("OPENAI_MODEL", "gpt-4")
+                    self.max_tokens = int(os.getenv("OPENAI_MAX_TOKENS", "2000"))
+                    self.temperature = float(os.getenv("OPENAI_TEMPERATURE", "0.7"))
+                    self.logger.info("OpenAI configured from local environment")
+
+                else:
+                    self.logger.error("No AI provider configured!")
+
+            # Check if any AI service is available
+            if self.ai_client and self.ai_client.is_available():
+                status = self.ai_client.get_status()
+                self.logger.info(f"✅ AI services available: {status}")
+            elif OPENAI_AVAILABLE and openai.api_key:
+                self.logger.info("✅ OpenAI service available")
+            else:
+                self.logger.error("❌ No AI services available!")
+
+        except Exception as e:
+            self.logger.error(f"Failed to setup AI client: {e}")
+            self.ai_client = None
+
+    async def _generate_ai_response(self, prompt: str, user_id: int = None) -> str:
+        """Generate AI response using GitHub Models or OpenAI"""
+        try:
+            # Check if GitHub Models client is available
+            if self.ai_client and self.ai_client.is_available():
+                return await self._generate_github_response(prompt, user_id)
+
+            # Fallback to OpenAI
+            elif OPENAI_AVAILABLE and hasattr(openai, "api_key") and openai.api_key:
+                return await self._generate_openai_response(prompt, user_id)
+
+            else:
+                return "❌ AI service is not configured. Please set up GITHUB_TOKEN or OPENAI_API_KEY."
+
+        except Exception as e:
+            self.logger.error(f"AI response generation error: {e}")
+            return f"❌ Error generating AI response: {str(e)}"
+
+    async def _generate_github_response(self, prompt: str, user_id: int = None) -> str:
+        """Generate AI response using GitHub Models"""
+        try:
+            # Get conversation history for context
+            history = self.conversation_history.get(user_id, []) if user_id else []
+
+            # Build messages for GitHub Models
+            messages = [
+                {
+                    "role": "system",
+                    "content": "You are Astra, a helpful AI assistant for a Discord server focused on space exploration and Stellaris gameplay. Be friendly, informative, and engaging. Provide detailed and accurate responses while maintaining a conversational tone.",
+                }
+            ]
+
+            # Add conversation history (last 5 messages for context)
+            for msg in history[-5:]:
+                messages.append(msg)
+
+            # Add current prompt
+            messages.append({"role": "user", "content": prompt})
+
+            # Make API call using GitHub Models
+            self.api_calls_made += 1
+
+            ai_response_obj = await self.ai_client.chat_completion(
+                messages=messages,
+                model=self.ai_model,
+                max_tokens=self.max_tokens,
+                temperature=self.temperature,
+            )
+
+            ai_response = ai_response_obj.content.strip()
+            self.successful_responses += 1
+
+            # Update conversation history
+            if user_id:
+                if user_id not in self.conversation_history:
+                    self.conversation_history[user_id] = []
+
+                self.conversation_history[user_id].extend(
+                    [
+                        {"role": "user", "content": prompt},
+                        {"role": "assistant", "content": ai_response},
+                    ]
+                )
+
+                # Trim history to max length
+                if len(self.conversation_history[user_id]) > self.max_history_length:
+                    self.conversation_history[user_id] = self.conversation_history[
+                        user_id
+                    ][-self.max_history_length :]
+
+            self.logger.debug(
+                f"GitHub Models response generated: {len(ai_response)} chars"
+            )
+            return ai_response
+
+        except Exception as e:
+            self.logger.error(f"GitHub Models API error: {e}")
+            raise
+
+    async def _generate_openai_response(self, prompt: str, user_id: int = None) -> str:
+        """Generate AI response using OpenAI (fallback)"""
+        try:
+            # Get conversation history for context
+            history = self.conversation_history.get(user_id, []) if user_id else []
+
+            # Build messages for OpenAI
+            messages = [
+                {
+                    "role": "system",
+                    "content": "You are Astra, a helpful AI assistant for a Discord server focused on space exploration and Stellaris gameplay. Be friendly, informative, and engaging.",
+                }
+            ]
+
+            # Add conversation history
+            for msg in history[-5:]:  # Last 5 messages for context
+                messages.append(msg)
+
+            # Add current prompt
+            messages.append({"role": "user", "content": prompt})
+
+            # Make API call
+            self.api_calls_made += 1
+            response = await openai.ChatCompletion.acreate(
+                model=self.ai_model,
+                messages=messages,
+                max_tokens=self.max_tokens,
+                temperature=self.temperature,
+                timeout=30,
+            )
+
+            ai_response = response.choices[0].message.content.strip()
+            self.successful_responses += 1
+
+            # Update conversation history
+            if user_id:
+                if user_id not in self.conversation_history:
+                    self.conversation_history[user_id] = []
+
+                self.conversation_history[user_id].extend(
+                    [
+                        {"role": "user", "content": prompt},
+                        {"role": "assistant", "content": ai_response},
+                    ]
+                )
+
+                # Trim history
+                if len(self.conversation_history[user_id]) > self.max_history_length:
+                    self.conversation_history[user_id] = self.conversation_history[
+                        user_id
+                    ][-self.max_history_length :]
+
+            return ai_response
+
+        except Exception as e:
+            self.logger.error(f"AI response generation failed: {e}")
+            return f"❌ Sorry, I encountered an error while processing your request: {str(e)}"
+
+    @app_commands.command(name="chat", description="Chat with Astra AI")
+    @app_commands.describe(message="Your message to the AI")
+    async def chat_command(self, interaction: discord.Interaction, message: str):
+        """Chat with AI assistant"""
+        try:
+            await interaction.response.defer()
+
+            # Generate AI response
+            response = await self._generate_ai_response(message, interaction.user.id)
+
+            # Create embed
+            embed = discord.Embed(
+                title="🤖 Astra AI Chat",
+                description=response,
+                color=0x7289DA,
+                timestamp=datetime.utcnow(),
+            )
+            embed.set_author(
+                name=interaction.user.display_name,
+                icon_url=interaction.user.display_avatar.url,
+            )
+            embed.add_field(
+                name="💬 Your Message",
+                value=message[:1000] + ("..." if len(message) > 1000 else ""),
+                inline=False,
+            )
+
+            await interaction.followup.send(embed=embed)
+
+        except Exception as e:
+            self.logger.error(f"Chat command error: {e}")
+            await interaction.followup.send(
+                f"❌ Error processing chat request: {str(e)}", ephemeral=True
+            )
+
+    @app_commands.command(name="image", description="Generate an image using AI")
+    @app_commands.describe(prompt="Description of the image to generate")
+    async def image_command(self, interaction: discord.Interaction, prompt: str):
+        """Generate AI image"""
+        try:
+            await interaction.response.defer()
+
+            # Image generation requires OpenAI (DALL-E)
+            if not (OPENAI_AVAILABLE and hasattr(openai, "api_key") and openai.api_key):
+                await interaction.followup.send(
+                    "❌ Image generation requires OpenAI API key. GitHub Models doesn't support image generation yet.",
+                    ephemeral=True,
+                )
+                return
+
+            # Generate enhanced prompt using available AI
+            enhanced_prompt = await self._enhance_image_prompt(prompt)
+
+            # Generate image using DALL-E
+            response = await openai.Image.acreate(
+                prompt=enhanced_prompt, n=1, size="1024x1024"
+            )
+
+            image_url = response["data"][0]["url"]
+
+            embed = discord.Embed(
+                title="🎨 AI Generated Image",
+                description=f"**Original Prompt:** {prompt}\n**Enhanced Prompt:** {enhanced_prompt[:100]}...",
+                color=0x7289DA,
+                timestamp=datetime.utcnow(),
+            )
+            embed.set_image(url=image_url)
+            embed.set_author(
+                name=interaction.user.display_name,
+                icon_url=interaction.user.display_avatar.url,
+            )
+            embed.add_field(name="🎯 AI Model", value="DALL-E 3 (OpenAI)", inline=True)
+
+            await interaction.followup.send(embed=embed)
+
+        except Exception as e:
+            self.logger.error(f"Image generation error: {e}")
+            await interaction.followup.send(
+                f"❌ Error generating image: {str(e)}", ephemeral=True
+            )
+
+    async def _enhance_image_prompt(self, original_prompt: str) -> str:
+        """Enhance image prompt using AI for better results"""
+        try:
+            enhancement_request = f"Enhance this image generation prompt to be more detailed and visually descriptive while keeping the original intent. Make it suitable for DALL-E image generation. Original prompt: '{original_prompt}'"
+
+            enhanced = await self._generate_ai_response(enhancement_request)
+
+            # Clean up the response to just get the enhanced prompt
+            if "enhanced prompt:" in enhanced.lower():
+                enhanced = enhanced.split("enhanced prompt:")[-1].strip()
+            elif "prompt:" in enhanced.lower():
+                enhanced = enhanced.split("prompt:")[-1].strip()
+
+            # Remove quotes if present
+            enhanced = enhanced.strip("\"'")
+
+            # Limit length for DALL-E
+            if len(enhanced) > 400:
+                enhanced = enhanced[:400] + "..."
+
+            return enhanced if enhanced else original_prompt
+
+        except:
+            # If enhancement fails, return original prompt
+            return original_prompt
+
+    @app_commands.command(name="analyze", description="Analyze text or content with AI")
+    @app_commands.describe(content="Content to analyze")
+    async def analyze_command(self, interaction: discord.Interaction, content: str):
+        """Analyze content with AI"""
+        try:
+            await interaction.response.defer()
+
+            analysis_prompt = f"Please analyze the following content and provide insights, key points, and summary:\n\n{content}"
+            response = await self._generate_ai_response(
+                analysis_prompt, interaction.user.id
+            )
+
+            embed = discord.Embed(
+                title="🔍 AI Content Analysis",
+                description=response,
+                color=0x7289DA,
+                timestamp=datetime.utcnow(),
+            )
+            embed.add_field(
+                name="📝 Analyzed Content",
+                value=content[:500] + ("..." if len(content) > 500 else ""),
+                inline=False,
+            )
+            embed.set_author(
+                name=interaction.user.display_name,
+                icon_url=interaction.user.display_avatar.url,
+            )
+
+            await interaction.followup.send(embed=embed)
+
+        except Exception as e:
+            self.logger.error(f"Analysis command error: {e}")
+            await interaction.followup.send(
+                f"❌ Error analyzing content: {str(e)}", ephemeral=True
+            )
+
+    @app_commands.command(name="personality", description="Change AI personality")
+    @app_commands.describe(
+        personality="Personality type (friendly, professional, casual, creative)"
+    )
+    async def personality_command(
+        self, interaction: discord.Interaction, personality: str
+    ):
+        """Change AI personality"""
+        try:
+            await interaction.response.defer()
+
+            valid_personalities = [
+                "friendly",
+                "professional",
+                "casual",
+                "creative",
+                "default",
+            ]
+
+            if personality.lower() not in valid_personalities:
+                await interaction.followup.send(
+                    f"❌ Invalid personality. Choose from: {', '.join(valid_personalities)}",
+                    ephemeral=True,
+                )
+                return
+
+            # Store personality preference (you might want to save this to database)
+            embed = discord.Embed(
+                title="🎭 Personality Changed",
+                description=f"AI personality set to: **{personality.title()}**",
+                color=0x43B581,
+                timestamp=datetime.utcnow(),
+            )
+
+            await interaction.followup.send(embed=embed)
+
+        except Exception as e:
+            self.logger.error(f"Personality command error: {e}")
+            await interaction.followup.send(
+                f"❌ Error changing personality: {str(e)}", ephemeral=True
+            )
+
+    @app_commands.command(
+        name="voice", description="Convert text to speech (placeholder)"
+    )
+    @app_commands.describe(text="Text to convert to speech")
+    async def voice_command(self, interaction: discord.Interaction, text: str):
+        """Text to speech (placeholder implementation)"""
+        try:
+            await interaction.response.defer()
+
+            # This is a placeholder - you would implement actual TTS here
+            embed = discord.Embed(
+                title="🔊 Text to Speech",
+                description="Voice synthesis feature is coming soon! Stay tuned for updates.",
+                color=0xFAA61A,
+                timestamp=datetime.utcnow(),
+            )
+            embed.add_field(
+                name="📝 Text",
+                value=text[:500] + ("..." if len(text) > 500 else ""),
+                inline=False,
+            )
+
+            await interaction.followup.send(embed=embed)
+
+        except Exception as e:
+            self.logger.error(f"Voice command error: {e}")
+            await interaction.followup.send(
+                f"❌ Error processing voice request: {str(e)}", ephemeral=True
+            )
+
+    @app_commands.command(
+        name="translate", description="Translate text to another language"
+    )
+    @app_commands.describe(
+        text="Text to translate",
+        target_language="Target language (e.g., Spanish, French, German)",
+    )
+    async def translate_command(
+        self, interaction: discord.Interaction, text: str, target_language: str
+    ):
+        """Translate text using AI"""
+        try:
+            await interaction.response.defer()
+
+            translate_prompt = (
+                f"Translate the following text to {target_language}:\n\n{text}"
+            )
+            response = await self._generate_ai_response(
+                translate_prompt, interaction.user.id
+            )
+
+            embed = discord.Embed(
+                title="🌐 AI Translation", color=0x7289DA, timestamp=datetime.utcnow()
+            )
+            embed.add_field(
+                name="📝 Original Text",
+                value=text[:500] + ("..." if len(text) > 500 else ""),
+                inline=False,
+            )
+            embed.add_field(
+                name=f"🔄 Translation ({target_language})", value=response, inline=False
+            )
+            embed.set_author(
+                name=interaction.user.display_name,
+                icon_url=interaction.user.display_avatar.url,
+            )
+
+            await interaction.followup.send(embed=embed)
+
+        except Exception as e:
+            self.logger.error(f"Translation command error: {e}")
+            await interaction.followup.send(
+                f"❌ Error translating text: {str(e)}", ephemeral=True
+            )
+
+    @app_commands.command(name="summarize", description="Summarize long text with AI")
+    @app_commands.describe(content="Content to summarize")
+    async def summarize_command(self, interaction: discord.Interaction, content: str):
+        """Summarize content with AI"""
+        try:
+            await interaction.response.defer()
+
+            summarize_prompt = f"Please provide a concise summary of the following content:\n\n{content}"
+            response = await self._generate_ai_response(
+                summarize_prompt, interaction.user.id
+            )
+
+            embed = discord.Embed(
+                title="📋 AI Summary",
+                description=response,
+                color=0x7289DA,
+                timestamp=datetime.utcnow(),
+            )
+            embed.add_field(
+                name="📄 Original Content",
+                value=content[:500] + ("..." if len(content) > 500 else ""),
+                inline=False,
+            )
+            embed.set_author(
+                name=interaction.user.display_name,
+                icon_url=interaction.user.display_avatar.url,
+            )
+
+            await interaction.followup.send(embed=embed)
+
+        except Exception as e:
+            self.logger.error(f"Summarize command error: {e}")
+            await interaction.followup.send(
+                f"❌ Error summarizing content: {str(e)}", ephemeral=True
+            )
         self.response_times: List[float] = []
         self.conversation_quality_scores: Dict[str, float] = {}
 

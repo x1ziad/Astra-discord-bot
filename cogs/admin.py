@@ -497,6 +497,140 @@ class Admin(commands.GroupCog, name="admin"):
             )
             self.logger.error(f"Purge error: {traceback.format_exc()}")
 
+    @app_commands.command(name="logs", description="View recent bot logs")
+    @app_commands.describe(lines="Number of log lines to show (default: 50)")
+    @app_commands.default_permissions(administrator=True)
+    async def logs_command(self, interaction: discord.Interaction, lines: int = 50):
+        """View recent bot logs (Admin only)"""
+        # Check if user is admin
+        if not interaction.user.guild_permissions.administrator:
+            await interaction.response.send_message(
+                "❌ This command can only be used by server administrators.",
+                ephemeral=True,
+            )
+            return
+
+        await interaction.response.defer(ephemeral=True)
+
+        try:
+            log_file = "logs/bot.log"
+            if not os.path.exists(log_file):
+                await interaction.followup.send(
+                    "❌ Log file not found.", ephemeral=True
+                )
+                return
+
+            # Read last N lines
+            with open(log_file, "r", encoding="utf-8") as f:
+                log_lines = f.readlines()
+
+            # Get the last 'lines' number of lines
+            recent_logs = log_lines[-lines:] if len(log_lines) > lines else log_lines
+            log_content = "".join(recent_logs)
+
+            # Truncate if too long for Discord
+            if len(log_content) > 1900:
+                log_content = log_content[-1900:]
+                log_content = "...\n" + log_content[log_content.find("\n") + 1 :]
+
+            embed = discord.Embed(
+                title="📋 Recent Bot Logs",
+                description=f"```\n{log_content}\n```",
+                color=self.config.get_color("info"),
+                timestamp=datetime.utcnow(),
+            )
+            embed.set_footer(text=f"Last {len(recent_logs)} lines")
+
+            await interaction.followup.send(embed=embed, ephemeral=True)
+
+        except Exception as e:
+            await interaction.followup.send(
+                f"❌ Error reading logs: {str(e)}", ephemeral=True
+            )
+            self.logger.error(f"Logs command error: {traceback.format_exc()}")
+
+    @app_commands.command(name="extensions", description="Manage bot extensions/cogs")
+    @app_commands.describe(action="Action to perform", extension="Extension/cog name")
+    @app_commands.default_permissions(administrator=True)
+    async def extensions_command(
+        self,
+        interaction: discord.Interaction,
+        action: Literal["list", "reload", "load", "unload"],
+        extension: Optional[str] = None,
+    ):
+        """Manage bot extensions/cogs (Admin only)"""
+        # Check if user is admin or bot owner
+        app_info = await self.bot.application_info()
+        is_owner = interaction.user.id == app_info.owner.id
+        is_admin = interaction.user.guild_permissions.administrator
+
+        if not is_owner and not is_admin:
+            await interaction.response.send_message(
+                "❌ This command can only be used by the bot owner or server administrators.",
+                ephemeral=True,
+            )
+            return
+
+        await interaction.response.defer(ephemeral=True)
+
+        try:
+            if action == "list":
+                # List all loaded extensions
+                extensions = list(self.bot.extensions.keys())
+                if not extensions:
+                    await interaction.followup.send(
+                        "❌ No extensions loaded.", ephemeral=True
+                    )
+                    return
+
+                embed = discord.Embed(
+                    title="📦 Loaded Extensions",
+                    description="\n".join([f"• `{ext}`" for ext in extensions]),
+                    color=self.config.get_color("info"),
+                    timestamp=datetime.utcnow(),
+                )
+                embed.set_footer(text=f"Total: {len(extensions)} extensions")
+                await interaction.followup.send(embed=embed, ephemeral=True)
+
+            elif action in ["reload", "load", "unload"]:
+                if not extension:
+                    await interaction.followup.send(
+                        f"❌ Extension name required for {action} action.",
+                        ephemeral=True,
+                    )
+                    return
+
+                # Add cogs prefix if not present
+                if not extension.startswith("cogs."):
+                    extension = f"cogs.{extension}"
+
+                if action == "reload":
+                    await self.bot.reload_extension(extension)
+                    message = f"✅ Successfully reloaded `{extension}`"
+                elif action == "load":
+                    await self.bot.load_extension(extension)
+                    message = f"✅ Successfully loaded `{extension}`"
+                elif action == "unload":
+                    await self.bot.unload_extension(extension)
+                    message = f"✅ Successfully unloaded `{extension}`"
+
+                embed = discord.Embed(
+                    title="📦 Extension Management",
+                    description=message,
+                    color=self.config.get_color("success"),
+                    timestamp=datetime.utcnow(),
+                )
+                await interaction.followup.send(embed=embed, ephemeral=True)
+
+        except Exception as e:
+            error_message = f"❌ Error with extension {action}: {str(e)}"
+            await interaction.followup.send(error_message, ephemeral=True)
+            self.logger.error(f"Extension command error: {traceback.format_exc()}")
+
+
+async def setup(bot):
+    await bot.add_cog(Admin(bot))
+
 
 async def setup(bot):
     await bot.add_cog(Admin(bot))

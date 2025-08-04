@@ -25,6 +25,7 @@ import sys
 import traceback
 import psutil
 import gc
+import openai
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Union, Any, Callable
@@ -42,6 +43,14 @@ from logger.enhanced_logger import setup_enhanced_logger, log_performance
 from utils.database import db
 from utils.error_handler import ErrorHandler
 from utils.permissions import PermissionLevel, has_permission
+
+# Railway configuration support
+try:
+    from config.railway_config import get_railway_config, setup_railway_logging
+
+    RAILWAY_ENABLED = True
+except ImportError:
+    RAILWAY_ENABLED = False
 
 # Try to load optional dependencies
 try:
@@ -1096,40 +1105,85 @@ def register_global_commands(bot: AstraBot):
 
 
 async def main():
-    """Enhanced main function with comprehensive error handling and monitoring"""
+    """Enhanced main function with comprehensive error handling and Railway support"""
 
-    # Initial logging setup
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s | %(levelname)-8s | %(name)-15s | %(message)s",
-        datefmt="%H:%M:%S",
-    )
-
-    logger = logging.getLogger("Astra.Main")
+    # Setup Railway logging if available
+    if RAILWAY_ENABLED:
+        setup_railway_logging()
+        logger = logging.getLogger("Astra.Main")
+        logger.info("🚄 Railway logging configured")
+    else:
+        # Initial logging setup for local development
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s | %(levelname)-8s | %(name)-15s | %(message)s",
+            datefmt="%H:%M:%S",
+        )
+        logger = logging.getLogger("Astra.Main")
 
     try:
+        # Railway configuration
+        if RAILWAY_ENABLED:
+            railway_config = get_railway_config()
+            logger.info("🚄 Railway configuration loaded")
+
+            # Create config file from Railway environment
+            config_file = railway_config.create_config_file()
+            logger.info(f"📝 Configuration file created: {config_file}")
+
         logger.info("=" * 80)
-        logger.info("🚀 Starting Astra Discord Bot - Enhanced Edition")
-        logger.info(f"📅 Build: 2025-08-02 10:53:48 UTC")
+        logger.info("🚀 Starting Astra Discord Bot v2.0.1")
+        logger.info("🌟 Enhanced with Railway deployment support")
+        logger.info(f"📅 Build: 2025-08-04 Railway Ready")
         logger.info(f"🐍 Python: {platform.python_version()}")
         logger.info(f"📦 Discord.py: {discord.__version__}")
         logger.info("=" * 80)
 
-        # Environment validation
-        token = os.getenv("DISCORD_TOKEN")
+        # Environment validation - check Railway config first
+        token = None
+        if RAILWAY_ENABLED:
+            railway_config = get_railway_config()
+            discord_config = railway_config.get_discord_config()
+            token = discord_config.get("token")
+            logger.info("🚄 Using Discord token from Railway environment")
+
         if not token:
-            logger.critical("🚫 DISCORD_TOKEN environment variable not found!")
+            token = os.getenv("DISCORD_TOKEN")
+            logger.info("🔧 Using Discord token from local environment")
+
+        if not token:
             logger.critical(
-                "Please set your Discord bot token in the environment variables."
+                "🚫 DISCORD_TOKEN not found in Railway or local environment!"
+            )
+            logger.critical(
+                "Please set your Discord bot token in Railway environment variables."
             )
             return 1
 
-        # Optional environment checks
+        # Check OpenAI configuration
+        openai_configured = False
+        if RAILWAY_ENABLED:
+            railway_config = get_railway_config()
+            openai_config = railway_config.get_openai_config()
+            if openai_config.get("api_key"):
+                openai_configured = True
+                logger.info("✅ OpenAI API configured from Railway")
+
+        if not openai_configured and os.getenv("OPENAI_API_KEY"):
+            openai_configured = True
+            logger.info("✅ OpenAI API configured from local environment")
+
+        if not openai_configured:
+            logger.warning(
+                "⚠️ OpenAI API key not configured - AI features will be limited"
+            )
+
+        # Optional environment checks for backwards compatibility
         optional_vars = [
             "AZURE_OPENAI_ENDPOINT",
             "AZURE_OPENAI_KEY",
             "AZURE_SPEECH_KEY",
-            "OPENAI_API_KEY",
+            "NASA_API_KEY",
         ]
 
         missing_optional = [var for var in optional_vars if not os.getenv(var)]
@@ -1137,7 +1191,7 @@ async def main():
             logger.warning(
                 f"⚠️ Optional environment variables missing: {', '.join(missing_optional)}"
             )
-            logger.warning("Some AI features may not be available.")
+            logger.warning("Some advanced features may not be available.")
 
         # Create bot instance
         async with AstraBot() as bot:
