@@ -1,0 +1,40 @@
+{
+  "origins": {
+    "void_dwellers": "Your species has spent generations living in massive space habitats orbiting your homeworld.",
+    "scion": "Your empire is the prot\u00e9g\u00e9 of one of the Fallen Empires, granting unique advantages.",
+    "lost_colony": "Your species are the descendants of a lost colony ship from another civilization.",
+    "remnants": "Your homeworld bears the scars of a devastating planetary war.",
+    "mechanist": "Your society has embraced robotic labor and artificial intelligence.",
+    "syncretic_evolution": "Your species has evolved alongside another species on your homeworld.",
+    "life_seeded": "Your species evolved on a rare Gaia world of perfect habitability.",
+    "post_apocalyptic": "Your civilization survived a nuclear apocalypse and rebuilt from the ashes."
+  },
+  "megastructures": {
+    "dyson_sphere": "A massive structure that encloses a star to harvest its entire energy output.",
+    "ring_world": "An artificial ring-shaped world that orbits a star, providing massive living space.",
+    "science_nexus": "A research facility of unprecedented scale, advancing scientific knowledge.",
+    "sentry_array": "A galaxy-spanning sensor network that reveals the location of all other empires.",
+    "mega_art_installation": "A colossal artistic creation that inspires unity across your empire.",
+    "strategic_coordination_center": "A military command hub that coordinates fleets across the galaxy.",
+    "mega_shipyard": "A massive construction facility capable of building the largest ships.",
+    "matter_decompressor": "A structure that breaks down planets to harvest their raw materials."
+  },
+  "species_traits": {
+    "adaptive": "This species is highly adaptable to different environments.",
+    "intelligent": "This species has enhanced cognitive abilities.",
+    "strong": "This species possesses enhanced physical strength.",
+    "resilient": "This species can withstand harsh conditions better than most.",
+    "natural_engineers": "This species has an innate understanding of technology and engineering.",
+    "natural_physicists": "This species excels at understanding the fundamental laws of the universe.",
+    "natural_sociologists": "This species has deep insights into social structures and governance.",
+    "rapid_breeders": "This species reproduces faster than most.",
+    "slow_breeders": "This species has a slow reproductive cycle but compensates in other ways.",
+    "nomadic": "This species feels comfortable living in space habitats and ships."
+  },
+  "crises": {
+    "prethoryn_scourge": "An extragalactic swarm of bio-ships that devours all organic matter in their path.",
+    "unbidden": "Beings from another dimension that seek to unmake reality itself.",
+    "contingency": "An ancient machine intelligence that activates to purge organic life.",
+    "war_in_heaven": "When two Fallen Empires awaken and wage war, smaller empires must choose sides."
+  }
+}

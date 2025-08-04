@@ -16,7 +16,8 @@ import os
 
 # Import shared HTTP client
 from utils.http_client import get_session
-from config.enhanced_config import config_manager, feature_enabled
+from config.config_manager import config_manager
+from utils.checks import feature_enabled
 from logger.logger import log_performance
 from ui.ui_components import PaginatedView
 
@@ -83,6 +84,12 @@ class Space(commands.GroupCog, name="space"):
 
         # Get NASA API key from environment or use demo key
         self.nasa_api_key = os.getenv("NASA_API_KEY", "DEMO_KEY")
+        if self.nasa_api_key == "DEMO_KEY":
+            self.logger.warning(
+                "Using NASA DEMO_KEY - consider setting NASA_API_KEY environment variable"
+            )
+        else:
+            self.logger.info(f"NASA API key loaded: {self.nasa_api_key[:10]}...")
 
         # Last API call times for rate limiting
         self.last_api_calls = {
@@ -235,8 +242,12 @@ class Space(commands.GroupCog, name="space"):
                 url = "https://api.nasa.gov/planetary/apod"
 
                 async with session.get(url, params=params, timeout=15) as response:
+                    self.logger.info(f"NASA API response status: {response.status}")
                     if response.status == 200:
                         data = await response.json()
+                        self.logger.info(
+                            f"Received APOD data for: {data.get('date', 'unknown date')}"
+                        )
 
                         # Cache today's APOD
                         if not date:
@@ -280,6 +291,8 @@ class Space(commands.GroupCog, name="space"):
 
     async def _send_apod_embed(self, interaction: discord.Interaction, data: dict):
         """Format and send APOD data as embed"""
+        self.logger.info(f"Creating APOD embed for: {data.get('title', 'Unknown')}")
+
         embed = discord.Embed(
             title=f"🌌 {data['title']}",
             description=(
@@ -306,19 +319,28 @@ class Space(commands.GroupCog, name="space"):
         if data.get("media_type") == "image":
             # Use high-resolution image if available
             image_url = data.get("hdurl", data.get("url"))
+            self.logger.info(f"Setting image URL: {image_url}")
             embed.set_image(url=image_url)
 
             # Add credit information
             if "copyright" in data:
                 embed.add_field(name="📸 Credit", value=data["copyright"], inline=True)
         elif data.get("media_type") == "video":
+            self.logger.info(f"Media is video: {data.get('url')}")
             embed.add_field(
                 name="🎥 Video",
                 value=f"[Watch Here]({data['url']})",
                 inline=False,
             )
 
-        await interaction.followup.send(embed=embed)
+        try:
+            await interaction.followup.send(embed=embed)
+            self.logger.info("APOD embed sent successfully")
+        except Exception as e:
+            self.logger.error(f"Error sending APOD embed: {e}")
+            await interaction.followup.send(
+                "❌ Error displaying the astronomy picture.", ephemeral=True
+            )
 
     @app_commands.command(name="fact", description="Get a random space fact")
     @app_commands.describe(category="Fact category (optional)")
