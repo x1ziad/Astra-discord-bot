@@ -339,7 +339,13 @@ class AstraBot(commands.Bot):
         # Extension loading order with dependencies
         extension_groups = [
             # Core utilities (no dependencies)
-            ["cogs.enhanced_admin", "cogs.stats", "cogs.bot_setup", "cogs.bot_status", "cogs.utilities"],
+            [
+                "cogs.enhanced_admin",
+                "cogs.stats",
+                "cogs.bot_setup",
+                "cogs.bot_status",
+                "cogs.utilities",
+            ],
             # AI and enhanced features (depend on core)
             ["cogs.advanced_ai", "cogs.server_management"],
             # Analytics and specialized features
