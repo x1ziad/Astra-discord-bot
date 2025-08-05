@@ -97,7 +97,7 @@ class AdvancedAICog(commands.Cog):
             self.logger.error(f"Failed to setup AI client: {e}")
             self.ai_client = None
 
-    async def _generate_ai_response(self, prompt: str, user_id: int = None) -> str:
+    async def _generate_ai_response(self, prompt: str, user_id: int = None, guild_id: int = None, channel_id: int = None) -> str:
         """Generate AI response using the consolidated AI engine"""
         try:
             if not self.ai_client:
@@ -105,17 +105,17 @@ class AdvancedAICog(commands.Cog):
                     "❌ AI service is not configured. Please check the configuration."
                 )
 
-            # Prepare conversation context
-            context = {
+            # Prepare context data for the AI engine
+            context_data = {
                 "channel_type": "discord",
                 "conversation_history": (
                     self.conversation_history.get(user_id, []) if user_id else []
                 ),
             }
 
-            # Generate response using the consolidated engine
+            # Generate response using the consolidated engine with proper parameters
             response = await self.ai_client.process_conversation(
-                prompt, user_id, **context
+                prompt, user_id, guild_id=guild_id, channel_id=channel_id, context_data=context_data
             )
 
             # Update conversation history
@@ -153,7 +153,12 @@ class AdvancedAICog(commands.Cog):
             await interaction.response.defer()
 
             # Generate AI response
-            response = await self._generate_ai_response(message, interaction.user.id)
+            response = await self._generate_ai_response(
+                message, 
+                interaction.user.id, 
+                guild_id=interaction.guild.id if interaction.guild else None,
+                channel_id=interaction.channel.id
+            )
 
             # Create embed
             embed = discord.Embed(
@@ -700,7 +705,12 @@ class AdvancedAICog(commands.Cog):
             }
 
             # Process with AI client
-            response = await self._generate_ai_response(message.content, user_id)
+            response = await self._generate_ai_response(
+                message.content, 
+                user_id, 
+                guild_id=message.guild.id if message.guild else None,
+                channel_id=message.channel.id
+            )
 
             # Send response
             if len(response) > 2000:
