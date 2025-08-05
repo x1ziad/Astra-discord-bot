@@ -1,259 +1,214 @@
 """
-Enhanced Configuration Module for Astra Bot
-Provides advanced configuration management with validation and type checking
+Enhanced Configuration Manager for Astra Bot
+Provides centralized configuration management with environment variable support
 """
 
-import json
 import os
-from typing import Dict, Any, Optional, Union, Callable
-from pathlib import Path
+import json
 import logging
-import functools
+from typing import Dict, Any, Optional, Union
+from dataclasses import dataclass, asdict
+from pathlib import Path
 
-logger = logging.getLogger("astra.config")
+logger = logging.getLogger(__name__)
 
+@dataclass
+class AIProviderConfig:
+    """Configuration for AI providers"""
+    api_key: Optional[str] = None
+    base_url: Optional[str] = None
+    model: Optional[str] = None
+    max_tokens: int = 2000
+    temperature: float = 0.7
+    provider_name: Optional[str] = None
 
-class EnhancedConfig:
-    """Enhanced configuration manager with validation and type safety"""
-
-    def __init__(self, config_path: str = "config.json"):
-        self.config_path = Path(config_path)
-        self._config: Dict[str, Any] = {}
-        self._defaults = {
-            "discord": {
-                "token": "",
-                "prefix": "!",
-                "intents": {
-                    "messages": True,
-                    "guilds": True,
-                    "members": True,
-                    "reactions": True,
-                },
-            },
-            "database": {
-                "path": "data/astra.db",
-                "backup_interval": 3600,
-                "connection_pool_size": 15,
-                "enable_wal_mode": True,
-            },
-            "ai": {
-                "openai": {
-                    "api_key": "",
-                    "model": "gpt-4",
-                    "max_tokens": 2000,
-                    "temperature": 0.7,
-                },
-                "azure": {
-                    "endpoint": "",
-                    "api_key": "",
-                    "speech_key": "",
-                    "speech_region": "westus",
-                },
-            },
-            "features": {
-                "enable_ai": False,
-                "enable_voice": False,
-                "enable_moderation": True,
-                "enable_analytics": True,
-            },
-            "performance": {
-                "max_concurrent_tasks": 50,
-                "cache_ttl": 300,
-                "rate_limit_per_minute": 60,
-                "memory_warning_threshold": 500,
-                "memory_critical_threshold": 800,
-            },
-            "logging": {
-                "level": "INFO",
-                "max_file_size": "10MB",
-                "backup_count": 5,
-                "console_output": True,
-            },
-        }
-        self.load_config()
-
-    def load_config(self) -> None:
-        """Load configuration from file with fallback to defaults"""
+class EnhancedConfigManager:
+    """Enhanced configuration manager with environment variable support"""
+    
+    def __init__(self, config_file: Optional[str] = None):
+        self.config_file = config_file or "config/config.json"
+        self.config_data: Dict[str, Any] = {}
+        self.logger = logging.getLogger(__name__)
+        
+        # Load configuration
+        self._load_config()
+    
+    def _load_config(self):
+        """Load configuration from file and environment"""
         try:
-            if self.config_path.exists():
-                with open(self.config_path, "r", encoding="utf-8") as f:
-                    file_config = json.load(f)
-
-                # Merge with defaults
-                self._config = self._merge_configs(self._defaults, file_config)
-                logger.info(f"✅ Configuration loaded from {self.config_path}")
+            # Try to load from file first
+            if os.path.exists(self.config_file):
+                with open(self.config_file, 'r') as f:
+                    self.config_data = json.load(f)
+                    self.logger.info(f"Loaded configuration from {self.config_file}")
             else:
-                logger.warning(f"⚠️ Config file not found, using defaults")
-                self._config = self._defaults.copy()
-                self.save_config()
-
-        except json.JSONDecodeError as e:
-            logger.error(f"❌ Invalid JSON in config file: {e}")
-            self._config = self._defaults.copy()
+                self.logger.info(f"Config file {self.config_file} not found, using environment variables only")
+                self.config_data = {}
         except Exception as e:
-            logger.error(f"❌ Error loading config: {e}")
-            self._config = self._defaults.copy()
-
-    def save_config(self) -> None:
-        """Save current configuration to file"""
-        try:
-            # Ensure directory exists
-            self.config_path.parent.mkdir(parents=True, exist_ok=True)
-
-            with open(self.config_path, "w", encoding="utf-8") as f:
-                json.dump(self._config, f, indent=2, ensure_ascii=False)
-            logger.info(f"✅ Configuration saved to {self.config_path}")
-        except Exception as e:
-            logger.error(f"❌ Error saving config: {e}")
-
-    def _merge_configs(self, defaults: Dict, config: Dict) -> Dict:
-        """Recursively merge configuration with defaults"""
-        result = defaults.copy()
-
-        for key, value in config.items():
-            if (
-                key in result
-                and isinstance(result[key], dict)
-                and isinstance(value, dict)
-            ):
-                result[key] = self._merge_configs(result[key], value)
-            else:
-                result[key] = value
-
-        return result
-
-    def get(self, key: str, default: Any = None) -> Any:
-        """Get configuration value with dot notation support"""
-        keys = key.split(".")
-        value = self._config
-
-        try:
-            for k in keys:
-                value = value[k]
-            return value
-        except (KeyError, TypeError):
-            return default
-
-    def set(self, key: str, value: Any) -> None:
-        """Set configuration value with dot notation support"""
-        keys = key.split(".")
-        config = self._config
-
-        for k in keys[:-1]:
-            if k not in config or not isinstance(config[k], dict):
-                config[k] = {}
-            config = config[k]
-
-        config[keys[-1]] = value
-
-    def get_discord_config(self) -> Dict[str, Any]:
-        """Get Discord-specific configuration"""
-        return self.get("discord", {})
-
+            self.logger.warning(f"Failed to load config file: {e}")
+            self.config_data = {}
+    
+    def get_setting(self, key: str, default: Any = None) -> Any:
+        """Get a setting from environment variables or config file"""
+        # First check environment variables
+        env_value = os.getenv(key)
+        if env_value is not None:
+            # Try to parse as JSON for complex types
+            try:
+                return json.loads(env_value)
+            except (json.JSONDecodeError, TypeError):
+                return env_value
+        
+        # Then check config file
+        if key in self.config_data:
+            return self.config_data[key]
+        
+        # Return default
+        return default
+    
+    def get_ai_provider_config(self, provider: str = "universal") -> AIProviderConfig:
+        """Get AI provider configuration"""
+        if provider == "universal":
+            return AIProviderConfig(
+                api_key=self.get_setting("AI_API_KEY") or self.get_setting("OPENROUTER_API_KEY"),
+                base_url=self.get_setting("AI_BASE_URL", "https://openrouter.ai/api/v1"),
+                model=self.get_setting("AI_MODEL", "deepseek/deepseek-r1:nitro"),
+                max_tokens=int(self.get_setting("AI_MAX_TOKENS", "2000")),
+                temperature=float(self.get_setting("AI_TEMPERATURE", "0.7")),
+                provider_name="universal"
+            )
+        elif provider == "openrouter":
+            return AIProviderConfig(
+                api_key=self.get_setting("OPENROUTER_API_KEY"),
+                base_url=self.get_setting("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"),
+                model=self.get_setting("OPENROUTER_MODEL", "deepseek/deepseek-r1:nitro"),
+                max_tokens=int(self.get_setting("OPENROUTER_MAX_TOKENS", "2000")),
+                temperature=float(self.get_setting("OPENROUTER_TEMPERATURE", "0.7")),
+                provider_name="openrouter"
+            )
+        elif provider == "github":
+            return AIProviderConfig(
+                api_key=self.get_setting("GITHUB_TOKEN"),
+                model=self.get_setting("GITHUB_MODEL", "deepseek/DeepSeek-R1-0528"),
+                max_tokens=int(self.get_setting("GITHUB_MAX_TOKENS", "2000")),
+                temperature=float(self.get_setting("GITHUB_TEMPERATURE", "0.7")),
+                provider_name="github"
+            )
+        elif provider == "openai":
+            return AIProviderConfig(
+                api_key=self.get_setting("OPENAI_API_KEY"),
+                base_url=self.get_setting("OPENAI_BASE_URL", "https://api.openai.com/v1"),
+                model=self.get_setting("OPENAI_MODEL", "gpt-4"),
+                max_tokens=int(self.get_setting("OPENAI_MAX_TOKENS", "2000")),
+                temperature=float(self.get_setting("OPENAI_TEMPERATURE", "0.7")),
+                provider_name="openai"
+            )
+        else:
+            # Default configuration
+            return AIProviderConfig()
+    
     def get_database_config(self) -> Dict[str, Any]:
-        """Get database-specific configuration"""
-        return self.get("database", {})
-
-    def get_ai_config(self) -> Dict[str, Any]:
-        """Get AI-specific configuration"""
-        return self.get("ai", {})
-
-    def get_performance_config(self) -> Dict[str, Any]:
-        """Get performance-specific configuration"""
-        return self.get("performance", {})
-
-    def is_feature_enabled(self, feature: str) -> bool:
-        """Check if a feature is enabled"""
-        return self.get(f"features.{feature}", False)
-
-    def get_feature_setting(self, feature: str, default: Any = None) -> Any:
-        """Get feature-specific setting"""
-        return self.get(f"features.{feature}", default)
-
-    def get_guild_setting(
-        self, guild_id: int, setting: str, default: Any = None
-    ) -> Any:
-        """Get guild-specific setting"""
-        return self.get(f"guilds.{guild_id}.{setting}", default)
-
-    def set_guild_setting(self, guild_id: int, setting: str, value: Any) -> None:
-        """Set guild-specific setting"""
-        self.set(f"guilds.{guild_id}.{setting}", value)
-        self.save_config()
-
-    def get_color(self, color_name: str) -> int:
-        """Get color value for embeds"""
-        colors = {
-            "space": 0x1F1F23,  # Dark space color
-            "error": 0xFF6B6B,  # Red
-            "success": 0x51CF66,  # Green
-            "warning": 0xFFD43B,  # Yellow
-            "info": 0x74C0FC,  # Blue
-            "primary": 0x7950F2,  # Purple
-            "secondary": 0x868E96,  # Gray
+        """Get database configuration"""
+        return {
+            "path": self.get_setting("DATABASE_PATH", "data/astra.db"),
+            "conversation_db": self.get_setting("CONVERSATION_DB_PATH", "data/conversations.db"),
+            "backup_interval": int(self.get_setting("DB_BACKUP_INTERVAL", "3600")),  # 1 hour
         }
-        return colors.get(color_name, 0x7950F2)  # Default to primary color
-
-    def validate_config(self) -> bool:
-        """Validate configuration and return True if valid"""
+    
+    def get_discord_config(self) -> Dict[str, Any]:
+        """Get Discord configuration"""
+        return {
+            "token": self.get_setting("DISCORD_TOKEN"),
+            "command_prefix": self.get_setting("DISCORD_PREFIX", "!"),
+            "max_message_length": int(self.get_setting("DISCORD_MAX_MESSAGE_LENGTH", "2000")),
+        }
+    
+    def get_cache_config(self) -> Dict[str, Any]:
+        """Get cache configuration"""
+        return {
+            "redis_url": self.get_setting("REDIS_URL"),
+            "cache_ttl": int(self.get_setting("CACHE_TTL", "3600")),  # 1 hour
+            "max_memory_cache": int(self.get_setting("MAX_MEMORY_CACHE", "1000")),
+        }
+    
+    def get_performance_config(self) -> Dict[str, Any]:
+        """Get performance configuration"""
+        return {
+            "max_concurrent_requests": int(self.get_setting("MAX_CONCURRENT_REQUESTS", "10")),
+            "request_timeout": int(self.get_setting("REQUEST_TIMEOUT", "30")),
+            "retry_attempts": int(self.get_setting("RETRY_ATTEMPTS", "3")),
+            "rate_limit_requests": int(self.get_setting("RATE_LIMIT_REQUESTS", "100")),
+            "rate_limit_window": int(self.get_setting("RATE_LIMIT_WINDOW", "60")),
+        }
+    
+    def get_logging_config(self) -> Dict[str, Any]:
+        """Get logging configuration"""
+        return {
+            "level": self.get_setting("LOG_LEVEL", "INFO"),
+            "file": self.get_setting("LOG_FILE", "logs/astra.log"),
+            "max_size": self.get_setting("LOG_MAX_SIZE", "10MB"),
+            "backup_count": int(self.get_setting("LOG_BACKUP_COUNT", "5")),
+        }
+    
+    def is_development_mode(self) -> bool:
+        """Check if running in development mode"""
+        return self.get_setting("DEVELOPMENT_MODE", "false").lower() in ("true", "1", "yes")
+    
+    def is_railway_environment(self) -> bool:
+        """Check if running in Railway environment"""
+        return self.get_setting("RAILWAY_ENVIRONMENT") is not None
+    
+    def save_config(self, config_data: Optional[Dict[str, Any]] = None):
+        """Save configuration to file"""
         try:
-            # Check required sections
-            required_sections = ["discord", "database", "ai", "features", "performance"]
-            for section in required_sections:
-                if section not in self._config:
-                    logger.error(f"❌ Missing required config section: {section}")
-                    return False
-
-            # Validate Discord token (if not empty)
-            token = self.get("discord.token", "")
-            if token and len(token) < 20:
-                logger.warning("⚠️ Discord token appears to be invalid")
-
-            # Validate database path
-            db_path = self.get("database.path", "")
-            if not db_path:
-                logger.error("❌ Database path not configured")
-                return False
-
-            logger.info("✅ Configuration validation passed")
-            return True
-
+            data_to_save = config_data or self.config_data
+            
+            # Ensure directory exists
+            os.makedirs(os.path.dirname(self.config_file), exist_ok=True)
+            
+            with open(self.config_file, 'w') as f:
+                json.dump(data_to_save, f, indent=2)
+            
+            self.logger.info(f"Configuration saved to {self.config_file}")
+            
         except Exception as e:
-            logger.error(f"❌ Configuration validation failed: {e}")
-            return False
+            self.logger.error(f"Failed to save configuration: {e}")
+    
+    def update_setting(self, key: str, value: Any):
+        """Update a setting in the configuration"""
+        self.config_data[key] = value
+        self.logger.info(f"Updated setting {key}")
+    
+    def get_all_settings(self) -> Dict[str, Any]:
+        """Get all current settings (for debugging)"""
+        # Don't include sensitive information
+        safe_settings = {}
+        for key, value in self.config_data.items():
+            if "token" in key.lower() or "key" in key.lower() or "password" in key.lower():
+                safe_settings[key] = "***HIDDEN***"
+            else:
+                safe_settings[key] = value
+        return safe_settings
 
-    @property
-    def config(self) -> Dict[str, Any]:
-        """Get the full configuration dictionary"""
-        return self._config.copy()
+# Legacy compatibility
+try:
+    from config.config_manager import config_manager as legacy_config_manager
+    
+    # Create wrapper functions for backward compatibility
+    def get_config(*args, **kwargs):
+        """Backward compatibility wrapper"""
+        enhanced_config = EnhancedConfigManager()
+        if args:
+            return enhanced_config.get_setting(args[0], kwargs.get('default'))
+        return enhanced_config.get_all_settings()
+    
+    def get_database_path():
+        """Backward compatibility wrapper"""
+        enhanced_config = EnhancedConfigManager()
+        return enhanced_config.get_database_config()["path"]
+    
+except ImportError:
+    logger.warning("Legacy config manager not available")
 
-
-# Global instance
-enhanced_config = EnhancedConfig()
-
-# Backward compatibility aliases
-config = enhanced_config
-config_manager = enhanced_config  # Add this for cogs that expect config_manager
-get_config = enhanced_config.get
-set_config = enhanced_config.set
-
-
-# Function aliases for compatibility
-def feature_enabled(feature: str):
-    """Decorator to check if a feature is enabled"""
-
-    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
-        @functools.wraps(func)
-        async def wrapper(*args: Any, **kwargs: Any) -> Any:
-            # For now, just return the function as-is
-            # In a real implementation, this would check the feature flag
-            return await func(*args, **kwargs)
-
-        return wrapper
-
-    return decorator
-
-
-def is_feature_enabled(feature: str) -> bool:
-    """Check if a feature is enabled (compatibility function)"""
-    return enhanced_config.is_feature_enabled(feature)
+# Global instance for convenience
+enhanced_config_manager = EnhancedConfigManager()

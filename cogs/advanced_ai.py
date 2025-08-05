@@ -15,54 +15,20 @@ from pathlib import Path
 import re
 import os
 
-# Import AI clients
+# Import the new consolidated AI engine
 try:
-    from ai.universal_ai_client import (
-        UniversalAIClient,
-        get_ai_client,
-        initialize_ai_client,
-    )
+    from ai.consolidated_ai_engine import ConsolidatedAIEngine
+    from config.enhanced_config import EnhancedConfigManager
+    
+    AI_ENGINE_AVAILABLE = True
+    logger = logging.getLogger("astra.advanced_ai")
+    logger.info("Consolidated AI Engine successfully imported")
+except ImportError as e:
+    AI_ENGINE_AVAILABLE = False
+    logger = logging.getLogger("astra.advanced_ai")
+    logger.error(f"Failed to import Consolidated AI Engine: {e}")
 
-    UNIVERSAL_AI_AVAILABLE = True
-except ImportError:
-    UNIVERSAL_AI_AVAILABLE = False
-
-# Import OpenRouter client (fallback)
-try:
-    from ai.openrouter_client import (
-        OpenRouterClient,
-    )
-
-    OPENROUTER_AVAILABLE = True
-except ImportError:
-    OPENROUTER_AVAILABLE = False
-
-# Import GitHub Models client (fallback)
-try:
-    from ai.github_models_client import (
-        GitHubModelsClient,
-    )
-
-    GITHUB_MODELS_AVAILABLE = True
-except ImportError:
-    GITHUB_MODELS_AVAILABLE = False
-
-# Import Railway configuration
-try:
-    from config.railway_config import get_railway_config
-
-    RAILWAY_ENABLED = True
-except ImportError:
-    RAILWAY_ENABLED = False
-
-# Fallback OpenAI import
-try:
-    import openai
-
-    OPENAI_AVAILABLE = True
-except ImportError:
-    OPENAI_AVAILABLE = False
-
+# Backward compatibility imports
 from config.config_manager import config_manager
 
 logger = logging.getLogger("astra.advanced_ai")
@@ -108,311 +74,69 @@ class AdvancedAICog(commands.Cog):
         self.conversation_cleanup_task.start()
 
     def _setup_ai_client(self):
-        """Setup AI client with Railway configuration"""
+        """Setup the new consolidated AI engine"""
         try:
-            if RAILWAY_ENABLED:
-                railway_config = get_railway_config()
-
-                # Get AI provider and configuration
-                provider = railway_config.get_ai_provider()
-                self.logger.info(f"Using AI provider: {provider}")
-
-                if provider == "universal":
-                    universal_config = railway_config.get_universal_ai_config()
-
-                    # Initialize Universal AI client
-                    if UNIVERSAL_AI_AVAILABLE:
-                        self.ai_client = UniversalAIClient(
-                            api_key=universal_config.get("api_key"),
-                            base_url=universal_config.get("base_url"),
-                            model=universal_config.get("model"),
-                            provider_name=universal_config.get(
-                                "provider_name", "universal"
-                            ),
-                        )
-
-                        # Store configuration for commands
-                        self.ai_model = universal_config.get(
-                            "model", "deepseek/deepseek-r1:nitro"
-                        )
-                        self.max_tokens = universal_config.get("max_tokens", 2000)
-                        self.temperature = universal_config.get("temperature", 0.7)
-
-                        self.logger.info(
-                            "Universal AI client configured from Railway environment"
-                        )
-                    else:
-                        self.logger.error(
-                            "Universal AI provider requested but not available"
-                        )
-
-                elif provider == "openrouter":
-                    openrouter_config = railway_config.get_openrouter_config()
-                    openai_config = railway_config.get_openai_config()
-
-                    # Initialize OpenRouter client with fallback
-                    if OPENROUTER_AVAILABLE:
-                        self.ai_client = OpenRouterClient(
-                            openrouter_api_key=openrouter_config.get("api_key"),
-                            openai_api_key=openai_config.get("api_key"),
-                        )
-
-                        # Store configuration for commands
-                        self.ai_model = openrouter_config.get(
-                            "model", "deepseek/deepseek-r1:nitro"
-                        )
-                        self.max_tokens = openrouter_config.get("max_tokens", 2000)
-                        self.temperature = openrouter_config.get("temperature", 0.7)
-
-                        self.logger.info(
-                            "OpenRouter AI client configured from Railway environment"
-                        )
-                    else:
-                        self.logger.error(
-                            "OpenRouter provider requested but not available"
-                        )
-
-                elif provider == "github":
-                    github_config = railway_config.get_github_config()
-                    openai_config = railway_config.get_openai_config()
-
-                    # Initialize GitHub Models client with fallback
-                    if GITHUB_MODELS_AVAILABLE:
-                        self.ai_client = GitHubModelsClient(
-                            github_token=github_config.get("token"),
-                            openai_api_key=openai_config.get("api_key"),
-                        )
-
-                        # Store configuration for commands
-                        self.ai_model = github_config.get(
-                            "model", "deepseek/DeepSeek-R1-0528"
-                        )
-                        self.max_tokens = github_config.get("max_tokens", 2000)
-                        self.temperature = github_config.get("temperature", 0.7)
-
-                        self.logger.info(
-                            "GitHub Models client configured from Railway environment"
-                        )
-                    else:
-                        self.logger.error(
-                            "GitHub Models provider requested but not available"
-                        )
-
-                else:
-                    # OpenAI provider (fallback)
-                    openai_config = railway_config.get_openai_config()
-                    if OPENAI_AVAILABLE:
-                        openai.api_key = openai_config.get("api_key")
-                        self.ai_model = openai_config.get("model", "gpt-4")
-                        self.max_tokens = openai_config.get("max_tokens", 2000)
-                        self.temperature = openai_config.get("temperature", 0.7)
-                        self.logger.info("OpenAI configured from Railway environment")
-                    else:
-                        self.logger.error("OpenAI provider requested but not available")
-
+            if AI_ENGINE_AVAILABLE:
+                # Initialize the consolidated AI engine
+                self.ai_client = ConsolidatedAIEngine()
+                self.logger.info("✅ Consolidated AI Engine initialized successfully")
+                
+                # Store basic configuration for command compatibility
+                config = EnhancedConfigManager()
+                self.ai_model = config.get_setting("AI_MODEL", "deepseek/deepseek-r1:nitro")
+                self.max_tokens = int(config.get_setting("AI_MAX_TOKENS", "2000"))
+                self.temperature = float(config.get_setting("AI_TEMPERATURE", "0.7"))
+                
             else:
-                # Local environment fallback
-                universal_api_key = os.getenv("AI_API_KEY") or os.getenv(
-                    "OPENROUTER_API_KEY"
-                )
-                github_token = os.getenv("GITHUB_TOKEN")
-                openai_api_key = os.getenv("OPENAI_API_KEY")
-
-                if universal_api_key and UNIVERSAL_AI_AVAILABLE:
-                    self.ai_client = UniversalAIClient(
-                        api_key=universal_api_key,
-                        base_url=os.getenv(
-                            "AI_BASE_URL", "https://openrouter.ai/api/v1"
-                        ),
-                        model=os.getenv("AI_MODEL", "deepseek/deepseek-r1:nitro"),
-                        provider_name=os.getenv("AI_PROVIDER_NAME", "universal"),
-                    )
-                    self.ai_model = os.getenv("AI_MODEL", "deepseek/deepseek-r1:nitro")
-                    self.max_tokens = int(os.getenv("AI_MAX_TOKENS", "2000"))
-                    self.temperature = float(os.getenv("AI_TEMPERATURE", "0.7"))
-                    self.logger.info("Universal AI configured from local environment")
-                elif github_token and GITHUB_MODELS_AVAILABLE:
-                    self.ai_client = GitHubModelsClient(github_token, openai_api_key)
-                    self.ai_model = os.getenv(
-                        "GITHUB_MODEL", "deepseek/DeepSeek-R1-0528"
-                    )
-                    self.max_tokens = int(os.getenv("GITHUB_MAX_TOKENS", "2000"))
-                    self.temperature = float(os.getenv("GITHUB_TEMPERATURE", "0.7"))
-                    self.logger.info("GitHub Models configured from local environment")
-
-                elif openai_api_key and OPENAI_AVAILABLE:
-                    openai.api_key = openai_api_key
-                    self.ai_model = os.getenv("OPENAI_MODEL", "gpt-4")
-                    self.max_tokens = int(os.getenv("OPENAI_MAX_TOKENS", "2000"))
-                    self.temperature = float(os.getenv("OPENAI_TEMPERATURE", "0.7"))
-                    self.logger.info("OpenAI configured from local environment")
-
-                else:
-                    self.logger.error("No AI provider configured!")
-
-            # Check if any AI service is available
-            if self.ai_client and self.ai_client.is_available():
-                status = self.ai_client.get_status()
-                self.logger.info(f"✅ AI services available: {status}")
-            elif OPENAI_AVAILABLE and openai.api_key:
-                self.logger.info("✅ OpenAI service available")
-            else:
-                self.logger.error("❌ No AI services available!")
-
+                self.logger.error("❌ Consolidated AI Engine not available!")
+                self.ai_client = None
+                
         except Exception as e:
             self.logger.error(f"Failed to setup AI client: {e}")
             self.ai_client = None
 
     async def _generate_ai_response(self, prompt: str, user_id: int = None) -> str:
-        """Generate AI response using Universal AI Client or fallbacks"""
+        """Generate AI response using the consolidated AI engine"""
         try:
-            # Check if Universal AI client is available
-            if self.ai_client and self.ai_client.is_available():
-                return await self._generate_universal_response(prompt, user_id)
-
-            # Fallback to OpenAI
-            elif OPENAI_AVAILABLE and hasattr(openai, "api_key") and openai.api_key:
-                return await self._generate_openai_response(prompt, user_id)
-
-            else:
-                return "❌ AI service is not configured. Please set up AI_API_KEY, AI_BASE_URL, and AI_MODEL environment variables."
-
+            if not self.ai_client:
+                return "❌ AI service is not configured. Please check the configuration."
+                
+            # Prepare conversation context
+            context = {
+                'user_id': user_id,
+                'channel_type': 'discord',
+                'conversation_history': self.conversation_history.get(user_id, []) if user_id else []
+            }
+            
+            # Generate response using the consolidated engine
+            response = await self.ai_client.process_conversation(prompt, user_id, **context)
+            
+            # Update conversation history
+            if user_id:
+                if user_id not in self.conversation_history:
+                    self.conversation_history[user_id] = []
+                
+                # Add user message and AI response to history
+                self.conversation_history[user_id].append({
+                    "role": "user",
+                    "content": prompt
+                })
+                self.conversation_history[user_id].append({
+                    "role": "assistant", 
+                    "content": response
+                })
+                
+                # Keep only last 10 messages
+                if len(self.conversation_history[user_id]) > self.max_history_length:
+                    self.conversation_history[user_id] = self.conversation_history[user_id][-self.max_history_length:]
+            
+            return response
+            
         except Exception as e:
             self.logger.error(f"AI response generation error: {e}")
             return f"❌ Error generating AI response: {str(e)}"
 
-    async def _generate_universal_response(
-        self, prompt: str, user_id: int = None
-    ) -> str:
-        """Generate AI response using Universal AI Client"""
-        try:
-            # Get conversation history for context
-            history = self.conversation_history.get(user_id, []) if user_id else []
-
-            # Build messages for Universal AI
-            messages = [
-                {
-                    "role": "system",
-                    "content": "You are Astra, a helpful AI assistant for a Discord server focused on space exploration and Stellaris gameplay. Be friendly, informative, and engaging. Provide detailed and accurate responses while maintaining a conversational tone.",
-                }
-            ]
-
-            # Add conversation history (last 5 messages for context)
-            for msg in history[-5:]:
-                messages.append(msg)
-
-            # Add current prompt
-            messages.append({"role": "user", "content": prompt})
-
-            # Make API call using Universal AI Client
-            self.api_calls_made += 1
-
-            ai_response_obj = await self.ai_client.chat_completion(
-                messages=messages,
-                model=self.ai_model,
-                max_tokens=self.max_tokens,
-                temperature=self.temperature,
-            )
-
-            ai_response = ai_response_obj.content.strip()
-            self.successful_responses += 1
-
-            # Update conversation history
-            if user_id:
-                if user_id not in self.conversation_history:
-                    self.conversation_history[user_id] = []
-
-                self.conversation_history[user_id].extend(
-                    [
-                        {"role": "user", "content": prompt},
-                        {"role": "assistant", "content": ai_response},
-                    ]
-                )
-
-                # Trim history to max length
-                if len(self.conversation_history[user_id]) > self.max_history_length:
-                    self.conversation_history[user_id] = self.conversation_history[
-                        user_id
-                    ][-self.max_history_length :]
-
-            self.logger.debug(
-                f"Universal AI response generated: {len(ai_response)} chars"
-            )
-
-            # Record performance metrics
-            self.logger.info(
-                f"AI response generated for user {user_id} in {ai_response_obj.finish_reason or 'completed'}"
-            )
-
-            return ai_response
-
-        except Exception as e:
-            self.logger.error(f"Universal AI API error: {e}")
-            raise
-
-    async def _generate_openai_response(self, prompt: str, user_id: int = None) -> str:
-        """Generate AI response using OpenAI (fallback)"""
-        try:
-            # Get conversation history for context
-            history = self.conversation_history.get(user_id, []) if user_id else []
-
-            # Build messages for OpenAI
-            messages = [
-                {
-                    "role": "system",
-                    "content": "You are Astra, a helpful AI assistant for a Discord server focused on space exploration and Stellaris gameplay. Be friendly, informative, and engaging.",
-                }
-            ]
-
-            # Add conversation history
-            for msg in history[-5:]:  # Last 5 messages for context
-                messages.append(msg)
-
-            # Add current prompt
-            messages.append({"role": "user", "content": prompt})
-
-            # Make API call
-            self.api_calls_made += 1
-
-            # Use modern OpenAI client
-            from openai import AsyncOpenAI
-
-            client = AsyncOpenAI(api_key=openai.api_key)
-
-            response = await client.chat.completions.create(
-                model=self.ai_model,
-                messages=messages,
-                max_tokens=self.max_tokens,
-                temperature=self.temperature,
-                timeout=30,
-            )
-
-            ai_response = response.choices[0].message.content.strip()
-            self.successful_responses += 1
-
-            # Update conversation history
-            if user_id:
-                if user_id not in self.conversation_history:
-                    self.conversation_history[user_id] = []
-
-                self.conversation_history[user_id].extend(
-                    [
-                        {"role": "user", "content": prompt},
-                        {"role": "assistant", "content": ai_response},
-                    ]
-                )
-
-                # Trim history
-                if len(self.conversation_history[user_id]) > self.max_history_length:
-                    self.conversation_history[user_id] = self.conversation_history[
-                        user_id
-                    ][-self.max_history_length :]
-
-            return ai_response
-
-        except Exception as e:
-            self.logger.error(f"AI response generation failed: {e}")
-            return f"❌ Sorry, I encountered an error while processing your request: {str(e)}"
+    # Old methods removed - using consolidated AI engine now
 
     @app_commands.command(name="chat", description="Chat with Astra AI")
     @app_commands.describe(message="Your message to the AI")
@@ -456,42 +180,56 @@ class AdvancedAICog(commands.Cog):
         try:
             await interaction.response.defer()
 
-            # Image generation requires OpenAI (DALL-E)
-            if not (OPENAI_AVAILABLE and hasattr(openai, "api_key") and openai.api_key):
+            # Check if consolidated AI engine supports image generation
+            if not self.ai_client:
                 await interaction.followup.send(
-                    "❌ Image generation requires OpenAI API key. GitHub Models doesn't support image generation yet.",
+                    "❌ AI service is not configured.",
                     ephemeral=True,
                 )
                 return
+            
+            # Try to generate image using consolidated engine
+            try:
+                # The consolidated engine can handle image generation if available
+                context = {
+                    'user_id': interaction.user.id,
+                    'channel_type': 'discord',
+                    'request_type': 'image_generation'
+                }
+                
+                image_result = await self.ai_client.generate_image(prompt, context)
+                
+                if image_result and 'url' in image_result:
+                    embed = discord.Embed(
+                        title="🎨 AI Generated Image",
+                        description=f"**Prompt:** {prompt}",
+                        color=0x7289DA,
+                        timestamp=datetime.now(timezone.utc),
+                    )
+                    embed.set_image(url=image_result['url'])
+                    embed.set_author(
+                        name=interaction.user.display_name,
+                        icon_url=interaction.user.display_avatar.url,
+                    )
+                    embed.add_field(
+                        name="🎯 AI Provider", 
+                        value=image_result.get('provider', 'OpenAI DALL-E'), 
+                        inline=True
+                    )
 
-            # Generate enhanced prompt using available AI
-            enhanced_prompt = await self._enhance_image_prompt(prompt)
-
-            # Generate image using DALL-E
-            from openai import AsyncOpenAI
-
-            client = AsyncOpenAI(api_key=openai.api_key)
-
-            response = await client.images.generate(
-                prompt=enhanced_prompt, n=1, size="1024x1024"
-            )
-
-            image_url = response.data[0].url
-
-            embed = discord.Embed(
-                title="🎨 AI Generated Image",
-                description=f"**Original Prompt:** {prompt}\n**Enhanced Prompt:** {enhanced_prompt[:100]}...",
-                color=0x7289DA,
-                timestamp=datetime.now(timezone.utc),
-            )
-            embed.set_image(url=image_url)
-            embed.set_author(
-                name=interaction.user.display_name,
-                icon_url=interaction.user.display_avatar.url,
-            )
-            embed.add_field(name="🎯 AI Model", value="DALL-E 3 (OpenAI)", inline=True)
-
-            await interaction.followup.send(embed=embed)
+                    await interaction.followup.send(embed=embed)
+                else:
+                    await interaction.followup.send(
+                        "❌ Image generation is not available with current AI configuration.",
+                        ephemeral=True,
+                    )
+                    
+            except Exception as image_error:
+                self.logger.error(f"Image generation error: {image_error}")
+                await interaction.followup.send(
+                    "❌ Image generation is not currently available. This feature requires OpenAI API access.",
+                    ephemeral=True,
+                )
 
         except Exception as e:
             self.logger.error(f"Image generation error: {e}")
@@ -1216,9 +954,9 @@ class AdvancedAICog(commands.Cog):
                     "temperature": getattr(self, "temperature", 0.7),
                     "max_tokens": getattr(self, "max_tokens", 1500),
                     "provider": (
-                        self.ai_client.provider_name
+                        getattr(self.ai_client, 'active_provider', 'Consolidated AI')
                         if hasattr(self, "ai_client") and self.ai_client
-                        else "OpenAI"
+                        else "Not configured"
                     ),
                     "core_traits": [
                         "Friendly and approachable",
@@ -1721,25 +1459,25 @@ class AdvancedAICog(commands.Cog):
 
             # Check AI client status
             if hasattr(self, "ai_client") and self.ai_client:
-                if self.ai_client.is_available():
-                    status = self.ai_client.get_status()
+                try:
+                    status = await self.ai_client.get_health_status()
                     embed.add_field(
-                        name="✅ Primary AI Service",
-                        value=f"**Provider**: {status.get('provider', 'Universal')}\n"
-                        f"**Model**: {status.get('model', getattr(self, 'ai_model', 'Unknown'))}\n"
-                        f"**Endpoint**: {status.get('endpoint', 'Unknown')}\n"
-                        f"**Status**: {status.get('available', 'Available')}",
+                        name="✅ Consolidated AI Engine",
+                        value=f"**Active Provider**: {status.get('active_provider', 'Unknown')}\n"
+                        f"**Model**: {getattr(self, 'ai_model', 'Unknown')}\n"
+                        f"**Available Providers**: {', '.join(status.get('available_providers', []))}\n"
+                        f"**Status**: {status.get('status', 'Available')}",
                         inline=False,
                     )
-                else:
+                except Exception as e:
                     embed.add_field(
-                        name="❌ Primary AI Service",
-                        value="Universal AI client not available - check AI_API_KEY",
+                        name="⚠️ Consolidated AI Engine",
+                        value=f"Engine loaded but status check failed: {str(e)}",
                         inline=False,
                     )
             else:
                 embed.add_field(
-                    name="⚠️ AI Service", value="No AI client configured", inline=False
+                    name="❌ AI Service", value="No AI client configured", inline=False
                 )
 
             # Performance stats
@@ -1827,7 +1565,7 @@ class AdvancedAICog(commands.Cog):
             embed.add_field(
                 name="🎯 Model Information",
                 value=f"**Current Model**: {getattr(self, 'ai_model', 'Unknown')}\n"
-                f"**Provider**: {self.ai_client.provider_name if hasattr(self, 'ai_client') and self.ai_client else 'OpenAI'}\n"
+                f"**Provider**: {getattr(self.ai_client, 'active_provider', 'Consolidated AI') if hasattr(self, 'ai_client') and self.ai_client else 'Not configured'}\n"
                 f"**Temperature**: {getattr(self, 'temperature', 0.7)}",
                 inline=False,
             )
