@@ -19,7 +19,7 @@ import os
 try:
     from ai.consolidated_ai_engine import ConsolidatedAIEngine
     from config.enhanced_config import EnhancedConfigManager
-    
+
     AI_ENGINE_AVAILABLE = True
     logger = logging.getLogger("astra.advanced_ai")
     logger.info("Consolidated AI Engine successfully imported")
@@ -80,17 +80,19 @@ class AdvancedAICog(commands.Cog):
                 # Initialize the consolidated AI engine
                 self.ai_client = ConsolidatedAIEngine()
                 self.logger.info("✅ Consolidated AI Engine initialized successfully")
-                
+
                 # Store basic configuration for command compatibility
                 config = EnhancedConfigManager()
-                self.ai_model = config.get_setting("AI_MODEL", "deepseek/deepseek-r1:nitro")
+                self.ai_model = config.get_setting(
+                    "AI_MODEL", "deepseek/deepseek-r1:nitro"
+                )
                 self.max_tokens = int(config.get_setting("AI_MAX_TOKENS", "2000"))
                 self.temperature = float(config.get_setting("AI_TEMPERATURE", "0.7"))
-                
+
             else:
                 self.logger.error("❌ Consolidated AI Engine not available!")
                 self.ai_client = None
-                
+
         except Exception as e:
             self.logger.error(f"Failed to setup AI client: {e}")
             self.ai_client = None
@@ -99,39 +101,45 @@ class AdvancedAICog(commands.Cog):
         """Generate AI response using the consolidated AI engine"""
         try:
             if not self.ai_client:
-                return "❌ AI service is not configured. Please check the configuration."
-                
+                return (
+                    "❌ AI service is not configured. Please check the configuration."
+                )
+
             # Prepare conversation context
             context = {
-                'user_id': user_id,
-                'channel_type': 'discord',
-                'conversation_history': self.conversation_history.get(user_id, []) if user_id else []
+                "user_id": user_id,
+                "channel_type": "discord",
+                "conversation_history": (
+                    self.conversation_history.get(user_id, []) if user_id else []
+                ),
             }
-            
+
             # Generate response using the consolidated engine
-            response = await self.ai_client.process_conversation(prompt, user_id, **context)
-            
+            response = await self.ai_client.process_conversation(
+                prompt, user_id, **context
+            )
+
             # Update conversation history
             if user_id:
                 if user_id not in self.conversation_history:
                     self.conversation_history[user_id] = []
-                
+
                 # Add user message and AI response to history
-                self.conversation_history[user_id].append({
-                    "role": "user",
-                    "content": prompt
-                })
-                self.conversation_history[user_id].append({
-                    "role": "assistant", 
-                    "content": response
-                })
-                
+                self.conversation_history[user_id].append(
+                    {"role": "user", "content": prompt}
+                )
+                self.conversation_history[user_id].append(
+                    {"role": "assistant", "content": response}
+                )
+
                 # Keep only last 10 messages
                 if len(self.conversation_history[user_id]) > self.max_history_length:
-                    self.conversation_history[user_id] = self.conversation_history[user_id][-self.max_history_length:]
-            
+                    self.conversation_history[user_id] = self.conversation_history[
+                        user_id
+                    ][-self.max_history_length :]
+
             return response
-            
+
         except Exception as e:
             self.logger.error(f"AI response generation error: {e}")
             return f"❌ Error generating AI response: {str(e)}"
@@ -187,34 +195,34 @@ class AdvancedAICog(commands.Cog):
                     ephemeral=True,
                 )
                 return
-            
+
             # Try to generate image using consolidated engine
             try:
                 # The consolidated engine can handle image generation if available
                 context = {
-                    'user_id': interaction.user.id,
-                    'channel_type': 'discord',
-                    'request_type': 'image_generation'
+                    "user_id": interaction.user.id,
+                    "channel_type": "discord",
+                    "request_type": "image_generation",
                 }
-                
+
                 image_result = await self.ai_client.generate_image(prompt, context)
-                
-                if image_result and 'url' in image_result:
+
+                if image_result and "url" in image_result:
                     embed = discord.Embed(
                         title="🎨 AI Generated Image",
                         description=f"**Prompt:** {prompt}",
                         color=0x7289DA,
                         timestamp=datetime.now(timezone.utc),
                     )
-                    embed.set_image(url=image_result['url'])
+                    embed.set_image(url=image_result["url"])
                     embed.set_author(
                         name=interaction.user.display_name,
                         icon_url=interaction.user.display_avatar.url,
                     )
                     embed.add_field(
-                        name="🎯 AI Provider", 
-                        value=image_result.get('provider', 'OpenAI DALL-E'), 
-                        inline=True
+                        name="🎯 AI Provider",
+                        value=image_result.get("provider", "OpenAI DALL-E"),
+                        inline=True,
                     )
 
                     await interaction.followup.send(embed=embed)
@@ -223,7 +231,7 @@ class AdvancedAICog(commands.Cog):
                         "❌ Image generation is not available with current AI configuration.",
                         ephemeral=True,
                     )
-                    
+
             except Exception as image_error:
                 self.logger.error(f"Image generation error: {image_error}")
                 await interaction.followup.send(
@@ -954,7 +962,7 @@ class AdvancedAICog(commands.Cog):
                     "temperature": getattr(self, "temperature", 0.7),
                     "max_tokens": getattr(self, "max_tokens", 1500),
                     "provider": (
-                        getattr(self.ai_client, 'active_provider', 'Consolidated AI')
+                        getattr(self.ai_client, "active_provider", "Consolidated AI")
                         if hasattr(self, "ai_client") and self.ai_client
                         else "Not configured"
                     ),
