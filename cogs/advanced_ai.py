@@ -107,7 +107,6 @@ class AdvancedAICog(commands.Cog):
 
             # Prepare conversation context
             context = {
-                "user_id": user_id,
                 "channel_type": "discord",
                 "conversation_history": (
                     self.conversation_history.get(user_id, []) if user_id else []
