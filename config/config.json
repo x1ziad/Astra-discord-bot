@@ -3,7 +3,7 @@
   "version": "2.0.0",
   "description": "Advanced AI-powered Discord bot for space exploration and Stellaris roleplay",
   "prefix": "/",
-  "owner_id": "397847366090063872",
+  "owner_id": "1115739214148026469",
   "debug": false,
   "ai_enabled": true,
   "ai_personality": "default",
