@@ -998,6 +998,9 @@ class AdvancedAICog(commands.Cog):
             if image_request:
                 await self._handle_image_generation(message, image_request)
                 return
+                
+            # Check for invalid image generation attempts and provide guidance
+            await self._check_invalid_image_attempts(message)
 
             # Process with AI client using enhanced personalization
             response = await self._generate_ai_response(
@@ -1327,95 +1330,108 @@ class AdvancedAICog(commands.Cog):
     # === IMAGE GENERATION AND ENHANCED RESPONSE METHODS ===
 
     async def _detect_image_request(self, content: str) -> Optional[str]:
-        """Detect if message is requesting image generation"""
+        """Detect if message is requesting image generation with specific Astra commands"""
         content_lower = content.lower()
-
-        # Enhanced image generation keywords
-        image_keywords = [
-            "generate image",
-            "create image",
-            "make image",
-            "draw",
-            "create picture",
-            "generate picture",
-            "make a picture",
-            "show me",
-            "visualize",
-            "create art",
-            "generate",
-            "create",
-            "make art",
-            "paint",
-            "illustration",
-            "artwork",
-            "design",
-            "sketch",
-            "render",
-            "compose",
-            "produce image",
-            "generate art",
-            "create artwork",
-            "make artwork",
-            "draw me",
-            "paint me",
-            "design me",
-            "visualize for me",
-            "show me what",
-            "image of",
-            "picture of",
-        ]
-
-        # Check for standalone "generate" or "create" followed by descriptive content
         words = content_lower.split()
-        if len(words) > 2:
-            if words[0] in [
-                "generate",
-                "create",
-                "make",
-                "draw",
-                "paint",
-                "design",
-                "sketch",
-            ]:
-                # If first word is generation verb, likely image request
-                return content
-            elif any(
-                word in ["generate", "create", "make", "draw"] for word in words[:3]
-            ):
-                # If generation verb appears in first 3 words
-                return content
 
-        # Check for specific image keywords
-        if any(keyword in content_lower for keyword in image_keywords):
-            # Extract the image prompt
+        # Only trigger image generation with specific "astra" commands
+        astra_image_commands = [
+            "astra generate",
+            "astra create", 
+            "astra draw",
+            "astra paint",
+            "astra design",
+            "astra make image",
+            "astra make picture",
+            "astra create image",
+            "astra create picture",
+            "astra generate image",
+            "astra generate picture",
+            "astra visualize",
+            "astra sketch"
+        ]
+        
+        # Check for specific Astra image commands
+        for command in astra_image_commands:
+            if content_lower.startswith(command):
+                # Extract the prompt after the command
+                prompt = content_lower.replace(command, "").strip()
+                if prompt:  # Only proceed if there's actually a prompt
+                    return prompt
+                else:
+                    return None  # No prompt provided
+        
+        # Also check for @Astra mentions with image keywords
+        if any(word for word in words if word.startswith('<@') and '1400014033142288475' in word):  # Bot's ID
+            image_keywords = [
+                "generate", "create", "draw", "paint", "design", "make image", 
+                "make picture", "visualize", "sketch", "artwork", "illustration"
+            ]
+            
+            # Check if any image keywords appear after the mention
             for keyword in image_keywords:
                 if keyword in content_lower:
-                    # Get text after the keyword as the prompt
+                    # Extract everything after the keyword as the prompt
                     parts = content_lower.split(keyword, 1)
                     if len(parts) > 1:
                         prompt = parts[1].strip()
                         if prompt:
                             return prompt
-
-            # If no specific prompt found, return the full content as prompt
-            return content
-
-        # Check for common descriptive phrases that suggest image generation
-        descriptive_patterns = [
-            "a picture of",
-            "an image of",
-            "art featuring",
-            "artwork with",
-            "drawing of",
-            "painting of",
-            "illustration of",
-            "design with",
-        ]
-
-        if any(pattern in content_lower for pattern in descriptive_patterns):
-            return content
-
+            
+            # If mentioned but no specific image keyword, don't treat as image request
+            return None
+        
+        # No valid image generation trigger found
         return None
+
+    async def _check_invalid_image_attempts(self, message: discord.Message):
+        """Check for invalid image generation attempts and provide helpful guidance"""
+        content_lower = message.content.lower()
+        
+        # Common invalid image generation attempts
+        invalid_attempts = [
+            "generate", "create art", "create image", "make image", "draw", 
+            "paint", "design", "sketch", "visualize", "generate image",
+            "create picture", "make picture"
+        ]
+        
+        # Check if message starts with these words (but wasn't caught by _detect_image_request)
+        words = content_lower.split()
+        if len(words) > 1 and words[0] in invalid_attempts:
+            # This looks like an image generation attempt but without "astra" prefix
+            embed = discord.Embed(
+                title="🎨 Image Generation Help",
+                description="It looks like you want to generate an image! Here's how:",
+                color=0x7C3AED,
+                timestamp=datetime.now(timezone.utc)
+            )
+            
+            embed.add_field(
+                name="✅ Correct Commands",
+                value="Use **`astra generate`** followed by your prompt:\n"
+                      "• `astra generate sunset over mountains`\n"
+                      "• `astra create artwork of a robot`\n"
+                      "• `astra draw a fantasy castle`\n"
+                      "• `astra paint a cosmic nebula`",
+                inline=False
+            )
+            
+            embed.add_field(
+                name="📍 Channel Restrictions",
+                value="• **Regular users**: <#1402666535696470169>\n"
+                      "• **Mods & Admins**: Any channel",
+                inline=False
+            )
+            
+            embed.add_field(
+                name="🔧 Alternative",
+                value="You can also mention me: `@Astra generate your prompt here`",
+                inline=False
+            )
+            
+            embed.set_footer(text="Powered by Freepik AI")
+            
+            await message.channel.send(embed=embed)
 
     async def _handle_image_generation(self, message: discord.Message, prompt: str):
         """Handle image generation request with enhanced Discord image sending"""
