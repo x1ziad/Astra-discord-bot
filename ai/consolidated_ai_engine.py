@@ -102,14 +102,14 @@ class FreepikImageGenerator:
                 "user_id": user_id or 0,
                 "channel_id": 0,  # Default channel
                 "guild_id": None,
-                "request_type": "legacy_wrapper"
+                "request_type": "legacy_wrapper",
             }
-            
+
             permissions = {
                 "is_admin": True,  # Legacy calls assume admin permissions
-                "is_mod": True
+                "is_mod": True,
             }
-            
+
             return await self.handler.generate_image(prompt, context, permissions)
         else:
             return {
@@ -127,9 +127,9 @@ class FreepikImageGenerator:
         """Check if image generation handler is available"""
         if not self.handler:
             return False
-        
+
         # Avoid asyncio.run() in async context
-        if hasattr(self.handler, 'is_available'):
+        if hasattr(self.handler, "is_available"):
             try:
                 # Try to get current event loop
                 loop = asyncio.get_event_loop()
@@ -729,9 +729,7 @@ class ConsolidatedAIEngine:
             try:
                 # Use the advanced image generation handler
                 self.freepik_generator = FreepikImageGenerator(freepik_api_key)
-                logger.info(
-                    "✅ Image generation initialized with advanced handler"
-                )
+                logger.info("✅ Image generation initialized with advanced handler")
                 logger.info(
                     f"🔑 API Key configured: {freepik_api_key[:10]}...{freepik_api_key[-4:]}"
                 )
@@ -1552,30 +1550,32 @@ Key principles:
             # Use the advanced image generation handler directly
             if IMAGE_HANDLER_AVAILABLE:
                 logger.info("🎨 Using advanced image generation handler")
-                
+
                 # Get the global image handler
                 image_handler = get_image_handler()
-                
+
                 # Generate image using the handler
                 result = await image_handler.generate_image(
                     prompt=prompt,
                     context=context,
                     user_permissions=user_permissions or {},
                     size="square_hd",
-                    num_images=1
+                    num_images=1,
                 )
-                
+
                 if result.get("success"):
                     logger.info(f"✅ Image generated successfully via handler")
                     return result
                 else:
-                    logger.warning(f"❌ Image generation failed via handler: {result.get('error')}")
+                    logger.warning(
+                        f"❌ Image generation failed via handler: {result.get('error')}"
+                    )
                     # If handler fails, try fallback methods
-            
+
             # Legacy fallback: Try the Freepik generator wrapper
             if self.freepik_generator and self.freepik_generator.is_available():
                 logger.info("🔄 Falling back to legacy Freepik generator")
-                
+
                 user_id = context.get("user_id", 0)
                 result = await self.freepik_generator.generate_image(prompt, user_id)
 
@@ -1594,8 +1594,8 @@ Key principles:
                 "details": {
                     "advanced_handler_available": IMAGE_HANDLER_AVAILABLE,
                     "legacy_generator_available": bool(self.freepik_generator),
-                    "freepik_api_key_configured": bool(os.getenv("FREEPIK_API_KEY"))
-                }
+                    "freepik_api_key_configured": bool(os.getenv("FREEPIK_API_KEY")),
+                },
             }
 
         except Exception as e:

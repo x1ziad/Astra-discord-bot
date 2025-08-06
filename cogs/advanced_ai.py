@@ -621,6 +621,275 @@ class AdvancedAICog(commands.Cog):
                 f"❌ Error translating text: {str(e)}", ephemeral=True
             )
 
+    @app_commands.command(
+        name="permissions", description="Check bot permissions for image generation"
+    )
+    @app_commands.describe(
+        channel="Channel to check permissions for (optional, defaults to current channel)"
+    )
+    async def permissions_check(
+        self, interaction: discord.Interaction, channel: discord.TextChannel = None
+    ):
+        """Check bot permissions for image generation and other features"""
+        try:
+            await interaction.response.defer()
+
+            # Use provided channel or current channel
+            check_channel = channel or interaction.channel
+
+            if not interaction.guild:
+                await interaction.followup.send(
+                    "❌ This command can only be used in servers.", ephemeral=True
+                )
+                return
+
+            bot_member = interaction.guild.me
+            channel_perms = check_channel.permissions_for(bot_member)
+            guild_perms = bot_member.guild_permissions
+
+            # Define required permissions for different features
+            permissions_needed = {
+                "Basic Chat": {
+                    "send_messages": channel_perms.send_messages,
+                    "read_messages": channel_perms.read_messages,
+                    "read_message_history": channel_perms.read_message_history,
+                },
+                "Image Generation": {
+                    "send_messages": channel_perms.send_messages,
+                    "embed_links": channel_perms.embed_links,
+                    "attach_files": channel_perms.attach_files,
+                    "use_external_emojis": channel_perms.use_external_emojis,
+                },
+                "Advanced Features": {
+                    "add_reactions": channel_perms.add_reactions,
+                    "manage_messages": channel_perms.manage_messages,
+                    "use_slash_commands": True,  # Always true if bot can respond
+                },
+                "Server Management": {
+                    "view_audit_log": guild_perms.view_audit_log,
+                    "manage_roles": guild_perms.manage_roles,
+                    "kick_members": guild_perms.kick_members,
+                    "ban_members": guild_perms.ban_members,
+                },
+            }
+
+            embed = discord.Embed(
+                title="🔐 Bot Permissions Check",
+                description=f"Checking permissions for {bot_member.mention} in {check_channel.mention}",
+                color=0x3498DB,
+                timestamp=datetime.now(timezone.utc),
+            )
+
+            # Check each category
+            for category, perms in permissions_needed.items():
+                perm_status = []
+                all_good = True
+
+                for perm_name, has_perm in perms.items():
+                    if has_perm:
+                        perm_status.append(f"✅ {perm_name.replace('_', ' ').title()}")
+                    else:
+                        perm_status.append(f"❌ {perm_name.replace('_', ' ').title()}")
+                        all_good = False
+
+                # Set field color and icon based on status
+                category_icon = "✅" if all_good else "⚠️"
+                embed.add_field(
+                    name=f"{category_icon} {category}",
+                    value="\n".join(perm_status),
+                    inline=True,
+                )
+
+            # Add overall status
+            critical_perms = ["send_messages", "embed_links", "attach_files"]
+            critical_missing = [
+                p for p in critical_perms if not channel_perms.__getattribute__(p)
+            ]
+
+            if not critical_missing:
+                embed.color = 0x27AE60  # Green
+                embed.add_field(
+                    name="✅ Status",
+                    value="Bot has all required permissions for image generation!",
+                    inline=False,
+                )
+            else:
+                embed.color = 0xE74C3C  # Red
+                embed.add_field(
+                    name="❌ Action Required",
+                    value=f"Missing critical permissions: {', '.join(critical_missing)}\n"
+                    f"Image generation will not work properly.",
+                    inline=False,
+                )
+
+            # Add helpful information
+            embed.add_field(
+                name="🔧 How to Fix Permission Issues",
+                value="1. Go to **Server Settings** → **Roles**\n"
+                f"2. Find the **{bot_member.display_name}** role\n"
+                f"3. Enable missing permissions\n"
+                f"4. Or check **Channel Settings** → **Permissions** for {check_channel.mention}",
+                inline=False,
+            )
+
+            embed.set_footer(
+                text="Permissions checked • Use /permissions in different channels to test"
+            )
+
+            await interaction.followup.send(embed=embed)
+
+        except Exception as e:
+            self.logger.error(f"Permissions check error: {e}")
+            await interaction.followup.send(
+                f"❌ Error checking permissions: {str(e)}", ephemeral=True
+            )
+
+    @app_commands.command(
+        name="test_permissions",
+        description="Test bot permissions with a sample image generation",
+    )
+    async def test_permissions_command(self, interaction: discord.Interaction):
+        """Test bot permissions by attempting a sample image generation workflow"""
+        try:
+            await interaction.response.defer()
+
+            if not interaction.guild:
+                await interaction.followup.send(
+                    "❌ This command can only be used in servers.", ephemeral=True
+                )
+                return
+
+            bot_member = interaction.guild.me
+            channel_perms = interaction.channel.permissions_for(bot_member)
+
+            # Test results
+            test_results = []
+            overall_success = True
+
+            # Test 1: Basic message sending
+            if channel_perms.send_messages:
+                test_results.append("✅ Can send messages")
+            else:
+                test_results.append("❌ Cannot send messages")
+                overall_success = False
+
+            # Test 2: Embed creation
+            if channel_perms.embed_links:
+                test_results.append("✅ Can create embeds")
+
+                # Create a test embed to verify
+                test_embed = discord.Embed(
+                    title="🧪 Embed Test",
+                    description="This embed tests the bot's ability to create and display embeds.",
+                    color=0x3498DB,
+                    timestamp=datetime.now(timezone.utc),
+                )
+                test_embed.add_field(
+                    name="Status", value="✅ Embed links working", inline=False
+                )
+                test_embed.set_footer(
+                    text="Test embed • This confirms embed permissions"
+                )
+
+                # Try to edit the deferred response with embed
+                await interaction.edit_original_response(embed=test_embed)
+                test_results.append("✅ Successfully created test embed")
+
+            else:
+                test_results.append(
+                    "❌ Cannot create embeds (required for image display)"
+                )
+                overall_success = False
+
+            # Test 3: File attachment capability
+            if channel_perms.attach_files:
+                test_results.append("✅ Can attach files")
+            else:
+                test_results.append("❌ Cannot attach files (backup method for images)")
+                # This is not critical for image generation via URLs, but good to have
+
+            # Test 4: External emoji usage
+            if channel_perms.use_external_emojis:
+                test_results.append("✅ Can use external emojis")
+            else:
+                test_results.append("⚠️ Cannot use external emojis (minor impact)")
+
+            # Test 5: Reaction capability
+            if channel_perms.add_reactions:
+                test_results.append("✅ Can add reactions")
+            else:
+                test_results.append("⚠️ Cannot add reactions (minor impact)")
+
+            # Create final result embed
+            final_embed = discord.Embed(
+                title="🧪 Permission Test Results",
+                description="Testing bot permissions for image generation functionality",
+                color=0x27AE60 if overall_success else 0xE74C3C,
+                timestamp=datetime.now(timezone.utc),
+            )
+
+            final_embed.add_field(
+                name="📋 Test Results", value="\n".join(test_results), inline=False
+            )
+
+            if overall_success:
+                final_embed.add_field(
+                    name="🎉 Overall Status",
+                    value="✅ **All critical permissions are working!**\n"
+                    "The bot should be able to generate and display images properly.\n"
+                    "Try: `astra generate test robot`",
+                    inline=False,
+                )
+            else:
+                final_embed.add_field(
+                    name="⚠️ Action Required",
+                    value="❌ **Critical permissions are missing.**\n"
+                    "Image generation may not work properly.\n"
+                    "Use `/permissions` for detailed guidance.",
+                    inline=False,
+                )
+
+            final_embed.add_field(
+                name="🔧 Next Steps",
+                value="• Fix any missing permissions shown above\n"
+                "• Run `/permissions` for detailed setup instructions\n"
+                "• Test image generation with `astra generate <prompt>`\n"
+                "• Check bot logs for any error messages",
+                inline=False,
+            )
+
+            final_embed.set_footer(text="Permission test completed")
+
+            # If we couldn't send embeds, fall back to text
+            if not channel_perms.embed_links:
+                message = "🧪 **Permission Test Results**\n\n" + "\n".join(test_results)
+                if overall_success:
+                    message += "\n\n✅ Critical permissions working, but embed display is disabled."
+                else:
+                    message += "\n\n❌ Critical permissions missing. Use `/permissions` for help."
+
+                await interaction.edit_original_response(content=message)
+            else:
+                await interaction.edit_original_response(embed=final_embed)
+
+        except discord.HTTPException as e:
+            self.logger.error(f"HTTP error in permission test: {e}")
+            await interaction.edit_original_response(
+                content=f"❌ HTTP Error during test: {str(e)}\n"
+                "This might indicate permission issues or API problems."
+            )
+        except Exception as e:
+            self.logger.error(f"Permission test error: {e}")
+            try:
+                await interaction.edit_original_response(
+                    content=f"❌ Error during permission test: {str(e)}"
+                )
+            except:
+                await interaction.followup.send(
+                    f"❌ Critical error during permission test: {str(e)}",
+                    ephemeral=True,
+                )
+
     @app_commands.command(name="summarize", description="Summarize long text with AI")
     @app_commands.describe(content="Content to summarize")
     async def summarize_command(self, interaction: discord.Interaction, content: str):
@@ -998,7 +1267,7 @@ class AdvancedAICog(commands.Cog):
             if image_request:
                 await self._handle_image_generation(message, image_request)
                 return
-                
+
             # Check for invalid image generation attempts and provide guidance
             await self._check_invalid_image_attempts(message)
 
@@ -1337,7 +1606,7 @@ class AdvancedAICog(commands.Cog):
         # Only trigger image generation with specific "astra" commands
         astra_image_commands = [
             "astra generate",
-            "astra create", 
+            "astra create",
             "astra draw",
             "astra paint",
             "astra design",
@@ -1348,9 +1617,9 @@ class AdvancedAICog(commands.Cog):
             "astra generate image",
             "astra generate picture",
             "astra visualize",
-            "astra sketch"
+            "astra sketch",
         ]
-        
+
         # Check for specific Astra image commands
         for command in astra_image_commands:
             if content_lower.startswith(command):
@@ -1360,14 +1629,27 @@ class AdvancedAICog(commands.Cog):
                     return prompt
                 else:
                     return None  # No prompt provided
-        
+
         # Also check for @Astra mentions with image keywords
-        if any(word for word in words if word.startswith('<@') and '1400014033142288475' in word):  # Bot's ID
+        if any(
+            word
+            for word in words
+            if word.startswith("<@") and "1400014033142288475" in word
+        ):  # Bot's ID
             image_keywords = [
-                "generate", "create", "draw", "paint", "design", "make image", 
-                "make picture", "visualize", "sketch", "artwork", "illustration"
+                "generate",
+                "create",
+                "draw",
+                "paint",
+                "design",
+                "make image",
+                "make picture",
+                "visualize",
+                "sketch",
+                "artwork",
+                "illustration",
             ]
-            
+
             # Check if any image keywords appear after the mention
             for keyword in image_keywords:
                 if keyword in content_lower:
@@ -1377,24 +1659,33 @@ class AdvancedAICog(commands.Cog):
                         prompt = parts[1].strip()
                         if prompt:
                             return prompt
-            
+
             # If mentioned but no specific image keyword, don't treat as image request
             return None
-        
+
         # No valid image generation trigger found
         return None
 
     async def _check_invalid_image_attempts(self, message: discord.Message):
         """Check for invalid image generation attempts and provide helpful guidance"""
         content_lower = message.content.lower()
-        
+
         # Common invalid image generation attempts
         invalid_attempts = [
-            "generate", "create art", "create image", "make image", "draw", 
-            "paint", "design", "sketch", "visualize", "generate image",
-            "create picture", "make picture"
+            "generate",
+            "create art",
+            "create image",
+            "make image",
+            "draw",
+            "paint",
+            "design",
+            "sketch",
+            "visualize",
+            "generate image",
+            "create picture",
+            "make picture",
         ]
-        
+
         # Check if message starts with these words (but wasn't caught by _detect_image_request)
         words = content_lower.split()
         if len(words) > 1 and words[0] in invalid_attempts:
@@ -1403,34 +1694,34 @@ class AdvancedAICog(commands.Cog):
                 title="🎨 Image Generation Help",
                 description="It looks like you want to generate an image! Here's how:",
                 color=0x7C3AED,
-                timestamp=datetime.now(timezone.utc)
+                timestamp=datetime.now(timezone.utc),
             )
-            
+
             embed.add_field(
                 name="✅ Correct Commands",
                 value="Use **`astra generate`** followed by your prompt:\n"
-                      "• `astra generate sunset over mountains`\n"
-                      "• `astra create artwork of a robot`\n"
-                      "• `astra draw a fantasy castle`\n"
-                      "• `astra paint a cosmic nebula`",
-                inline=False
+                "• `astra generate sunset over mountains`\n"
+                "• `astra create artwork of a robot`\n"
+                "• `astra draw a fantasy castle`\n"
+                "• `astra paint a cosmic nebula`",
+                inline=False,
             )
-            
+
             embed.add_field(
                 name="📍 Channel Restrictions",
                 value="• **Regular users**: <#1402666535696470169>\n"
-                      "• **Mods & Admins**: Any channel",
-                inline=False
+                "• **Mods & Admins**: Any channel",
+                inline=False,
             )
-            
+
             embed.add_field(
                 name="🔧 Alternative",
                 value="You can also mention me: `@Astra generate your prompt here`",
-                inline=False
+                inline=False,
             )
-            
+
             embed.set_footer(text="Powered by Freepik AI")
-            
+
             await message.channel.send(embed=embed)
 
     async def _handle_image_generation(self, message: discord.Message, prompt: str):
@@ -1440,13 +1731,64 @@ class AdvancedAICog(commands.Cog):
             if message.guild:
                 bot_member = message.guild.me
                 channel_permissions = message.channel.permissions_for(bot_member)
-                
+
+                # Comprehensive permission check for image generation
+                missing_permissions = []
+
                 if not channel_permissions.send_messages:
-                    self.logger.error(f"❌ Bot missing send_messages permission in channel {message.channel.id}")
-                    return
-                    
+                    missing_permissions.append("Send Messages")
+
                 if not channel_permissions.embed_links:
-                    await message.channel.send("❌ I need permission to embed links to send image generation results.")
+                    missing_permissions.append("Embed Links")
+
+                if not channel_permissions.attach_files:
+                    missing_permissions.append("Attach Files")
+
+                if not channel_permissions.use_external_emojis:
+                    missing_permissions.append("Use External Emojis")
+
+                # Log permission status
+                self.logger.info(
+                    f"🔐 Bot permissions in #{message.channel.name}: "
+                    f"Send Messages: {channel_permissions.send_messages}, "
+                    f"Embed Links: {channel_permissions.embed_links}, "
+                    f"Attach Files: {channel_permissions.attach_files}"
+                )
+
+                if missing_permissions:
+                    # Try to send a basic error message (if we can send messages)
+                    if channel_permissions.send_messages:
+                        embed = discord.Embed(
+                            title="🚫 Missing Permissions",
+                            description="I need additional permissions to generate and display images properly.",
+                            color=0xE74C3C,
+                            timestamp=datetime.now(timezone.utc),
+                        )
+                        embed.add_field(
+                            name="❌ Missing Permissions",
+                            value="\n".join(
+                                [f"• {perm}" for perm in missing_permissions]
+                            ),
+                            inline=False,
+                        )
+                        embed.add_field(
+                            name="🔧 How to Fix",
+                            value="Please ask a server administrator to:\n"
+                            f"1. Go to Server Settings → Roles\n"
+                            f"2. Find the '{bot_member.display_name}' role\n"
+                            f"3. Enable the missing permissions listed above\n"
+                            f"4. Or use `/permissions check` to diagnose issues",
+                            inline=False,
+                        )
+                        embed.set_footer(
+                            text="Bot permissions are required for image generation"
+                        )
+                        await message.channel.send(embed=embed)
+                    else:
+                        # Can't even send messages - log only
+                        self.logger.error(
+                            f"❌ Bot missing critical permissions in #{message.channel.name}: {', '.join(missing_permissions)}"
+                        )
                     return
 
             if not self.ai_client:
@@ -1454,12 +1796,12 @@ class AdvancedAICog(commands.Cog):
                     title="❌ Image Generation Unavailable",
                     description="The AI system is not properly initialized.",
                     color=0xE74C3C,
-                    timestamp=datetime.now(timezone.utc)
+                    timestamp=datetime.now(timezone.utc),
                 )
                 embed.add_field(
-                    name="🔧 For Bot Administrators", 
-                    value="Please check bot initialization and configuration.", 
-                    inline=False
+                    name="🔧 For Bot Administrators",
+                    value="Please check bot initialization and configuration.",
+                    inline=False,
                 )
                 await message.channel.send(embed=embed)
                 return
@@ -1496,21 +1838,23 @@ class AdvancedAICog(commands.Cog):
                 title="🎨 Generating Image...",
                 description=f"**Prompt:** {prompt[:150]}{'...' if len(prompt) > 150 else ''}",
                 color=0x3498DB,
-                timestamp=datetime.now(timezone.utc)
+                timestamp=datetime.now(timezone.utc),
             )
             status_embed.add_field(
-                name="🔄 Status", 
-                value="Connecting to Freepik AI...", 
-                inline=False
+                name="🔄 Status", value="Connecting to Freepik AI...", inline=False
             )
             status_embed.set_footer(text="This may take 30-60 seconds")
-            
+
             status_msg = await message.channel.send(embed=status_embed)
 
             # Log the image generation attempt
-            self.logger.info(f"🎨 Image generation requested by user {message.author.id}")
+            self.logger.info(
+                f"🎨 Image generation requested by user {message.author.id}"
+            )
             self.logger.info(f"📝 Prompt: {prompt}")
-            self.logger.info(f"🔧 Permissions: Admin={user_permissions['is_admin']}, Mod={user_permissions['is_mod']}")
+            self.logger.info(
+                f"🔧 Permissions: Admin={user_permissions['is_admin']}, Mod={user_permissions['is_mod']}"
+            )
 
             # Generate image using consolidated AI engine
             result = await self.ai_client.generate_image(
@@ -1519,10 +1863,16 @@ class AdvancedAICog(commands.Cog):
 
             # Log the result
             if result:
-                self.logger.info(f"🎯 Image generation result: {result.get('success', False)}")
-                if not result.get('success'):
-                    self.logger.error(f"❌ Image generation error: {result.get('error', 'Unknown')}")
-                    self.logger.error(f"💬 Error message: {result.get('message', 'No message')}")
+                self.logger.info(
+                    f"🎯 Image generation result: {result.get('success', False)}"
+                )
+                if not result.get("success"):
+                    self.logger.error(
+                        f"❌ Image generation error: {result.get('error', 'Unknown')}"
+                    )
+                    self.logger.error(
+                        f"💬 Error message: {result.get('message', 'No message')}"
+                    )
             else:
                 self.logger.error("❌ No result returned from image generation")
 
@@ -1533,31 +1883,33 @@ class AdvancedAICog(commands.Cog):
                         title="🎨 Image Generated Successfully!",
                         description=f"**Prompt:** {prompt[:200]}{'...' if len(prompt) > 200 else ''}",
                         color=0x27AE60,
-                        timestamp=datetime.now(timezone.utc)
+                        timestamp=datetime.now(timezone.utc),
                     )
-                    
+
                     # Set the image
                     image_url = result.get("url")
                     if image_url:
                         embed.set_image(url=image_url)
-                        
+
                     embed.add_field(
-                        name="🤖 Provider", 
-                        value=result.get("provider", "Freepik AI"), 
-                        inline=True
+                        name="🤖 Provider",
+                        value=result.get("provider", "Freepik AI"),
+                        inline=True,
                     )
                     embed.add_field(
-                        name="� Requested by", 
-                        value=message.author.mention, 
-                        inline=True
+                        name="� Requested by", value=message.author.mention, inline=True
                     )
-                    embed.set_footer(text="Powered by Freepik AI • astra generate <prompt>")
+                    embed.set_footer(
+                        text="Powered by Freepik AI • astra generate <prompt>"
+                    )
 
                     # Delete status message and send result
                     await status_msg.delete()
                     await message.channel.send(embed=embed)
-                    
-                    self.logger.info(f"✅ Image successfully sent to channel {message.channel.id}")
+
+                    self.logger.info(
+                        f"✅ Image successfully sent to channel {message.channel.id}"
+                    )
 
                 except Exception as embed_error:
                     self.logger.error(f"❌ Error creating success embed: {embed_error}")
@@ -1570,10 +1922,18 @@ class AdvancedAICog(commands.Cog):
 
             else:
                 # Handle error cases with more detailed information
-                error_type = result.get("error", "Unknown error") if result else "No response"
-                error_msg = result.get("message", "Image generation failed") if result else "Image generation service unavailable"
+                error_type = (
+                    result.get("error", "Unknown error") if result else "No response"
+                )
+                error_msg = (
+                    result.get("message", "Image generation failed")
+                    if result
+                    else "Image generation service unavailable"
+                )
 
-                self.logger.error(f"🚨 Image generation failed: {error_type} - {error_msg}")
+                self.logger.error(
+                    f"🚨 Image generation failed: {error_type} - {error_msg}"
+                )
 
                 # Delete status message first
                 try:
@@ -1586,7 +1946,7 @@ class AdvancedAICog(commands.Cog):
                         title="🚫 Permission Denied",
                         description="You don't have permission to generate images in this channel.",
                         color=0xE74C3C,
-                        timestamp=datetime.now(timezone.utc)
+                        timestamp=datetime.now(timezone.utc),
                     )
                     default_channel_id = 1402666535696470169
                     embed.add_field(
@@ -1597,7 +1957,7 @@ class AdvancedAICog(commands.Cog):
                     embed.add_field(
                         name="🔧 Alternative Commands",
                         value="Try: `astra generate your prompt here`\nOr: `@Astra generate your prompt here`",
-                        inline=False
+                        inline=False,
                     )
                     await message.channel.send(embed=embed)
 
@@ -1611,27 +1971,32 @@ class AdvancedAICog(commands.Cog):
                     if result and "reset_time" in result:
                         reset_time = result["reset_time"]
                         embed.add_field(
-                            name="� Try Again", 
-                            value=f"Rate limit resets at: {reset_time}", 
-                            inline=False
+                            name="� Try Again",
+                            value=f"Rate limit resets at: {reset_time}",
+                            inline=False,
                         )
                     await message.channel.send(embed=embed)
 
-                elif error_type == "API key not configured" or error_type == "Invalid API key":
+                elif (
+                    error_type == "API key not configured"
+                    or error_type == "Invalid API key"
+                ):
                     embed = discord.Embed(
                         title="🔑 API Configuration Issue",
                         description="The Freepik API key is not configured or invalid.",
                         color=0xE74C3C,
-                        timestamp=datetime.now(timezone.utc)
+                        timestamp=datetime.now(timezone.utc),
                     )
                     embed.add_field(
                         name="🔧 For Bot Administrators",
                         value="• Check FREEPIK_API_KEY in Railway environment variables\n"
-                              "• Get your API key at: https://www.freepik.com/api\n"
-                              "• Verify key at: https://www.freepik.com/developers/dashboard/api-key",
-                        inline=False
+                        "• Get your API key at: https://www.freepik.com/api\n"
+                        "• Verify key at: https://www.freepik.com/developers/dashboard/api-key",
+                        inline=False,
                     )
-                    embed.set_footer(text="This is a bot configuration issue, not a user error")
+                    embed.set_footer(
+                        text="This is a bot configuration issue, not a user error"
+                    )
                     await message.channel.send(embed=embed)
 
                 else:
@@ -1640,21 +2005,23 @@ class AdvancedAICog(commands.Cog):
                         title="❌ Image Generation Failed",
                         description=error_msg,
                         color=0xE74C3C,
-                        timestamp=datetime.now(timezone.utc)
+                        timestamp=datetime.now(timezone.utc),
                     )
                     embed.add_field(
                         name="💡 Suggestions",
                         value="• Try a simpler, more descriptive prompt\n"
-                              "• Make sure your prompt follows content guidelines\n"
-                              "• Wait a few minutes and try again",
-                        inline=False
+                        "• Make sure your prompt follows content guidelines\n"
+                        "• Wait a few minutes and try again",
+                        inline=False,
                     )
                     embed.add_field(
                         name="🔧 Commands",
                         value="`astra generate <description>`\n`@Astra generate <description>`",
-                        inline=False
+                        inline=False,
                     )
-                    embed.set_footer(text="If this persists, contact bot administrators")
+                    embed.set_footer(
+                        text="If this persists, contact bot administrators"
+                    )
                     await message.channel.send(embed=embed)
 
         except Exception as e:
@@ -1665,18 +2032,20 @@ class AdvancedAICog(commands.Cog):
                     title="💥 Critical Error",
                     description="An unexpected error occurred during image generation.",
                     color=0x992D22,
-                    timestamp=datetime.now(timezone.utc)
+                    timestamp=datetime.now(timezone.utc),
                 )
                 embed.add_field(
                     name="🔧 What to do",
                     value="Please try again later or contact bot administrators if this persists.",
-                    inline=False
+                    inline=False,
                 )
                 embed.set_footer(text="Error logged for debugging")
                 await message.channel.send(embed=embed)
             except:
                 # Last resort - simple message
-                await message.channel.send("❌ Failed to generate image. Please try again later.")
+                await message.channel.send(
+                    "❌ Failed to generate image. Please try again later."
+                )
 
     async def _enhance_response_with_mentions(
         self, message: discord.Message, response: str
@@ -2574,6 +2943,141 @@ class AdvancedAICog(commands.Cog):
         except Exception as e:
             self.logger.error(f"Enhanced features test error: {e}")
             await interaction.followup.send(f"❌ Test failed: {str(e)}", ephemeral=True)
+
+    @app_commands.command(
+        name="permissions",
+        description="Check and diagnose bot permissions in this channel",
+    )
+    async def permissions_check(self, interaction: discord.Interaction):
+        """Check bot permissions for AI and image generation features"""
+        try:
+            await interaction.response.defer()
+
+            # Get bot member and channel
+            bot_member = interaction.guild.get_member(self.bot.user.id)
+            channel = interaction.channel
+
+            embed = discord.Embed(
+                title="🛡️ Bot Permissions Diagnostic",
+                description="Checking permissions required for AI features...",
+                color=discord.Color.blue(),
+                timestamp=datetime.now(timezone.utc),
+            )
+
+            # Required permissions for AI features
+            required_permissions = [
+                ("send_messages", "Send Messages", "Basic bot communication"),
+                ("embed_links", "Embed Links", "Rich message formatting"),
+                ("attach_files", "Attach Files", "Image generation uploads"),
+                ("use_external_emojis", "Use External Emojis", "Enhanced reactions"),
+                ("manage_messages", "Manage Messages", "Message cleanup and editing"),
+                (
+                    "read_message_history",
+                    "Read Message History",
+                    "Context understanding",
+                ),
+                ("add_reactions", "Add Reactions", "Interactive responses"),
+            ]
+
+            # Check each permission
+            permissions_status = []
+            all_good = True
+
+            for perm_name, display_name, description in required_permissions:
+                has_permission = getattr(
+                    bot_member.permissions_in(channel), perm_name, False
+                )
+
+                if has_permission:
+                    permissions_status.append(f"✅ {display_name}")
+                else:
+                    permissions_status.append(f"❌ {display_name}")
+                    all_good = False
+
+            # Add permissions status to embed
+            embed.add_field(
+                name="📋 Permission Status",
+                value="\n".join(permissions_status),
+                inline=False,
+            )
+
+            # Overall status
+            if all_good:
+                embed.add_field(
+                    name="🎉 Overall Status",
+                    value="✅ All permissions are properly configured!\nBot should work perfectly in this channel.",
+                    inline=False,
+                )
+                embed.color = discord.Color.green()
+            else:
+                embed.add_field(
+                    name="⚠️ Overall Status",
+                    value="❌ Some permissions are missing.\nSome features may not work properly.",
+                    inline=False,
+                )
+                embed.color = discord.Color.orange()
+
+                # Add troubleshooting section
+                embed.add_field(
+                    name="🔧 Troubleshooting",
+                    value=(
+                        "**For Server Administrators:**\n"
+                        "1. Go to Server Settings → Roles\n"
+                        "2. Find the bot's role or @everyone\n"
+                        "3. Enable the missing permissions listed above\n"
+                        "4. Run this command again to verify\n\n"
+                        "**For Channel-Specific Issues:**\n"
+                        "1. Right-click this channel → Edit Channel\n"
+                        "2. Go to Permissions tab\n"
+                        "3. Add the bot role with required permissions\n"
+                        "4. Save changes and test again"
+                    ),
+                    inline=False,
+                )
+
+            # Add additional info
+            embed.add_field(
+                name="ℹ️ Permission Details",
+                value=(
+                    "**Why these permissions are needed:**\n"
+                    "• **Send Messages**: Basic bot responses\n"
+                    "• **Embed Links**: Rich AI responses with formatting\n"
+                    "• **Attach Files**: Image generation and file uploads\n"
+                    "• **Use External Emojis**: Enhanced reaction system\n"
+                    "• **Manage Messages**: Clean up bot messages when needed\n"
+                    "• **Read Message History**: Better conversation context\n"
+                    "• **Add Reactions**: Interactive command responses"
+                ),
+                inline=False,
+            )
+
+            # Add image generation specific check
+            if hasattr(self, "ai_client") and hasattr(
+                self.ai_client, "freepik_generator"
+            ):
+                img_status = (
+                    "✅ Available"
+                    if self.ai_client.freepik_generator
+                    else "❌ Not configured"
+                )
+                embed.add_field(
+                    name="🎨 Image Generation Status",
+                    value=f"Freepik API: {img_status}\n"
+                    f"Required Permissions: {'✅ Met' if all_good else '❌ Missing permissions above'}",
+                    inline=False,
+                )
+
+            embed.set_footer(
+                text=f"Checked in #{channel.name} • Use /ai_test to test functionality"
+            )
+
+            await interaction.followup.send(embed=embed)
+
+        except Exception as e:
+            self.logger.error(f"Permissions check error: {e}")
+            await interaction.followup.send(
+                f"❌ Error checking permissions: {str(e)}", ephemeral=True
+            )
 
 
 async def setup(bot):

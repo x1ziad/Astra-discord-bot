@@ -38,12 +38,14 @@ def debug_ai_credentials():
             critical_missing.append("DISCORD_TOKEN")
 
         # Check AI conversation API (any of these should work)
-        ai_apis_available = any([
-            credentials_status["AI_API_KEY"],
-            credentials_status["OPENAI_API_KEY"], 
-            credentials_status["OPENROUTER_API_KEY"],
-        ])
-        
+        ai_apis_available = any(
+            [
+                credentials_status["AI_API_KEY"],
+                credentials_status["OPENAI_API_KEY"],
+                credentials_status["OPENROUTER_API_KEY"],
+            ]
+        )
+
         if not ai_apis_available:
             critical_missing.append("AI_API_KEY (OpenAI or OpenRouter)")
 
@@ -56,17 +58,19 @@ def debug_ai_credentials():
 
         # Enhanced recommendations with specific setup instructions
         recommendations = []
-        
+
         # AI API recommendations
         if not ai_apis_available:
-            recommendations.append("Set AI_API_KEY=your_openrouter_key OR OPENROUTER_API_KEY=your_key")
+            recommendations.append(
+                "Set AI_API_KEY=your_openrouter_key OR OPENROUTER_API_KEY=your_key"
+            )
             recommendations.append("Get OpenRouter key at: https://openrouter.ai/keys")
-        
+
         # Image generation recommendation
         if not credentials_status["FREEPIK_API_KEY"]:
             recommendations.append("Add FREEPIK_API_KEY for image generation")
             recommendations.append("Get Freepik key at: https://www.freepik.com/api")
-        
+
         # Optional features
         if not credentials_status["NASA_API_KEY"]:
             recommendations.append("Add NASA_API_KEY for space content features")
@@ -75,13 +79,19 @@ def debug_ai_credentials():
             logger.info("💡 Setup recommendations:")
             for rec in recommendations:
                 logger.info(f"  • {rec}")
-        
+
         # Current configuration summary
         logger.info("🔧 Current Configuration:")
-        logger.info(f"  Discord Bot: {'✅ Ready' if credentials_status['DISCORD_TOKEN'] else '❌ Not configured'}")
-        logger.info(f"  AI Conversation: {'✅ Ready' if ai_apis_available else '❌ Not configured'}")
-        logger.info(f"  Image Generation: {'✅ Ready' if credentials_status['FREEPIK_API_KEY'] else '❌ Not configured'}")
-        
+        logger.info(
+            f"  Discord Bot: {'✅ Ready' if credentials_status['DISCORD_TOKEN'] else '❌ Not configured'}"
+        )
+        logger.info(
+            f"  AI Conversation: {'✅ Ready' if ai_apis_available else '❌ Not configured'}"
+        )
+        logger.info(
+            f"  Image Generation: {'✅ Ready' if credentials_status['FREEPIK_API_KEY'] else '❌ Not configured'}"
+        )
+
         logger.info("🔍 AI credentials debug completed")
 
     except Exception as e:
