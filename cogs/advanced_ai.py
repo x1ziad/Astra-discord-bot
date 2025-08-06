@@ -64,7 +64,7 @@ class AdvancedAICog(commands.Cog):
         # Performance tracking
         self.api_calls_made = 0
         self.successful_responses = 0
-        self.start_time = datetime.now()
+        self.start_time = datetime.now(timezone.utc)
         self.response_times: List[float] = []
 
         # Engagement tracking
@@ -72,7 +72,7 @@ class AdvancedAICog(commands.Cog):
         self.user_join_timestamps: Dict[int, datetime] = {}
 
         # Enhanced tracking for proactive features
-        self.last_status_update = datetime.now()
+        self.last_status_update = datetime.now(timezone.utc)
         self.server_activity_levels: Dict[int, str] = {}  # guild_id -> activity level
         self.interesting_topics: List[str] = []  # Track current interesting topics
         self.mentioned_users: Set[int] = set()  # Track recently mentioned users
@@ -681,13 +681,13 @@ class AdvancedAICog(commands.Cog):
 
         # Enhanced chat understanding and context analysis
         await self._analyze_message_context(message)
-        
+
         # Track channel activity with enhanced metrics
         await self._track_channel_activity(message)
-        
+
         # Extract and track interesting topics from conversation
         await self._extract_conversation_topics(message)
-        
+
         # Update server activity levels for dynamic status
         await self._update_server_activity_level(message)
 
@@ -994,7 +994,7 @@ class AdvancedAICog(commands.Cog):
 
             # Check if this is an image generation request
             image_request = await self._detect_image_request(message.content)
-            
+
             if image_request:
                 await self._handle_image_generation(message, image_request)
                 return
@@ -1010,7 +1010,9 @@ class AdvancedAICog(commands.Cog):
             )
 
             # Enhance response with user mentions if relevant
-            enhanced_response = await self._enhance_response_with_mentions(message, response)
+            enhanced_response = await self._enhance_response_with_mentions(
+                message, response
+            )
 
             # Send response with smart formatting
             await self._send_enhanced_response(message.channel, enhanced_response)
@@ -1131,31 +1133,41 @@ class AdvancedAICog(commands.Cog):
             self.logger.error(f"Welcome engagement error: {e}")
 
     # === ENHANCED CHAT UNDERSTANDING AND PROACTIVE FEATURES ===
-    
+
     async def _analyze_message_context(self, message: discord.Message):
         """Analyze message context for better understanding and user mentioning"""
         try:
             content = message.content.lower()
-            
+
             # Detect if users are being discussed (for potential mentioning)
             user_references = []
-            
+
             # Look for user references in message
             words = content.split()
-            user_indicating_words = ['user', 'person', 'someone', 'anybody', 'player', 'member']
-            
+            user_indicating_words = [
+                "user",
+                "person",
+                "someone",
+                "anybody",
+                "player",
+                "member",
+            ]
+
             # Check if message refers to users in a way that might warrant mentioning
-            if any(word in content for word in ['help', 'question', 'ask', 'know', 'expert']):
+            if any(
+                word in content
+                for word in ["help", "question", "ask", "know", "expert"]
+            ):
                 # Find relevant users based on message topics
                 if message.guild:
                     relevant_users = await self._find_relevant_users(message)
                     if relevant_users:
                         user_references.extend(relevant_users)
-            
+
             # Track users who might be relevant to mention
             if user_references:
                 self.mentioned_users.update(user_references)
-                
+
         except Exception as e:
             self.logger.error(f"Message context analysis error: {e}")
 
@@ -1164,29 +1176,31 @@ class AdvancedAICog(commands.Cog):
         try:
             relevant_users = []
             content = message.content.lower()
-            
+
             # Topic-based user expertise mapping
             topic_experts = {
-                'stellaris': [],  # Will be populated with active stellaris players
-                'space': [],      # Space enthusiasts
-                'ai': [],         # AI/tech interested users
-                'gaming': [],     # Gaming enthusiasts
-                'science': []     # Science interested users
+                "stellaris": [],  # Will be populated with active stellaris players
+                "space": [],  # Space enthusiasts
+                "ai": [],  # AI/tech interested users
+                "gaming": [],  # Gaming enthusiasts
+                "science": [],  # Science interested users
             }
-            
+
             # Look for recent active users in similar conversations
             if message.guild:
                 for channel in message.guild.text_channels:
                     channel_activity = self.channel_activity.get(channel.id)
                     if channel_activity:
                         # Get users who recently talked about similar topics
-                        for topic in channel_activity.get('recent_topics', []):
+                        for topic in channel_activity.get("recent_topics", []):
                             if any(keyword in content for keyword in topic.split()):
-                                relevant_users.extend(list(channel_activity.get('active_users', set())))
-            
+                                relevant_users.extend(
+                                    list(channel_activity.get("active_users", set()))
+                                )
+
             # Return top 2-3 most relevant users (avoid spam)
             return list(set(relevant_users))[:3]
-            
+
         except Exception as e:
             self.logger.error(f"Relevant user finding error: {e}")
             return []
@@ -1195,18 +1209,18 @@ class AdvancedAICog(commands.Cog):
         """Extract and track interesting topics from ongoing conversations"""
         try:
             content = message.content.lower()
-            
+
             # Enhanced topic detection
             topics = await self._extract_message_topics(content)
-            
+
             # Add to global interesting topics tracker
             for topic in topics:
                 if topic not in self.interesting_topics:
                     self.interesting_topics.append(topic)
-            
+
             # Keep only recent interesting topics (last 20)
             self.interesting_topics = self.interesting_topics[-20:]
-            
+
         except Exception as e:
             self.logger.error(f"Topic extraction error: {e}")
 
@@ -1215,17 +1229,19 @@ class AdvancedAICog(commands.Cog):
         try:
             if not message.guild:
                 return
-                
+
             guild_id = message.guild.id
             current_time = datetime.now(timezone.utc)
-            
+
             # Count recent messages in the guild
             recent_messages = 0
             for channel_id, activity in self.channel_activity.items():
                 if any(ch.id == channel_id for ch in message.guild.text_channels):
-                    if current_time - activity.get('last_activity', current_time) < timedelta(minutes=10):
-                        recent_messages += len(activity.get('recent_messages', []))
-            
+                    if current_time - activity.get(
+                        "last_activity", current_time
+                    ) < timedelta(minutes=10):
+                        recent_messages += len(activity.get("recent_messages", []))
+
             # Determine activity level
             if recent_messages >= 20:
                 activity_level = "very_active"
@@ -1235,9 +1251,9 @@ class AdvancedAICog(commands.Cog):
                 activity_level = "moderate"
             else:
                 activity_level = "quiet"
-            
+
             self.server_activity_levels[guild_id] = activity_level
-            
+
         except Exception as e:
             self.logger.error(f"Server activity update error: {e}")
 
@@ -1246,89 +1262,129 @@ class AdvancedAICog(commands.Cog):
         """Dynamically update bot status based on activity and interesting topics"""
         try:
             current_time = datetime.now(timezone.utc)
-            
+
             # Only update status every 5-15 minutes to avoid spam
             if current_time - self.last_status_update < timedelta(minutes=5):
                 return
-            
+
             # Determine status based on activity and topics
             status_messages = []
-            
+
             # Activity-based statuses
             total_servers = len(self.bot.guilds)
-            active_servers = sum(1 for level in self.server_activity_levels.values() 
-                               if level in ['active', 'very_active'])
-            
+            active_servers = sum(
+                1
+                for level in self.server_activity_levels.values()
+                if level in ["active", "very_active"]
+            )
+
             if active_servers > 0:
-                status_messages.extend([
-                    f"🚀 Exploring {active_servers} active galaxies",
-                    f"🌟 Engaging with {active_servers} communities",
-                    f"⚡ Active in {active_servers} servers"
-                ])
-            
+                status_messages.extend(
+                    [
+                        f"🚀 Exploring {active_servers} active galaxies",
+                        f"🌟 Engaging with {active_servers} communities",
+                        f"⚡ Active in {active_servers} servers",
+                    ]
+                )
+
             # Topic-based statuses
             if self.interesting_topics:
                 recent_topics = self.interesting_topics[-3:]  # Last 3 topics
-                if 'stellaris' in recent_topics:
+                if "stellaris" in recent_topics:
                     status_messages.append("🌌 Discussing galactic empires")
-                if 'space' in recent_topics:
+                if "space" in recent_topics:
                     status_messages.append("🛸 Exploring the cosmos")
-                if 'ai' in recent_topics:
+                if "ai" in recent_topics:
                     status_messages.append("🤖 Pondering artificial intelligence")
-                if 'science' in recent_topics:
+                if "science" in recent_topics:
                     status_messages.append("🔬 Analyzing scientific concepts")
-            
+
             # Default statuses when no specific activity
             default_statuses = [
                 "🌟 Ready to explore the universe",
                 "🚀 Waiting for cosmic conversations",
                 "🌌 Observing the digital galaxy",
                 "💫 Dreaming of distant stars",
-                f"🌍 Watching over {total_servers} servers"
+                f"🌍 Watching over {total_servers} servers",
             ]
-            
+
             # Choose status
             if status_messages:
                 status = random.choice(status_messages)
             else:
                 status = random.choice(default_statuses)
-            
+
             # Update bot status
             activity = discord.Activity(type=discord.ActivityType.watching, name=status)
             await self.bot.change_presence(activity=activity)
-            
+
             self.last_status_update = current_time
             self.logger.info(f"Updated bot status to: {status}")
-            
+
         except Exception as e:
             self.logger.error(f"Dynamic status update error: {e}")
 
     # === IMAGE GENERATION AND ENHANCED RESPONSE METHODS ===
-    
+
     async def _detect_image_request(self, content: str) -> Optional[str]:
         """Detect if message is requesting image generation"""
         content_lower = content.lower()
-        
+
         # Enhanced image generation keywords
         image_keywords = [
-            'generate image', 'create image', 'make image', 'draw', 'create picture',
-            'generate picture', 'make a picture', 'show me', 'visualize', 'create art',
-            'generate', 'create', 'make art', 'paint', 'illustration', 'artwork',
-            'design', 'sketch', 'render', 'compose', 'produce image', 'generate art',
-            'create artwork', 'make artwork', 'draw me', 'paint me', 'design me',
-            'visualize for me', 'show me what', 'image of', 'picture of'
+            "generate image",
+            "create image",
+            "make image",
+            "draw",
+            "create picture",
+            "generate picture",
+            "make a picture",
+            "show me",
+            "visualize",
+            "create art",
+            "generate",
+            "create",
+            "make art",
+            "paint",
+            "illustration",
+            "artwork",
+            "design",
+            "sketch",
+            "render",
+            "compose",
+            "produce image",
+            "generate art",
+            "create artwork",
+            "make artwork",
+            "draw me",
+            "paint me",
+            "design me",
+            "visualize for me",
+            "show me what",
+            "image of",
+            "picture of",
         ]
-        
+
         # Check for standalone "generate" or "create" followed by descriptive content
         words = content_lower.split()
         if len(words) > 2:
-            if words[0] in ['generate', 'create', 'make', 'draw', 'paint', 'design', 'sketch']:
+            if words[0] in [
+                "generate",
+                "create",
+                "make",
+                "draw",
+                "paint",
+                "design",
+                "sketch",
+            ]:
                 # If first word is generation verb, likely image request
                 return content
-            elif any(word in ['generate', 'create', 'make', 'draw'] for word in words[:3]):
+            elif any(
+                word in ["generate", "create", "make", "draw"] for word in words[:3]
+            ):
                 # If generation verb appears in first 3 words
                 return content
-        
+
         # Check for specific image keywords
         if any(keyword in content_lower for keyword in image_keywords):
             # Extract the image prompt
@@ -1340,94 +1396,119 @@ class AdvancedAICog(commands.Cog):
                         prompt = parts[1].strip()
                         if prompt:
                             return prompt
-            
+
             # If no specific prompt found, return the full content as prompt
             return content
-        
+
         # Check for common descriptive phrases that suggest image generation
         descriptive_patterns = [
-            'a picture of', 'an image of', 'art featuring', 'artwork with',
-            'drawing of', 'painting of', 'illustration of', 'design with'
+            "a picture of",
+            "an image of",
+            "art featuring",
+            "artwork with",
+            "drawing of",
+            "painting of",
+            "illustration of",
+            "design with",
         ]
-        
+
         if any(pattern in content_lower for pattern in descriptive_patterns):
             return content
-        
+
         return None
 
     async def _handle_image_generation(self, message: discord.Message, prompt: str):
         """Handle image generation request with enhanced Discord image sending"""
         try:
             if not self.ai_client:
-                await message.channel.send("❌ Image generation is currently unavailable.")
+                await message.channel.send(
+                    "❌ Image generation is currently unavailable."
+                )
                 return
-            
+
             # Check user permissions
             user_permissions = {
-                'is_admin': message.author.guild_permissions.administrator if message.guild else False,
-                'is_mod': any(role.permissions.manage_messages for role in message.author.roles) if message.guild else False
+                "is_admin": (
+                    message.author.guild_permissions.administrator
+                    if message.guild
+                    else False
+                ),
+                "is_mod": (
+                    any(
+                        role.permissions.manage_messages
+                        for role in message.author.roles
+                    )
+                    if message.guild
+                    else False
+                ),
             }
-            
+
             # Prepare context for image generation
             context = {
-                'user_id': message.author.id,
-                'channel_id': message.channel.id,
-                'guild_id': message.guild.id if message.guild else None,
-                'channel_type': 'discord',
-                'request_type': 'image_generation',
-                'user_name': message.author.display_name
+                "user_id": message.author.id,
+                "channel_id": message.channel.id,
+                "guild_id": message.guild.id if message.guild else None,
+                "channel_type": "discord",
+                "request_type": "image_generation",
+                "user_name": message.author.display_name,
             }
-            
+
             # Send generation status message
-            status_msg = await message.channel.send(f"🎨 Generating image: *{prompt[:100]}{'...' if len(prompt) > 100 else ''}*")
-            
+            status_msg = await message.channel.send(
+                f"🎨 Generating image: *{prompt[:100]}{'...' if len(prompt) > 100 else ''}*"
+            )
+
             # Generate image using consolidated AI engine
-            result = await self.ai_client.generate_image(prompt, context, user_permissions)
-            
-            if result and result.get('success'):
+            result = await self.ai_client.generate_image(
+                prompt, context, user_permissions
+            )
+
+            if result and result.get("success"):
                 try:
                     # Create embed for the image with enhanced information
                     embed = discord.Embed(
                         title="🖼️ AI Generated Image",
                         description=f"**Prompt:** {prompt}",
                         color=0x43B581,  # Green for success
-                        timestamp=datetime.now(timezone.utc)
+                        timestamp=datetime.now(timezone.utc),
                     )
-                    
+
                     # Set the image in the embed
-                    embed.set_image(url=result['url'])
-                    
+                    embed.set_image(url=result["url"])
+
                     # Add user information
                     embed.set_author(
                         name=message.author.display_name,
-                        icon_url=message.author.display_avatar.url
+                        icon_url=message.author.display_avatar.url,
                     )
-                    
+
                     # Add provider and additional info
                     embed.add_field(
                         name="🎯 AI Provider",
-                        value=result.get('provider', 'Freepik AI'),
-                        inline=True
+                        value=result.get("provider", "Freepik AI"),
+                        inline=True,
                     )
-                    
-                    if user_permissions['is_admin']:
+
+                    if user_permissions["is_admin"]:
                         embed.add_field(name="👑 Access", value="Admin", inline=True)
-                    elif user_permissions['is_mod']:
+                    elif user_permissions["is_mod"]:
                         embed.add_field(name="🛡️ Access", value="Moderator", inline=True)
-                    
+
                     embed.set_footer(text="Powered by Freepik AI • Use responsibly")
-                    
+
                     # Send the embed with image
                     await message.channel.send(embed=embed)
-                    
+
                     # Delete the status message
                     try:
                         await status_msg.delete()
                     except:
                         pass
-                    
-                    self.logger.info(f"Image generated successfully for user {message.author.id}")
-                    
+
+                    self.logger.info(
+                        f"Image generated successfully for user {message.author.id}"
+                    )
+
                 except Exception as embed_error:
                     self.logger.error(f"Error creating image embed: {embed_error}")
                     # Fallback to simple message with image URL
@@ -1436,75 +1517,95 @@ class AdvancedAICog(commands.Cog):
                         f"**Prompt:** {prompt}\n"
                         f"**Image:** {result['url']}"
                     )
-                
+
             else:
                 # Handle error cases with informative messages
-                error_type = result.get('error', 'Unknown error') if result else 'No response'
-                error_msg = result.get('message', 'Image generation failed') if result else 'Image generation service unavailable'
-                
+                error_type = (
+                    result.get("error", "Unknown error") if result else "No response"
+                )
+                error_msg = (
+                    result.get("message", "Image generation failed")
+                    if result
+                    else "Image generation service unavailable"
+                )
+
                 if error_type == "Permission denied":
                     # Channel restriction message
                     embed = discord.Embed(
                         title="🚫 Image Generation Restricted",
                         description=error_msg,
                         color=0xE74C3C,  # Red
-                        timestamp=datetime.now(timezone.utc)
+                        timestamp=datetime.now(timezone.utc),
                     )
-                    
+
                     default_channel_id = 1402666535696470169
                     embed.add_field(
                         name="📍 Where to generate images",
                         value=f"• Regular users: <#{default_channel_id}>\n• Mods & Admins: Any channel",
-                        inline=False
+                        inline=False,
                     )
-                    
+
                     await message.channel.send(embed=embed)
-                    
+
                 elif error_type == "Rate limit exceeded":
                     # Rate limit message
                     embed = discord.Embed(
                         title="⏰ Rate Limit Reached",
                         description=error_msg,
                         color=0xF39C12,  # Orange
-                        timestamp=datetime.now(timezone.utc)
+                        timestamp=datetime.now(timezone.utc),
                     )
-                    
+
                     if result and "reset_time" in result:
                         embed.add_field(
                             name="🔄 Try again",
                             value=f"<t:{int(datetime.fromisoformat(result['reset_time']).timestamp())}:R>",
-                            inline=True
+                            inline=True,
                         )
-                    
+
                     await message.channel.send(embed=embed)
-                    
+
                 else:
                     # Generic error
                     await message.channel.send(f"❌ {error_msg}")
-                
+
                 # Delete status message
                 try:
                     await status_msg.delete()
                 except:
                     pass
-                
+
         except Exception as e:
             self.logger.error(f"Image generation error: {e}")
-            await message.channel.send("❌ Failed to generate image. Please try again later.")
+            await message.channel.send(
+                "❌ Failed to generate image. Please try again later."
+            )
             self.logger.error(f"Image generation error: {e}")
-            await message.channel.send("❌ Failed to generate image. Please try again later.")
+            await message.channel.send(
+                "❌ Failed to generate image. Please try again later."
+            )
 
-    async def _enhance_response_with_mentions(self, message: discord.Message, response: str) -> str:
+    async def _enhance_response_with_mentions(
+        self, message: discord.Message, response: str
+    ) -> str:
         """Enhance AI response with relevant user mentions when appropriate"""
         try:
             if not message.guild:
                 return response
-            
+
             # Check if response suggests getting help or mentions expertise
-            help_indicators = ['expert', 'ask someone', 'check with', 'maybe.*knows', 'experienced.*with']
-            
-            should_mention = any(re.search(pattern, response.lower()) for pattern in help_indicators)
-            
+            help_indicators = [
+                "expert",
+                "ask someone",
+                "check with",
+                "maybe.*knows",
+                "experienced.*with",
+            ]
+
+            should_mention = any(
+                re.search(pattern, response.lower()) for pattern in help_indicators
+            )
+
             if should_mention and len(self.mentioned_users) > 0:
                 # Find relevant guild members from mentioned_users
                 relevant_members = []
@@ -1512,32 +1613,36 @@ class AdvancedAICog(commands.Cog):
                     member = message.guild.get_member(user_id)
                     if member and member != message.author and not member.bot:
                         relevant_members.append(member)
-                
+
                 if relevant_members:
                     mentions = " ".join([member.mention for member in relevant_members])
                     response += f"\n\n💡 {mentions} might be able to help with this!"
-                    
+
                     # Clear mentioned users after using them
                     self.mentioned_users.clear()
-            
+
             return response
-            
+
         except Exception as e:
             self.logger.error(f"Response enhancement error: {e}")
             return response
 
-    async def _send_enhanced_response(self, channel: discord.TextChannel, response: str):
+    async def _send_enhanced_response(
+        self, channel: discord.TextChannel, response: str
+    ):
         """Send response with smart formatting and splitting"""
         try:
             if len(response) > 2000:
                 # Smart splitting at sentence boundaries
                 chunks = []
                 current_chunk = ""
-                
-                sentences = re.split(r'(?<=[.!?])\s+', response)
-                
+
+                sentences = re.split(r"(?<=[.!?])\s+", response)
+
                 for sentence in sentences:
-                    if len(current_chunk + sentence) > 1900:  # Leave room for formatting
+                    if (
+                        len(current_chunk + sentence) > 1900
+                    ):  # Leave room for formatting
                         if current_chunk:
                             chunks.append(current_chunk.strip())
                             current_chunk = sentence
@@ -1547,10 +1652,10 @@ class AdvancedAICog(commands.Cog):
                             current_chunk = sentence[1900:]
                     else:
                         current_chunk += sentence + " "
-                
+
                 if current_chunk:
                     chunks.append(current_chunk.strip())
-                
+
                 # Send chunks with small delay
                 for i, chunk in enumerate(chunks):
                     if i > 0:
@@ -1558,7 +1663,7 @@ class AdvancedAICog(commands.Cog):
                     await channel.send(chunk)
             else:
                 await channel.send(response)
-                
+
         except Exception as e:
             self.logger.error(f"Enhanced response sending error: {e}")
             # Fallback to simple send
@@ -2285,92 +2390,97 @@ class AdvancedAICog(commands.Cog):
                 f"❌ AI test failed: {str(e)}", ephemeral=True
             )
 
-    @app_commands.command(name="test_enhanced_features", description="Test new enhanced AI features (Admin only)")
+    @app_commands.command(
+        name="test_enhanced_features",
+        description="Test new enhanced AI features (Admin only)",
+    )
     async def test_enhanced_features(self, interaction: discord.Interaction):
         """Test the new enhanced AI features"""
         try:
             # Admin check
             if not interaction.user.guild_permissions.administrator:
                 await interaction.response.send_message(
-                    "❌ This command requires administrator permissions.", ephemeral=True
+                    "❌ This command requires administrator permissions.",
+                    ephemeral=True,
                 )
                 return
 
             await interaction.response.defer()
-            
+
             embed = discord.Embed(
                 title="🚀 Enhanced AI Features Test",
                 color=0x7C3AED,
-                timestamp=datetime.now(timezone.utc)
+                timestamp=datetime.now(timezone.utc),
             )
-            
+
             # Test dynamic status update
             try:
                 await self.dynamic_status_task.coro()
                 embed.add_field(
                     name="✅ Dynamic Status Update",
                     value="Status updated successfully based on current activity",
-                    inline=False
+                    inline=False,
                 )
             except Exception as e:
                 embed.add_field(
                     name="❌ Dynamic Status Update",
                     value=f"Error: {str(e)[:100]}",
-                    inline=False
+                    inline=False,
                 )
-            
+
             # Test activity monitoring
-            active_servers = len([level for level in self.server_activity_levels.values() 
-                                if level in ['active', 'very_active']])
+            active_servers = len(
+                [
+                    level
+                    for level in self.server_activity_levels.values()
+                    if level in ["active", "very_active"]
+                ]
+            )
             embed.add_field(
                 name="📊 Activity Monitoring",
                 value=f"Monitoring {len(self.server_activity_levels)} servers\n"
-                      f"Active servers: {active_servers}\n"
-                      f"Interesting topics: {len(self.interesting_topics)}",
-                inline=False
+                f"Active servers: {active_servers}\n"
+                f"Interesting topics: {len(self.interesting_topics)}",
+                inline=False,
             )
-            
+
             # Test conversation tracking
             embed.add_field(
                 name="💬 Conversation Tracking",
                 value=f"Active conversations: {len(self.active_conversations)}\n"
-                      f"Channel activities tracked: {len(self.channel_activity)}\n"
-                      f"Users ready for mentioning: {len(self.mentioned_users)}",
-                inline=False
+                f"Channel activities tracked: {len(self.channel_activity)}\n"
+                f"Users ready for mentioning: {len(self.mentioned_users)}",
+                inline=False,
             )
-            
+
             # Test AI engine status
-            if hasattr(self, 'ai_client') and self.ai_client:
+            if hasattr(self, "ai_client") and self.ai_client:
                 try:
                     status = await self.ai_client.get_health_status()
                     embed.add_field(
                         name="🤖 AI Engine Status",
                         value=f"Status: {status.get('status', 'Unknown')}\n"
-                              f"Active Provider: {status.get('active_provider', 'None')}\n"
-                              f"Image Generation: {'✅ Available' if hasattr(self.ai_client, 'freepik_generator') and self.ai_client.freepik_generator else '❌ Unavailable'}",
-                        inline=False
+                        f"Active Provider: {status.get('active_provider', 'None')}\n"
+                        f"Image Generation: {'✅ Available' if hasattr(self.ai_client, 'freepik_generator') and self.ai_client.freepik_generator else '❌ Unavailable'}",
+                        inline=False,
                     )
                 except Exception as e:
                     embed.add_field(
                         name="❌ AI Engine Status",
                         value=f"Error checking status: {str(e)[:100]}",
-                        inline=False
+                        inline=False,
                     )
             else:
                 embed.add_field(
-                    name="❌ AI Engine",
-                    value="AI client not initialized",
-                    inline=False
+                    name="❌ AI Engine", value="AI client not initialized", inline=False
                 )
-            
+
             embed.set_footer(text="Enhanced AI Features by Astra Bot")
             await interaction.followup.send(embed=embed)
 
         except Exception as e:
             self.logger.error(f"Enhanced features test error: {e}")
-            await interaction.followup.send(
-                f"❌ Test failed: {str(e)}", ephemeral=True
-            )
+            await interaction.followup.send(f"❌ Test failed: {str(e)}", ephemeral=True)
 
 
 async def setup(bot):
