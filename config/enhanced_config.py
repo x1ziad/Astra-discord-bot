@@ -241,8 +241,13 @@ try:
         enhanced_config = EnhancedConfigManager()
         return enhanced_config.get_database_config()["path"]
 
+    # Export the legacy config_manager for backward compatibility
+    config_manager = legacy_config_manager
+
 except ImportError:
     logger.warning("Legacy config manager not available")
+    # Create a fallback config_manager if legacy isn't available
+    config_manager = EnhancedConfigManager()
 
 # Global instance for convenience
 enhanced_config_manager = EnhancedConfigManager()

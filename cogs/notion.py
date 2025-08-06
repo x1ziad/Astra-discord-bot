@@ -363,7 +363,7 @@ class Notion(commands.GroupCog, name="notion"):
             await interaction.followup.send(embed=embed)
             self.logger.error(f"Manual Notion sync failed: {e}")
 
-    @app_commands.command(name="status", description="Check Notion integration status")
+    @app_commands.command(name="notion_status", description="Check Notion integration status")
     @app_commands.default_permissions(administrator=True)
     async def notion_status_command(self, interaction: discord.Interaction):
         """Check Notion integration status (Admin only)"""
