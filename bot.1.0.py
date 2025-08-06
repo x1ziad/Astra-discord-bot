@@ -1123,12 +1123,18 @@ async def main():
     try:
         # Railway configuration
         if RAILWAY_ENABLED:
-            railway_config = get_railway_config()
-            logger.info("🚄 Railway configuration loaded")
+            try:
+                railway_config = get_railway_config()
+                logger.info("🚄 Railway configuration loaded")
 
-            # Create config file from Railway environment
-            config_file = railway_config.create_config_file()
-            logger.info(f"📝 Configuration file created: {config_file}")
+                # Create config file from Railway environment
+                config_file = railway_config.create_config_file()
+                logger.info(f"📝 Configuration file created: {config_file}")
+            except Exception as e:
+                logger.error(f"❌ Railway configuration failed: {e}")
+                logger.error("This is likely due to missing environment variables.")
+                logger.error("Make sure DISCORD_TOKEN is set in your Railway deployment.")
+                raise RuntimeError(f"Railway configuration failed: {e}")
 
         logger.info("=" * 80)
         logger.info("🚀 Starting Astra Discord Bot v2.0.1")

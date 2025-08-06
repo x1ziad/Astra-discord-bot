@@ -268,7 +268,7 @@ class RailwayConfig:
 
 
 # Global railway config instance (lazy initialization)
-railway_config = None
+_railway_config_instance = None
 
 
 def get_railway_config():
@@ -277,49 +277,59 @@ def get_railway_config():
 
     logger = logging.getLogger(__name__)
 
-    global railway_config
-    if railway_config is None:
+    global _railway_config_instance
+    if _railway_config_instance is None:
         try:
-            railway_config = RailwayConfig()
+            _railway_config_instance = RailwayConfig()
+            logger.info("✅ Railway configuration initialized successfully")
         except ValueError as e:
             if "DISCORD_TOKEN" in str(e):
-                # Return a minimal config for testing purposes
-                logger.warning(
-                    "DISCORD_TOKEN not set, using minimal config for testing"
+                # For Railway deployment, DISCORD_TOKEN should always be set
+                # If not set, this is likely a development/testing scenario
+                logger.error("❌ DISCORD_TOKEN is required for Railway deployment!")
+                logger.error("Please set the DISCORD_TOKEN environment variable in Railway")
+                raise RuntimeError(
+                    "DISCORD_TOKEN environment variable is required but not set. "
+                    "Please configure it in your Railway deployment settings."
                 )
-                railway_config = None
-                return {}
             else:
+                logger.error(f"❌ Railway configuration error: {e}")
                 raise
-    return railway_config
+        except Exception as e:
+            logger.error(f"❌ Failed to initialize Railway configuration: {e}")
+            raise RuntimeError(f"Railway configuration initialization failed: {e}")
+    
+    return _railway_config_instance
 
 
 def setup_railway_logging():
     """Setup logging for Railway deployment"""
-    config = get_railway_config()
-    if not config:
-        # Use default logging if no config available
-        logging.basicConfig(level=logging.INFO)
-        return
+    try:
+        config = get_railway_config()
+        log_level = getattr(logging, config.get_log_level().upper())
 
-    log_level = getattr(logging, config.get_log_level().upper())
+        # Configure root logger
+        logging.basicConfig(
+            level=log_level,
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+            handlers=[
+                logging.StreamHandler(),  # Railway captures stdout
+            ],
+        )
 
-    # Configure root logger
-    logging.basicConfig(
-        level=log_level,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        handlers=[
-            logging.StreamHandler(),  # Railway captures stdout
-        ],
-    )
-
-    # Disable noisy loggers in production
-    if railway_config.is_production():
-        logging.getLogger("discord").setLevel(logging.WARNING)
-        logging.getLogger("discord.http").setLevel(logging.WARNING)
-        logging.getLogger("aiohttp").setLevel(logging.WARNING)
-
-
-def get_railway_config() -> RailwayConfig:
-    """Get the railway configuration instance"""
-    return railway_config
+        # Disable noisy loggers in production
+        if config.is_production():
+            logging.getLogger("discord").setLevel(logging.WARNING)
+            logging.getLogger("discord.http").setLevel(logging.WARNING)
+            logging.getLogger("aiohttp").setLevel(logging.WARNING)
+        
+        logging.getLogger(__name__).info("✅ Railway logging configured successfully")
+    
+    except Exception as e:
+        # Fallback to basic logging if Railway config fails
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+            handlers=[logging.StreamHandler()],
+        )
+        logging.getLogger(__name__).warning(f"⚠️ Using fallback logging due to config error: {e}")
