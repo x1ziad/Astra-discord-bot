@@ -61,45 +61,41 @@ logger = logging.getLogger("astra.consolidated_ai")
 
 class FreepikImageGenerator:
     """Freepik AI image generation client"""
-    
+
     def __init__(self, api_key: str):
         self.api_key = api_key
         self.base_url = "https://api.freepik.com/v1"
         self.session = None
-        
+
     async def _get_session(self):
         """Get or create aiohttp session"""
         if self.session is None:
             self.session = aiohttp.ClientSession()
         return self.session
-    
+
     async def generate_image(self, prompt: str, user_id: int = None) -> Dict[str, Any]:
         """Generate image using Freepik API"""
         try:
             session = await self._get_session()
-            
+
             headers = {
                 "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
             }
-            
+
             payload = {
                 "prompt": prompt,
                 "num_images": 1,
-                "image": {
-                    "size": "square_hd"  # 1024x1024 default
-                }
+                "image": {"size": "square_hd"},  # 1024x1024 default
             }
-            
+
             async with session.post(
-                f"{self.base_url}/ai/text-to-image",
-                headers=headers,
-                json=payload
+                f"{self.base_url}/ai/text-to-image", headers=headers, json=payload
             ) as response:
-                
+
                 if response.status == 200:
                     data = await response.json()
-                    
+
                     if data.get("data") and len(data["data"]) > 0:
                         image_data = data["data"][0]
                         return {
@@ -107,7 +103,7 @@ class FreepikImageGenerator:
                             "url": image_data.get("url"),
                             "provider": "Freepik AI",
                             "prompt": prompt,
-                            "user_id": user_id
+                            "user_id": user_id,
                         }
                 else:
                     error_text = await response.text()
@@ -115,22 +111,19 @@ class FreepikImageGenerator:
                     return {
                         "success": False,
                         "error": f"API Error: {response.status}",
-                        "details": error_text
+                        "details": error_text,
                     }
-                    
+
         except Exception as e:
             logger.error(f"Freepik image generation failed: {e}")
-            return {
-                "success": False,
-                "error": str(e)
-            }
-    
+            return {"success": False, "error": str(e)}
+
     async def close(self):
         """Close the aiohttp session"""
         if self.session:
             await self.session.close()
             self.session = None
-    
+
     def is_available(self) -> bool:
         """Check if Freepik API is available"""
         return bool(self.api_key)
@@ -678,7 +671,7 @@ class ConsolidatedAIEngine:
                 "regular_users": 5,  # 5 images per hour for regular users
                 "mods": 20,  # 20 images per hour for mods
                 "admins": 50,  # 50 images per hour for admins
-            }
+            },
         }
 
         # AI providers
@@ -711,8 +704,10 @@ class ConsolidatedAIEngine:
 
     def _initialize_image_generation(self):
         """Initialize Freepik image generation"""
-        freepik_api_key = self.config.get("freepik_api_key") or os.getenv("FREEPIK_API_KEY")
-        
+        freepik_api_key = self.config.get("freepik_api_key") or os.getenv(
+            "FREEPIK_API_KEY"
+        )
+
         if freepik_api_key:
             try:
                 self.freepik_generator = FreepikImageGenerator(freepik_api_key)
@@ -786,11 +781,17 @@ class ConsolidatedAIEngine:
                     )
                 """
                 )
-                
+
                 # Create indexes for conversations table
-                conn.execute("CREATE INDEX IF NOT EXISTS idx_conversations_user_id ON conversations (user_id)")
-                conn.execute("CREATE INDEX IF NOT EXISTS idx_conversations_created_at ON conversations (created_at)")
-                conn.execute("CREATE INDEX IF NOT EXISTS idx_conversations_mood ON conversations (mood)")
+                conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_conversations_user_id ON conversations (user_id)"
+                )
+                conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_conversations_created_at ON conversations (created_at)"
+                )
+                conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_conversations_mood ON conversations (mood)"
+                )
 
                 # User profiles table
                 conn.execute(
@@ -811,10 +812,14 @@ class ConsolidatedAIEngine:
                     )
                 """
                 )
-                
+
                 # Create indexes for user_profiles table
-                conn.execute("CREATE INDEX IF NOT EXISTS idx_user_profiles_last_interaction ON user_profiles (last_interaction)")
-                conn.execute("CREATE INDEX IF NOT EXISTS idx_user_profiles_engagement_score ON user_profiles (engagement_score)")
+                conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_user_profiles_last_interaction ON user_profiles (last_interaction)"
+                )
+                conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_user_profiles_engagement_score ON user_profiles (engagement_score)"
+                )
 
                 # Performance metrics table
                 conn.execute(
@@ -828,10 +833,14 @@ class ConsolidatedAIEngine:
                     )
                 """
                 )
-                
+
                 # Create indexes for performance_metrics table
-                conn.execute("CREATE INDEX IF NOT EXISTS idx_performance_metrics_metric_name ON performance_metrics (metric_name)")
-                conn.execute("CREATE INDEX IF NOT EXISTS idx_performance_metrics_timestamp ON performance_metrics (timestamp)")
+                conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_performance_metrics_metric_name ON performance_metrics (metric_name)"
+                )
+                conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_performance_metrics_timestamp ON performance_metrics (timestamp)"
+                )
 
                 # Image generations table
                 conn.execute(
@@ -849,15 +858,25 @@ class ConsolidatedAIEngine:
                     )
                 """
                 )
-                
+
                 # Create indexes for image_generations table
-                conn.execute("CREATE INDEX IF NOT EXISTS idx_image_generations_user_id ON image_generations (user_id)")
-                conn.execute("CREATE INDEX IF NOT EXISTS idx_image_generations_channel_id ON image_generations (channel_id)")
-                conn.execute("CREATE INDEX IF NOT EXISTS idx_image_generations_created_at ON image_generations (created_at)")
-                conn.execute("CREATE INDEX IF NOT EXISTS idx_image_generations_provider ON image_generations (provider)")
+                conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_image_generations_user_id ON image_generations (user_id)"
+                )
+                conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_image_generations_channel_id ON image_generations (channel_id)"
+                )
+                conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_image_generations_created_at ON image_generations (created_at)"
+                )
+                conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_image_generations_provider ON image_generations (provider)"
+                )
 
                 conn.commit()
-                logger.info("Database initialized with optimized schema including image generations")
+                logger.info(
+                    "Database initialized with optimized schema including image generations"
+                )
 
         except Exception as e:
             logger.error(f"Database initialization failed: {e}")
@@ -1481,10 +1500,10 @@ Key principles:
         )
 
     async def generate_image(
-        self, 
-        prompt: str, 
+        self,
+        prompt: str,
         context: Dict[str, Any],
-        user_permissions: Dict[str, bool] = None
+        user_permissions: Dict[str, bool] = None,
     ) -> Optional[Dict[str, Any]]:
         """
         Generate an image using Freepik API with permission and channel checks
@@ -1501,51 +1520,55 @@ Key principles:
             user_id = context.get("user_id", 0)
             channel_id = context.get("channel_id", 0)
             user_permissions = user_permissions or {}
-            
+
             # Check permissions and channel restrictions
             permission_check = await self._check_image_generation_permission(
                 user_id, channel_id, user_permissions
             )
-            
+
             if not permission_check["allowed"]:
                 return {
                     "success": False,
                     "error": "Permission denied",
-                    "message": permission_check["message"]
+                    "message": permission_check["message"],
                 }
-            
+
             # Check rate limits
             rate_limit_check = await self._check_image_rate_limit(
                 user_id, user_permissions
             )
-            
+
             if not rate_limit_check["allowed"]:
                 return {
                     "success": False,
                     "error": "Rate limit exceeded",
                     "message": rate_limit_check["message"],
-                    "reset_time": rate_limit_check.get("reset_time")
+                    "reset_time": rate_limit_check.get("reset_time"),
                 }
-            
+
             # Try Freepik first (primary image provider)
             if self.freepik_generator and self.freepik_generator.is_available():
                 result = await self.freepik_generator.generate_image(prompt, user_id)
-                
+
                 if result.get("success"):
                     # Update rate limit tracking
                     await self._update_image_rate_limit(user_id)
-                    
+
                     # Log image generation
                     await self._log_image_generation(
                         user_id, channel_id, prompt, "freepik", True
                     )
-                    
+
                     return result
                 else:
-                    logger.warning(f"Freepik image generation failed: {result.get('error')}")
-            
+                    logger.warning(
+                        f"Freepik image generation failed: {result.get('error')}"
+                    )
+
             # Fallback to OpenAI DALL-E if available
-            openai_api_key = self.config.get("openai_api_key") or os.getenv("OPENAI_API_KEY")
+            openai_api_key = self.config.get("openai_api_key") or os.getenv(
+                "OPENAI_API_KEY"
+            )
             if openai_api_key:
                 try:
                     from openai import AsyncOpenAI
@@ -1558,7 +1581,7 @@ Key principles:
 
                     # Update rate limit tracking
                     await self._update_image_rate_limit(user_id)
-                    
+
                     # Log image generation
                     await self._log_image_generation(
                         user_id, channel_id, prompt, "openai", True
@@ -1569,17 +1592,17 @@ Key principles:
                         "url": response.data[0].url,
                         "provider": "OpenAI DALL-E",
                         "prompt": prompt,
-                        "user_id": user_id
+                        "user_id": user_id,
                     }
 
                 except Exception as e:
                     logger.error(f"OpenAI image generation failed: {e}")
-            
+
             # No image generation providers available
             return {
                 "success": False,
                 "error": "No image generation providers available",
-                "message": "Image generation is currently unavailable. Please try again later."
+                "message": "Image generation is currently unavailable. Please try again later.",
             }
 
         except Exception as e:
@@ -1587,64 +1610,50 @@ Key principles:
             return {
                 "success": False,
                 "error": str(e),
-                "message": "An error occurred while generating the image."
+                "message": "An error occurred while generating the image.",
             }
 
     async def _check_image_generation_permission(
-        self, 
-        user_id: int, 
-        channel_id: int, 
-        user_permissions: Dict[str, bool]
+        self, user_id: int, channel_id: int, user_permissions: Dict[str, bool]
     ) -> Dict[str, Any]:
         """Check if user has permission to generate images in this channel"""
         try:
             is_admin = user_permissions.get("is_admin", False)
             is_mod = user_permissions.get("is_mod", False)
-            
+
             # Admins can use image generation anywhere
             if is_admin:
-                return {
-                    "allowed": True,
-                    "reason": "admin_privilege"
-                }
-            
+                return {"allowed": True, "reason": "admin_privilege"}
+
             # Mods can use image generation anywhere (but not admins)
             if is_mod:
-                return {
-                    "allowed": True,
-                    "reason": "mod_privilege"
-                }
-            
+                return {"allowed": True, "reason": "mod_privilege"}
+
             # Regular users can only use in the designated channel
             default_channel = self.image_config["default_channel_id"]
             if channel_id == default_channel:
-                return {
-                    "allowed": True,
-                    "reason": "designated_channel"
-                }
+                return {"allowed": True, "reason": "designated_channel"}
             else:
                 return {
                     "allowed": False,
-                    "message": f"Regular users can only generate images in <#{default_channel}>. Mods and admins can use this feature anywhere."
+                    "message": f"Regular users can only generate images in <#{default_channel}>. Mods and admins can use this feature anywhere.",
                 }
-                
+
         except Exception as e:
             logger.error(f"Permission check error: {e}")
             return {
                 "allowed": False,
-                "message": "Permission check failed. Please try again."
+                "message": "Permission check failed. Please try again.",
             }
 
     async def _check_image_rate_limit(
-        self, 
-        user_id: int, 
-        user_permissions: Dict[str, bool]
+        self, user_id: int, user_permissions: Dict[str, bool]
     ) -> Dict[str, Any]:
         """Check if user has exceeded their image generation rate limit"""
         try:
             is_admin = user_permissions.get("is_admin", False)
             is_mod = user_permissions.get("is_mod", False)
-            
+
             # Determine rate limit based on user role
             if is_admin:
                 limit = self.image_config["rate_limit"]["admins"]
@@ -1655,11 +1664,11 @@ Key principles:
             else:
                 limit = self.image_config["rate_limit"]["regular_users"]
                 role = "user"
-            
+
             # Check current usage from cache
             cache_key = f"image_rate_limit:{user_id}"
             current_usage = await self.cache.get(cache_key, 0)
-            
+
             if current_usage >= limit:
                 # Calculate reset time (1 hour from now)
                 reset_time = datetime.now(timezone.utc) + timedelta(hours=1)
@@ -1668,21 +1677,21 @@ Key principles:
                     "message": f"Rate limit exceeded. {role.title()}s can generate {limit} images per hour. Try again in an hour.",
                     "reset_time": reset_time.isoformat(),
                     "current_usage": current_usage,
-                    "limit": limit
+                    "limit": limit,
                 }
-            
+
             return {
                 "allowed": True,
                 "current_usage": current_usage,
                 "limit": limit,
-                "remaining": limit - current_usage
+                "remaining": limit - current_usage,
             }
-            
+
         except Exception as e:
             logger.error(f"Rate limit check error: {e}")
             return {
                 "allowed": True,  # Allow on error to avoid blocking users
-                "message": "Rate limit check failed, proceeding with generation."
+                "message": "Rate limit check failed, proceeding with generation.",
             }
 
     async def _update_image_rate_limit(self, user_id: int):
@@ -1691,23 +1700,19 @@ Key principles:
             cache_key = f"image_rate_limit:{user_id}"
             current_usage = await self.cache.get(cache_key, 0)
             new_usage = current_usage + 1
-            
+
             # Set with 1 hour TTL
             await self.cache.set(cache_key, new_usage, ttl=3600)
-            
+
         except Exception as e:
             logger.error(f"Rate limit update error: {e}")
 
     async def _log_image_generation(
-        self, 
-        user_id: int, 
-        channel_id: int, 
-        prompt: str, 
-        provider: str, 
-        success: bool
+        self, user_id: int, channel_id: int, prompt: str, provider: str, success: bool
     ):
         """Log image generation attempt to database"""
         try:
+
             def log_to_db():
                 with sqlite3.connect(self.db_path) as conn:
                     conn.execute(
@@ -1722,16 +1727,14 @@ Key principles:
                             prompt[:500],  # Truncate long prompts
                             provider,
                             success,
-                            datetime.now(timezone.utc).isoformat()
-                        )
+                            datetime.now(timezone.utc).isoformat(),
+                        ),
                     )
                     conn.commit()
-            
+
             # Run in thread pool to avoid blocking
-            await asyncio.get_event_loop().run_in_executor(
-                self.thread_pool, log_to_db
-            )
-            
+            await asyncio.get_event_loop().run_in_executor(self.thread_pool, log_to_db)
+
         except Exception as e:
             logger.error(f"Image generation logging failed: {e}")
 
@@ -1759,7 +1762,9 @@ Key principles:
                 try:
                     # Check if provider has API key
                     provider_key = f"{provider}_api_key"
-                    api_key = self.config.get(provider_key) or os.getenv(f"{provider.upper()}_API_KEY")
+                    api_key = self.config.get(provider_key) or os.getenv(
+                        f"{provider.upper()}_API_KEY"
+                    )
                     if api_key:
                         status["available_providers"].append(provider)
                         if not status["active_provider"]:

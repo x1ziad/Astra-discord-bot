@@ -302,9 +302,7 @@ class EnhancedAdmin(commands.GroupCog, name="admin"):
         action: Literal[
             "status", "restart", "clear_cache", "switch_provider", "health_check"
         ],
-        provider: Optional[
-            Literal["universal", "openrouter", "openai"]
-        ] = None,
+        provider: Optional[Literal["universal", "openrouter", "openai"]] = None,
     ):
         """Control AI system operations (Admin only)"""
         if not await self.is_admin_or_owner(interaction):
