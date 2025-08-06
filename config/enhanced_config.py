@@ -223,6 +223,53 @@ class EnhancedConfigManager:
                 safe_settings[key] = value
         return safe_settings
 
+    def feature_enabled(self, feature_name: str) -> bool:
+        """Check if a feature is enabled. Supports nested features with dot notation."""
+        # Get features from config
+        features = self.get_setting("features", {})
+
+        # First try exact match
+        if feature_name in features:
+            return features.get(feature_name, False)
+
+        # For nested features like "space_content.iss_tracking",
+        # check if parent feature "space_content" is enabled
+        if "." in feature_name:
+            parent_feature = feature_name.split(".")[0]
+            if parent_feature in features:
+                return features.get(parent_feature, False)
+
+        # Default features (if not explicitly configured)
+        default_features = {
+            "ai_chat": True,
+            "image_generation": True,
+            "text_to_speech": True,
+            "analytics": True,
+            "server_management": True,
+            "space_content": True,
+            "quiz_system": True,
+            "stellaris_features": True,
+            "auto_moderation": False,
+            "music": False,
+        }
+
+        # Check default features
+        if feature_name in default_features:
+            return default_features[feature_name]
+
+        # For nested features, check parent in defaults
+        if "." in feature_name:
+            parent_feature = feature_name.split(".")[0]
+            if parent_feature in default_features:
+                return default_features[parent_feature]
+
+        # Default to False if feature not found
+        return False
+
+    def is_feature_enabled(self, feature_name: str) -> bool:
+        """Alias for feature_enabled for backward compatibility"""
+        return self.feature_enabled(feature_name)
+
 
 # Legacy compatibility
 try:
@@ -251,3 +298,60 @@ except ImportError:
 
 # Global instance for convenience
 enhanced_config_manager = EnhancedConfigManager()
+
+
+# Standalone feature check functions for import
+def feature_enabled(feature_name: str):
+    """
+    Decorator to check if a feature is enabled in configuration
+
+    Args:
+        feature_name: The feature to check (e.g. "quiz_system", "space_content.iss_tracking")
+
+    Usage:
+        @feature_enabled("quiz_system")
+        @app_commands.command()
+        async def my_command(self, interaction):
+            ...
+    """
+    from discord import app_commands
+    import functools
+
+    def decorator(func):
+        """The actual decorator function"""
+
+        @functools.wraps(func)
+        async def wrapper(*args, **kwargs):
+            # Check if feature is enabled
+            if not enhanced_config_manager.feature_enabled(feature_name):
+                # Find the interaction in the arguments
+                interaction = None
+                for arg in args:
+                    if hasattr(arg, "response") and hasattr(arg, "user"):
+                        interaction = arg
+                        break
+
+                if interaction:
+                    feature_display = (
+                        feature_name.split(".")[-1].replace("_", " ").title()
+                    )
+                    await interaction.response.send_message(
+                        f"❌ The {feature_display} feature is currently disabled.",
+                        ephemeral=True,
+                    )
+                    return
+                else:
+                    # For non-interaction contexts, just return None
+                    return None
+
+            # Feature is enabled, call the original function
+            return await func(*args, **kwargs)
+
+        return wrapper
+
+    return decorator
+
+
+def is_feature_enabled(feature_name: str) -> bool:
+    """Direct function to check if a feature is enabled (for non-decorator usage)"""
+    return enhanced_config_manager.feature_enabled(feature_name)

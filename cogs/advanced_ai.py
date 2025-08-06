@@ -31,6 +31,16 @@ except ImportError as e:
     logger = logging.getLogger("astra.advanced_ai")
     logger.error(f"Failed to import AI systems: {e}")
 
+# Import dedicated image generation client
+try:
+    from ai.freepik_image_client import FreepikImageClient
+
+    IMAGE_CLIENT_AVAILABLE = True
+    logger.info("✅ FreepikImageClient imported successfully")
+except ImportError as e:
+    IMAGE_CLIENT_AVAILABLE = False
+    logger.error(f"❌ Failed to import FreepikImageClient: {e}")
+
 # Backward compatibility imports
 from config.config_manager import config_manager
 
@@ -48,6 +58,10 @@ class AdvancedAICog(commands.Cog):
         # Initialize AI client
         self.ai_client = None
         self._setup_ai_client()
+
+        # Initialize dedicated image generation client (independent from AI)
+        self.image_client = None
+        self._setup_image_client()
 
         # Active conversations tracking
         self.active_conversations: Set[int] = set()
@@ -106,6 +120,31 @@ class AdvancedAICog(commands.Cog):
         except Exception as e:
             self.logger.error(f"Failed to setup AI client: {e}")
             self.ai_client = None
+
+    def _setup_image_client(self):
+        """Setup dedicated image generation client (independent from AI)"""
+        try:
+            if IMAGE_CLIENT_AVAILABLE:
+                # Initialize the dedicated image client
+                freepik_api_key = os.getenv("FREEPIK_API_KEY")
+                self.image_client = FreepikImageClient(freepik_api_key)
+
+                if self.image_client.is_available():
+                    self.logger.info(
+                        "✅ Dedicated Image Generation Client initialized successfully"
+                    )
+                else:
+                    self.logger.warning(
+                        "⚠️ Image client created but API key not available"
+                    )
+
+            else:
+                self.logger.error("❌ FreepikImageClient not available!")
+                self.image_client = None
+
+        except Exception as e:
+            self.logger.error(f"Failed to setup image client: {e}")
+            self.image_client = None
 
     async def _generate_ai_response(
         self,
@@ -942,6 +981,16 @@ class AdvancedAICog(commands.Cog):
         self.conversation_cleanup_task.cancel()
         self.dynamic_status_task.cancel()
 
+        # Close image client if it exists
+        if self.image_client:
+            import asyncio
+
+            try:
+                # Try to close gracefully
+                asyncio.create_task(self.image_client.close())
+            except:
+                pass
+
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
         """Enhanced message listener with intelligent AI triggering, chat understanding, and proactive engagement"""
@@ -1725,7 +1774,155 @@ class AdvancedAICog(commands.Cog):
             await message.channel.send(embed=embed)
 
     async def _handle_image_generation(self, message: discord.Message, prompt: str):
-        """Handle image generation request with dedicated Freepik API client"""
+        """Handle image generation request with dedicated Freepik Image Client"""
+        try:
+            # Check if image client is available
+            if not hasattr(self, "image_client") or not self.image_client:
+                embed = discord.Embed(
+                    title="❌ Image Generation Unavailable",
+                    description="Image generation client is not properly initialized.",
+                    color=0xE74C3C,
+                    timestamp=datetime.now(timezone.utc),
+                )
+                embed.add_field(
+                    name="🔧 For Bot Administrators",
+                    value="• Check that `FREEPIK_API_KEY` is set in Railway environment variables\n"
+                    "• Verify the FreepikImageClient is properly imported\n"
+                    "• Restart the bot after setting environment variables",
+                    inline=False,
+                )
+                embed.set_footer(text="Image generation is independent from AI chat")
+                await message.channel.send(embed=embed)
+                return
+
+            # Check if Freepik API is available
+            if not self.image_client.is_available():
+                embed = discord.Embed(
+                    title="🔑 API Key Required",
+                    description="Freepik API key is not configured or invalid.",
+                    color=0xE74C3C,
+                    timestamp=datetime.now(timezone.utc),
+                )
+                embed.add_field(
+                    name="🔧 Setup Instructions",
+                    value="1. Get API key from: https://www.freepik.com/api\n"
+                    "2. Set `FREEPIK_API_KEY` in Railway environment variables\n"
+                    "3. Restart the bot\n"
+                    "4. Try the command again",
+                    inline=False,
+                )
+                embed.set_footer(text="Bot administrators need to configure this")
+                await message.channel.send(embed=embed)
+                return
+
+            # Send initial status message
+            status_embed = discord.Embed(
+                title="🎨 Generating Image...",
+                description=f"**Prompt:** {prompt[:150]}{'...' if len(prompt) > 150 else ''}",
+                color=0x3498DB,
+                timestamp=datetime.now(timezone.utc),
+            )
+            status_embed.set_footer(
+                text="Using Freepik AI • This may take 30-60 seconds"
+            )
+
+            status_msg = await message.channel.send(embed=status_embed)
+
+            # Log the generation attempt
+            self.logger.info(
+                f"🎨 Image generation requested by user {message.author.id}"
+            )
+            self.logger.info(f"📝 Prompt: {prompt}")
+
+            # Generate image using dedicated client
+            result = await self.image_client.generate_image(
+                prompt=prompt, user_id=message.author.id, size="square_hd", num_images=1
+            )
+
+            # Process the result
+            if result and result.get("success"):
+                # Success!
+                success_embed = discord.Embed(
+                    title="🎨 Image Generated Successfully!",
+                    description=f"**Prompt:** {prompt[:200]}{'...' if len(prompt) > 200 else ''}",
+                    color=0x27AE60,
+                    timestamp=datetime.now(timezone.utc),
+                )
+
+                image_url = result.get("url")
+                if image_url:
+                    success_embed.set_image(url=image_url)
+
+                success_embed.add_field(
+                    name="🤖 Provider", value="Freepik AI", inline=True
+                )
+                success_embed.add_field(
+                    name="👤 Requested by", value=message.author.mention, inline=True
+                )
+                success_embed.set_footer(
+                    text="✨ astra generate <your prompt> to create more images"
+                )
+
+                await status_msg.delete()
+                await message.channel.send(embed=success_embed)
+                self.logger.info(
+                    f"✅ Image successfully delivered to user {message.author.id}"
+                )
+
+            else:
+                # Handle errors
+                error_type = (
+                    result.get("error", "Unknown error") if result else "No response"
+                )
+                error_msg = (
+                    result.get("message", "Image generation failed")
+                    if result
+                    else "No response from image service"
+                )
+
+                self.logger.error(f"❌ Image generation failed: {error_type}")
+
+                await status_msg.delete()
+
+                error_embed = discord.Embed(
+                    title="❌ Generation Failed",
+                    description=error_msg
+                    or "Something went wrong during image generation.",
+                    color=0xE74C3C,
+                    timestamp=datetime.now(timezone.utc),
+                )
+                error_embed.add_field(
+                    name="💡 What to do",
+                    value="• Wait a moment and retry\n• Use a simpler prompt\n• Contact support if issue persists",
+                    inline=False,
+                )
+                await message.channel.send(embed=error_embed)
+
+        except Exception as e:
+            self.logger.error(
+                f"💥 Critical error in image generation handler: {e}", exc_info=True
+            )
+
+            try:
+                error_embed = discord.Embed(
+                    title="💥 Unexpected Error",
+                    description="A critical error occurred during image generation.",
+                    color=0x992D22,
+                    timestamp=datetime.now(timezone.utc),
+                )
+                error_embed.add_field(
+                    name="💡 What to do",
+                    value="• Try again in a few minutes\n• Contact bot administrators if this persists",
+                    inline=False,
+                )
+                await message.channel.send(embed=error_embed)
+            except:
+                try:
+                    await message.channel.send(
+                        "❌ Critical error during image generation. Please try again later."
+                    )
+                except:
+                    self.logger.error("Could not send error message to user")
         try:
             # Check if bot has required permissions in the channel
             if message.guild:

@@ -267,13 +267,42 @@ class RailwayConfig:
         return config_file
 
 
-# Global railway config instance
-railway_config = RailwayConfig()
+# Global railway config instance (lazy initialization)
+railway_config = None
+
+
+def get_railway_config():
+    """Get or create the railway config instance"""
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    global railway_config
+    if railway_config is None:
+        try:
+            railway_config = RailwayConfig()
+        except ValueError as e:
+            if "DISCORD_TOKEN" in str(e):
+                # Return a minimal config for testing purposes
+                logger.warning(
+                    "DISCORD_TOKEN not set, using minimal config for testing"
+                )
+                railway_config = None
+                return {}
+            else:
+                raise
+    return railway_config
 
 
 def setup_railway_logging():
     """Setup logging for Railway deployment"""
-    log_level = getattr(logging, railway_config.get_log_level().upper())
+    config = get_railway_config()
+    if not config:
+        # Use default logging if no config available
+        logging.basicConfig(level=logging.INFO)
+        return
+
+    log_level = getattr(logging, config.get_log_level().upper())
 
     # Configure root logger
     logging.basicConfig(
