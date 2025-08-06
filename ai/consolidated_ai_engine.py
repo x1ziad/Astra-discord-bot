@@ -127,7 +127,23 @@ class FreepikImageGenerator:
         """Check if image generation handler is available"""
         if not self.handler:
             return False
-        return asyncio.run(self.handler.is_available()) if hasattr(self.handler, 'is_available') else True
+        
+        # Avoid asyncio.run() in async context
+        if hasattr(self.handler, 'is_available'):
+            try:
+                # Try to get current event loop
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    # We're in an async context, return True (will be checked later)
+                    return True
+                else:
+                    # Not in async context, safe to use asyncio.run()
+                    return asyncio.run(self.handler.is_available())
+            except RuntimeError:
+                # No event loop, safe to use asyncio.run()
+                return asyncio.run(self.handler.is_available())
+        else:
+            return True
 
 
 class AIProvider(Enum):

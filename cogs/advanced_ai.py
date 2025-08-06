@@ -1436,11 +1436,30 @@ class AdvancedAICog(commands.Cog):
     async def _handle_image_generation(self, message: discord.Message, prompt: str):
         """Handle image generation request with dedicated Freepik API client"""
         try:
+            # Check if bot has required permissions in the channel
+            if message.guild:
+                bot_member = message.guild.me
+                channel_permissions = message.channel.permissions_for(bot_member)
+                
+                if not channel_permissions.send_messages:
+                    self.logger.error(f"❌ Bot missing send_messages permission in channel {message.channel.id}")
+                    return
+                    
+                if not channel_permissions.embed_links:
+                    await message.channel.send("❌ I need permission to embed links to send image generation results.")
+                    return
+
             if not self.ai_client:
                 embed = discord.Embed(
                     title="❌ Image Generation Unavailable",
                     description="The AI system is not properly initialized.",
-                    color=0xE74C3C
+                    color=0xE74C3C,
+                    timestamp=datetime.now(timezone.utc)
+                )
+                embed.add_field(
+                    name="🔧 For Bot Administrators", 
+                    value="Please check bot initialization and configuration.", 
+                    inline=False
                 )
                 await message.channel.send(embed=embed)
                 return
