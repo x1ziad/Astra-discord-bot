@@ -1,6 +1,26 @@
+# Environment variables and secrets
 .env
+.env.*
+.ENV
+*.env
+.env.local
+.env.production
+.env.development
+
 __pycache__/
 *.pyc
 .vscode/
 .DS_Store
 *.log
+
+# Local configuration with real API keys
+config/config.local.json
+config.local.json
+
+# Database files
+*.db
+data/*.db
+
+# Local testing files
+test_*.py
+*_test.py
