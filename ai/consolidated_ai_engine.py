@@ -59,50 +59,75 @@ except ImportError:
 logger = logging.getLogger("astra.consolidated_ai")
 
 
-# Import the dedicated Freepik image client
+# Import the new advanced image generation system
 try:
-    from ai.freepik_image_client import FreepikImageClient, get_freepik_client
+    from ai.image_generation_handler import ImageGenerationHandler, get_image_handler
 
-    FREEPIK_CLIENT_AVAILABLE = True
-    logger.info("✅ Dedicated Freepik Image Client imported successfully")
+    IMAGE_HANDLER_AVAILABLE = True
+    logger.info("✅ Advanced Image Generation Handler imported successfully")
 except ImportError as e:
-    FREEPIK_CLIENT_AVAILABLE = False
-    logger.warning(f"❌ Freepik Image Client not available: {e}")
+    IMAGE_HANDLER_AVAILABLE = False
+    logger.warning(f"❌ Image Generation Handler not available: {e}")
+
+# Import the new Freepik API client
+try:
+    from ai.freepik_api_client import FreepikAPIClient, get_freepik_api_client
+
+    FREEPIK_API_AVAILABLE = True
+    logger.info("✅ Advanced Freepik API Client imported successfully")
+except ImportError as e:
+    FREEPIK_API_AVAILABLE = False
+    logger.warning(f"❌ Freepik API Client not available: {e}")
 
 
 # Legacy FreepikImageGenerator wrapper for backward compatibility
 class FreepikImageGenerator:
-    """Legacy wrapper for the dedicated FreepikImageClient"""
+    """Legacy wrapper for the new ImageGenerationHandler"""
 
     def __init__(self, api_key: str):
-        if FREEPIK_CLIENT_AVAILABLE:
-            self.client = FreepikImageClient(api_key)
-            logger.info("🔄 Using dedicated FreepikImageClient")
+        if IMAGE_HANDLER_AVAILABLE:
+            self.handler = ImageGenerationHandler(api_key)
+            logger.info("🔄 Using advanced ImageGenerationHandler")
         else:
-            self.client = None
+            self.handler = None
             logger.warning(
-                "❌ FreepikImageClient not available - image generation disabled"
+                "❌ ImageGenerationHandler not available - image generation disabled"
             )
 
     async def generate_image(self, prompt: str, user_id: int = None) -> Dict[str, Any]:
-        """Generate image using dedicated Freepik client"""
-        if self.client:
-            return await self.client.generate_image(prompt, user_id)
+        """Generate image using advanced handler"""
+        if self.handler:
+            # Create context for the handler
+            context = {
+                "user_id": user_id or 0,
+                "channel_id": 0,  # Default channel
+                "guild_id": None,
+                "request_type": "legacy_wrapper"
+            }
+            
+            permissions = {
+                "is_admin": True,  # Legacy calls assume admin permissions
+                "is_mod": True
+            }
+            
+            return await self.handler.generate_image(prompt, context, permissions)
         else:
             return {
                 "success": False,
-                "error": "Freepik client not available",
+                "error": "Image generation handler not available",
                 "message": "Image generation is not configured",
             }
 
     async def close(self):
-        """Close the client session"""
-        if self.client:
-            await self.client.close()
+        """Close the handler session"""
+        if self.handler:
+            await self.handler.close()
 
     def is_available(self) -> bool:
-        """Check if Freepik client is available"""
-        return self.client is not None and self.client.is_available()
+        """Check if image generation handler is available"""
+        if not self.handler:
+            return False
+        return asyncio.run(self.handler.is_available()) if hasattr(self.handler, 'is_available') else True
 
 
 class AIProvider(Enum):
@@ -679,29 +704,29 @@ class ConsolidatedAIEngine:
         logger.info("Consolidated AI Engine initialized successfully")
 
     def _initialize_image_generation(self):
-        """Initialize Freepik image generation with dedicated client"""
+        """Initialize image generation with advanced handler"""
         freepik_api_key = self.config.get("freepik_api_key") or os.getenv(
             "FREEPIK_API_KEY"
         )
 
-        if freepik_api_key and FREEPIK_CLIENT_AVAILABLE:
+        if freepik_api_key and IMAGE_HANDLER_AVAILABLE:
             try:
-                # Use the dedicated Freepik client
+                # Use the advanced image generation handler
                 self.freepik_generator = FreepikImageGenerator(freepik_api_key)
                 logger.info(
-                    "✅ Freepik image generation initialized with dedicated client"
+                    "✅ Image generation initialized with advanced handler"
                 )
                 logger.info(
                     f"🔑 API Key configured: {freepik_api_key[:10]}...{freepik_api_key[-4:]}"
                 )
             except Exception as e:
-                logger.error(f"❌ Freepik initialization failed: {e}")
+                logger.error(f"❌ Image generation initialization failed: {e}")
                 self.freepik_generator = None
-        elif freepik_api_key and not FREEPIK_CLIENT_AVAILABLE:
+        elif freepik_api_key and not IMAGE_HANDLER_AVAILABLE:
             logger.error(
-                "❌ FREEPIK_API_KEY found but FreepikImageClient not available"
+                "❌ FREEPIK_API_KEY found but ImageGenerationHandler not available"
             )
-            logger.error("🔧 Check ai/freepik_image_client.py import")
+            logger.error("🔧 Check ai/image_generation_handler.py import")
             self.freepik_generator = None
         else:
             logger.warning("⚠️  FREEPIK_API_KEY not found - image generation disabled")
@@ -1497,7 +1522,7 @@ Key principles:
         user_permissions: Dict[str, bool] = None,
     ) -> Optional[Dict[str, Any]]:
         """
-        Generate an image using Freepik API with permission and channel checks
+        Generate an image using the advanced image generation handler
 
         Args:
             prompt: Description of the image to generate
@@ -1508,86 +1533,62 @@ Key principles:
             Dictionary with image data or error information
         """
         try:
-            user_id = context.get("user_id", 0)
-            channel_id = context.get("channel_id", 0)
-            user_permissions = user_permissions or {}
-
-            # Check permissions and channel restrictions
-            permission_check = await self._check_image_generation_permission(
-                user_id, channel_id, user_permissions
-            )
-
-            if not permission_check["allowed"]:
-                return {
-                    "success": False,
-                    "error": "Permission denied",
-                    "message": permission_check["message"],
-                }
-
-            # Check rate limits
-            rate_limit_check = await self._check_image_rate_limit(
-                user_id, user_permissions
-            )
-
-            if not rate_limit_check["allowed"]:
-                return {
-                    "success": False,
-                    "error": "Rate limit exceeded",
-                    "message": rate_limit_check["message"],
-                    "reset_time": rate_limit_check.get("reset_time"),
-                }
-
-            # Try Freepik first (primary image provider)
+            # Use the advanced image generation handler directly
+            if IMAGE_HANDLER_AVAILABLE:
+                logger.info("🎨 Using advanced image generation handler")
+                
+                # Get the global image handler
+                image_handler = get_image_handler()
+                
+                # Generate image using the handler
+                result = await image_handler.generate_image(
+                    prompt=prompt,
+                    context=context,
+                    user_permissions=user_permissions or {},
+                    size="square_hd",
+                    num_images=1
+                )
+                
+                if result.get("success"):
+                    logger.info(f"✅ Image generated successfully via handler")
+                    return result
+                else:
+                    logger.warning(f"❌ Image generation failed via handler: {result.get('error')}")
+                    # If handler fails, try fallback methods
+            
+            # Legacy fallback: Try the Freepik generator wrapper
             if self.freepik_generator and self.freepik_generator.is_available():
+                logger.info("🔄 Falling back to legacy Freepik generator")
+                
+                user_id = context.get("user_id", 0)
                 result = await self.freepik_generator.generate_image(prompt, user_id)
 
                 if result.get("success"):
-                    # Update rate limit tracking
-                    await self._update_image_rate_limit(user_id)
-
-                    # Log image generation
-                    await self._log_image_generation(
-                        user_id, channel_id, prompt, "freepik", True
-                    )
-
+                    logger.info("✅ Image generated via legacy generator")
                     return result
                 else:
-                    logger.warning(
-                        f"Freepik image generation failed: {result.get('error')}"
-                    )
+                    logger.warning(f"❌ Legacy generator failed: {result.get('error')}")
 
-            # Fallback to OpenAI DALL-E if available
-            openai_api_key = self.config.get("openai_api_key") or os.getenv(
-                "OPENAI_API_KEY"
-            )
-            if openai_api_key:
-                try:
-                    from openai import AsyncOpenAI
+            # Final fallback: Return comprehensive error
+            logger.error("❌ All image generation methods failed")
+            return {
+                "success": False,
+                "error": "No image generation providers available",
+                "message": "Image generation is currently unavailable. Please try again later.",
+                "details": {
+                    "advanced_handler_available": IMAGE_HANDLER_AVAILABLE,
+                    "legacy_generator_available": bool(self.freepik_generator),
+                    "freepik_api_key_configured": bool(os.getenv("FREEPIK_API_KEY"))
+                }
+            }
 
-                    client = AsyncOpenAI(api_key=openai_api_key)
-
-                    response = await client.images.generate(
-                        prompt=prompt, n=1, size="1024x1024"
-                    )
-
-                    # Update rate limit tracking
-                    await self._update_image_rate_limit(user_id)
-
-                    # Log image generation
-                    await self._log_image_generation(
-                        user_id, channel_id, prompt, "openai", True
-                    )
-
-                    return {
-                        "success": True,
-                        "url": response.data[0].url,
-                        "provider": "OpenAI DALL-E",
-                        "prompt": prompt,
-                        "user_id": user_id,
-                    }
-
-                except Exception as e:
-                    logger.error(f"OpenAI image generation failed: {e}")
+        except Exception as e:
+            logger.error(f"💥 Critical error in image generation: {e}")
+            return {
+                "success": False,
+                "error": "Critical error",
+                "message": f"An unexpected error occurred: {str(e)}",
+            }
 
             # No image generation providers available
             return {
