@@ -1100,53 +1100,7 @@ def register_global_commands(bot: AstraBot):
 
         await interaction.followup.send(embed=embed)
 
-    @bot.tree.command(name="status", description="Show detailed bot status and health")
-    async def status_command(interaction: discord.Interaction):
-        """Detailed bot status command"""
-        if not has_permission(interaction.user, PermissionLevel.MODERATOR):
-            await interaction.response.send_message(
-                "❌ This command requires moderator permissions.", ephemeral=True
-            )
-            return
-
-        embed = discord.Embed(
-            title="🔍 Bot Status Report",
-            color=config_manager.get_color("info"),
-            timestamp=datetime.now(timezone.utc),
-        )
-
-        # System stats
-        embed.add_field(
-            name="💻 System",
-            value=f"Memory: {bot.stats.memory_usage_mb:.1f} MB\n"
-            f"CPU: {bot.stats.cpu_usage_percent:.1f}%\n"
-            f"Uptime: {bot.stats.get_uptime()}",
-            inline=True,
-        )
-
-        # Bot stats
-        embed.add_field(
-            name="🤖 Bot Activity",
-            value=f"Commands: {bot.stats.commands_executed:,}\n"
-            f"Messages: {bot.stats.messages_processed:,}\n"
-            f"Errors: {bot.stats.errors_handled:,}",
-            inline=True,
-        )
-
-        # Extension health
-        healthy_extensions = sum(
-            1 for health in bot.extension_health.values() if health
-        )
-        total_extensions = len(bot.extension_health)
-
-        embed.add_field(
-            name="🧩 Extensions",
-            value=f"Healthy: {healthy_extensions}/{total_extensions}\n"
-            f"Failed: {len(bot.failed_extensions)}",
-            inline=True,
-        )
-
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+    # Removed duplicate status command - handled by bot_status cog
 
 
 async def main():

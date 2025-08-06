@@ -62,11 +62,13 @@ logger = logging.getLogger("astra.consolidated_ai")
 # Import the dedicated Freepik image client
 try:
     from ai.freepik_image_client import FreepikImageClient, get_freepik_client
+
     FREEPIK_CLIENT_AVAILABLE = True
     logger.info("✅ Dedicated Freepik Image Client imported successfully")
 except ImportError as e:
     FREEPIK_CLIENT_AVAILABLE = False
     logger.warning(f"❌ Freepik Image Client not available: {e}")
+
 
 # Legacy FreepikImageGenerator wrapper for backward compatibility
 class FreepikImageGenerator:
@@ -78,7 +80,9 @@ class FreepikImageGenerator:
             logger.info("🔄 Using dedicated FreepikImageClient")
         else:
             self.client = None
-            logger.warning("❌ FreepikImageClient not available - image generation disabled")
+            logger.warning(
+                "❌ FreepikImageClient not available - image generation disabled"
+            )
 
     async def generate_image(self, prompt: str, user_id: int = None) -> Dict[str, Any]:
         """Generate image using dedicated Freepik client"""
@@ -88,7 +92,7 @@ class FreepikImageGenerator:
             return {
                 "success": False,
                 "error": "Freepik client not available",
-                "message": "Image generation is not configured"
+                "message": "Image generation is not configured",
             }
 
     async def close(self):
@@ -676,19 +680,27 @@ class ConsolidatedAIEngine:
 
     def _initialize_image_generation(self):
         """Initialize Freepik image generation with dedicated client"""
-        freepik_api_key = self.config.get("freepik_api_key") or os.getenv("FREEPIK_API_KEY")
+        freepik_api_key = self.config.get("freepik_api_key") or os.getenv(
+            "FREEPIK_API_KEY"
+        )
 
         if freepik_api_key and FREEPIK_CLIENT_AVAILABLE:
             try:
                 # Use the dedicated Freepik client
                 self.freepik_generator = FreepikImageGenerator(freepik_api_key)
-                logger.info("✅ Freepik image generation initialized with dedicated client")
-                logger.info(f"🔑 API Key configured: {freepik_api_key[:10]}...{freepik_api_key[-4:]}")
+                logger.info(
+                    "✅ Freepik image generation initialized with dedicated client"
+                )
+                logger.info(
+                    f"🔑 API Key configured: {freepik_api_key[:10]}...{freepik_api_key[-4:]}"
+                )
             except Exception as e:
                 logger.error(f"❌ Freepik initialization failed: {e}")
                 self.freepik_generator = None
         elif freepik_api_key and not FREEPIK_CLIENT_AVAILABLE:
-            logger.error("❌ FREEPIK_API_KEY found but FreepikImageClient not available")
+            logger.error(
+                "❌ FREEPIK_API_KEY found but FreepikImageClient not available"
+            )
             logger.error("🔧 Check ai/freepik_image_client.py import")
             self.freepik_generator = None
         else:
