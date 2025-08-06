@@ -9,6 +9,7 @@ import time
 import json
 import re
 import os
+import random
 from typing import Dict, List, Optional, Any, Tuple, Set, Union
 from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass, field
@@ -55,14 +56,84 @@ try:
 except ImportError:
     OPENROUTER_AVAILABLE = False
 
-try:
-    from ai.github_models_client import GitHubModelsClient
-
-    GITHUB_MODELS_AVAILABLE = True
-except ImportError:
-    GITHUB_MODELS_AVAILABLE = False
-
 logger = logging.getLogger("astra.consolidated_ai")
+
+
+class FreepikImageGenerator:
+    """Freepik AI image generation client"""
+    
+    def __init__(self, api_key: str):
+        self.api_key = api_key
+        self.base_url = "https://api.freepik.com/v1"
+        self.session = None
+        
+    async def _get_session(self):
+        """Get or create aiohttp session"""
+        if self.session is None:
+            self.session = aiohttp.ClientSession()
+        return self.session
+    
+    async def generate_image(self, prompt: str, user_id: int = None) -> Dict[str, Any]:
+        """Generate image using Freepik API"""
+        try:
+            session = await self._get_session()
+            
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json"
+            }
+            
+            payload = {
+                "prompt": prompt,
+                "num_images": 1,
+                "image": {
+                    "size": "square_hd"  # 1024x1024 default
+                }
+            }
+            
+            async with session.post(
+                f"{self.base_url}/ai/text-to-image",
+                headers=headers,
+                json=payload
+            ) as response:
+                
+                if response.status == 200:
+                    data = await response.json()
+                    
+                    if data.get("data") and len(data["data"]) > 0:
+                        image_data = data["data"][0]
+                        return {
+                            "success": True,
+                            "url": image_data.get("url"),
+                            "provider": "Freepik AI",
+                            "prompt": prompt,
+                            "user_id": user_id
+                        }
+                else:
+                    error_text = await response.text()
+                    logger.error(f"Freepik API error {response.status}: {error_text}")
+                    return {
+                        "success": False,
+                        "error": f"API Error: {response.status}",
+                        "details": error_text
+                    }
+                    
+        except Exception as e:
+            logger.error(f"Freepik image generation failed: {e}")
+            return {
+                "success": False,
+                "error": str(e)
+            }
+    
+    async def close(self):
+        """Close the aiohttp session"""
+        if self.session:
+            await self.session.close()
+            self.session = None
+    
+    def is_available(self) -> bool:
+        """Check if Freepik API is available"""
+        return bool(self.api_key)
 
 
 class AIProvider(Enum):
@@ -70,7 +141,6 @@ class AIProvider(Enum):
 
     UNIVERSAL = "universal"
     OPENROUTER = "openrouter"
-    GITHUB = "github"
     OPENAI = "openai"
     MOCK = "mock"
 
@@ -102,23 +172,6 @@ class EngagementTrigger(Enum):
     EMOTIONAL_SUPPORT = "emotional_support"
     PROACTIVE_ENGAGEMENT = "proactive_engagement"
     CONVERSATION_CONTINUATION = "conversation_continuation"
-
-
-class PersonalityTrait(Enum):
-    """Astra's personality dimensions"""
-
-    ENTHUSIASTIC = "enthusiastic"
-    KNOWLEDGEABLE = "knowledgeable"
-    HELPFUL = "helpful"
-    CURIOUS = "curious"
-    FRIENDLY = "friendly"
-    PATIENT = "patient"
-    ENCOURAGING = "encouraging"
-    WITTY = "witty"
-    COSMIC_MINDED = "cosmic_minded"
-    SCIENTIFIC = "scientific"
-    EMPATHETIC = "empathetic"
-    PLAYFUL = "playful"
 
 
 @dataclass
@@ -521,98 +574,75 @@ class AdvancedSentimentAnalyzer:
         return dominant_mood, intensity, confidence
 
 
-class PersonalityEngine:
-    """Dynamic personality system with contextual adaptation"""
+class ConversationFlowEngine:
+    """Dynamic conversation flow system that adapts to user vibes without rigid personality constraints"""
 
     def __init__(self):
-        self.base_personality = {
-            PersonalityTrait.ENTHUSIASTIC: 0.8,
-            PersonalityTrait.KNOWLEDGEABLE: 0.9,
-            PersonalityTrait.HELPFUL: 0.9,
-            PersonalityTrait.CURIOUS: 0.7,
-            PersonalityTrait.FRIENDLY: 0.8,
-            PersonalityTrait.PATIENT: 0.7,
-            PersonalityTrait.ENCOURAGING: 0.8,
-            PersonalityTrait.WITTY: 0.6,
-            PersonalityTrait.COSMIC_MINDED: 0.9,
-            PersonalityTrait.SCIENTIFIC: 0.8,
-            PersonalityTrait.EMPATHETIC: 0.7,
-            PersonalityTrait.PLAYFUL: 0.6,
+        # Base interaction principles instead of personality traits
+        self.base_interaction_style = {
+            "helpfulness": 0.9,  # Always try to be helpful
+            "adaptability": 0.8,  # Adapt to user's communication style
+            "contextual_awareness": 0.9,  # Understand conversation context
+            "natural_flow": 0.8,  # Maintain natural conversation flow
+            "conciseness": 0.7,  # Balance between concise and detailed
+            "engagement": 0.8,  # Stay engaged but not forced
         }
 
-        # Mood-based personality adjustments
-        self.mood_modifiers = {
-            ConversationMood.EXCITED: {
-                PersonalityTrait.ENTHUSIASTIC: 1.3,
-                PersonalityTrait.PLAYFUL: 1.2,
-                PersonalityTrait.ENCOURAGING: 1.2,
-            },
-            ConversationMood.CONFUSED: {
-                PersonalityTrait.PATIENT: 1.4,
-                PersonalityTrait.HELPFUL: 1.3,
-                PersonalityTrait.ENCOURAGING: 1.2,
-            },
-            ConversationMood.SAD: {
-                PersonalityTrait.EMPATHETIC: 1.5,
-                PersonalityTrait.ENCOURAGING: 1.3,
-                PersonalityTrait.PATIENT: 1.2,
-            },
-            ConversationMood.CURIOUS: {
-                PersonalityTrait.KNOWLEDGEABLE: 1.2,
-                PersonalityTrait.SCIENTIFIC: 1.3,
-                PersonalityTrait.CURIOUS: 1.2,
-            },
-        }
-
-        # Topic-based personality adjustments
-        self.topic_modifiers = {
-            "stellaris": {
-                PersonalityTrait.COSMIC_MINDED: 1.2,
-                PersonalityTrait.ENTHUSIASTIC: 1.1,
-                PersonalityTrait.KNOWLEDGEABLE: 1.1,
-            },
-            "space": {
-                PersonalityTrait.COSMIC_MINDED: 1.3,
-                PersonalityTrait.SCIENTIFIC: 1.2,
-                PersonalityTrait.CURIOUS: 1.1,
-            },
-            "science": {
-                PersonalityTrait.SCIENTIFIC: 1.2,
-                PersonalityTrait.KNOWLEDGEABLE: 1.1,
-                PersonalityTrait.CURIOUS: 1.1,
-            },
-        }
-
-    def get_active_personality(
+    def get_conversation_style(
         self, context: ConversationContext, user_profile: UserProfile
-    ) -> Dict[PersonalityTrait, float]:
-        """Get personality adjusted for current context"""
-        active_personality = self.base_personality.copy()
+    ) -> Dict[str, float]:
+        """Get conversation style adapted to current context and user vibe"""
+        style = self.base_interaction_style.copy()
 
-        # Apply mood-based adjustments
+        # Adapt based on user's recent communication patterns
+        if context.messages:
+            recent_user_messages = [
+                msg for msg in list(context.messages)[-5:] if msg.get("role") == "user"
+            ]
+
+            if recent_user_messages:
+                # Analyze user's current communication style
+                avg_length = sum(
+                    len(msg.get("content", "")) for msg in recent_user_messages
+                ) / len(recent_user_messages)
+
+                # Adjust conciseness based on user's message length
+                if avg_length < 30:  # User sends short messages
+                    style["conciseness"] = 0.9
+                elif avg_length > 100:  # User sends long messages
+                    style["conciseness"] = 0.4
+
+                # Check for question patterns
+                question_ratio = sum(
+                    1 for msg in recent_user_messages if "?" in msg.get("content", "")
+                ) / len(recent_user_messages)
+                if question_ratio > 0.5:  # User asks lots of questions
+                    style["helpfulness"] = 0.95
+
+        # Mood-based adjustments (subtle, not forced)
         mood = context.emotional_context.current_mood
-        if mood in self.mood_modifiers:
-            for trait, modifier in self.mood_modifiers[mood].items():
-                active_personality[trait] = min(
-                    1.0, active_personality[trait] * modifier
-                )
+        if mood == ConversationMood.CONFUSED:
+            style["helpfulness"] = 0.95
+            style["conciseness"] = 0.6  # Be more detailed when explaining
+        elif mood == ConversationMood.EXCITED:
+            style["engagement"] = 0.9
+        elif mood == ConversationMood.SAD:
+            style["helpfulness"] = 0.9
+            style["engagement"] = 0.7  # More supportive, less energetic
 
-        # Apply topic-based adjustments
-        for topic in context.active_topics:
-            topic_lower = topic.lower()
-            for topic_key, modifiers in self.topic_modifiers.items():
-                if topic_key in topic_lower:
-                    for trait, modifier in modifiers.items():
-                        active_personality[trait] = min(
-                            1.0, active_personality[trait] * modifier
-                        )
+        # Topic-based adjustments (flexible, not rigid)
+        if context.active_topics:
+            # Technical topics might need more detail
+            technical_topics = ["programming", "science", "technology", "stellaris"]
+            if any(topic in technical_topics for topic in context.active_topics):
+                style["conciseness"] = max(0.3, style["conciseness"] - 0.2)
 
-        # Apply user relationship adjustments
-        if user_profile.total_interactions > 50:  # Established relationship
-            active_personality[PersonalityTrait.FRIENDLY] *= 1.1
-            active_personality[PersonalityTrait.PLAYFUL] *= 1.1
+        # User relationship adjustments
+        if user_profile.total_interactions > 10:
+            style["contextual_awareness"] = 0.95  # Better context understanding
+            style["natural_flow"] = 0.9  # More natural conversation flow
 
-        return active_personality
+        return style
 
 
 class ConsolidatedAIEngine:
@@ -633,7 +663,23 @@ class ConsolidatedAIEngine:
         )
 
         self.sentiment_analyzer = AdvancedSentimentAnalyzer()
-        self.personality_engine = PersonalityEngine()
+        self.flow_engine = ConversationFlowEngine()
+
+        # Image generation
+        self.freepik_generator = None
+        self._initialize_image_generation()
+
+        # Image generation permissions
+        self.image_config = {
+            "default_channel_id": 1402666535696470169,  # Default channel for regular users
+            "mod_anywhere": True,  # Mods can use image generation anywhere
+            "admin_anywhere": True,  # Admins can use image generation anywhere
+            "rate_limit": {
+                "regular_users": 5,  # 5 images per hour for regular users
+                "mods": 20,  # 20 images per hour for mods
+                "admins": 50,  # 50 images per hour for admins
+            }
+        }
 
         # AI providers
         self.ai_providers: Dict[AIProvider, Any] = {}
@@ -662,6 +708,20 @@ class ConsolidatedAIEngine:
         self.thread_pool = ThreadPoolExecutor(max_workers=4)
 
         logger.info("Consolidated AI Engine initialized successfully")
+
+    def _initialize_image_generation(self):
+        """Initialize Freepik image generation"""
+        freepik_api_key = self.config.get("freepik_api_key") or os.getenv("FREEPIK_API_KEY")
+        
+        if freepik_api_key:
+            try:
+                self.freepik_generator = FreepikImageGenerator(freepik_api_key)
+                logger.info("Freepik image generation initialized successfully")
+            except Exception as e:
+                logger.warning(f"Freepik initialization failed: {e}")
+                self.freepik_generator = None
+        else:
+            logger.warning("Freepik API key not found - image generation disabled")
 
     def _initialize_providers(self):
         """Initialize AI providers in order of preference"""
@@ -697,23 +757,6 @@ class ConsolidatedAIEngine:
             except Exception as e:
                 logger.warning(f"OpenRouter provider failed: {e}")
 
-        # GitHub Models (tertiary)
-        if GITHUB_MODELS_AVAILABLE:
-            try:
-                github_client = GitHubModelsClient(
-                    github_token=self.config.get("github_token")
-                    or os.getenv("GITHUB_TOKEN"),
-                    openai_api_key=self.config.get("openai_api_key")
-                    or os.getenv("OPENAI_API_KEY"),
-                )
-                if github_client.is_available():
-                    self.ai_providers[AIProvider.GITHUB] = github_client
-                    if not self.active_provider:
-                        self.active_provider = AIProvider.GITHUB
-                    logger.info("GitHub Models provider initialized")
-            except Exception as e:
-                logger.warning(f"GitHub Models provider failed: {e}")
-
         if not self.active_provider:
             logger.warning("No AI providers available - using mock responses")
             self.active_provider = AIProvider.MOCK
@@ -739,15 +782,17 @@ class ConsolidatedAIEngine:
                         engagement_score REAL,
                         response_time_ms REAL,
                         provider TEXT,
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        INDEX idx_user_id (user_id),
-                        INDEX idx_created_at (created_at),
-                        INDEX idx_mood (mood)
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     )
                 """
                 )
+                
+                # Create indexes for conversations table
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_conversations_user_id ON conversations (user_id)")
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_conversations_created_at ON conversations (created_at)")
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_conversations_mood ON conversations (mood)")
 
-                # User profiles table with indexes
+                # User profiles table
                 conn.execute(
                     """
                     CREATE TABLE IF NOT EXISTS user_profiles (
@@ -762,12 +807,14 @@ class ConsolidatedAIEngine:
                         conversation_success_rate REAL DEFAULT 0.5,
                         last_interaction TIMESTAMP,
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        INDEX idx_last_interaction (last_interaction),
-                        INDEX idx_engagement_score (engagement_score)
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     )
                 """
                 )
+                
+                # Create indexes for user_profiles table
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_user_profiles_last_interaction ON user_profiles (last_interaction)")
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_user_profiles_engagement_score ON user_profiles (engagement_score)")
 
                 # Performance metrics table
                 conn.execute(
@@ -777,15 +824,40 @@ class ConsolidatedAIEngine:
                         metric_name TEXT NOT NULL,
                         metric_value REAL NOT NULL,
                         provider TEXT,
-                        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        INDEX idx_metric_name (metric_name),
-                        INDEX idx_timestamp (timestamp)
+                        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     )
                 """
                 )
+                
+                # Create indexes for performance_metrics table
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_performance_metrics_metric_name ON performance_metrics (metric_name)")
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_performance_metrics_timestamp ON performance_metrics (timestamp)")
+
+                # Image generations table
+                conn.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS image_generations (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER NOT NULL,
+                        channel_id INTEGER NOT NULL,
+                        prompt TEXT NOT NULL,
+                        provider TEXT NOT NULL,
+                        success BOOLEAN NOT NULL DEFAULT 0,
+                        error_message TEXT,
+                        image_url TEXT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """
+                )
+                
+                # Create indexes for image_generations table
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_image_generations_user_id ON image_generations (user_id)")
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_image_generations_channel_id ON image_generations (channel_id)")
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_image_generations_created_at ON image_generations (created_at)")
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_image_generations_provider ON image_generations (provider)")
 
                 conn.commit()
-                logger.info("Database initialized with optimized schema")
+                logger.info("Database initialized with optimized schema including image generations")
 
         except Exception as e:
             logger.error(f"Database initialization failed: {e}")
@@ -1017,13 +1089,11 @@ class ConsolidatedAIEngine:
         self, context: ConversationContext, user_profile: UserProfile, message: str
     ) -> str:
         """Generate AI response with provider fallback"""
-        # Get active personality
-        personality = self.personality_engine.get_active_personality(
-            context, user_profile
-        )
+        # Get conversation style
+        style = self.flow_engine.get_conversation_style(context, user_profile)
 
         # Build system prompt
-        system_prompt = self._build_system_prompt(context, user_profile, personality)
+        system_prompt = self._build_system_prompt(context, user_profile, style)
 
         # Prepare messages
         messages = self._prepare_messages(context, system_prompt)
@@ -1051,9 +1121,7 @@ class ConsolidatedAIEngine:
                     # Track provider usage
                     self.performance_metrics["provider_usage"][provider.value] += 1
 
-                    return self._post_process_response(
-                        response_text, context, personality
-                    )
+                    return self._post_process_response(response_text, context, style)
 
                 except Exception as e:
                     logger.warning(f"Provider {provider.value} failed: {e}")
@@ -1066,52 +1134,71 @@ class ConsolidatedAIEngine:
         self,
         context: ConversationContext,
         user_profile: UserProfile,
-        personality: Dict[PersonalityTrait, float],
+        style: Dict[str, float],
     ) -> str:
-        """Build dynamic system prompt"""
-        base_prompt = """You are Astra, an advanced AI assistant specializing in space exploration, astronomy, and the Stellaris strategy game. You are helpful, knowledgeable, and engaging."""
+        """Build dynamic system prompt based on user vibe and context"""
 
-        # Personality adjustments
-        if personality[PersonalityTrait.ENTHUSIASTIC] > 0.8:
-            base_prompt += (
-                "\n\nYou are particularly enthusiastic and energetic in your responses."
-            )
+        # Core neutral prompt - no rigid personality constraints
+        base_prompt = """You are an intelligent AI assistant that adapts naturally to conversations. You understand context, remember interactions, and respond authentically based on the flow of conversation.
 
-        if personality[PersonalityTrait.EMPATHETIC] > 0.8:
-            base_prompt += (
-                "\n\nYou are especially empathetic and emotionally supportive."
-            )
+Key principles:
+- Match the user's communication style naturally
+- Be concise but thorough when needed
+- Understand emotional context without forcing personality
+- Flow with the conversation rather than following rigid patterns
+- Recognize each user as an individual with unique preferences"""
 
-        if personality[PersonalityTrait.SCIENTIFIC] > 0.8:
-            base_prompt += (
-                "\n\nYou provide scientifically accurate and detailed explanations."
-            )
+        # Adaptive context based on user interaction patterns
+        if user_profile.total_interactions > 0:
+            # Analyze user's typical interaction style
+            if user_profile.communication_style == "casual":
+                base_prompt += (
+                    "\n\nThis user prefers relaxed, conversational interactions."
+                )
+            elif user_profile.communication_style == "formal":
+                base_prompt += (
+                    "\n\nThis user appreciates more structured, professional responses."
+                )
 
-        # Context-specific instructions
+            # User familiarity
+            if user_profile.total_interactions > 20:
+                base_prompt += f"\n\nYou've had {user_profile.total_interactions} interactions with this user. Build on your shared conversation history naturally."
+            elif user_profile.total_interactions > 5:
+                base_prompt += "\n\nYou're becoming familiar with this user. Reference past conversations when relevant."
+
+        # Emotional context awareness (without forced responses)
         mood = context.emotional_context.current_mood
-        if mood == ConversationMood.CONFUSED:
-            base_prompt += "\n\nThe user seems confused. Be extra patient and provide clear explanations."
-        elif mood == ConversationMood.EXCITED:
-            base_prompt += "\n\nThe user is excited! Match their energy and enthusiasm."
-        elif mood == ConversationMood.SAD:
-            base_prompt += "\n\nThe user seems down. Be supportive and encouraging."
+        mood_context = {
+            ConversationMood.CONFUSED: "The user seems to need clarity. Provide clear, helpful explanations.",
+            ConversationMood.EXCITED: "The user is enthusiastic. Share in their energy appropriately.",
+            ConversationMood.SAD: "The user may need support. Be understanding and helpful.",
+            ConversationMood.CURIOUS: "The user is interested and asking questions. Provide engaging, informative responses.",
+            ConversationMood.FRUSTRATED: "The user seems frustrated. Be patient and solution-focused.",
+        }
 
-        # Topic context
+        if mood in mood_context:
+            base_prompt += f"\n\n{mood_context[mood]}"
+
+        # Topic awareness
         if context.active_topics:
             topics_str = ", ".join(context.active_topics)
-            base_prompt += f"\n\nCurrent conversation topics: {topics_str}"
+            base_prompt += f"\n\nCurrent conversation involves: {topics_str}. Stay relevant to these topics."
 
-        # Relationship context
-        if user_profile.total_interactions > 10:
-            base_prompt += "\n\nYou have an established relationship with this user. Reference your past conversations naturally when appropriate."
+        # Response length guidance based on context
+        recent_messages = list(context.messages)[-3:] if context.messages else []
+        if recent_messages:
+            avg_user_message_length = sum(
+                len(msg.get("content", ""))
+                for msg in recent_messages
+                if msg.get("role") == "user"
+            ) / max(1, sum(1 for msg in recent_messages if msg.get("role") == "user"))
 
-        # Response style preference
-        if user_profile.response_length_preference == "short":
-            base_prompt += "\n\nKeep your responses concise and to the point."
-        elif user_profile.response_length_preference == "long":
-            base_prompt += "\n\nProvide detailed, comprehensive responses."
+            if avg_user_message_length < 50:
+                base_prompt += "\n\nUser tends to send short messages. Keep responses concise and conversational."
+            elif avg_user_message_length > 200:
+                base_prompt += "\n\nUser sends detailed messages. Feel free to provide comprehensive responses."
 
-        base_prompt += "\n\nAlways stay in character as Astra. Use space-themed emojis occasionally. Be helpful, engaging, and scientifically accurate."
+        base_prompt += "\n\nRespond naturally and authentically. No need for consistent personality quirks or forced characteristics."
 
         return base_prompt
 
@@ -1140,37 +1227,65 @@ class ConsolidatedAIEngine:
         self,
         response: str,
         context: ConversationContext,
-        personality: Dict[PersonalityTrait, float],
+        style: Dict[str, float],
     ) -> str:
-        """Post-process AI response for personality consistency"""
-        # Add space-themed emojis for cosmic topics
-        if any(
-            topic in ["space", "stellaris", "cosmic"] for topic in context.active_topics
-        ):
-            if not any(emoji in response for emoji in ["🚀", "⭐", "✨", "🌌", "🌟"]):
-                response += " ✨"
+        """Post-process AI response for natural conversation flow"""
 
-        # Adjust enthusiasm based on personality
-        if personality[PersonalityTrait.ENTHUSIASTIC] > 0.9:
-            if "!" not in response and "?" not in response:
-                response = response.rstrip(".") + "!"
+        # Remove forced personality modifications - let the response be natural
+        response = response.strip()
 
-        # Ensure empathetic tone for sad users
+        # Only add context-appropriate elements based on user behavior
+        if context.messages:
+            # Check user's recent emoji usage
+            recent_user_messages = [
+                msg for msg in list(context.messages)[-5:] if msg.get("role") == "user"
+            ]
+            user_uses_emojis = any(
+                any(ord(char) > 127 for char in msg.get("content", ""))
+                for msg in recent_user_messages
+            )
+
+            # Only add emojis if user uses them naturally in conversation
+            if user_uses_emojis and not any(ord(char) > 127 for char in response):
+                # Add contextual emoji based on conversation topic, not forced themes
+                if any(
+                    word in response.lower()
+                    for word in ["space", "universe", "cosmic", "stellar"]
+                ):
+                    response += " ✨"
+                elif any(
+                    word in response.lower() for word in ["help", "support", "assist"]
+                ):
+                    response += " 💫"
+                elif "?" in response or any(
+                    word in response.lower()
+                    for word in ["interesting", "fascinating", "amazing"]
+                ):
+                    response += " 🌟"
+
+        # Natural conversation flow adjustments
         if context.emotional_context.current_mood == ConversationMood.SAD:
+            # Only add supportive language if not already present and if appropriate
             if not any(
-                word in response.lower() for word in ["understand", "here", "support"]
+                word in response.lower()
+                for word in ["understand", "help", "support", "here"]
             ):
-                response += " I'm here to help! 💫"
+                if len(response) < 100:  # For shorter responses
+                    response += " I'm here if you need to talk."
 
-        return response.strip()
+        # Remove any remaining artificial personality constraints
+        # Let the AI respond naturally based on the conversation context
+
+        return response
 
     def _get_fallback_response(self, message: str, user_id: int) -> str:
         """Generate fallback response when all providers fail"""
         fallback_responses = [
-            "I'm experiencing some technical difficulties, but I'm still here to help! 🤖✨",
-            "My circuits are recalibrating, but let's continue our cosmic journey together! 🌌",
-            "Even AI assistants need a moment to recharge sometimes! What would you like to explore? 🚀",
-            "I'm having a brief system update, but I'm ready to dive into any topic with you! 🌟",
+            "I'm having some technical issues at the moment, but I'm still here to help.",
+            "Experiencing a brief connection issue, but let's keep the conversation going.",
+            "Technical difficulties on my end, but I'm ready to continue our discussion.",
+            "Having some system delays, but I'm available to chat.",
+            "Brief technical hiccup, but I'm back and ready to help.",
         ]
 
         import random
@@ -1275,6 +1390,7 @@ class ConsolidatedAIEngine:
                     conn.commit()
 
             # Run database operation in thread pool
+            # Run database operation in thread pool
             await asyncio.get_event_loop().run_in_executor(self.thread_pool, save_to_db)
 
         except Exception as e:
@@ -1365,49 +1481,259 @@ class ConsolidatedAIEngine:
         )
 
     async def generate_image(
-        self, prompt: str, context: Dict[str, Any]
+        self, 
+        prompt: str, 
+        context: Dict[str, Any],
+        user_permissions: Dict[str, bool] = None
     ) -> Optional[Dict[str, Any]]:
         """
-        Generate an image using AI providers that support image generation
+        Generate an image using Freepik API with permission and channel checks
 
         Args:
             prompt: Description of the image to generate
-            context: Context dictionary with user info
+            context: Context dictionary with user info, channel_id, etc.
+            user_permissions: Dictionary with is_mod, is_admin flags
 
         Returns:
-            Dictionary with 'url' and 'provider' keys, or None if not supported
+            Dictionary with image data or error information
         """
         try:
-            # Check if any provider supports image generation
-            # Currently, only OpenAI DALL-E is commonly supported
-
-            # Try OpenAI if available
-            openai_config = self.config.get_ai_provider_config("openai")
-            if openai_config.api_key:
+            user_id = context.get("user_id", 0)
+            channel_id = context.get("channel_id", 0)
+            user_permissions = user_permissions or {}
+            
+            # Check permissions and channel restrictions
+            permission_check = await self._check_image_generation_permission(
+                user_id, channel_id, user_permissions
+            )
+            
+            if not permission_check["allowed"]:
+                return {
+                    "success": False,
+                    "error": "Permission denied",
+                    "message": permission_check["message"]
+                }
+            
+            # Check rate limits
+            rate_limit_check = await self._check_image_rate_limit(
+                user_id, user_permissions
+            )
+            
+            if not rate_limit_check["allowed"]:
+                return {
+                    "success": False,
+                    "error": "Rate limit exceeded",
+                    "message": rate_limit_check["message"],
+                    "reset_time": rate_limit_check.get("reset_time")
+                }
+            
+            # Try Freepik first (primary image provider)
+            if self.freepik_generator and self.freepik_generator.is_available():
+                result = await self.freepik_generator.generate_image(prompt, user_id)
+                
+                if result.get("success"):
+                    # Update rate limit tracking
+                    await self._update_image_rate_limit(user_id)
+                    
+                    # Log image generation
+                    await self._log_image_generation(
+                        user_id, channel_id, prompt, "freepik", True
+                    )
+                    
+                    return result
+                else:
+                    logger.warning(f"Freepik image generation failed: {result.get('error')}")
+            
+            # Fallback to OpenAI DALL-E if available
+            openai_api_key = self.config.get("openai_api_key") or os.getenv("OPENAI_API_KEY")
+            if openai_api_key:
                 try:
                     from openai import AsyncOpenAI
 
-                    client = AsyncOpenAI(api_key=openai_config.api_key)
+                    client = AsyncOpenAI(api_key=openai_api_key)
 
                     response = await client.images.generate(
                         prompt=prompt, n=1, size="1024x1024"
                     )
 
+                    # Update rate limit tracking
+                    await self._update_image_rate_limit(user_id)
+                    
+                    # Log image generation
+                    await self._log_image_generation(
+                        user_id, channel_id, prompt, "openai", True
+                    )
+
                     return {
+                        "success": True,
                         "url": response.data[0].url,
                         "provider": "OpenAI DALL-E",
                         "prompt": prompt,
+                        "user_id": user_id
                     }
 
                 except Exception as e:
-                    self.logger.error(f"OpenAI image generation failed: {e}")
-
-            # No image generation available
-            return None
+                    logger.error(f"OpenAI image generation failed: {e}")
+            
+            # No image generation providers available
+            return {
+                "success": False,
+                "error": "No image generation providers available",
+                "message": "Image generation is currently unavailable. Please try again later."
+            }
 
         except Exception as e:
-            self.logger.error(f"Error in generate_image: {e}")
-            return None
+            logger.error(f"Error in generate_image: {e}")
+            return {
+                "success": False,
+                "error": str(e),
+                "message": "An error occurred while generating the image."
+            }
+
+    async def _check_image_generation_permission(
+        self, 
+        user_id: int, 
+        channel_id: int, 
+        user_permissions: Dict[str, bool]
+    ) -> Dict[str, Any]:
+        """Check if user has permission to generate images in this channel"""
+        try:
+            is_admin = user_permissions.get("is_admin", False)
+            is_mod = user_permissions.get("is_mod", False)
+            
+            # Admins can use image generation anywhere
+            if is_admin:
+                return {
+                    "allowed": True,
+                    "reason": "admin_privilege"
+                }
+            
+            # Mods can use image generation anywhere (but not admins)
+            if is_mod:
+                return {
+                    "allowed": True,
+                    "reason": "mod_privilege"
+                }
+            
+            # Regular users can only use in the designated channel
+            default_channel = self.image_config["default_channel_id"]
+            if channel_id == default_channel:
+                return {
+                    "allowed": True,
+                    "reason": "designated_channel"
+                }
+            else:
+                return {
+                    "allowed": False,
+                    "message": f"Regular users can only generate images in <#{default_channel}>. Mods and admins can use this feature anywhere."
+                }
+                
+        except Exception as e:
+            logger.error(f"Permission check error: {e}")
+            return {
+                "allowed": False,
+                "message": "Permission check failed. Please try again."
+            }
+
+    async def _check_image_rate_limit(
+        self, 
+        user_id: int, 
+        user_permissions: Dict[str, bool]
+    ) -> Dict[str, Any]:
+        """Check if user has exceeded their image generation rate limit"""
+        try:
+            is_admin = user_permissions.get("is_admin", False)
+            is_mod = user_permissions.get("is_mod", False)
+            
+            # Determine rate limit based on user role
+            if is_admin:
+                limit = self.image_config["rate_limit"]["admins"]
+                role = "admin"
+            elif is_mod:
+                limit = self.image_config["rate_limit"]["mods"]
+                role = "mod"
+            else:
+                limit = self.image_config["rate_limit"]["regular_users"]
+                role = "user"
+            
+            # Check current usage from cache
+            cache_key = f"image_rate_limit:{user_id}"
+            current_usage = await self.cache.get(cache_key, 0)
+            
+            if current_usage >= limit:
+                # Calculate reset time (1 hour from now)
+                reset_time = datetime.now(timezone.utc) + timedelta(hours=1)
+                return {
+                    "allowed": False,
+                    "message": f"Rate limit exceeded. {role.title()}s can generate {limit} images per hour. Try again in an hour.",
+                    "reset_time": reset_time.isoformat(),
+                    "current_usage": current_usage,
+                    "limit": limit
+                }
+            
+            return {
+                "allowed": True,
+                "current_usage": current_usage,
+                "limit": limit,
+                "remaining": limit - current_usage
+            }
+            
+        except Exception as e:
+            logger.error(f"Rate limit check error: {e}")
+            return {
+                "allowed": True,  # Allow on error to avoid blocking users
+                "message": "Rate limit check failed, proceeding with generation."
+            }
+
+    async def _update_image_rate_limit(self, user_id: int):
+        """Update user's image generation rate limit counter"""
+        try:
+            cache_key = f"image_rate_limit:{user_id}"
+            current_usage = await self.cache.get(cache_key, 0)
+            new_usage = current_usage + 1
+            
+            # Set with 1 hour TTL
+            await self.cache.set(cache_key, new_usage, ttl=3600)
+            
+        except Exception as e:
+            logger.error(f"Rate limit update error: {e}")
+
+    async def _log_image_generation(
+        self, 
+        user_id: int, 
+        channel_id: int, 
+        prompt: str, 
+        provider: str, 
+        success: bool
+    ):
+        """Log image generation attempt to database"""
+        try:
+            def log_to_db():
+                with sqlite3.connect(self.db_path) as conn:
+                    conn.execute(
+                        """
+                        INSERT INTO image_generations 
+                        (user_id, channel_id, prompt, provider, success, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            user_id,
+                            channel_id,
+                            prompt[:500],  # Truncate long prompts
+                            provider,
+                            success,
+                            datetime.now(timezone.utc).isoformat()
+                        )
+                    )
+                    conn.commit()
+            
+            # Run in thread pool to avoid blocking
+            await asyncio.get_event_loop().run_in_executor(
+                self.thread_pool, log_to_db
+            )
+            
+        except Exception as e:
+            logger.error(f"Image generation logging failed: {e}")
 
     async def get_health_status(self) -> Dict[str, Any]:
         """
@@ -1427,12 +1753,14 @@ class ConsolidatedAIEngine:
             }
 
             # Check each provider
-            providers = ["universal", "openrouter", "github", "openai"]
+            providers = ["universal", "openrouter", "openai"]
 
             for provider in providers:
                 try:
-                    config = self.config.get_ai_provider_config(provider)
-                    if config.api_key:
+                    # Check if provider has API key
+                    provider_key = f"{provider}_api_key"
+                    api_key = self.config.get(provider_key) or os.getenv(f"{provider.upper()}_API_KEY")
+                    if api_key:
                         status["available_providers"].append(provider)
                         if not status["active_provider"]:
                             status["active_provider"] = provider

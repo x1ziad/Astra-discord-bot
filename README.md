@@ -20,7 +20,7 @@ This project showcases **innovative engineering** and **creative problem-solving
 ## ✨ **Advanced Features**
 
 ### 🤖 **Universal AI Integration**
-- **Multi-Provider AI Support**: OpenRouter, OpenAI, Azure AI, and more
+- **Multi-Provider AI Support**: OpenRouter, OpenAI, Universal AI, and more
 - **Advanced Conversation Management**: Context-aware, multi-user conversations
 - **DeepSeek R1 Model**: Latest reasoning model for sophisticated responses
 - **Intelligent Response Generation**: Natural, context-sensitive AI interactions

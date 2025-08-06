@@ -1,0 +1,480 @@
+{
+  "analysis_timestamp": "2025-08-06T14:31:35.601523+00:00",
+  "project_path": "/Users/ziadmekawy/Developer/Discord-Stellaris/AstraBot",
+  "system_performance": {
+    "cpu": {
+      "cores": 10,
+      "usage_percent": 13.4,
+      "performance_rating": "excellent"
+    },
+    "memory": {
+      "total_gb": 16.0,
+      "available_gb": 4.5457763671875,
+      "usage_percent": 71.6,
+      "process_memory_mb": 25.46875,
+      "performance_rating": "good"
+    },
+    "disk": {
+      "usage_percent": 4.1,
+      "free_gb": 246.86049270629883,
+      "performance_rating": "excellent"
+    },
+    "process": {
+      "threads": 1,
+      "open_files": 0,
+      "cpu_percent": 0.0
+    }
+  },
+  "file_analysis": {
+    "total_files": 8854,
+    "python_files": 4736,
+    "total_size_mb": 193.09608554840088,
+    "directories": {
+      "ui": 3,
+      "logger": 3,
+      "config": 4,
+      "utils": 12,
+      "ai": 7,
+      "data": 0,
+      "cogs": 16,
+      "services": 1
+    },
+    "file_types": {
+      ".md": 16,
+      "": 2562,
+      ".py": 4736,
+      ".txt": 69,
+      ".json": 11,
+      ".toml": 2,
+      ".sh": 2,
+      ".backup": 1,
+      ".cfg": 3,
+      ".db": 4,
+      ".pyc": 333,
+      ".ps1": 1,
+      ".13": 2,
+      ".fish": 1,
+      ".csh": 1,
+      ".so": 106,
+      ".typed": 59,
+      ".pyi": 441,
+      ".pyx": 10,
+      ".pxi": 1,
+      ".pxd": 11,
+      ".h": 31,
+      ".rst": 2,
+      ".apache2": 1,
+      ".mit": 1,
+      ".pem": 2,
+      ".1": 2,
+      ".hash": 8,
+      ".apache": 3,
+      ".bsd": 3,
+      ".dll": 2,
+      ".a": 5,
+      ".dylib": 20,
+      ".tab": 8,
+      ".zi": 2,
+      ".c": 12,
+      ".csv": 33,
+      ".cpp": 1,
+      ".fits": 1,
+      ".pkl": 1,
+      ".build": 3,
+      ".pc": 1,
+      ".ini": 3,
+      ".template": 1,
+      ".f90": 61,
+      ".f": 24,
+      ".pyf": 7,
+      ".f95": 1,
+      ".inc": 1,
+      ".npy": 6,
+      ".npz": 5,
+      ".gz": 5,
+      ".exe": 6,
+      ".lua": 1,
+      ".html": 3,
+      ".css": 5,
+      ".js": 4,
+      ".svg": 19,
+      ".png": 23,
+      ".pdf": 11,
+      ".dat": 2,
+      ".xrc": 1,
+      ".jpg": 1,
+      ".mplstyle": 29,
+      ".afm": 60,
+      ".ttf": 38,
+      ".external": 1,
+      ".tpl": 7,
+      ".yml": 1,
+      ".sample": 14
+    },
+    "large_files": [
+      {
+        "path": ".venv/lib/python3.13/site-packages/matplotlib/ft2font.cpython-313-darwin.so",
+        "size_mb": 1.02
+      },
+      {
+        "path": ".venv/lib/python3.13/site-packages/pydantic_core/_pydantic_core.cpython-313-darwin.so",
+        "size_mb": 3.96
+      },
+      {
+        "path": ".venv/lib/python3.13/site-packages/azure/cognitiveservices/speech/libaudio_extension.a",
+        "size_mb": 1.96
+      },
+      {
+        "path": ".venv/lib/python3.13/site-packages/azure/cognitiveservices/speech/libMicrosoft.CognitiveServices.Speech.core.dylib",
+        "size_mb": 12.78
+      },
+      {
+        "path": ".venv/lib/python3.13/site-packages/azure/cognitiveservices/speech/libMicrosoft.CognitiveServices.Speech.extension.kws.ort.dylib",
+        "size_mb": 1.51
+      },
+      {
+        "path": ".venv/lib/python3.13/site-packages/azure/cognitiveservices/speech/libMicrosoft.CognitiveServices.Speech.extension.lu.a",
+        "size_mb": 14.79
+      },
+      {
+        "path": ".venv/lib/python3.13/site-packages/cryptography/hazmat/bindings/_rust.abi3.so",
+        "size_mb": 20.47
+      },
+      {
+        "path": ".venv/lib/python3.13/site-packages/fontTools/misc/bezierTools.c",
+        "size_mb": 1.74
+      },
+      {
+        "path": ".venv/lib/python3.13/site-packages/numpy/_core/_multiarray_umath.cpython-313-darwin.so",
+        "size_mb": 3.29
+      },
+      {
+        "path": ".venv/lib/python3.13/site-packages/PIL/.dylibs/libavif.16.3.0.dylib",
+        "size_mb": 2.86
+      },
+      {
+        "path": ".venv/lib/python3.13/site-packages/PIL/.dylibs/libfreetype.6.dylib",
+        "size_mb": 1.15
+      },
+      {
+        "path": ".venv/lib/python3.13/site-packages/PIL/.dylibs/libharfbuzz.0.dylib",
+        "size_mb": 1.69
+      },
+      {
+        "path": ".venv/lib/python3.13/site-packages/pandas/_libs/interval.cpython-313-darwin.so",
+        "size_mb": 1.02
+      },
+      {
+        "path": ".venv/lib/python3.13/site-packages/pandas/_libs/algos.cpython-313-darwin.so",
+        "size_mb": 1.54
+      },
+      {
+        "path": ".venv/lib/python3.13/site-packages/pandas/_libs/hashtable.cpython-313-darwin.so",
+        "size_mb": 1.66
+      },
+      {
+        "path": ".venv/lib/python3.13/site-packages/pandas/_libs/groupby.cpython-313-darwin.so",
+        "size_mb": 1.93
+      }
+    ],
+    "complexity_score": 100
+  },
+  "database_analysis": {
+    "databases": [
+      {
+        "name": "consolidated_ai.db",
+        "size_mb": 0.046875,
+        "tables": {
+          "conversations": {
+            "records": 0,
+            "query_time_ms": 0.5381107330322266
+          },
+          "sqlite_sequence": {
+            "records": 0,
+            "query_time_ms": 0.0171661376953125
+          },
+          "user_profiles": {
+            "records": 0,
+            "query_time_ms": 0.05984306335449219
+          },
+          "performance_metrics": {
+            "records": 0,
+            "query_time_ms": 0.0209808349609375
+          }
+        },
+        "performance_metrics": {
+          "total_records": 0,
+          "simple_query_time_ms": 0.008821487426757812,
+          "estimated_concurrent_capacity": 100
+        }
+      },
+      {
+        "name": "astra.db",
+        "size_mb": 0.0546875,
+        "tables": {
+          "guild_settings": {
+            "records": 2,
+            "query_time_ms": 0.15282630920410156
+          },
+          "user_data": {
+            "records": 1,
+            "query_time_ms": 0.014066696166992188
+          },
+          "analytics": {
+            "records": 14,
+            "query_time_ms": 0.29587745666503906
+          },
+          "sqlite_sequence": {
+            "records": 1,
+            "query_time_ms": 0.013113021850585938
+          },
+          "command_usage": {
+            "records": 0,
+            "query_time_ms": 0.011682510375976562
+          }
+        },
+        "performance_metrics": {
+          "total_records": 18,
+          "simple_query_time_ms": 0.005245208740234375,
+          "estimated_concurrent_capacity": 100
+        }
+      },
+      {
+        "name": "conversations.db",
+        "size_mb": 0.015625,
+        "tables": {
+          "conversations": {
+            "records": 10,
+            "query_time_ms": 0.010967254638671875
+          },
+          "sqlite_sequence": {
+            "records": 1,
+            "query_time_ms": 0.010967254638671875
+          },
+          "user_profiles": {
+            "records": 0,
+            "query_time_ms": 0.014066696166992188
+          }
+        },
+        "performance_metrics": {
+          "total_records": 11,
+          "simple_query_time_ms": 0.004291534423828125,
+          "estimated_concurrent_capacity": 100
+        }
+      },
+      {
+        "name": "user_profiles.db",
+        "size_mb": 0.01953125,
+        "tables": {
+          "user_profiles": {
+            "records": 0,
+            "query_time_ms": 0.010967254638671875
+          },
+          "conversation_history": {
+            "records": 0,
+            "query_time_ms": 0.11324882507324219
+          },
+          "sqlite_sequence": {
+            "records": 0,
+            "query_time_ms": 0.015735626220703125
+          }
+        },
+        "performance_metrics": {
+          "total_records": 0,
+          "simple_query_time_ms": 0.004291534423828125,
+          "estimated_concurrent_capacity": 100
+        }
+      }
+    ],
+    "total_size_mb": 0.13671875,
+    "performance_projection": {
+      "estimated_query_time_ms": 1,
+      "max_concurrent_users": 1000,
+      "recommended_cleanup_frequency_days": 7
+    }
+  },
+  "code_quality": {
+    "python_files_analyzed": 5,
+    "total_lines": 4515,
+    "comment_lines": 450,
+    "blank_lines": 0,
+    "code_lines": 3386,
+    "functions": 50,
+    "classes": 18,
+    "imports": 68,
+    "complexity_indicators": {},
+    "ai_components": {
+      "ai/consolidated_ai_engine.py": {
+        "complexity": 47,
+        "ai_features": [
+          "ai",
+          "sentiment",
+          "personality",
+          "proactive",
+          "engagement",
+          "conversation",
+          "embedding",
+          "vector",
+          "model"
+        ]
+      },
+      "ai/user_profiling.py": {
+        "complexity": 7,
+        "ai_features": [
+          "ai",
+          "sentiment",
+          "personality",
+          "conversation"
+        ]
+      },
+      "ai/proactive_engagement.py": {
+        "complexity": 3,
+        "ai_features": [
+          "ai",
+          "artificial",
+          "intelligence",
+          "machine learning",
+          "personality",
+          "proactive",
+          "engagement",
+          "conversation"
+        ]
+      }
+    },
+    "documentation_coverage": 19.93355481727575,
+    "comment_ratio": 0.09966777408637874,
+    "code_quality_score": 68.56677740863788
+  },
+  "architecture_analysis": {
+    "components": {
+      "ai_engine": {
+        "exists": true,
+        "size_kb": 54.21875
+      },
+      "user_profiling": {
+        "exists": true,
+        "size_kb": 16.41796875
+      },
+      "proactive_engagement": {
+        "exists": true,
+        "size_kb": 13.9501953125
+      },
+      "advanced_ai_cog": {
+        "exists": true,
+        "size_kb": 69.0302734375
+      },
+      "config_system": {
+        "exists": true,
+        "size_kb": 9.5400390625
+      },
+      "database_system": {
+        "exists": true,
+        "size_kb": 33.443359375
+      },
+      "error_handling": {
+        "exists": true,
+        "size_kb": 10.208984375
+      },
+      "logging_system": {
+        "exists": true,
+        "size_kb": 4.828125
+      }
+    },
+    "integration_score": 100.0,
+    "scalability_rating": "excellent",
+    "ai_sophistication": "advanced",
+    "architecture_strengths": [
+      "Advanced AI capabilities",
+      "Good component integration",
+      "Flexible configuration system"
+    ],
+    "architecture_weaknesses": []
+  },
+  "deployment_readiness": {
+    "configuration_files": {
+      "Dockerfile": {
+        "exists": true,
+        "size_kb": 0.9091796875
+      },
+      "requirements.txt": {
+        "exists": true,
+        "size_kb": 0.8515625
+      },
+      "railway.toml": {
+        "exists": true,
+        "size_kb": 0.734375
+      },
+      "Procfile": {
+        "exists": true,
+        "size_kb": 0.0244140625
+      },
+      "config.json": {
+        "exists": true,
+        "size_kb": 1.23046875
+      },
+      ".env": {
+        "exists": true,
+        "size_kb": 0.4111328125
+      }
+    },
+    "dependencies": {
+      "total_dependencies": 20,
+      "has_ai_dependencies": true,
+      "has_discord_dependency": true,
+      "estimated_install_time": 25.0
+    },
+    "deployment_targets": {
+      "railway": true,
+      "docker": true,
+      "heroku": true,
+      "local": true
+    },
+    "performance_readiness": {
+      "memory_sufficient": true,
+      "cpu_adequate": true,
+      "expected_response_time_ms": 300,
+      "concurrent_user_capacity": 500
+    },
+    "security_considerations": {},
+    "readiness_score": 100
+  },
+  "performance_metrics": {
+    "response_times": {
+      "simple_commands_ms": 100.0,
+      "ai_responses_ms": 400,
+      "complex_analysis_ms": 1000,
+      "database_queries_ms": 50,
+      "image_generation_ms": 10000
+    },
+    "throughput": {
+      "messages_per_second": 80.0,
+      "concurrent_conversations": 32.0,
+      "ai_requests_per_minute": 300,
+      "database_operations_per_second": 100
+    },
+    "scalability": {
+      "max_guilds": 1000,
+      "max_concurrent_users": 320.0,
+      "storage_growth_mb_per_day": 10,
+      "memory_growth_per_user_kb": 50
+    },
+    "resource_usage": {
+      "idle_memory_mb": 100,
+      "active_memory_mb": 300,
+      "peak_memory_mb": 500,
+      "cpu_usage_idle": 5,
+      "cpu_usage_active": 20,
+      "cpu_usage_peak": 60
+    }
+  },
+  "recommendations": [
+    {
+      "category": "maintenance",
+      "priority": "low",
+      "issue": "Low code documentation",
+      "recommendation": "Add more code comments and documentation",
+      "expected_impact": "Easier maintenance and development"
+    }
+  ],
+  "analysis_duration": 1.3967750072479248
+}

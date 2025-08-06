@@ -98,14 +98,6 @@ class EnhancedConfigManager:
                 temperature=float(self.get_setting("OPENROUTER_TEMPERATURE", "0.7")),
                 provider_name="openrouter",
             )
-        elif provider == "github":
-            return AIProviderConfig(
-                api_key=self.get_setting("GITHUB_TOKEN"),
-                model=self.get_setting("GITHUB_MODEL", "deepseek/DeepSeek-R1-0528"),
-                max_tokens=int(self.get_setting("GITHUB_MAX_TOKENS", "2000")),
-                temperature=float(self.get_setting("GITHUB_TEMPERATURE", "0.7")),
-                provider_name="github",
-            )
         elif provider == "openai":
             return AIProviderConfig(
                 api_key=self.get_setting("OPENAI_API_KEY"),

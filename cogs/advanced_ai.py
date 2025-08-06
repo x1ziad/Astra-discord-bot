@@ -106,7 +106,7 @@ class AdvancedAICog(commands.Cog):
         guild_id: int = None,
         channel_id: int = None,
         username: str = None,
-        engagement_type: str = "casual_engagement"
+        engagement_type: str = "casual_engagement",
     ) -> str:
         """Generate AI response using the consolidated AI engine with personalization"""
         try:
@@ -115,16 +115,22 @@ class AdvancedAICog(commands.Cog):
                     "❌ AI service is not configured. Please check the configuration."
                 )
 
-            # Get user personality profile for personalization
+            # Get user communication preferences for personalization
             user_profile = {}
             if user_id:
                 try:
-                    profile = await user_profile_manager.get_user_profile(user_id, username)
-                    user_profile = await user_profile_manager.get_personalized_context(user_id)
-                    
+                    profile = await user_profile_manager.get_user_profile(
+                        user_id, username
+                    )
+                    user_profile = await user_profile_manager.get_personalized_context(
+                        user_id
+                    )
+
                     # Analyze the current message for learning
-                    await user_profile_manager.analyze_message(user_id, prompt, username)
-                    
+                    await user_profile_manager.analyze_message(
+                        user_id, prompt, username
+                    )
+
                 except Exception as e:
                     logger.warning(f"Failed to get user profile for {user_id}: {e}")
 
@@ -138,9 +144,11 @@ class AdvancedAICog(commands.Cog):
                 "engagement_type": engagement_type,
                 "personalization": {
                     "should_personalize": bool(user_profile),
-                    "response_style": self._determine_response_style(user_profile, engagement_type),
-                    "topic_focus": self._determine_topic_focus(user_profile, prompt)
-                }
+                    "response_style": self._determine_response_style(
+                        user_profile, engagement_type
+                    ),
+                    "topic_focus": self._determine_topic_focus(user_profile, prompt),
+                },
             }
 
             # Generate response using the consolidated engine with proper parameters
@@ -181,63 +189,63 @@ class AdvancedAICog(commands.Cog):
             self.logger.error(f"AI response generation error: {e}")
             return f"❌ Error generating AI response: {str(e)}"
 
-    def _determine_response_style(self, user_profile: Dict, engagement_type: str) -> str:
-        """Determine appropriate response style based on user profile and engagement type"""
-        if not user_profile or "user_personality" not in user_profile:
+    def _determine_response_style(
+        self, user_profile: Dict, engagement_type: str
+    ) -> str:
+        """Determine appropriate response style based on user communication preferences"""
+        if not user_profile or "communication_preferences" not in user_profile:
             return "balanced"
-        
-        personality = user_profile["user_personality"]
-        
-        # Consider formality preference
-        if personality.get("prefers_formal", False):
-            base_style = "formal"
-        elif personality.get("communication_style") == "casual":
-            base_style = "casual"
-        else:
-            base_style = "balanced"
-        
-        # Adjust based on engagement type
+
+        prefs = user_profile["communication_preferences"]
+
+        # Get base communication style
+        base_style = prefs.get("style", "balanced")
+
+        # Adjust based on engagement type for natural response flow
         if engagement_type in ["provide_support", "offer_help"]:
-            return "supportive_" + base_style
-        elif engagement_type == "share_enthusiasm":
-            return "enthusiastic_" + base_style
-        elif engagement_type == "celebrate_success":
-            return "celebratory_" + base_style
+            # Be supportive but maintain user's preferred style
+            return (
+                base_style + "_supportive" if base_style != "balanced" else "supportive"
+            )
         elif engagement_type == "answer_question":
-            if personality.get("likes_details", False):
+            # Respect user's detail preference
+            detail_pref = prefs.get("detail_level", "balanced")
+            if detail_pref == "detailed":
                 return "detailed_" + base_style
-            else:
+            elif detail_pref == "concise":
                 return "concise_" + base_style
-        
+            else:
+                return base_style
+
         return base_style
 
     def _determine_topic_focus(self, user_profile: Dict, prompt: str) -> List[str]:
         """Determine topics to focus on based on user interests and message content"""
         focus_topics = []
-        
-        if user_profile and "user_personality" in user_profile:
-            favorite_topics = user_profile["user_personality"].get("favorite_topics", [])
-            
+
+        if user_profile and "interests" in user_profile:
+            favorite_topics = user_profile["interests"].get("topics", [])
+
             # Check if any favorite topics are mentioned in the prompt
             prompt_lower = prompt.lower()
             for topic in favorite_topics:
                 if topic in prompt_lower:
                     focus_topics.append(topic)
-        
+
         # Add general topic detection
         prompt_lower = prompt.lower()
         general_topics = {
             "space": ["space", "universe", "cosmos", "galaxy", "star", "planet"],
             "technology": ["tech", "ai", "computer", "software", "programming"],
             "science": ["science", "research", "experiment", "theory"],
-            "gaming": ["game", "gaming", "play", "stellaris"]
+            "gaming": ["game", "gaming", "play", "stellaris"],
         }
-        
+
         for topic, keywords in general_topics.items():
             if any(keyword in prompt_lower for keyword in keywords):
                 if topic not in focus_topics:
                     focus_topics.append(topic)
-        
+
         return focus_topics[:3]  # Limit to top 3 topics
 
     # Old methods removed - using consolidated AI engine now
@@ -256,7 +264,7 @@ class AdvancedAICog(commands.Cog):
                 guild_id=interaction.guild.id if interaction.guild else None,
                 channel_id=interaction.channel.id,
                 username=str(interaction.user),
-                engagement_type="direct_command"
+                engagement_type="direct_command",
             )
 
             # Create embed
@@ -287,65 +295,136 @@ class AdvancedAICog(commands.Cog):
     @app_commands.command(name="image", description="Generate an image using AI")
     @app_commands.describe(prompt="Description of the image to generate")
     async def image_command(self, interaction: discord.Interaction, prompt: str):
-        """Generate AI image"""
+        """Generate AI image with Freepik integration and channel restrictions"""
         try:
             await interaction.response.defer()
 
             # Check if consolidated AI engine supports image generation
             if not self.ai_client:
                 await interaction.followup.send(
-                    "❌ AI service is not configured.",
+                    "❌ AI image generation service is not configured.",
                     ephemeral=True,
                 )
                 return
 
-            # Try to generate image using consolidated engine
-            try:
-                # The consolidated engine can handle image generation if available
-                context = {
-                    "user_id": interaction.user.id,
-                    "channel_type": "discord",
-                    "request_type": "image_generation",
-                }
+            # Check user permissions
+            user_permissions = {
+                "is_admin": interaction.user.guild_permissions.administrator,
+                "is_mod": interaction.user.guild_permissions.manage_messages or 
+                         interaction.user.guild_permissions.manage_guild,
+            }
 
-                image_result = await self.ai_client.generate_image(prompt, context)
+            # Build context with permission info
+            context = {
+                "user_id": interaction.user.id,
+                "channel_id": interaction.channel.id,
+                "guild_id": interaction.guild.id if interaction.guild else None,
+                "channel_type": "discord",
+                "request_type": "image_generation",
+                "user_name": interaction.user.display_name,
+            }
 
-                if image_result and "url" in image_result:
-                    embed = discord.Embed(
-                        title="🎨 AI Generated Image",
-                        description=f"**Prompt:** {prompt}",
-                        color=0x7289DA,
-                        timestamp=datetime.now(timezone.utc),
-                    )
-                    embed.set_image(url=image_result["url"])
-                    embed.set_author(
-                        name=interaction.user.display_name,
-                        icon_url=interaction.user.display_avatar.url,
-                    )
+            # Generate image using consolidated engine with permission checks
+            image_result = await self.ai_client.generate_image(
+                prompt, context, user_permissions
+            )
+
+            if image_result and image_result.get("success"):
+                # Create success embed
+                embed = discord.Embed(
+                    title="🎨 AI Generated Image",
+                    description=f"**Prompt:** {prompt}",
+                    color=0x43B581,  # Green color for success
+                    timestamp=datetime.now(timezone.utc),
+                )
+                embed.set_image(url=image_result["url"])
+                embed.set_author(
+                    name=interaction.user.display_name,
+                    icon_url=interaction.user.display_avatar.url,
+                )
+                embed.add_field(
+                    name="🎯 AI Provider",
+                    value=image_result.get("provider", "Freepik AI"),
+                    inline=True,
+                )
+                
+                # Add user role info if mod/admin
+                if user_permissions["is_admin"]:
                     embed.add_field(
-                        name="🎯 AI Provider",
-                        value=image_result.get("provider", "OpenAI DALL-E"),
+                        name="👑 Access Level",
+                        value="Administrator",
+                        inline=True,
+                    )
+                elif user_permissions["is_mod"]:
+                    embed.add_field(
+                        name="🛡️ Access Level",
+                        value="Moderator",
                         inline=True,
                     )
 
-                    await interaction.followup.send(embed=embed)
+                embed.set_footer(text="Powered by Freepik AI • Use responsibly")
+
+                await interaction.followup.send(embed=embed)
+
+            elif image_result and not image_result.get("success"):
+                # Handle specific error cases
+                error_type = image_result.get("error", "Unknown error")
+                
+                if error_type == "Permission denied":
+                    # Channel restriction message
+                    embed = discord.Embed(
+                        title="🚫 Image Generation Restricted",
+                        description=image_result.get("message", "Permission denied"),
+                        color=0xE74C3C,  # Red color for error
+                        timestamp=datetime.now(timezone.utc),
+                    )
+                    
+                    # Add helpful info about channel restrictions
+                    default_channel_id = 1402666535696470169
+                    embed.add_field(
+                        name="📍 Where to use image generation",
+                        value=f"• Regular users: <#{default_channel_id}>\n• Mods & Admins: Any channel",
+                        inline=False,
+                    )
+                    
+                    await interaction.followup.send(embed=embed, ephemeral=True)
+                    
+                elif error_type == "Rate limit exceeded":
+                    # Rate limit message
+                    embed = discord.Embed(
+                        title="⏰ Rate Limit Reached",
+                        description=image_result.get("message", "Rate limit exceeded"),
+                        color=0xF39C12,  # Orange color for warning
+                        timestamp=datetime.now(timezone.utc),
+                    )
+                    
+                    if "reset_time" in image_result:
+                        embed.add_field(
+                            name="🔄 Reset Time",
+                            value=f"<t:{int(datetime.fromisoformat(image_result['reset_time']).timestamp())}:R>",
+                            inline=True,
+                        )
+                    
+                    await interaction.followup.send(embed=embed, ephemeral=True)
+                    
                 else:
+                    # Generic error message
                     await interaction.followup.send(
-                        "❌ Image generation is not available with current AI configuration.",
+                        f"❌ Image generation failed: {image_result.get('message', 'Unknown error')}",
                         ephemeral=True,
                     )
-
-            except Exception as image_error:
-                self.logger.error(f"Image generation error: {image_error}")
+            else:
+                # No result returned
                 await interaction.followup.send(
-                    "❌ Image generation is not currently available. This feature requires OpenAI API access.",
+                    "❌ Image generation is not available. Please make sure the Freepik API is configured.",
                     ephemeral=True,
                 )
 
         except Exception as e:
-            self.logger.error(f"Image generation error: {e}")
+            self.logger.error(f"Image generation command error: {e}")
             await interaction.followup.send(
-                f"❌ Error generating image: {str(e)}", ephemeral=True
+                f"❌ An error occurred while generating the image: {str(e)}", 
+                ephemeral=True
             )
 
     async def _enhance_image_prompt(self, original_prompt: str) -> str:
@@ -410,36 +489,41 @@ class AdvancedAICog(commands.Cog):
                 f"❌ Error analyzing content: {str(e)}", ephemeral=True
             )
 
-    @app_commands.command(name="personality", description="Change AI personality")
-    @app_commands.describe(
-        personality="Personality type (friendly, professional, casual, creative)"
+    @app_commands.command(
+        name="communication_style", description="Set your preferred communication style"
     )
-    async def personality_command(
-        self, interaction: discord.Interaction, personality: str
+    @app_commands.describe(
+        style="Communication style (detailed, concise, casual, formal)"
+    )
+    async def communication_style_command(
+        self, interaction: discord.Interaction, style: str
     ):
-        """Change AI personality"""
+        """Set communication style preference"""
         try:
             await interaction.response.defer()
 
-            valid_personalities = [
-                "friendly",
-                "professional",
+            valid_styles = [
+                "detailed",
+                "concise",
                 "casual",
-                "creative",
-                "default",
+                "formal",
+                "balanced",
             ]
 
-            if personality.lower() not in valid_personalities:
+            if style.lower() not in valid_styles:
                 await interaction.followup.send(
-                    f"❌ Invalid personality. Choose from: {', '.join(valid_personalities)}",
+                    f"❌ Invalid style. Choose from: {', '.join(valid_styles)}",
                     ephemeral=True,
                 )
                 return
 
-            # Store personality preference (you might want to save this to database)
+            # Store communication preference - this will be used by the flow engine
+            user_id = str(interaction.user.id)
+            # TODO: Store this in user profile or database
+
             embed = discord.Embed(
-                title="🎭 Personality Changed",
-                description=f"AI personality set to: **{personality.title()}**",
+                title="💬 Communication Style Updated",
+                description=f"I'll adapt my responses to be more **{style.lower()}** based on your preference.",
                 color=0x43B581,
                 timestamp=datetime.now(timezone.utc),
             )
@@ -602,17 +686,21 @@ class AdvancedAICog(commands.Cog):
             async with message.channel.typing():
                 # Determine engagement type for personalized response
                 engagement_type = "casual_engagement"
-                
+
                 if engagement_reason != "fallback_basic":
                     try:
-                        engagement_type = await proactive_engagement.generate_engagement_type(
-                            message.content, 
-                            engagement_reason,
-                            await user_profile_manager.get_personalized_context(message.author.id)
+                        engagement_type = (
+                            await proactive_engagement.generate_engagement_type(
+                                message.content,
+                                engagement_reason,
+                                await user_profile_manager.get_personalized_context(
+                                    message.author.id
+                                ),
+                            )
                         )
                     except Exception as e:
                         logger.warning(f"Failed to generate engagement type: {e}")
-                
+
                 # Process AI conversation with enhanced context
                 await self._process_ai_conversation(message, engagement_type)
 
@@ -684,7 +772,7 @@ class AdvancedAICog(commands.Cog):
     async def _should_ai_respond(self, message: discord.Message) -> Tuple[bool, str]:
         """Enhanced AI response determination with proactive engagement system"""
         user_id = message.author.id
-        
+
         # Check basic cooldown to prevent spam
         if user_id in self.conversation_cooldowns:
             if datetime.now(timezone.utc) - self.conversation_cooldowns[
@@ -709,27 +797,33 @@ class AdvancedAICog(commands.Cog):
         # Get user profile for personalized engagement
         user_profile = {}
         try:
-            profile = await user_profile_manager.get_user_profile(user_id, str(message.author))
+            profile = await user_profile_manager.get_user_profile(
+                user_id, str(message.author)
+            )
             user_profile = await user_profile_manager.get_personalized_context(user_id)
         except Exception as e:
             logger.warning(f"Failed to get user profile for engagement: {e}")
 
         # Use proactive engagement system
         try:
-            should_engage, reason = await proactive_engagement.should_engage_proactively(
-                message.content,
-                user_id,
-                message.channel.id,
-                message.guild.id if message.guild else None,
-                user_profile
+            should_engage, reason = (
+                await proactive_engagement.should_engage_proactively(
+                    message.content,
+                    user_id,
+                    message.channel.id,
+                    message.guild.id if message.guild else None,
+                    user_profile,
+                )
             )
-            
+
             if should_engage:
-                logger.info(f"Proactive engagement triggered for user {user_id}: {reason}")
+                logger.info(
+                    f"Proactive engagement triggered for user {user_id}: {reason}"
+                )
                 return True, reason
             else:
                 return False, reason
-                
+
         except Exception as e:
             logger.error(f"Proactive engagement error: {e}")
             # Fallback to basic engagement
@@ -738,22 +832,23 @@ class AdvancedAICog(commands.Cog):
     async def _basic_engagement_check(self, message: discord.Message) -> bool:
         """Basic engagement check as fallback"""
         content_lower = message.content.lower()
-        
+
         # Question detection
-        if '?' in message.content:
+        if "?" in message.content:
             return True
-        
+
         # Help seeking
         help_keywords = ["help", "how do", "what is", "explain", "confused"]
         if any(keyword in content_lower for keyword in help_keywords):
             return True
-        
+
         # Topic keywords with probability
         topic_keywords = ["space", "stellaris", "science", "technology", "ai"]
         if any(keyword in content_lower for keyword in topic_keywords):
             import random
+
             return random.random() < 0.3  # 30% chance
-        
+
         return False
         """Enhanced AI response determination with sophisticated triggering"""
         # Check cooldown
@@ -873,7 +968,9 @@ class AdvancedAICog(commands.Cog):
 
         return False
 
-    async def _process_ai_conversation(self, message: discord.Message, engagement_type: str = "casual_engagement"):
+    async def _process_ai_conversation(
+        self, message: discord.Message, engagement_type: str = "casual_engagement"
+    ):
         """Process AI conversation using the advanced engine with personalized engagement"""
         try:
             start_time = datetime.now(timezone.utc)
@@ -890,7 +987,7 @@ class AdvancedAICog(commands.Cog):
                 guild_id=message.guild.id if message.guild else None,
                 channel_id=message.channel.id,
                 username=username,
-                engagement_type=engagement_type
+                engagement_type=engagement_type,
             )
 
             # Send response

@@ -8,7 +8,7 @@ Release Date: 2025-08-02 10:53:48 UTC
 License: MIT
 
 Features:
-- Advanced AI capabilities with Azure OpenAI integration
+- Advanced AI capabilities with multi-provider integration
 - Comprehensive server management and analytics
 - Real-time monitoring and health checks
 - Graceful error handling and recovery
@@ -1220,9 +1220,6 @@ async def main():
 
         # Optional environment checks for backwards compatibility
         optional_vars = [
-            "AZURE_OPENAI_ENDPOINT",
-            "AZURE_OPENAI_KEY",
-            "AZURE_SPEECH_KEY",
             "NASA_API_KEY",
         ]
 

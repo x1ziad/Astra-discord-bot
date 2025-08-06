@@ -303,7 +303,7 @@ class EnhancedAdmin(commands.GroupCog, name="admin"):
             "status", "restart", "clear_cache", "switch_provider", "health_check"
         ],
         provider: Optional[
-            Literal["universal", "openrouter", "github", "openai"]
+            Literal["universal", "openrouter", "openai"]
         ] = None,
     ):
         """Control AI system operations (Admin only)"""
