@@ -1434,12 +1434,15 @@ class AdvancedAICog(commands.Cog):
             await message.channel.send(embed=embed)
 
     async def _handle_image_generation(self, message: discord.Message, prompt: str):
-        """Handle image generation request with enhanced Discord image sending"""
+        """Handle image generation request with dedicated Freepik API client"""
         try:
             if not self.ai_client:
-                await message.channel.send(
-                    "❌ Image generation is currently unavailable."
+                embed = discord.Embed(
+                    title="❌ Image Generation Unavailable",
+                    description="The AI system is not properly initialized.",
+                    color=0xE74C3C
                 )
+                await message.channel.send(embed=embed)
                 return
 
             # Check user permissions
@@ -1469,137 +1472,192 @@ class AdvancedAICog(commands.Cog):
                 "user_name": message.author.display_name,
             }
 
-            # Send generation status message
-            status_msg = await message.channel.send(
-                f"🎨 Generating image: *{prompt[:100]}{'...' if len(prompt) > 100 else ''}*"
+            # Send generation status message with more detailed info
+            status_embed = discord.Embed(
+                title="🎨 Generating Image...",
+                description=f"**Prompt:** {prompt[:150]}{'...' if len(prompt) > 150 else ''}",
+                color=0x3498DB,
+                timestamp=datetime.now(timezone.utc)
             )
+            status_embed.add_field(
+                name="🔄 Status", 
+                value="Connecting to Freepik AI...", 
+                inline=False
+            )
+            status_embed.set_footer(text="This may take 30-60 seconds")
+            
+            status_msg = await message.channel.send(embed=status_embed)
+
+            # Log the image generation attempt
+            self.logger.info(f"🎨 Image generation requested by user {message.author.id}")
+            self.logger.info(f"📝 Prompt: {prompt}")
+            self.logger.info(f"🔧 Permissions: Admin={user_permissions['is_admin']}, Mod={user_permissions['is_mod']}")
 
             # Generate image using consolidated AI engine
             result = await self.ai_client.generate_image(
                 prompt, context, user_permissions
             )
 
+            # Log the result
+            if result:
+                self.logger.info(f"🎯 Image generation result: {result.get('success', False)}")
+                if not result.get('success'):
+                    self.logger.error(f"❌ Image generation error: {result.get('error', 'Unknown')}")
+                    self.logger.error(f"💬 Error message: {result.get('message', 'No message')}")
+            else:
+                self.logger.error("❌ No result returned from image generation")
+
             if result and result.get("success"):
                 try:
-                    # Create embed for the image with enhanced information
+                    # Create success embed
                     embed = discord.Embed(
-                        title="🖼️ AI Generated Image",
-                        description=f"**Prompt:** {prompt}",
-                        color=0x43B581,  # Green for success
-                        timestamp=datetime.now(timezone.utc),
+                        title="🎨 Image Generated Successfully!",
+                        description=f"**Prompt:** {prompt[:200]}{'...' if len(prompt) > 200 else ''}",
+                        color=0x27AE60,
+                        timestamp=datetime.now(timezone.utc)
                     )
-
-                    # Set the image in the embed
-                    embed.set_image(url=result["url"])
-
-                    # Add user information
-                    embed.set_author(
-                        name=message.author.display_name,
-                        icon_url=message.author.display_avatar.url,
-                    )
-
-                    # Add provider and additional info
+                    
+                    # Set the image
+                    image_url = result.get("url")
+                    if image_url:
+                        embed.set_image(url=image_url)
+                        
                     embed.add_field(
-                        name="🎯 AI Provider",
-                        value=result.get("provider", "Freepik AI"),
-                        inline=True,
+                        name="🤖 Provider", 
+                        value=result.get("provider", "Freepik AI"), 
+                        inline=True
                     )
+                    embed.add_field(
+                        name="� Requested by", 
+                        value=message.author.mention, 
+                        inline=True
+                    )
+                    embed.set_footer(text="Powered by Freepik AI • astra generate <prompt>")
 
-                    if user_permissions["is_admin"]:
-                        embed.add_field(name="👑 Access", value="Admin", inline=True)
-                    elif user_permissions["is_mod"]:
-                        embed.add_field(name="🛡️ Access", value="Moderator", inline=True)
-
-                    embed.set_footer(text="Powered by Freepik AI • Use responsibly")
-
-                    # Send the embed with image
+                    # Delete status message and send result
+                    await status_msg.delete()
                     await message.channel.send(embed=embed)
-
-                    # Delete the status message
-                    try:
-                        await status_msg.delete()
-                    except:
-                        pass
-
-                    self.logger.info(
-                        f"Image generated successfully for user {message.author.id}"
-                    )
+                    
+                    self.logger.info(f"✅ Image successfully sent to channel {message.channel.id}")
 
                 except Exception as embed_error:
-                    self.logger.error(f"Error creating image embed: {embed_error}")
-                    # Fallback to simple message with image URL
+                    self.logger.error(f"❌ Error creating success embed: {embed_error}")
+                    # Fallback to simple message
+                    await status_msg.delete()
                     await message.channel.send(
-                        f"🖼️ **Generated Image** (by {message.author.display_name})\n"
-                        f"**Prompt:** {prompt}\n"
-                        f"**Image:** {result['url']}"
+                        f"🎨 **Image generated:** {result.get('url', 'No URL')}\n"
+                        f"**Prompt:** {prompt[:100]}{'...' if len(prompt) > 100 else ''}"
                     )
 
             else:
-                # Handle error cases with informative messages
-                error_type = (
-                    result.get("error", "Unknown error") if result else "No response"
-                )
-                error_msg = (
-                    result.get("message", "Image generation failed")
-                    if result
-                    else "Image generation service unavailable"
-                )
+                # Handle error cases with more detailed information
+                error_type = result.get("error", "Unknown error") if result else "No response"
+                error_msg = result.get("message", "Image generation failed") if result else "Image generation service unavailable"
 
-                if error_type == "Permission denied":
-                    # Channel restriction message
-                    embed = discord.Embed(
-                        title="🚫 Image Generation Restricted",
-                        description=error_msg,
-                        color=0xE74C3C,  # Red
-                        timestamp=datetime.now(timezone.utc),
-                    )
+                self.logger.error(f"🚨 Image generation failed: {error_type} - {error_msg}")
 
-                    default_channel_id = 1402666535696470169
-                    embed.add_field(
-                        name="📍 Where to generate images",
-                        value=f"• Regular users: <#{default_channel_id}>\n• Mods & Admins: Any channel",
-                        inline=False,
-                    )
-
-                    await message.channel.send(embed=embed)
-
-                elif error_type == "Rate limit exceeded":
-                    # Rate limit message
-                    embed = discord.Embed(
-                        title="⏰ Rate Limit Reached",
-                        description=error_msg,
-                        color=0xF39C12,  # Orange
-                        timestamp=datetime.now(timezone.utc),
-                    )
-
-                    if result and "reset_time" in result:
-                        embed.add_field(
-                            name="🔄 Try again",
-                            value=f"<t:{int(datetime.fromisoformat(result['reset_time']).timestamp())}:R>",
-                            inline=True,
-                        )
-
-                    await message.channel.send(embed=embed)
-
-                else:
-                    # Generic error
-                    await message.channel.send(f"❌ {error_msg}")
-
-                # Delete status message
+                # Delete status message first
                 try:
                     await status_msg.delete()
                 except:
                     pass
 
+                if error_type == "Permission denied":
+                    embed = discord.Embed(
+                        title="🚫 Permission Denied",
+                        description="You don't have permission to generate images in this channel.",
+                        color=0xE74C3C,
+                        timestamp=datetime.now(timezone.utc)
+                    )
+                    default_channel_id = 1402666535696470169
+                    embed.add_field(
+                        name="📍 Where to generate images",
+                        value=f"• **Regular users:** <#{default_channel_id}>\n• **Mods & Admins:** Any channel",
+                        inline=False,
+                    )
+                    embed.add_field(
+                        name="🔧 Alternative Commands",
+                        value="Try: `astra generate your prompt here`\nOr: `@Astra generate your prompt here`",
+                        inline=False
+                    )
+                    await message.channel.send(embed=embed)
+
+                elif error_type == "Rate limit exceeded":
+                    embed = discord.Embed(
+                        title="⏰ Rate Limit Reached",
+                        description=error_msg,
+                        color=0xF39C12,
+                        timestamp=datetime.now(timezone.utc),
+                    )
+                    if result and "reset_time" in result:
+                        reset_time = result["reset_time"]
+                        embed.add_field(
+                            name="� Try Again", 
+                            value=f"Rate limit resets at: {reset_time}", 
+                            inline=False
+                        )
+                    await message.channel.send(embed=embed)
+
+                elif error_type == "API key not configured" or error_type == "Invalid API key":
+                    embed = discord.Embed(
+                        title="🔑 API Configuration Issue",
+                        description="The Freepik API key is not configured or invalid.",
+                        color=0xE74C3C,
+                        timestamp=datetime.now(timezone.utc)
+                    )
+                    embed.add_field(
+                        name="🔧 For Bot Administrators",
+                        value="• Check FREEPIK_API_KEY in Railway environment variables\n"
+                              "• Get your API key at: https://www.freepik.com/api\n"
+                              "• Verify key at: https://www.freepik.com/developers/dashboard/api-key",
+                        inline=False
+                    )
+                    embed.set_footer(text="This is a bot configuration issue, not a user error")
+                    await message.channel.send(embed=embed)
+
+                else:
+                    # Generic error with helpful information
+                    embed = discord.Embed(
+                        title="❌ Image Generation Failed",
+                        description=error_msg,
+                        color=0xE74C3C,
+                        timestamp=datetime.now(timezone.utc)
+                    )
+                    embed.add_field(
+                        name="💡 Suggestions",
+                        value="• Try a simpler, more descriptive prompt\n"
+                              "• Make sure your prompt follows content guidelines\n"
+                              "• Wait a few minutes and try again",
+                        inline=False
+                    )
+                    embed.add_field(
+                        name="🔧 Commands",
+                        value="`astra generate <description>`\n`@Astra generate <description>`",
+                        inline=False
+                    )
+                    embed.set_footer(text="If this persists, contact bot administrators")
+                    await message.channel.send(embed=embed)
+
         except Exception as e:
-            self.logger.error(f"Image generation error: {e}")
-            await message.channel.send(
-                "❌ Failed to generate image. Please try again later."
-            )
-            self.logger.error(f"Image generation error: {e}")
-            await message.channel.send(
-                "❌ Failed to generate image. Please try again later."
-            )
+            self.logger.error(f"💥 Critical error in image generation: {e}")
+            try:
+                # Try to send error message to user
+                embed = discord.Embed(
+                    title="💥 Critical Error",
+                    description="An unexpected error occurred during image generation.",
+                    color=0x992D22,
+                    timestamp=datetime.now(timezone.utc)
+                )
+                embed.add_field(
+                    name="🔧 What to do",
+                    value="Please try again later or contact bot administrators if this persists.",
+                    inline=False
+                )
+                embed.set_footer(text="Error logged for debugging")
+                await message.channel.send(embed=embed)
+            except:
+                # Last resort - simple message
+                await message.channel.send("❌ Failed to generate image. Please try again later.")
 
     async def _enhance_response_with_mentions(
         self, message: discord.Message, response: str

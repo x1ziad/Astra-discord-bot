@@ -59,74 +59,46 @@ except ImportError:
 logger = logging.getLogger("astra.consolidated_ai")
 
 
+# Import the dedicated Freepik image client
+try:
+    from ai.freepik_image_client import FreepikImageClient, get_freepik_client
+    FREEPIK_CLIENT_AVAILABLE = True
+    logger.info("✅ Dedicated Freepik Image Client imported successfully")
+except ImportError as e:
+    FREEPIK_CLIENT_AVAILABLE = False
+    logger.warning(f"❌ Freepik Image Client not available: {e}")
+
+# Legacy FreepikImageGenerator wrapper for backward compatibility
 class FreepikImageGenerator:
-    """Freepik AI image generation client"""
+    """Legacy wrapper for the dedicated FreepikImageClient"""
 
     def __init__(self, api_key: str):
-        self.api_key = api_key
-        self.base_url = "https://api.freepik.com/v1"
-        self.session = None
-
-    async def _get_session(self):
-        """Get or create aiohttp session"""
-        if self.session is None:
-            self.session = aiohttp.ClientSession()
-        return self.session
+        if FREEPIK_CLIENT_AVAILABLE:
+            self.client = FreepikImageClient(api_key)
+            logger.info("🔄 Using dedicated FreepikImageClient")
+        else:
+            self.client = None
+            logger.warning("❌ FreepikImageClient not available - image generation disabled")
 
     async def generate_image(self, prompt: str, user_id: int = None) -> Dict[str, Any]:
-        """Generate image using Freepik API"""
-        try:
-            session = await self._get_session()
-
-            headers = {
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json",
+        """Generate image using dedicated Freepik client"""
+        if self.client:
+            return await self.client.generate_image(prompt, user_id)
+        else:
+            return {
+                "success": False,
+                "error": "Freepik client not available",
+                "message": "Image generation is not configured"
             }
-
-            payload = {
-                "prompt": prompt,
-                "num_images": 1,
-                "image": {"size": "square_hd"},  # 1024x1024 default
-            }
-
-            async with session.post(
-                f"{self.base_url}/ai/text-to-image", headers=headers, json=payload
-            ) as response:
-
-                if response.status == 200:
-                    data = await response.json()
-
-                    if data.get("data") and len(data["data"]) > 0:
-                        image_data = data["data"][0]
-                        return {
-                            "success": True,
-                            "url": image_data.get("url"),
-                            "provider": "Freepik AI",
-                            "prompt": prompt,
-                            "user_id": user_id,
-                        }
-                else:
-                    error_text = await response.text()
-                    logger.error(f"Freepik API error {response.status}: {error_text}")
-                    return {
-                        "success": False,
-                        "error": f"API Error: {response.status}",
-                        "details": error_text,
-                    }
-
-        except Exception as e:
-            logger.error(f"Freepik image generation failed: {e}")
-            return {"success": False, "error": str(e)}
 
     async def close(self):
-        """Close the aiohttp session"""
-        if self.session:
-            await self.session.close()
-            self.session = None
+        """Close the client session"""
+        if self.client:
+            await self.client.close()
 
     def is_available(self) -> bool:
-        """Check if Freepik API is available"""
-        return bool(self.api_key)
+        """Check if Freepik client is available"""
+        return self.client is not None and self.client.is_available()
 
 
 class AIProvider(Enum):
@@ -703,20 +675,27 @@ class ConsolidatedAIEngine:
         logger.info("Consolidated AI Engine initialized successfully")
 
     def _initialize_image_generation(self):
-        """Initialize Freepik image generation"""
-        freepik_api_key = self.config.get("freepik_api_key") or os.getenv(
-            "FREEPIK_API_KEY"
-        )
+        """Initialize Freepik image generation with dedicated client"""
+        freepik_api_key = self.config.get("freepik_api_key") or os.getenv("FREEPIK_API_KEY")
 
-        if freepik_api_key:
+        if freepik_api_key and FREEPIK_CLIENT_AVAILABLE:
             try:
+                # Use the dedicated Freepik client
                 self.freepik_generator = FreepikImageGenerator(freepik_api_key)
-                logger.info("Freepik image generation initialized successfully")
+                logger.info("✅ Freepik image generation initialized with dedicated client")
+                logger.info(f"🔑 API Key configured: {freepik_api_key[:10]}...{freepik_api_key[-4:]}")
             except Exception as e:
-                logger.warning(f"Freepik initialization failed: {e}")
+                logger.error(f"❌ Freepik initialization failed: {e}")
                 self.freepik_generator = None
+        elif freepik_api_key and not FREEPIK_CLIENT_AVAILABLE:
+            logger.error("❌ FREEPIK_API_KEY found but FreepikImageClient not available")
+            logger.error("🔧 Check ai/freepik_image_client.py import")
+            self.freepik_generator = None
         else:
-            logger.warning("Freepik API key not found - image generation disabled")
+            logger.warning("⚠️  FREEPIK_API_KEY not found - image generation disabled")
+            logger.warning("🌐 Get your key at: https://www.freepik.com/api")
+            logger.warning("⚙️  Set FREEPIK_API_KEY in Railway environment variables")
+            self.freepik_generator = None
 
     def _initialize_providers(self):
         """Initialize AI providers in order of preference"""
