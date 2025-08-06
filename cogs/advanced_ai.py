@@ -8,25 +8,27 @@ from discord import app_commands
 from discord.ext import commands, tasks
 import asyncio
 import logging
-from typing import Dict, List, Optional, Any, Set
+from typing import Dict, List, Optional, Any, Set, Tuple
 from datetime import datetime, timedelta, timezone
 import json
 from pathlib import Path
 import re
 import os
 
-# Import the new consolidated AI engine
+# Import the new consolidated AI engine and proactive systems
 try:
     from ai.consolidated_ai_engine import ConsolidatedAIEngine
+    from ai.user_profiling import user_profile_manager, UserProfileManager
+    from ai.proactive_engagement import proactive_engagement, ProactiveEngagement
     from config.enhanced_config import EnhancedConfigManager
 
     AI_ENGINE_AVAILABLE = True
     logger = logging.getLogger("astra.advanced_ai")
-    logger.info("Consolidated AI Engine successfully imported")
+    logger.info("Consolidated AI Engine and Proactive Systems successfully imported")
 except ImportError as e:
     AI_ENGINE_AVAILABLE = False
     logger = logging.getLogger("astra.advanced_ai")
-    logger.error(f"Failed to import Consolidated AI Engine: {e}")
+    logger.error(f"Failed to import AI systems: {e}")
 
 # Backward compatibility imports
 from config.config_manager import config_manager
@@ -103,20 +105,42 @@ class AdvancedAICog(commands.Cog):
         user_id: int = None,
         guild_id: int = None,
         channel_id: int = None,
+        username: str = None,
+        engagement_type: str = "casual_engagement"
     ) -> str:
-        """Generate AI response using the consolidated AI engine"""
+        """Generate AI response using the consolidated AI engine with personalization"""
         try:
             if not self.ai_client:
                 return (
                     "❌ AI service is not configured. Please check the configuration."
                 )
 
-            # Prepare context data for the AI engine
+            # Get user personality profile for personalization
+            user_profile = {}
+            if user_id:
+                try:
+                    profile = await user_profile_manager.get_user_profile(user_id, username)
+                    user_profile = await user_profile_manager.get_personalized_context(user_id)
+                    
+                    # Analyze the current message for learning
+                    await user_profile_manager.analyze_message(user_id, prompt, username)
+                    
+                except Exception as e:
+                    logger.warning(f"Failed to get user profile for {user_id}: {e}")
+
+            # Prepare enhanced context data for the AI engine
             context_data = {
                 "channel_type": "discord",
                 "conversation_history": (
                     self.conversation_history.get(user_id, []) if user_id else []
                 ),
+                "user_profile": user_profile,
+                "engagement_type": engagement_type,
+                "personalization": {
+                    "should_personalize": bool(user_profile),
+                    "response_style": self._determine_response_style(user_profile, engagement_type),
+                    "topic_focus": self._determine_topic_focus(user_profile, prompt)
+                }
             }
 
             # Generate response using the consolidated engine with proper parameters
@@ -153,6 +177,69 @@ class AdvancedAICog(commands.Cog):
             self.logger.error(f"AI response generation error: {e}")
             return f"❌ Error generating AI response: {str(e)}"
 
+        except Exception as e:
+            self.logger.error(f"AI response generation error: {e}")
+            return f"❌ Error generating AI response: {str(e)}"
+
+    def _determine_response_style(self, user_profile: Dict, engagement_type: str) -> str:
+        """Determine appropriate response style based on user profile and engagement type"""
+        if not user_profile or "user_personality" not in user_profile:
+            return "balanced"
+        
+        personality = user_profile["user_personality"]
+        
+        # Consider formality preference
+        if personality.get("prefers_formal", False):
+            base_style = "formal"
+        elif personality.get("communication_style") == "casual":
+            base_style = "casual"
+        else:
+            base_style = "balanced"
+        
+        # Adjust based on engagement type
+        if engagement_type in ["provide_support", "offer_help"]:
+            return "supportive_" + base_style
+        elif engagement_type == "share_enthusiasm":
+            return "enthusiastic_" + base_style
+        elif engagement_type == "celebrate_success":
+            return "celebratory_" + base_style
+        elif engagement_type == "answer_question":
+            if personality.get("likes_details", False):
+                return "detailed_" + base_style
+            else:
+                return "concise_" + base_style
+        
+        return base_style
+
+    def _determine_topic_focus(self, user_profile: Dict, prompt: str) -> List[str]:
+        """Determine topics to focus on based on user interests and message content"""
+        focus_topics = []
+        
+        if user_profile and "user_personality" in user_profile:
+            favorite_topics = user_profile["user_personality"].get("favorite_topics", [])
+            
+            # Check if any favorite topics are mentioned in the prompt
+            prompt_lower = prompt.lower()
+            for topic in favorite_topics:
+                if topic in prompt_lower:
+                    focus_topics.append(topic)
+        
+        # Add general topic detection
+        prompt_lower = prompt.lower()
+        general_topics = {
+            "space": ["space", "universe", "cosmos", "galaxy", "star", "planet"],
+            "technology": ["tech", "ai", "computer", "software", "programming"],
+            "science": ["science", "research", "experiment", "theory"],
+            "gaming": ["game", "gaming", "play", "stellaris"]
+        }
+        
+        for topic, keywords in general_topics.items():
+            if any(keyword in prompt_lower for keyword in keywords):
+                if topic not in focus_topics:
+                    focus_topics.append(topic)
+        
+        return focus_topics[:3]  # Limit to top 3 topics
+
     # Old methods removed - using consolidated AI engine now
 
     @app_commands.command(name="chat", description="Chat with Astra AI")
@@ -162,12 +249,14 @@ class AdvancedAICog(commands.Cog):
         try:
             await interaction.response.defer()
 
-            # Generate AI response
+            # Generate AI response with personalization
             response = await self._generate_ai_response(
                 message,
                 interaction.user.id,
                 guild_id=interaction.guild.id if interaction.guild else None,
                 channel_id=interaction.channel.id,
+                username=str(interaction.user),
+                engagement_type="direct_command"
             )
 
             # Create embed
@@ -499,19 +588,33 @@ class AdvancedAICog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
-        """Enhanced message listener with intelligent AI triggering"""
+        """Enhanced message listener with intelligent AI triggering and proactive engagement"""
         if message.author.bot:
             return
 
         # Track channel activity
         await self._track_channel_activity(message)
 
-        # Check if AI should respond
-        should_respond = await self._should_ai_respond(message)
+        # Check if AI should respond (now returns tuple)
+        should_respond, engagement_reason = await self._should_ai_respond(message)
 
         if should_respond:
             async with message.channel.typing():
-                await self._process_ai_conversation(message)
+                # Determine engagement type for personalized response
+                engagement_type = "casual_engagement"
+                
+                if engagement_reason != "fallback_basic":
+                    try:
+                        engagement_type = await proactive_engagement.generate_engagement_type(
+                            message.content, 
+                            engagement_reason,
+                            await user_profile_manager.get_personalized_context(message.author.id)
+                        )
+                    except Exception as e:
+                        logger.warning(f"Failed to generate engagement type: {e}")
+                
+                # Process AI conversation with enhanced context
+                await self._process_ai_conversation(message, engagement_type)
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
@@ -578,7 +681,80 @@ class AdvancedAICog(commands.Cog):
 
         return topics
 
-    async def _should_ai_respond(self, message: discord.Message) -> bool:
+    async def _should_ai_respond(self, message: discord.Message) -> Tuple[bool, str]:
+        """Enhanced AI response determination with proactive engagement system"""
+        user_id = message.author.id
+        
+        # Check basic cooldown to prevent spam
+        if user_id in self.conversation_cooldowns:
+            if datetime.now(timezone.utc) - self.conversation_cooldowns[
+                user_id
+            ] < timedelta(seconds=3):
+                return False, "user_cooldown"
+
+        content_lower = message.content.lower()
+
+        # Always respond to direct mentions and DMs
+        if self.bot.user in message.mentions:
+            return True, "direct_mention"
+
+        if isinstance(message.channel, discord.DMChannel):
+            return True, "direct_message"
+
+        # Always respond to explicit AI calls
+        ai_keywords = ["astra", "hey bot", "ai help", "hey ai"]
+        if any(keyword in content_lower for keyword in ai_keywords):
+            return True, "explicit_ai_call"
+
+        # Get user profile for personalized engagement
+        user_profile = {}
+        try:
+            profile = await user_profile_manager.get_user_profile(user_id, str(message.author))
+            user_profile = await user_profile_manager.get_personalized_context(user_id)
+        except Exception as e:
+            logger.warning(f"Failed to get user profile for engagement: {e}")
+
+        # Use proactive engagement system
+        try:
+            should_engage, reason = await proactive_engagement.should_engage_proactively(
+                message.content,
+                user_id,
+                message.channel.id,
+                message.guild.id if message.guild else None,
+                user_profile
+            )
+            
+            if should_engage:
+                logger.info(f"Proactive engagement triggered for user {user_id}: {reason}")
+                return True, reason
+            else:
+                return False, reason
+                
+        except Exception as e:
+            logger.error(f"Proactive engagement error: {e}")
+            # Fallback to basic engagement
+            return await self._basic_engagement_check(message), "fallback_basic"
+
+    async def _basic_engagement_check(self, message: discord.Message) -> bool:
+        """Basic engagement check as fallback"""
+        content_lower = message.content.lower()
+        
+        # Question detection
+        if '?' in message.content:
+            return True
+        
+        # Help seeking
+        help_keywords = ["help", "how do", "what is", "explain", "confused"]
+        if any(keyword in content_lower for keyword in help_keywords):
+            return True
+        
+        # Topic keywords with probability
+        topic_keywords = ["space", "stellaris", "science", "technology", "ai"]
+        if any(keyword in content_lower for keyword in topic_keywords):
+            import random
+            return random.random() < 0.3  # 30% chance
+        
+        return False
         """Enhanced AI response determination with sophisticated triggering"""
         # Check cooldown
         user_id = message.author.id
@@ -697,29 +873,24 @@ class AdvancedAICog(commands.Cog):
 
         return False
 
-    async def _process_ai_conversation(self, message: discord.Message):
-        """Process AI conversation using the advanced engine"""
+    async def _process_ai_conversation(self, message: discord.Message, engagement_type: str = "casual_engagement"):
+        """Process AI conversation using the advanced engine with personalized engagement"""
         try:
             start_time = datetime.now(timezone.utc)
             user_id = message.author.id
+            username = str(message.author)
 
             # Add to active conversations
             self.active_conversations.add(user_id)
 
-            # Prepare context data
-            context_data = {
-                "mentioned": self.bot.user in message.mentions,
-                "channel_type": type(message.channel).__name__,
-                "guild_name": message.guild.name if message.guild else None,
-                "channel_activity": self.channel_activity.get(message.channel.id, {}),
-            }
-
-            # Process with AI client
+            # Process with AI client using enhanced personalization
             response = await self._generate_ai_response(
                 message.content,
                 user_id,
                 guild_id=message.guild.id if message.guild else None,
                 channel_id=message.channel.id,
+                username=username,
+                engagement_type=engagement_type
             )
 
             # Send response
