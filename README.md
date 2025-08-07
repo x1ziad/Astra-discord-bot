@@ -118,8 +118,18 @@ python bot.1.0.py
 
 ### **AI Commands**
 - `/chat <message>` - Engage with advanced AI
-- `/ai_status` - Check AI service health
+- `/image <prompt>` - Generate AI images via Freepik
 - `/clear_context` - Reset conversation context
+
+### **NEXUS Control System**
+- `/nexus ping` - Quantum-enhanced ping diagnostics
+- `/nexus status` - Comprehensive system status
+- `/nexus matrix` - Neural network extension matrix  
+- `/nexus ai` - AI Control Center management
+- `/nexus uptime` - System uptime and temporal analysis
+- `/nexus info` - System information overview
+- `/nexus health` - Health diagnostics and monitoring
+- `/nexus diagnostics` - Advanced troubleshooting protocol
 
 ### **Server Management**
 - `/help` - Interactive help system
