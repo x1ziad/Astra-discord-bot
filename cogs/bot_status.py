@@ -242,58 +242,7 @@ class BotStatus(commands.Cog):
             )
             await interaction.followup.send(embed=error_embed)
 
-    @app_commands.command(
-        name="ping", description="🏓 Check bot latency and response time"
-    )
-    async def ping_command(self, interaction: discord.Interaction):
-        """Check bot ping and response times"""
-        start_time = time.time()
 
-        await interaction.response.defer()
-
-        api_latency = self.bot.latency * 1000
-        response_time = (time.time() - start_time) * 1000
-
-        # Determine latency quality
-        if api_latency < 100:
-            latency_emoji = "🟢"
-            quality = "Excellent"
-        elif api_latency < 200:
-            latency_emoji = "🟡"
-            quality = "Good"
-        elif api_latency < 500:
-            latency_emoji = "🟠"
-            quality = "Fair"
-        else:
-            latency_emoji = "🔴"
-            quality = "Poor"
-
-        embed = discord.Embed(
-            title="🏓 Pong!",
-            description=f"**Connection Quality:** {latency_emoji} {quality}",
-            color=(
-                0x00FF7F
-                if api_latency < 200
-                else 0xFFFF00 if api_latency < 500 else 0xFF6B6B
-            ),
-            timestamp=datetime.now(timezone.utc),
-        )
-
-        embed.add_field(
-            name="📡 Discord API Latency", value=f"`{api_latency:.1f}ms`", inline=True
-        )
-
-        embed.add_field(
-            name="⚡ Response Time", value=f"`{response_time:.1f}ms`", inline=True
-        )
-
-        embed.add_field(
-            name="🌐 WebSocket Status",
-            value="🟢 Connected" if not self.bot.is_closed() else "🔴 Disconnected",
-            inline=True,
-        )
-
-        await interaction.followup.send(embed=embed)
 
     @app_commands.command(
         name="performance", description="📈 Show detailed performance metrics"

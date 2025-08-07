@@ -1,27 +1,48 @@
 {
-  "name": "Astra",
-  "version": "2.0.0",
-  "description": "Advanced AI-powered Discord bot for space exploration and Stellaris roleplay",
-  "prefix": "/",
-  "owner_id": "1115739214148026469",
-  "debug": false,
-  "ai_enabled": true,
-  "ai_personality": "default",
-  "ai_temperature": 0.7,
-  "ai_max_tokens": 1500,
-  "command_sync_on_ready": true,
-  "command_sync_on_join": true,
-  "cleanup_on_leave": false,
+  "bot": {
+    "name": "Astra",
+    "version": "2.0.1",
+    "description": "Advanced Discord bot with AI capabilities",
+    "prefix": "!",
+    "debug": false
+  },
+  "discord": {
+    "token": null,
+    "client_id": "1400014033142288475",
+    "client_secret": null,
+    "prefix": "!"
+  },
+  "openai": {
+    "api_key": null,
+    "model": "gpt-4",
+    "max_tokens": 2000,
+    "temperature": 0.7
+  },
+  "nasa": {
+    "api_key": "DEMO_KEY"
+  },
+  "database": {
+    "url": "sqlite:///data/astra.db"
+  },
   "features": {
     "ai_chat": true,
-    "image_generation": true,
-    "text_to_speech": true,
-    "analytics": true,
-    "server_management": true,
-    "auto_moderation": false,
-    "music": false,
     "space_content": true,
-    "space_content.iss_tracking": true,
-    "space_content.launch_notifications": true
+    "quiz_system": true,
+    "analytics": true,
+    "admin_commands": true,
+    "auto_moderation": false,
+    "voice_support": false
+  },
+  "colors": {
+    "primary": "#7289da",
+    "success": "#43b581",
+    "warning": "#faa61a",
+    "error": "#f04747",
+    "info": "#17a2b8"
+  },
+  "limits": {
+    "max_concurrent_requests": 10,
+    "request_timeout": 30,
+    "cache_ttl": 3600
   }
 }

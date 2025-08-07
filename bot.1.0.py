@@ -1040,62 +1040,9 @@ class AstraBot(commands.Bot):
 # Global command registration
 def register_global_commands(bot: AstraBot):
     """Register global utility commands"""
+    # Ping command moved to NEXUS Control System for centralized command management
+    pass
 
-    @bot.tree.command(name="ping", description="Check bot latency and system status")
-    async def ping_command(interaction: discord.Interaction):
-        """Enhanced ping command with system information"""
-        start_time = datetime.now(timezone.utc)
-        await interaction.response.defer()
-        response_time = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
-
-        # Determine color based on latency
-        latency_ms = bot.latency * 1000
-        if latency_ms < 100:
-            color = config_manager.get_color("success")
-            status = "🟢 Excellent"
-        elif latency_ms < 300:
-            color = config_manager.get_color("warning")
-            status = "🟡 Good"
-        else:
-            color = config_manager.get_color("error")
-            status = "🔴 Poor"
-
-        embed = discord.Embed(
-            title="⚛️ Quantum Ping Analysis",
-            description=f"**Neural Network Status:** {status}\n*Quantum entanglement established*",
-            color=color,
-            timestamp=datetime.now(timezone.utc),
-        )
-
-        embed.add_field(
-            name="🌐 Quantum Tunnel Latency", value=f"{latency_ms:.2f}ms", inline=True
-        )
-
-        embed.add_field(
-            name="⚡ Neural Response Time", value=f"{response_time:.2f}ms", inline=True
-        )
-
-        embed.add_field(
-            name="🧠 Memory Core",
-            value=f"{bot.stats.memory_usage_mb:.1f} MB",
-            inline=True,
-        )
-
-        embed.add_field(
-            name="⏰ Runtime Matrix",
-            value=str(bot.stats.get_uptime()).split(".")[0],
-            inline=True,
-        )
-
-        embed.add_field(name="�️ Guild Nodes", value=f"{len(bot.guilds):,}", inline=True)
-
-        embed.add_field(
-            name="⚙️ Neural Cycles",
-            value=f"{bot.stats.commands_executed:,}",
-            inline=True,
-        )
-
-        await interaction.followup.send(embed=embed)
 
     # Removed duplicate status command - handled by bot_status cog
 
@@ -1162,23 +1109,9 @@ async def main():
             )
             return 1
 
-        # Check OpenAI configuration
-        openai_configured = False
-        if RAILWAY_ENABLED:
-            railway_config = get_railway_config()
-            openai_config = railway_config.get_openai_config()
-            if openai_config.get("api_key"):
-                openai_configured = True
-                logger.info("✅ OpenAI API configured from Railway")
-
-        if not openai_configured and os.getenv("OPENAI_API_KEY"):
-            openai_configured = True
-            logger.info("✅ OpenAI API configured from local environment")
-
-        if not openai_configured:
-            logger.warning(
-                "⚠️ OpenAI API key not configured - AI features will be limited"
-            )
+        # AI Configuration managed by NEXUS Control System
+        # OpenRouter and Freepik APIs are configured independently
+        logger.info("🤖 AI services managed by NEXUS Control System")
 
         # Optional environment checks for backwards compatibility
         optional_vars = [

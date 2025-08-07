@@ -27,60 +27,7 @@ class Stats(commands.GroupCog, name="stats"):
         self.config = config_manager
         self.logger = bot.logger
 
-    @app_commands.command(
-        name="ping", description="Check bot latency and response time"
-    )
-    @app_commands.checks.cooldown(1, 5)
-    async def ping_command(self, interaction: discord.Interaction):
-        """Check bot latency and response time"""
-        start_time = datetime.now(timezone.utc)
 
-        # Initial response
-        await interaction.response.defer()
-
-        # Calculate response time
-        end_time = datetime.now(timezone.utc)
-        response_time = (end_time - start_time).total_seconds() * 1000
-
-        # Create embed with results
-        embed = discord.Embed(
-            title="🏓 Pong!",
-            color=(
-                self.config.get_color("success")
-                if self.bot.latency * 1000 < 100
-                else (
-                    self.config.get_color("warning")
-                    if self.bot.latency * 1000 < 200
-                    else self.config.get_color("error")
-                )
-            ),
-        )
-
-        embed.add_field(
-            name="📡 WebSocket Latency",
-            value=f"{self.bot.latency * 1000:.2f}ms",
-            inline=True,
-        )
-
-        embed.add_field(
-            name="⚡ Response Time", value=f"{response_time:.2f}ms", inline=True
-        )
-
-        # Add status indicator
-        if self.bot.latency * 1000 < 100:
-            status = "🟢 Excellent"
-        elif self.bot.latency * 1000 < 200:
-            status = "🟡 Good"
-        else:
-            status = "🔴 Poor"
-
-        embed.add_field(name="📊 Status", value=status, inline=True)
-
-        # Add shard info if applicable
-        if interaction.guild:
-            embed.set_footer(text=f"Shard ID: {interaction.guild.shard_id}")
-
-        await interaction.followup.send(embed=embed)
 
     @app_commands.command(
         name="uptime", description="Show bot uptime and system information"
