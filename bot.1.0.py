@@ -25,7 +25,6 @@ import sys
 import traceback
 import psutil
 import gc
-import openai
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Union, Any, Callable
@@ -52,27 +51,30 @@ try:
 
     # Diagnostic: Check Railway environment variables on startup
     def log_railway_env_diagnostic():
-        """Log Railway environment variables for debugging"""
-        env_vars = {
-            "AI_API_KEY": os.getenv("AI_API_KEY"),
-            "AI_BASE_URL": os.getenv("AI_BASE_URL"),
-            "AI_MODEL": os.getenv("AI_MODEL"),
-            "AI_PROVIDER": os.getenv("AI_PROVIDER"),
-        }
-
+        """Optimized Railway environment diagnostic"""
+        # Only check essential environment variables for faster startup
+        essential_vars = ["AI_API_KEY", "AI_PROVIDER"]
+        
         logger = logging.getLogger("astra.railway_diagnostic")
-        logger.info("🔍 Railway Environment Diagnostic:")
-        for key, value in env_vars.items():
+        logger.info("� Railway Environment Status:")
+        
+        missing_count = 0
+        for key in essential_vars:
+            value = os.getenv(key)
             if value:
                 if "KEY" in key:
-                    masked_value = (
-                        f"{'*' * 10}{value[-10:]}" if len(value) > 10 else "***SET***"
-                    )
+                    masked_value = f"***SET*** ({len(value)} chars)"
                     logger.info(f"   ✅ {key}: {masked_value}")
                 else:
                     logger.info(f"   ✅ {key}: {value}")
             else:
-                logger.error(f"   ❌ {key}: NOT SET!")
+                logger.warning(f"   ⚠️ {key}: NOT SET")
+                missing_count += 1
+        
+        if missing_count == 0:
+            logger.info("🎯 All essential environment variables configured")
+        else:
+            logger.warning(f"⚠️ {missing_count} environment variables need attention")
 
     log_railway_env_diagnostic()
 
@@ -350,6 +352,7 @@ class AstraBot(commands.Bot):
                 "cogs.bot_setup",
                 "cogs.bot_status",
                 "cogs.utilities",
+                "cogs.nexus",  # Advanced diagnostic interface
             ],
             # AI and enhanced features (depend on core)
             ["cogs.advanced_ai", "cogs.server_management"],
@@ -387,8 +390,8 @@ class AstraBot(commands.Bot):
                         f"Traceback for {extension}:\n{traceback.format_exc()}"
                     )
 
-            # Small delay between groups to prevent overwhelming
-            await asyncio.sleep(0.1)
+            # Extension group completed - optimized loading without delay
+            pass
 
         # Summary
         self.logger.info("=" * 60)
@@ -676,10 +679,7 @@ class AstraBot(commands.Bot):
     async def monitor_system_health(self):
         """Enhanced resource monitoring with performance optimization"""
         try:
-            import psutil
-            import gc
-
-            # Memory management
+            # Memory management (imports already at top level)
             process = psutil.Process()
             memory_info = process.memory_info()
             memory_percent = process.memory_percent()
@@ -774,8 +774,7 @@ class AstraBot(commands.Bot):
             self.logger.info("🧹 Enhanced cleanup task executed - removed old metrics")
 
             # Force garbage collection after cleanup
-            import gc
-
+            # Use already imported gc module
             collected = gc.collect()
             self.logger.debug(f"🗑️ Post-cleanup garbage collection: {collected} objects")
 
@@ -809,9 +808,9 @@ class AstraBot(commands.Bot):
                         # Initialize config for new guilds
                         await self._initialize_guild_config(guild)
 
-                    # Rate limiting for large servers
-                    if len(self.guilds) > 100:
-                        await asyncio.sleep(0.05)
+                    # Optimized rate limiting for large servers (reduced delay)
+                    if len(self.guilds) > 200:  # Only for very large deployments
+                        await asyncio.sleep(0.01)
 
                 except Exception as e:
                     self.logger.error(f"Error syncing guild {guild.id}: {e}")
@@ -893,9 +892,7 @@ class AstraBot(commands.Bot):
                     f"📊 DB Stats: {stats['connection_pool']['hit_ratio']:.2%} hit ratio"
                 )
 
-            # Memory optimization
-            import gc
-
+            # Memory optimization (using already imported gc)
             collected = gc.collect()
 
             # Extension health summary
@@ -1064,36 +1061,36 @@ def register_global_commands(bot: AstraBot):
             status = "🔴 Poor"
 
         embed = discord.Embed(
-            title="🏓 Pong!",
-            description=f"Connection Status: {status}",
+            title="⚛️ Quantum Ping Analysis",
+            description=f"**Neural Network Status:** {status}\n*Quantum entanglement established*",
             color=color,
             timestamp=datetime.now(timezone.utc),
         )
 
         embed.add_field(
-            name="📡 WebSocket Latency", value=f"{latency_ms:.2f}ms", inline=True
+            name="🌐 Quantum Tunnel Latency", value=f"{latency_ms:.2f}ms", inline=True
         )
 
         embed.add_field(
-            name="⚡ Response Time", value=f"{response_time:.2f}ms", inline=True
+            name="⚡ Neural Response Time", value=f"{response_time:.2f}ms", inline=True
         )
 
         embed.add_field(
-            name="💾 Memory Usage",
+            name="🧠 Memory Core",
             value=f"{bot.stats.memory_usage_mb:.1f} MB",
             inline=True,
         )
 
         embed.add_field(
-            name="⏱️ Uptime",
+            name="⏰ Runtime Matrix",
             value=str(bot.stats.get_uptime()).split(".")[0],
             inline=True,
         )
 
-        embed.add_field(name="🏠 Guilds", value=f"{len(bot.guilds):,}", inline=True)
+        embed.add_field(name="�️ Guild Nodes", value=f"{len(bot.guilds):,}", inline=True)
 
         embed.add_field(
-            name="💬 Commands Used",
+            name="⚙️ Neural Cycles",
             value=f"{bot.stats.commands_executed:,}",
             inline=True,
         )
