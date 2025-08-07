@@ -27,8 +27,6 @@ class Stats(commands.GroupCog, name="stats"):
         self.config = config_manager
         self.logger = bot.logger
 
-
-
     @app_commands.command(
         name="uptime", description="Show bot uptime and system information"
     )

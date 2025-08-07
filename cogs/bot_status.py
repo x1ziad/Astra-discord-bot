@@ -242,8 +242,6 @@ class BotStatus(commands.Cog):
             )
             await interaction.followup.send(embed=error_embed)
 
-
-
     @app_commands.command(
         name="performance", description="📈 Show detailed performance metrics"
     )

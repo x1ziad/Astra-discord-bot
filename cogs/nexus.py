@@ -107,25 +107,21 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
 
         # Core metrics
         embed.add_field(
-            name="🌐 Quantum Tunnel Latency", 
-            value=f"`{api_latency:.2f}ms`", 
-            inline=True
+            name="🌐 Quantum Tunnel Latency",
+            value=f"`{api_latency:.2f}ms`",
+            inline=True,
         )
 
         embed.add_field(
-            name="⚡ Neural Response Time", 
-            value=f"`{response_time:.2f}ms`", 
-            inline=True
+            name="⚡ Neural Response Time",
+            value=f"`{response_time:.2f}ms`",
+            inline=True,
         )
 
-        embed.add_field(
-            name="📊 Connection Quality", 
-            value=f"`{quality}`", 
-            inline=True
-        )
+        embed.add_field(name="📊 Connection Quality", value=f"`{quality}`", inline=True)
 
         # System metrics
-        if hasattr(self.bot, 'stats'):
+        if hasattr(self.bot, "stats"):
             embed.add_field(
                 name="🧠 Memory Core",
                 value=f"`{self.bot.stats.memory_usage_mb:.1f} MB`",
@@ -146,15 +142,13 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
 
         # Network topology
         embed.add_field(
-            name="🌌 Guild Nodes", 
-            value=f"`{len(self.bot.guilds):,}`", 
-            inline=True
+            name="🌌 Guild Nodes", value=f"`{len(self.bot.guilds):,}`", inline=True
         )
 
         embed.add_field(
-            name="👥 Entity Network", 
-            value=f"`{sum(guild.member_count or 0 for guild in self.bot.guilds):,}`", 
-            inline=True
+            name="👥 Entity Network",
+            value=f"`{sum(guild.member_count or 0 for guild in self.bot.guilds):,}`",
+            inline=True,
         )
 
         embed.add_field(
@@ -658,10 +652,7 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
         name="ai",
         description="🤖 AI Control Center - Manage OpenRouter and Freepik APIs",
     )
-    @app_commands.describe(
-        action="AI system action",
-        service="Target AI service"
-    )
+    @app_commands.describe(action="AI system action", service="Target AI service")
     @app_commands.choices(
         action=[
             app_commands.Choice(name="Status Check", value="status"),
@@ -672,7 +663,7 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
             app_commands.Choice(name="OpenRouter (Text AI)", value="openrouter"),
             app_commands.Choice(name="Freepik (Image AI)", value="freepik"),
             app_commands.Choice(name="All Services", value="all"),
-        ]
+        ],
     )
     async def ai_control(
         self,
@@ -713,6 +704,7 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
         if service in ["openrouter", "all"]:
             try:
                 from ai.openrouter_client import OpenRouterClient
+
                 openrouter_status = "🟢 ONLINE"
                 openrouter_info = "Text AI operational"
             except ImportError:
@@ -721,13 +713,14 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
             except Exception as e:
                 openrouter_status = "🟡 ERROR"
                 openrouter_info = f"Error: {str(e)[:50]}"
-            
+
             services_status["OpenRouter"] = (openrouter_status, openrouter_info)
 
         # Check Freepik
         if service in ["freepik", "all"]:
             try:
                 from ai.freepik_api_client import FreepikAPIClient
+
                 freepik_status = "🟢 ONLINE"
                 freepik_info = "Image AI operational"
             except ImportError:
@@ -736,12 +729,13 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
             except Exception as e:
                 freepik_status = "🟡 ERROR"
                 freepik_info = f"Error: {str(e)[:50]}"
-            
+
             services_status["Freepik"] = (freepik_status, freepik_info)
 
         # Add consolidated AI if exists
         try:
             from ai.consolidated_ai_engine import ConsolidatedAIEngine
+
             services_status["Consolidated AI"] = ("🟢 AVAILABLE", "Engine loaded")
         except ImportError:
             services_status["Consolidated AI"] = ("🔴 UNAVAILABLE", "Engine missing")
@@ -755,7 +749,9 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
             )
 
         # Overall health
-        online_count = sum(1 for status, _ in services_status.values() if "🟢" in status)
+        online_count = sum(
+            1 for status, _ in services_status.values() if "🟢" in status
+        )
         total_count = len(services_status)
         health_percentage = (online_count / total_count * 100) if total_count > 0 else 0
 
@@ -803,13 +799,13 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
 
         # Check environment variables
         import os
-        
+
         if service in ["openrouter", "all"]:
             openrouter_key = os.getenv("OPENROUTER_API_KEY")
             config_info["OpenRouter"] = {
                 "API Key": "🟢 CONFIGURED" if openrouter_key else "🔴 MISSING",
                 "Model": "gpt-3.5-turbo",
-                "Endpoint": "https://openrouter.ai/api/v1"
+                "Endpoint": "https://openrouter.ai/api/v1",
             }
 
         if service in ["freepik", "all"]:
@@ -817,21 +813,21 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
             config_info["Freepik"] = {
                 "API Key": "🟢 CONFIGURED" if freepik_key else "🔴 MISSING",
                 "Service": "Image Generation",
-                "Endpoint": "https://api.freepik.com"
+                "Endpoint": "https://api.freepik.com",
             }
 
         # Display configuration
         for service_name, config in config_info.items():
-            config_text = "\n".join([f"{key}: {value}" for key, value in config.items()])
+            config_text = "\n".join(
+                [f"{key}: {value}" for key, value in config.items()]
+            )
             embed.add_field(
                 name=f"⚙️ {service_name} Config",
                 value=f"```yaml\n{config_text}```",
                 inline=True,
             )
 
-        embed.set_footer(
-            text="AI Control Center v2.0 • Service management active"
-        )
+        embed.set_footer(text="AI Control Center v2.0 • Service management active")
 
     async def _add_quantum_performance(self, embed: discord.Embed):
         """Add quantum-level performance metrics"""

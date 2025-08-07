@@ -54,10 +54,10 @@ try:
         """Optimized Railway environment diagnostic"""
         # Only check essential environment variables for faster startup
         essential_vars = ["AI_API_KEY", "AI_PROVIDER"]
-        
+
         logger = logging.getLogger("astra.railway_diagnostic")
         logger.info("� Railway Environment Status:")
-        
+
         missing_count = 0
         for key in essential_vars:
             value = os.getenv(key)
@@ -70,7 +70,7 @@ try:
             else:
                 logger.warning(f"   ⚠️ {key}: NOT SET")
                 missing_count += 1
-        
+
         if missing_count == 0:
             logger.info("🎯 All essential environment variables configured")
         else:
@@ -1043,7 +1043,6 @@ def register_global_commands(bot: AstraBot):
     # Ping command moved to NEXUS Control System for centralized command management
     pass
 
-
     # Removed duplicate status command - handled by bot_status cog
 
 
@@ -1077,7 +1076,9 @@ async def main():
             except Exception as e:
                 logger.error(f"❌ Railway configuration failed: {e}")
                 logger.error("This is likely due to missing environment variables.")
-                logger.error("Make sure DISCORD_TOKEN is set in your Railway deployment.")
+                logger.error(
+                    "Make sure DISCORD_TOKEN is set in your Railway deployment."
+                )
                 raise RuntimeError(f"Railway configuration failed: {e}")
 
         logger.info("=" * 80)
