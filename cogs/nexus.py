@@ -1292,54 +1292,59 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
         # Check optimized generator availability
         try:
             from ai.optimized_image_generator import get_optimized_generator
+
             generator = get_optimized_generator()
             engine_status = "🟢 OPTIMIZED ENGINE ACTIVE"
-            
+
             # Get performance metrics
             metrics = await generator.get_performance_metrics()
-            
+
             embed.add_field(
                 name="⚡ Engine Status",
                 value=f"```yaml\nEngine: {engine_status}\nVersion: v2.1 Optimized\nProvider: Freepik AI\nConnection Pool: Active```",
                 inline=False,
             )
-            
+
             embed.add_field(
                 name="📊 Performance Metrics",
                 value=f"```yaml\nTotal Requests: {metrics.get('total_requests', 0)}\nSuccess Rate: {metrics.get('success_rate', 0):.1f}%\nAvg Response Time: {metrics.get('avg_response_time', 0):.2f}s\nFastest Generation: {metrics.get('fastest_time', 0):.2f}s```",
                 inline=True,
             )
-            
+
             embed.add_field(
                 name="🚀 Cache Performance",
                 value=f"```yaml\nCache Hits: {metrics.get('cache_hits', 0)}\nCache Hit Rate: {metrics.get('cache_hit_rate', 0):.1f}%\nCache Size: {metrics.get('cache_size', 0)} entries\nMemory Saved: {metrics.get('bandwidth_saved', 0):.1f} MB```",
                 inline=True,
             )
-            
+
             embed.add_field(
                 name="🔗 Connection Health",
                 value=f"```yaml\nActive Connections: {metrics.get('active_connections', 0)}\nConnection Pool Size: 20 max\nRetry Success Rate: {metrics.get('retry_success_rate', 0):.1f}%\nRate Limit Status: {'🟢 CLEAR' if not metrics.get('rate_limited', False) else '🟡 LIMITED'}```",
                 inline=False,
             )
-            
+
             # Rate limiting info
-            rate_info = metrics.get('rate_limits', {})
+            rate_info = metrics.get("rate_limits", {})
             embed.add_field(
                 name="⏱️ Rate Limiting",
                 value=f"```yaml\nMinute Limit: {rate_info.get('per_minute', 30)}/min\nHour Limit: {rate_info.get('per_hour', 200)}/hour\nDaily Limit: {rate_info.get('per_day', 1000)}/day\nCurrent Usage: {rate_info.get('current_usage', 0)}%```",
                 inline=True,
             )
-            
+
             # Quality metrics
-            quality_score = metrics.get('avg_quality_score', 85)
-            quality_status = "🟢 EXCELLENT" if quality_score > 90 else "🟡 GOOD" if quality_score > 75 else "🔴 NEEDS IMPROVEMENT"
-            
+            quality_score = metrics.get("avg_quality_score", 85)
+            quality_status = (
+                "🟢 EXCELLENT"
+                if quality_score > 90
+                else "🟡 GOOD" if quality_score > 75 else "🔴 NEEDS IMPROVEMENT"
+            )
+
             embed.add_field(
                 name="🎯 Quality Metrics",
                 value=f"```yaml\nAvg Quality Score: {quality_score}/100\nQuality Status: {quality_status}\nUser Satisfaction: {metrics.get('user_satisfaction', 92)}%\nError Rate: {metrics.get('error_rate', 0):.1f}%```",
                 inline=True,
             )
-            
+
         except ImportError:
             # Fallback to legacy system check
             embed.add_field(
@@ -1347,13 +1352,13 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
                 value="```yaml\nEngine: 🟡 LEGACY SYSTEM\nVersion: v1.0 Standard\nProvider: Freepik AI\nOptimization: Recommended```",
                 inline=False,
             )
-            
+
             embed.add_field(
                 name="💡 Optimization Available",
                 value="```yaml\nStatus: Optimized engine available\nBenefits: 3x faster, caching, pooling\nUpgrade: Contact administrator\nPerformance: Standard (upgrade available)```",
                 inline=False,
             )
-            
+
         except Exception as e:
             embed.add_field(
                 name="❌ Engine Error",
@@ -1362,16 +1367,18 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
             )
 
         # API Configuration Status
-        freepik_key = os.getenv('FREEPIK_API_KEY')
+        freepik_key = os.getenv("FREEPIK_API_KEY")
         api_status = "🟢 CONFIGURED" if freepik_key else "🔴 MISSING"
-        
+
         embed.add_field(
             name="🔑 API Configuration",
             value=f"```yaml\nFreepik API: {api_status}\nAuthentication: {'✓ Valid' if freepik_key else '✗ Required'}\nPermissions: {'Full Access' if freepik_key else 'None'}\nQuota: {'Active' if freepik_key else 'N/A'}```",
             inline=False,
         )
 
-        embed.set_footer(text="NEXUS Image Analytics • Real-time performance monitoring")
+        embed.set_footer(
+            text="NEXUS Image Analytics • Real-time performance monitoring"
+        )
         await interaction.followup.send(embed=embed)
 
 
