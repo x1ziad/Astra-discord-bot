@@ -9,6 +9,7 @@ from discord.ext import commands, tasks
 import asyncio
 import logging
 import random
+import io
 from typing import Dict, List, Optional, Any, Set, Tuple
 from datetime import datetime, timedelta, timezone
 import json
@@ -339,19 +340,44 @@ class AdvancedAICog(commands.Cog):
                 f"❌ Error processing chat request: {str(e)}", ephemeral=True
             )
 
-    @app_commands.command(name="image", description="Generate an image using AI")
-    @app_commands.describe(prompt="Description of the image to generate")
-    async def image_command(self, interaction: discord.Interaction, prompt: str):
-        """Generate AI image with Freepik integration and channel restrictions"""
+    @app_commands.command(name="image", description="🎨 Generate high-quality AI images with optimized performance")
+    @app_commands.describe(
+        prompt="Description of the image to generate (be detailed for best results)",
+        size="Image size and aspect ratio",
+        style="Image style and quality"
+    )
+    @app_commands.choices(size=[
+        app_commands.Choice(name="Square HD (1024x1024)", value="square_hd"),
+        app_commands.Choice(name="Portrait (768x1024)", value="portrait_3_4"),
+        app_commands.Choice(name="Landscape (1024x768)", value="landscape_4_3"),
+        app_commands.Choice(name="Wide (1024x576)", value="landscape_16_9")
+    ])
+    @app_commands.choices(style=[
+        app_commands.Choice(name="🎨 Realistic", value="realistic"),
+        app_commands.Choice(name="✨ Artistic", value="artistic"),
+        app_commands.Choice(name="🎭 Anime/Cartoon", value="anime"),
+        app_commands.Choice(name="📸 Photographic", value="photographic")
+    ])
+    async def image_command(
+        self, 
+        interaction: discord.Interaction, 
+        prompt: str,
+        size: str = "square_hd",
+        style: str = "realistic"
+    ):
+        """Enhanced AI image generation with optimized performance and proper Discord uploads"""
         try:
+            # Immediate response to prevent timeout
             await interaction.response.defer()
 
-            # Check if consolidated AI engine supports image generation
-            if not self.ai_client:
-                await interaction.followup.send(
-                    "❌ AI image generation service is not configured.",
-                    ephemeral=True,
-                )
+            # Import optimized generator
+            try:
+                from ai.optimized_image_generator import get_optimized_generator
+                generator = get_optimized_generator()
+            except ImportError:
+                logger.error("❌ Optimized image generator not available, falling back to legacy")
+                # Fallback to existing system
+                await self._fallback_image_generation(interaction, prompt, size)
                 return
 
             # Check user permissions
@@ -361,117 +387,256 @@ class AdvancedAICog(commands.Cog):
                 or interaction.user.guild_permissions.manage_guild,
             }
 
-            # Build context with permission info
-            context = {
-                "user_id": interaction.user.id,
-                "channel_id": interaction.channel.id,
-                "guild_id": interaction.guild.id if interaction.guild else None,
-                "channel_type": "discord",
-                "request_type": "image_generation",
-                "user_name": interaction.user.display_name,
-            }
+            # Enhanced prompt with style
+            enhanced_prompt = await self._enhance_prompt_with_style(prompt, style)
+            
+            # Send initial status
+            status_embed = discord.Embed(
+                title="🎨 AI Image Generation",
+                description=f"🚀 **Generating your image...**\n\n**Prompt:** {prompt}\n**Style:** {style.title()}\n**Size:** {size.replace('_', ' ').title()}",
+                color=0x3498DB,
+                timestamp=datetime.now(timezone.utc)
+            )
+            status_embed.add_field(
+                name="⏱️ Status",
+                value="🔄 Processing with optimized AI engine...",
+                inline=False
+            )
+            status_embed.set_footer(text="Powered by Freepik AI • Optimized Engine v2.1")
+            
+            status_message = await interaction.followup.send(embed=status_embed)
 
-            # Generate image using consolidated engine with permission checks
-            image_result = await self.ai_client.generate_image(
-                prompt, context, user_permissions
+            # Generate image with optimized system
+            start_time = datetime.now()
+            result = await generator.generate_image_optimized(
+                prompt=enhanced_prompt,
+                user_id=interaction.user.id,
+                size=size,
+                download_image=True  # Download bytes for Discord upload
             )
 
-            if image_result and image_result.get("success"):
+            generation_time = (datetime.now() - start_time).total_seconds()
+
+            if result.get("success"):
                 # Create success embed
                 embed = discord.Embed(
                     title="🎨 AI Generated Image",
-                    description=f"**Prompt:** {prompt}",
-                    color=0x43B581,  # Green color for success
-                    timestamp=datetime.now(timezone.utc),
+                    description=f"**Original Prompt:** {prompt}\n**Enhanced:** {enhanced_prompt[:100]}{'...' if len(enhanced_prompt) > 100 else ''}",
+                    color=0x43B581,
+                    timestamp=datetime.now(timezone.utc)
                 )
-                embed.set_image(url=image_result["url"])
+                
                 embed.set_author(
-                    name=interaction.user.display_name,
-                    icon_url=interaction.user.display_avatar.url,
+                    name=f"{interaction.user.display_name}'s Creation",
+                    icon_url=interaction.user.display_avatar.url
                 )
+                
+                # Add generation details
                 embed.add_field(
-                    name="🎯 AI Provider",
-                    value=image_result.get("provider", "Freepik AI"),
-                    inline=True,
+                    name="⚡ Performance",
+                    value=f"🕐 {generation_time:.1f}s\n🔄 {result.get('attempts', 1)} attempts\n📐 {size.replace('_', ' ').title()}",
+                    inline=True
+                )
+                
+                embed.add_field(
+                    name="🎯 AI Details",
+                    value=f"🤖 {result.get('provider', 'Freepik AI')}\n🎨 {style.title()} Style\n✨ Enhanced Prompt",
+                    inline=True
                 )
 
-                # Add user role info if mod/admin
+                # Add user role info
                 if user_permissions["is_admin"]:
-                    embed.add_field(
-                        name="👑 Access Level",
-                        value="Administrator",
-                        inline=True,
-                    )
+                    embed.add_field(name="👑 Access", value="Administrator", inline=True)
                 elif user_permissions["is_mod"]:
-                    embed.add_field(
-                        name="🛡️ Access Level",
-                        value="Moderator",
-                        inline=True,
-                    )
-
-                embed.set_footer(text="Powered by Freepik AI • Use responsibly")
-
-                await interaction.followup.send(embed=embed)
-
-            elif image_result and not image_result.get("success"):
-                # Handle specific error cases
-                error_type = image_result.get("error", "Unknown error")
-
-                if error_type == "Permission denied":
-                    # Channel restriction message
-                    embed = discord.Embed(
-                        title="🚫 Image Generation Restricted",
-                        description=image_result.get("message", "Permission denied"),
-                        color=0xE74C3C,  # Red color for error
-                        timestamp=datetime.now(timezone.utc),
-                    )
-
-                    # Add helpful info about channel restrictions
-                    default_channel_id = 1402666535696470169
-                    embed.add_field(
-                        name="📍 Where to use image generation",
-                        value=f"• Regular users: <#{default_channel_id}>\n• Mods & Admins: Any channel",
-                        inline=False,
-                    )
-
-                    await interaction.followup.send(embed=embed, ephemeral=True)
-
-                elif error_type == "Rate limit exceeded":
-                    # Rate limit message
-                    embed = discord.Embed(
-                        title="⏰ Rate Limit Reached",
-                        description=image_result.get("message", "Rate limit exceeded"),
-                        color=0xF39C12,  # Orange color for warning
-                        timestamp=datetime.now(timezone.utc),
-                    )
-
-                    if "reset_time" in image_result:
-                        embed.add_field(
-                            name="🔄 Reset Time",
-                            value=f"<t:{int(datetime.fromisoformat(image_result['reset_time']).timestamp())}:R>",
-                            inline=True,
-                        )
-
-                    await interaction.followup.send(embed=embed, ephemeral=True)
-
+                    embed.add_field(name="🛡️ Access", value="Moderator", inline=True)
                 else:
-                    # Generic error message
-                    await interaction.followup.send(
-                        f"❌ Image generation failed: {image_result.get('message', 'Unknown error')}",
-                        ephemeral=True,
+                    embed.add_field(name="� Access", value="Member", inline=True)
+
+                # Handle image upload
+                files = []
+                
+                if result.get("image_bytes"):
+                    # Upload actual image file for better quality
+                    image_file = discord.File(
+                        io.BytesIO(result["image_bytes"]),
+                        filename=f"ai_image_{interaction.user.id}_{int(datetime.now().timestamp())}.png"
                     )
+                    files.append(image_file)
+                    embed.set_image(url=f"attachment://{image_file.filename}")
+                    
+                    embed.add_field(
+                        name="📁 File Info",
+                        value=f"🗂️ {len(result['image_bytes']) / 1024:.1f} KB\n📋 PNG Format\n🔗 High Quality",
+                        inline=False
+                    )
+                else:
+                    # Fallback to URL if bytes not available
+                    embed.set_image(url=result["url"])
+                    embed.add_field(
+                        name="� Image Link",
+                        value=f"[View Full Size]({result['url']})",
+                        inline=False
+                    )
+
+                embed.set_footer(text="🎨 Powered by Freepik AI • Optimized Engine v2.1 • Use responsibly")
+
+                # Update the status message with final result
+                if files:
+                    await status_message.edit(embed=embed, attachments=files)
+                else:
+                    await status_message.edit(embed=embed)
+
+                # Log successful generation
+                logger.info(f"✅ Image generated for {interaction.user.id} in {generation_time:.1f}s")
+
             else:
-                # No result returned
-                await interaction.followup.send(
-                    "❌ Image generation is not available. Please make sure the Freepik API is configured.",
-                    ephemeral=True,
-                )
+                # Handle specific error cases with enhanced UX
+                await self._handle_optimized_errors(interaction, result, status_message)
 
         except Exception as e:
-            self.logger.error(f"Image generation command error: {e}")
+            logger.error(f"💥 Enhanced image command error: {e}")
+            
+            error_embed = discord.Embed(
+                title="❌ Image Generation Error",
+                description="An unexpected error occurred while generating your image.",
+                color=0xE74C3C,
+                timestamp=datetime.now(timezone.utc)
+            )
+            error_embed.add_field(
+                name="🔧 What to try",
+                value="• Try a different prompt\n• Use simpler language\n• Try again in a few moments",
+                inline=False
+            )
+            error_embed.set_footer(text="If this persists, contact an administrator")
+            
+            try:
+                await interaction.followup.send(embed=error_embed, ephemeral=True)
+            except:
+                # Fallback if followup fails
+                await interaction.response.send_message(
+                    f"❌ Image generation failed: {str(e)}", 
+                    ephemeral=True
+                )
+
+    async def _enhance_prompt_with_style(self, prompt: str, style: str) -> str:
+        """Enhance prompt with style-specific keywords for better results"""
+        style_enhancers = {
+            "realistic": "photorealistic, highly detailed, 8k resolution, professional photography",
+            "artistic": "digital art, concept art, artistic, creative, beautiful composition",
+            "anime": "anime style, manga art, vibrant colors, cel shading, japanese animation",
+            "photographic": "professional photography, DSLR, sharp focus, bokeh, natural lighting"
+        }
+        
+        enhancer = style_enhancers.get(style, "high quality, detailed")
+        return f"{prompt}, {enhancer}"
+
+    async def _handle_optimized_errors(self, interaction: discord.Interaction, result: Dict[str, Any], status_message):
+        """Handle errors from optimized image generation with better UX"""
+        error_type = result.get("error", "unknown")
+        
+        if error_type == "rate_limit":
+            embed = discord.Embed(
+                title="⏰ Rate Limit Reached",
+                description="You've reached the image generation rate limit.",
+                color=0xF39C12,
+                timestamp=datetime.now(timezone.utc)
+            )
+            
+            wait_time = result.get("wait_time", 60)
+            if wait_time < 300:  # Less than 5 minutes
+                embed.add_field(
+                    name="🔄 Try Again",
+                    value=f"<t:{int((datetime.now() + timedelta(seconds=wait_time)).timestamp())}:R>",
+                    inline=True
+                )
+            
+            embed.add_field(
+                name="💡 Tip",
+                value="Use more specific prompts to get better results faster!",
+                inline=False
+            )
+            
+        elif error_type == "authentication_failed":
+            embed = discord.Embed(
+                title="🔑 Authentication Error",
+                description="There's an issue with the AI service configuration.",
+                color=0xE74C3C,
+                timestamp=datetime.now(timezone.utc)
+            )
+            embed.add_field(
+                name="👨‍💻 Admin Notice",
+                value="The Freepik API key needs to be reconfigured.",
+                inline=False
+            )
+            
+        elif error_type == "no_api_key":
+            embed = discord.Embed(
+                title="⚙️ Service Configuration",
+                description="Image generation service is not properly configured.",
+                color=0xE74C3C,
+                timestamp=datetime.now(timezone.utc)
+            )
+            
+        else:
+            embed = discord.Embed(
+                title="❌ Generation Failed",
+                description=result.get("message", "Unknown error occurred"),
+                color=0xE74C3C,
+                timestamp=datetime.now(timezone.utc)
+            )
+            embed.add_field(
+                name="🔄 Retry Suggestions",
+                value="• Try a simpler prompt\n• Wait a moment and try again\n• Use different keywords",
+                inline=False
+            )
+        
+        embed.set_footer(text="Contact an administrator if this continues")
+        await status_message.edit(embed=embed)
+
+    async def _fallback_image_generation(self, interaction: discord.Interaction, prompt: str, size: str):
+        """Fallback to legacy image generation system"""
+        logger.info("🔄 Using fallback image generation")
+        
+        if not self.ai_client:
             await interaction.followup.send(
-                f"❌ An error occurred while generating the image: {str(e)}",
-                ephemeral=True,
+                "❌ AI image generation service is not available.",
+                ephemeral=True
+            )
+            return
+
+        # Use existing system as fallback
+        context = {
+            "user_id": interaction.user.id,
+            "channel_id": interaction.channel.id,
+            "guild_id": interaction.guild.id if interaction.guild else None,
+            "channel_type": "discord",
+            "request_type": "image_generation",
+            "user_name": interaction.user.display_name,
+        }
+
+        user_permissions = {
+            "is_admin": interaction.user.guild_permissions.administrator,
+            "is_mod": interaction.user.guild_permissions.manage_messages
+        }
+
+        image_result = await self.ai_client.generate_image(
+            prompt, context, user_permissions
+        )
+
+        if image_result and image_result.get("success"):
+            embed = discord.Embed(
+                title="🎨 AI Generated Image (Legacy)",
+                description=f"**Prompt:** {prompt}",
+                color=0x43B581,
+                timestamp=datetime.now(timezone.utc)
+            )
+            embed.set_image(url=image_result["url"])
+            embed.set_footer(text="Legacy Generation System • Consider updating")
+            await interaction.followup.send(embed=embed)
+        else:
+            await interaction.followup.send(
+                f"❌ Image generation failed: {image_result.get('message', 'Unknown error')}",
+                ephemeral=True
             )
 
     async def _enhance_image_prompt(self, original_prompt: str) -> str:
