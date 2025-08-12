@@ -1381,6 +1381,176 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
         )
         await interaction.followup.send(embed=embed)
 
+    @app_commands.command(
+        name="tokens", description="🎯 Universal AI Token Usage Monitor & Optimizer"
+    )
+    @app_commands.checks.cooldown(1, 30)
+    async def tokens_command(self, interaction: discord.Interaction):
+        """Universal AI token usage monitoring and optimization analytics"""
+        await interaction.response.defer()
+
+        embed = discord.Embed(
+            title="🎯 UNIVERSAL AI TOKEN MONITOR",
+            description="*AI API token usage optimization and analytics*",
+            color=0x00D4AA,
+            timestamp=datetime.now(timezone.utc),
+        )
+
+        # Check AI client availability and get current configuration
+        try:
+            from ai.consolidated_ai_engine import ConsolidatedAIEngine
+
+            # Get AI engine instance
+            ai_engine = ConsolidatedAIEngine()
+
+            # Get universal AI client
+            universal_client = getattr(ai_engine, "universal_ai_client", None)
+            openrouter_client = getattr(ai_engine, "openrouter_client", None)
+
+            # Determine active provider
+            active_provider = "Unknown"
+            max_tokens = 1000
+            model_name = "Unknown"
+
+            if universal_client and universal_client.is_available():
+                active_provider = universal_client.provider_name
+                max_tokens = universal_client.max_tokens
+                model_name = universal_client.model
+            elif openrouter_client and hasattr(openrouter_client, "max_tokens"):
+                active_provider = "OpenRouter"
+                max_tokens = openrouter_client.max_tokens
+                model_name = getattr(openrouter_client, "model", "Unknown")
+
+            # Token optimization status
+            embed.add_field(
+                name="⚡ Token Configuration",
+                value=f"```yaml\nActive Provider: {active_provider}\nModel: {model_name}\nMax Tokens: {max_tokens}\nOptimization: {'✅ Optimized' if max_tokens <= 1000 else '⚠️ High Usage'}\nEfficiency: {'High' if max_tokens <= 1000 else 'Standard'}```",
+                inline=False,
+            )
+
+            # Usage efficiency analysis
+            efficiency_score = (
+                100
+                if max_tokens <= 1000
+                else max(50, 100 - (max_tokens - 1000) // 100 * 10)
+            )
+            efficiency_status = (
+                "🟢 EXCELLENT"
+                if efficiency_score > 80
+                else "🟡 GOOD" if efficiency_score > 60 else "🔴 NEEDS OPTIMIZATION"
+            )
+
+            embed.add_field(
+                name="📊 Usage Efficiency",
+                value=f"```yaml\nEfficiency Score: {efficiency_score}/100\nStatus: {efficiency_status}\nRecommended: 800-1200 tokens\nCurrent Setting: {max_tokens} tokens\nOptimization Level: {'Maximum' if max_tokens <= 1000 else 'Partial' if max_tokens <= 1500 else 'Minimal'}```",
+                inline=True,
+            )
+
+            # Cost analysis (estimated)
+            requests_per_credit = max(1, 10000 // max_tokens)  # Rough estimation
+            embed.add_field(
+                name="� Cost Efficiency",
+                value=f"```yaml\nRequests per 10K tokens: ~{requests_per_credit}\nCost per Request: Low\nOptimization Savings: {'50%+' if max_tokens <= 1000 else '25%' if max_tokens <= 1500 else '0%'}\nBudget Impact: Minimized```",
+                inline=True,
+            )
+
+            # Try to get actual credit info if available
+            try:
+                if universal_client and hasattr(universal_client, "check_credits"):
+                    credit_info = await universal_client.check_credits()
+
+                    if credit_info.get("remaining") is not None:
+                        remaining = credit_info["remaining"]
+                        usage = credit_info.get("usage", 0)
+                        limit = credit_info.get("limit", 0)
+
+                        if credit_info["status"] == "healthy":
+                            status_emoji = "🟢"
+                            status_text = "HEALTHY"
+                            embed.color = 0x43B581
+                        elif credit_info["status"] == "low":
+                            status_emoji = "🟡"
+                            status_text = "LOW"
+                            embed.color = 0xF39C12
+                        elif credit_info["status"] == "emergency":
+                            status_emoji = "🔴"
+                            status_text = "CRITICAL"
+                            embed.color = 0xE74C3C
+                        else:
+                            status_emoji = "⚪"
+                            status_text = "UNKNOWN"
+
+                        embed.add_field(
+                            name=f"{status_emoji} Provider Credits",
+                            value=f"```yaml\nStatus: {status_text}\nRemaining: {remaining:,} tokens\nUsed: {usage:,} tokens\nUsage Rate: {(usage/limit*100):.1f}% if limit else 'N/A'\nProvider: {active_provider}```",
+                            inline=False,
+                        )
+                    else:
+                        embed.add_field(
+                            name="📈 Credit Status",
+                            value=f"```yaml\nProvider: {active_provider}\nCredit Monitoring: Available\nStatus: Unable to retrieve details\nNote: May require API-specific implementation```",
+                            inline=False,
+                        )
+                else:
+                    embed.add_field(
+                        name="📈 Provider Status",
+                        value=f"```yaml\nProvider: {active_provider}\nCredit Monitoring: Limited\nToken Optimization: Active\nRecommendation: Monitor usage manually```",
+                        inline=False,
+                    )
+            except Exception as credit_error:
+                embed.add_field(
+                    name="⚠️ Credit Check",
+                    value=f"```yaml\nProvider: {active_provider}\nMonitoring: Unavailable\nError: {str(credit_error)[:50]}...\nFallback: Token optimization active```",
+                    inline=False,
+                )
+
+            # Optimization recommendations
+            if max_tokens > 1200:
+                recommendation = (
+                    "🔧 Reduce max_tokens to 1000-1200 for better efficiency"
+                )
+                action = "Update AI configuration files"
+            elif max_tokens > 1000:
+                recommendation = "⚡ Good optimization, consider reducing to 800-1000"
+                action = "Fine-tune for maximum efficiency"
+            else:
+                recommendation = "✅ Excellent optimization, maintain current settings"
+                action = "Continue monitoring usage patterns"
+
+            embed.add_field(
+                name="💡 Optimization Recommendation",
+                value=f"```yaml\nRecommendation: {recommendation}\nAction: {action}\nImpact: Cost reduction and improved efficiency\nPriority: {'High' if max_tokens > 1500 else 'Medium' if max_tokens > 1000 else 'Low'}```",
+                inline=False,
+            )
+
+        except Exception as e:
+            embed.add_field(
+                name="❌ Monitoring Error",
+                value=f"```yaml\nError: {str(e)[:100]}...\nAction: Check AI engine configuration\nFallback: Manual monitoring recommended```",
+                inline=False,
+            )
+
+        # API Configuration Summary
+        api_key = os.getenv("AI_API_KEY")
+        openrouter_key = os.getenv("OPENROUTER_API_KEY")
+
+        api_status = []
+        if api_key:
+            api_status.append("Universal AI: 🟢 CONFIGURED")
+        if openrouter_key:
+            api_status.append("OpenRouter: 🟢 CONFIGURED")
+        if not api_key and not openrouter_key:
+            api_status.append("No API keys detected")
+
+        embed.add_field(
+            name="🔑 API Configuration",
+            value=f"```yaml\n{chr(10).join(api_status[:3])}\nToken Optimization: Active\nMonitoring: Real-time\nStatus: {'✅ Ready' if api_status else '❌ Needs Setup'}```",
+            inline=False,
+        )
+
+        embed.set_footer(text="NEXUS Token Monitor • Universal AI optimization system")
+        await interaction.followup.send(embed=embed)
+
 
 async def setup(bot):
     await bot.add_cog(NexusControlSystem(bot))

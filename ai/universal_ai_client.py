@@ -69,9 +69,17 @@ class UniversalAIClient:
             else:
                 self.base_url += "/v1/chat/completions"
 
-        # Configuration
-        self.max_tokens = int(os.getenv("AI_MAX_TOKENS", "2000"))
+        # Configuration with optimized token usage
+        self.max_tokens = int(
+            os.getenv("AI_MAX_TOKENS", "1000")
+        )  # Reduced from 2000 to 1000 for credit conservation
         self.temperature = float(os.getenv("AI_TEMPERATURE", "0.7"))
+
+        # Credit monitoring
+        self.low_credit_threshold = 2000  # Alert when credits below 2000 tokens
+        self.emergency_threshold = 500  # Emergency mode when below 500 tokens
+        self.last_credit_check = None
+        self.estimated_credits = None
 
         # Status
         self.available = bool(self.api_key)
@@ -85,6 +93,58 @@ class UniversalAIClient:
     def is_available(self) -> bool:
         """Check if AI client is available"""
         return self.available
+
+    async def check_credits(self) -> Dict[str, Any]:
+        """Check remaining OpenRouter credits and return status"""
+        if "openrouter" not in self.base_url:
+            return {"status": "not_applicable", "provider": self.provider_name}
+
+        try:
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            }
+
+            async with aiohttp.ClientSession() as session:
+                # OpenRouter credits endpoint
+                credits_url = "https://openrouter.ai/api/v1/auth/key"
+                async with session.get(credits_url, headers=headers) as response:
+                    if response.status == 200:
+                        data = await response.json()
+
+                        # Extract credit information
+                        credits = data.get("data", {})
+                        usage = credits.get("usage", 0)
+                        limit = credits.get("limit", 0)
+                        remaining = limit - usage if limit > 0 else None
+
+                        self.estimated_credits = remaining
+                        self.last_credit_check = datetime.now(timezone.utc)
+
+                        # Determine status
+                        if remaining and remaining < self.emergency_threshold:
+                            status = "emergency"
+                        elif remaining and remaining < self.low_credit_threshold:
+                            status = "low"
+                        else:
+                            status = "healthy"
+
+                        return {
+                            "status": status,
+                            "remaining": remaining,
+                            "usage": usage,
+                            "limit": limit,
+                            "provider": "openrouter",
+                        }
+                    else:
+                        self.logger.warning(
+                            f"Failed to check credits: {response.status}"
+                        )
+                        return {"status": "unknown", "error": f"HTTP {response.status}"}
+
+        except Exception as e:
+            self.logger.error(f"Credit check failed: {e}")
+            return {"status": "error", "error": str(e)}
 
     def get_available_provider(self) -> Optional[str]:
         """Get the available provider"""
@@ -125,8 +185,23 @@ class UniversalAIClient:
         temperature: float = None,
         **kwargs,
     ) -> AIResponse:
-        """Universal chat completion using aiohttp"""
+        """Universal chat completion using aiohttp with credit monitoring"""
         try:
+            # Check credits before making expensive requests (only for OpenRouter)
+            if "openrouter" in self.base_url and self.estimated_credits is not None:
+                if self.estimated_credits < (max_tokens or self.max_tokens):
+                    self.logger.warning(
+                        f"⚠️ Insufficient credits: {self.estimated_credits} remaining, {max_tokens or self.max_tokens} requested"
+                    )
+                    # Reduce token request to available credits
+                    max_tokens = min(
+                        max_tokens or self.max_tokens, self.estimated_credits - 100
+                    )  # Leave 100 token buffer
+                    if max_tokens < 100:
+                        raise RuntimeError(
+                            f"Insufficient OpenRouter credits: {self.estimated_credits} remaining. Please add credits at https://openrouter.ai/settings/credits"
+                        )
+
             # Use provided parameters or defaults
             model = model or self.model
             max_tokens = max_tokens or self.max_tokens
@@ -137,9 +212,7 @@ class UniversalAIClient:
                 self.logger.error("❌ CRITICAL: No API key available!")
                 self.logger.error("🔧 Check Railway environment variables:")
                 self.logger.error("   - AI_API_KEY should be set")
-                self.logger.error(
-                    "   - Value: YOUR_OPENROUTER_API_KEY_HERE"
-                )
+                self.logger.error("   - Value: YOUR_OPENROUTER_API_KEY_HERE")
                 raise RuntimeError(
                     "No API key configured - check Railway environment variables"
                 )
@@ -308,9 +381,7 @@ if __name__ == "__main__":
         print("🧪 Testing Universal AI Client...")
 
         # Test with the provided API key
-        test_key = (
-            "YOUR_OPENROUTER_API_KEY_HERE"
-        )
+        test_key = "YOUR_OPENROUTER_API_KEY_HERE"
 
         # Test different possible endpoints
         endpoints = [

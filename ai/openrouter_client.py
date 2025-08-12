@@ -60,10 +60,14 @@ class OpenRouterClient:
         # Initialize clients
         self._initialize_clients()
 
-        # Configuration
-        self.max_tokens = 2000
+        # Configuration with optimized token usage for credit conservation
+        self.max_tokens = 1000  # Reduced from 2000 to 1000 to save OpenRouter credits
         self.temperature = 0.7
         self.default_provider = "openrouter" if self.openrouter_available else "openai"
+
+        # Credit monitoring
+        self.credit_warning_sent = False
+        self.emergency_mode = False
 
         self.logger.info(
             f"OpenRouter client initialized (default: {self.default_provider})"
@@ -362,9 +366,7 @@ if __name__ == "__main__":
         print("🧪 Testing OpenRouter Client...")
 
         # Test with the provided API key
-        test_key = (
-            "YOUR_OPENROUTER_API_KEY_HERE"
-        )
+        test_key = "YOUR_OPENROUTER_API_KEY_HERE"
         client = OpenRouterClient(openrouter_api_key=test_key)
         print(f"Status: {client.get_status()}")
 

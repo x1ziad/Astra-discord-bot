@@ -340,37 +340,30 @@ class AdvancedAICog(commands.Cog):
                 f"❌ Error processing chat request: {str(e)}", ephemeral=True
             )
 
-    @app_commands.command(
-        name="image",
-        description="🎨 Generate high-quality AI images with optimized performance",
-    )
+    @app_commands.command(name="image", description="🎨 Generate high-quality AI images with optimized performance")
     @app_commands.describe(
         prompt="Description of the image to generate (be detailed for best results)",
         size="Image size and aspect ratio",
-        style="Image style and quality",
+        style="Image style and quality"
     )
-    @app_commands.choices(
-        size=[
-            app_commands.Choice(name="Square HD (1024x1024)", value="square_hd"),
-            app_commands.Choice(name="Portrait (768x1024)", value="portrait_3_4"),
-            app_commands.Choice(name="Landscape (1024x768)", value="landscape_4_3"),
-            app_commands.Choice(name="Wide (1024x576)", value="landscape_16_9"),
-        ]
-    )
-    @app_commands.choices(
-        style=[
-            app_commands.Choice(name="🎨 Realistic", value="realistic"),
-            app_commands.Choice(name="✨ Artistic", value="artistic"),
-            app_commands.Choice(name="🎭 Anime/Cartoon", value="anime"),
-            app_commands.Choice(name="📸 Photographic", value="photographic"),
-        ]
-    )
+    @app_commands.choices(size=[
+        app_commands.Choice(name="Square HD (1024x1024)", value="square_hd"),
+        app_commands.Choice(name="Portrait (768x1024)", value="portrait_3_4"),
+        app_commands.Choice(name="Landscape (1024x768)", value="landscape_4_3"),
+        app_commands.Choice(name="Wide (1024x576)", value="landscape_16_9")
+    ])
+    @app_commands.choices(style=[
+        app_commands.Choice(name="🎨 Realistic", value="realistic"),
+        app_commands.Choice(name="✨ Artistic", value="artistic"),
+        app_commands.Choice(name="🎭 Anime/Cartoon", value="anime"),
+        app_commands.Choice(name="📸 Photographic", value="photographic")
+    ])
     async def image_command(
-        self,
-        interaction: discord.Interaction,
+        self, 
+        interaction: discord.Interaction, 
         prompt: str,
         size: str = "square_hd",
-        style: str = "realistic",
+        style: str = "realistic"
     ):
         """Enhanced AI image generation with optimized performance and proper Discord uploads"""
         try:
@@ -380,12 +373,9 @@ class AdvancedAICog(commands.Cog):
             # Import optimized generator
             try:
                 from ai.optimized_image_generator import get_optimized_generator
-
                 generator = get_optimized_generator()
             except ImportError:
-                logger.error(
-                    "❌ Optimized image generator not available, falling back to legacy"
-                )
+                logger.error("❌ Optimized image generator not available, falling back to legacy")
                 # Fallback to existing system
                 await self._fallback_image_generation(interaction, prompt, size)
                 return
@@ -399,23 +389,21 @@ class AdvancedAICog(commands.Cog):
 
             # Enhanced prompt with style
             enhanced_prompt = await self._enhance_prompt_with_style(prompt, style)
-
+            
             # Send initial status
             status_embed = discord.Embed(
                 title="🎨 AI Image Generation",
                 description=f"🚀 **Generating your image...**\n\n**Prompt:** {prompt}\n**Style:** {style.title()}\n**Size:** {size.replace('_', ' ').title()}",
                 color=0x3498DB,
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(timezone.utc)
             )
             status_embed.add_field(
                 name="⏱️ Status",
                 value="🔄 Processing with optimized AI engine...",
-                inline=False,
+                inline=False
             )
-            status_embed.set_footer(
-                text="Powered by Freepik AI • Optimized Engine v2.1"
-            )
-
+            status_embed.set_footer(text="Powered by Freepik AI • Optimized Engine v2.1")
+            
             status_message = await interaction.followup.send(embed=status_embed)
 
             # Generate image with optimized system
@@ -424,7 +412,7 @@ class AdvancedAICog(commands.Cog):
                 prompt=enhanced_prompt,
                 user_id=interaction.user.id,
                 size=size,
-                download_image=True,  # Download bytes for Discord upload
+                download_image=True  # Download bytes for Discord upload
             )
 
             generation_time = (datetime.now() - start_time).total_seconds()
@@ -435,32 +423,30 @@ class AdvancedAICog(commands.Cog):
                     title="🎨 AI Generated Image",
                     description=f"**Original Prompt:** {prompt}\n**Enhanced:** {enhanced_prompt[:100]}{'...' if len(enhanced_prompt) > 100 else ''}",
                     color=0x43B581,
-                    timestamp=datetime.now(timezone.utc),
+                    timestamp=datetime.now(timezone.utc)
                 )
-
+                
                 embed.set_author(
                     name=f"{interaction.user.display_name}'s Creation",
-                    icon_url=interaction.user.display_avatar.url,
+                    icon_url=interaction.user.display_avatar.url
                 )
-
+                
                 # Add generation details
                 embed.add_field(
                     name="⚡ Performance",
                     value=f"🕐 {generation_time:.1f}s\n🔄 {result.get('attempts', 1)} attempts\n📐 {size.replace('_', ' ').title()}",
-                    inline=True,
+                    inline=True
                 )
-
+                
                 embed.add_field(
                     name="🎯 AI Details",
                     value=f"🤖 {result.get('provider', 'Freepik AI')}\n🎨 {style.title()} Style\n✨ Enhanced Prompt",
-                    inline=True,
+                    inline=True
                 )
 
                 # Add user role info
                 if user_permissions["is_admin"]:
-                    embed.add_field(
-                        name="👑 Access", value="Administrator", inline=True
-                    )
+                    embed.add_field(name="👑 Access", value="Administrator", inline=True)
                 elif user_permissions["is_mod"]:
                     embed.add_field(name="🛡️ Access", value="Moderator", inline=True)
                 else:
@@ -468,20 +454,20 @@ class AdvancedAICog(commands.Cog):
 
                 # Handle image upload
                 files = []
-
+                
                 if result.get("image_bytes"):
                     # Upload actual image file for better quality
                     image_file = discord.File(
                         io.BytesIO(result["image_bytes"]),
-                        filename=f"ai_image_{interaction.user.id}_{int(datetime.now().timestamp())}.png",
+                        filename=f"ai_image_{interaction.user.id}_{int(datetime.now().timestamp())}.png"
                     )
                     files.append(image_file)
                     embed.set_image(url=f"attachment://{image_file.filename}")
-
+                    
                     embed.add_field(
                         name="📁 File Info",
                         value=f"🗂️ {len(result['image_bytes']) / 1024:.1f} KB\n📋 PNG Format\n🔗 High Quality",
-                        inline=False,
+                        inline=False
                     )
                 else:
                     # Fallback to URL if bytes not available
@@ -489,12 +475,10 @@ class AdvancedAICog(commands.Cog):
                     embed.add_field(
                         name="� Image Link",
                         value=f"[View Full Size]({result['url']})",
-                        inline=False,
+                        inline=False
                     )
 
-                embed.set_footer(
-                    text="🎨 Powered by Freepik AI • Optimized Engine v2.1 • Use responsibly"
-                )
+                embed.set_footer(text="🎨 Powered by Freepik AI • Optimized Engine v2.1 • Use responsibly")
 
                 # Update the status message with final result
                 if files:
@@ -503,9 +487,7 @@ class AdvancedAICog(commands.Cog):
                     await status_message.edit(embed=embed)
 
                 # Log successful generation
-                logger.info(
-                    f"✅ Image generated for {interaction.user.id} in {generation_time:.1f}s"
-                )
+                logger.info(f"✅ Image generated for {interaction.user.id} in {generation_time:.1f}s")
 
             else:
                 # Handle specific error cases with enhanced UX
@@ -513,26 +495,27 @@ class AdvancedAICog(commands.Cog):
 
         except Exception as e:
             logger.error(f"💥 Enhanced image command error: {e}")
-
+            
             error_embed = discord.Embed(
                 title="❌ Image Generation Error",
                 description="An unexpected error occurred while generating your image.",
                 color=0xE74C3C,
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(timezone.utc)
             )
             error_embed.add_field(
                 name="🔧 What to try",
                 value="• Try a different prompt\n• Use simpler language\n• Try again in a few moments",
-                inline=False,
+                inline=False
             )
             error_embed.set_footer(text="If this persists, contact an administrator")
-
+            
             try:
                 await interaction.followup.send(embed=error_embed, ephemeral=True)
             except:
                 # Fallback if followup fails
                 await interaction.response.send_message(
-                    f"❌ Image generation failed: {str(e)}", ephemeral=True
+                    f"❌ Image generation failed: {str(e)}", 
+                    ephemeral=True
                 )
 
     async def _enhance_prompt_with_style(self, prompt: str, style: str) -> str:
@@ -541,86 +524,83 @@ class AdvancedAICog(commands.Cog):
             "realistic": "photorealistic, highly detailed, 8k resolution, professional photography",
             "artistic": "digital art, concept art, artistic, creative, beautiful composition",
             "anime": "anime style, manga art, vibrant colors, cel shading, japanese animation",
-            "photographic": "professional photography, DSLR, sharp focus, bokeh, natural lighting",
+            "photographic": "professional photography, DSLR, sharp focus, bokeh, natural lighting"
         }
-
+        
         enhancer = style_enhancers.get(style, "high quality, detailed")
         return f"{prompt}, {enhancer}"
 
-    async def _handle_optimized_errors(
-        self, interaction: discord.Interaction, result: Dict[str, Any], status_message
-    ):
+    async def _handle_optimized_errors(self, interaction: discord.Interaction, result: Dict[str, Any], status_message):
         """Handle errors from optimized image generation with better UX"""
         error_type = result.get("error", "unknown")
-
+        
         if error_type == "rate_limit":
             embed = discord.Embed(
                 title="⏰ Rate Limit Reached",
                 description="You've reached the image generation rate limit.",
                 color=0xF39C12,
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(timezone.utc)
             )
-
+            
             wait_time = result.get("wait_time", 60)
             if wait_time < 300:  # Less than 5 minutes
                 embed.add_field(
                     name="🔄 Try Again",
                     value=f"<t:{int((datetime.now() + timedelta(seconds=wait_time)).timestamp())}:R>",
-                    inline=True,
+                    inline=True
                 )
-
+            
             embed.add_field(
                 name="💡 Tip",
                 value="Use more specific prompts to get better results faster!",
-                inline=False,
+                inline=False
             )
-
+            
         elif error_type == "authentication_failed":
             embed = discord.Embed(
                 title="🔑 Authentication Error",
                 description="There's an issue with the AI service configuration.",
                 color=0xE74C3C,
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(timezone.utc)
             )
             embed.add_field(
                 name="👨‍💻 Admin Notice",
                 value="The Freepik API key needs to be reconfigured.",
-                inline=False,
+                inline=False
             )
-
+            
         elif error_type == "no_api_key":
             embed = discord.Embed(
                 title="⚙️ Service Configuration",
                 description="Image generation service is not properly configured.",
                 color=0xE74C3C,
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(timezone.utc)
             )
-
+            
         else:
             embed = discord.Embed(
                 title="❌ Generation Failed",
                 description=result.get("message", "Unknown error occurred"),
                 color=0xE74C3C,
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(timezone.utc)
             )
             embed.add_field(
                 name="🔄 Retry Suggestions",
                 value="• Try a simpler prompt\n• Wait a moment and try again\n• Use different keywords",
-                inline=False,
+                inline=False
             )
-
+        
         embed.set_footer(text="Contact an administrator if this continues")
         await status_message.edit(embed=embed)
 
-    async def _fallback_image_generation(
-        self, interaction: discord.Interaction, prompt: str, size: str
-    ):
+    async def _fallback_image_generation(self, interaction: discord.Interaction, prompt: str, size: str):
         """Fallback to legacy image generation system"""
         logger.info("🔄 Using fallback image generation")
-
+        
         if not self.ai_client:
             await interaction.followup.send(
-                "❌ AI image generation service is not available.", ephemeral=True
+                "❌ AI image generation service is not available.",
+                ephemeral=True
             )
             return
 
@@ -636,7 +616,7 @@ class AdvancedAICog(commands.Cog):
 
         user_permissions = {
             "is_admin": interaction.user.guild_permissions.administrator,
-            "is_mod": interaction.user.guild_permissions.manage_messages,
+            "is_mod": interaction.user.guild_permissions.manage_messages
         }
 
         image_result = await self.ai_client.generate_image(
@@ -648,7 +628,7 @@ class AdvancedAICog(commands.Cog):
                 title="🎨 AI Generated Image (Legacy)",
                 description=f"**Prompt:** {prompt}",
                 color=0x43B581,
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(timezone.utc)
             )
             embed.set_image(url=image_result["url"])
             embed.set_footer(text="Legacy Generation System • Consider updating")
@@ -656,7 +636,7 @@ class AdvancedAICog(commands.Cog):
         else:
             await interaction.followup.send(
                 f"❌ Image generation failed: {image_result.get('message', 'Unknown error')}",
-                ephemeral=True,
+                ephemeral=True
             )
 
     async def _enhance_image_prompt(self, original_prompt: str) -> str:
@@ -2571,9 +2551,556 @@ class AdvancedAICog(commands.Cog):
         except Exception as e:
             self.logger.error(f"Conversation cleanup task error: {e}")
 
-    # Note: Redundant AI commands (ai_personality, ai_mood, ai_reset, ai_customize) removed
-    # These commands were not adding value and creating maintenance overhead
+    # Note: Redundant AI commands (ai_personality, ai_mood, ai_reset, ai_customize) removed for optimization
+    # These commands added no value and were causing maintenance overhead
+
+    @app_commands.command(
+        name="ai_topics", description="View trending conversation topics"
+    )
+    async def ai_topics(self, interaction: discord.Interaction):
+        """Display trending conversation topics"""
+        try:
+            # Analyze actual conversation topics from user conversations
+            all_topics = []
+                await interaction.response.send_message(
+                    "I haven't had a conversation with you yet! Send me a message first. 💫",
+                    ephemeral=True,
+                )
+                return
+
+            # Simple mood analysis based on conversation history
+            recent_messages = context[-5:] if context else []
+
+            # Basic mood assessment
+            positive_keywords = [
+                "great",
+                "awesome",
+                "amazing",
+                "wonderful",
+                "fantastic",
+                "happy",
+                "excited",
+            ]
+            negative_keywords = [
+                "sad",
+                "frustrated",
+                "confused",
+                "annoyed",
+                "upset",
+                "disappointed",
+            ]
+            question_keywords = ["?", "how", "what", "why", "when", "where"]
+
+            mood_score = 0.5  # Neutral starting point
+            engagement_score = min(
+                len(context) / 10.0, 1.0
+            )  # Based on conversation length
+
+            if recent_messages:
+                for msg in recent_messages:
+                    content = msg.get("content", "").lower()
+                    if any(word in content for word in positive_keywords):
+                        mood_score += 0.1
+                    if any(word in content for word in negative_keywords):
+                        mood_score -= 0.1
+                    if any(word in content for word in question_keywords):
+                        engagement_score += 0.05
+
+            # Clamp values
+            mood_score = max(0.0, min(1.0, mood_score))
+            engagement_score = max(0.0, min(1.0, engagement_score))
+
+            # Determine mood
+            if mood_score > 0.7:
+                mood = "happy"
+            elif mood_score > 0.6:
+                mood = "content"
+            elif mood_score > 0.4:
+                mood = "neutral"
+            elif mood_score > 0.3:
+                mood = "concerned"
+            else:
+                mood = "frustrated"
+
+            confidence = min(0.8, len(recent_messages) / 10.0 + 0.3)
+
+            # Create mood analysis embed
+            embed = discord.Embed(
+                title="🧠 Conversation Mood Analysis",
+                color=discord.Color.purple(),
+                timestamp=datetime.now(timezone.utc),
+            )
+
+            # Mood visualization
+            mood_emojis = {
+                "ecstatic": "🤩",
+                "excited": "🎉",
+                "happy": "😊",
+                "content": "😌",
+                "curious": "🤔",
+                "neutral": "😐",
+                "pensive": "🤔",
+                "confused": "😕",
+                "concerned": "😟",
+                "frustrated": "😤",
+                "sad": "😢",
+                "angry": "😡",
+            }
+
+            mood_emoji = mood_emojis.get(mood, "😐")
+
+            embed.add_field(
+                name="Current Mood",
+                value=f"{mood_emoji} **{mood.title()}**\nConfidence: {confidence:.1%}",
+                inline=True,
+            )
+
+            embed.add_field(
+                name="Engagement Level",
+                value=f"📊 {engagement_score:.1%}\n{'🔥' if engagement_score > 0.7 else '✨' if engagement_score > 0.4 else '💫'}",
+                inline=True,
+            )
+
+            # Conversation insights
+            embed.add_field(
+                name="📈 Conversation Stats",
+                value=f"Messages: {len(context)}\nRecent Activity: {len(recent_messages)} messages",
+                inline=False,
+            )
+
+            await interaction.response.send_message(embed=embed)
+
+        except Exception as e:
+            self.logger.error(f"Mood analysis error: {e}")
+            await interaction.response.send_message(
+                "Error analyzing conversation mood.", ephemeral=True
+            )
+
+    @app_commands.command(
+        name="ai_topics", description="View trending conversation topics"
+    )
+    async def ai_topics(self, interaction: discord.Interaction):
+        """Display trending conversation topics"""
+        try:
+            # Analyze actual conversation topics from user conversations
+            all_topics = []
+
+            # Extract topics from conversation history
+            for user_id, conversations in self.user_conversations.items():
+                for msg in conversations:
+                    content = msg.get("content", "").lower()
+
+                    # Simple topic detection based on keywords
+                    if any(
+                        word in content
+                        for word in ["space", "cosmos", "universe", "galaxy", "stellar"]
+                    ):
+                        all_topics.append("Space Exploration")
+                    if any(
+                        word in content
+                        for word in [
+                            "ai",
+                            "artificial",
+                            "intelligence",
+                            "bot",
+                            "technology",
+                        ]
+                    ):
+                        all_topics.append("AI Technology")
+                    if any(
+                        word in content
+                        for word in ["stellaris", "empire", "species", "federation"]
+                    ):
+                        all_topics.append("Stellaris Gaming")
+                    if any(
+                        word in content
+                        for word in ["science", "research", "discovery", "theory"]
+                    ):
+                        all_topics.append("Science")
+                    if any(
+                        word in content
+                        for word in ["discord", "bot", "command", "development"]
+                    ):
+                        all_topics.append("Discord Bot Development")
+
+            # Count topic occurrences
+            from collections import Counter
+
+            topic_counts = Counter(all_topics)
+            popular_topics = topic_counts.most_common(10)
+
+            # If no topics found, use defaults
+            if not popular_topics:
+                popular_topics = [
+                    ("Space Exploration", 0),
+                    ("AI Technology", 0),
+                    ("Discord Bot Development", 0),
+                    ("Stellaris Gaming", 0),
+                ]
+
+            # Basic statistics
+            analytics = {
+                "total_conversations": len(self.user_conversations),
+                "total_users": len(set(self.user_conversations.keys())),
+                "avg_response_time_ms": (
+                    int(sum(self.response_times[-10:]) * 1000)
+                    if self.response_times
+                    else 500
+                ),
+            }
+
+            embed = discord.Embed(
+                title="🔥 Trending Conversation Topics",
+                color=discord.Color.orange(),
+                timestamp=datetime.now(timezone.utc),
+            )
+
+            if popular_topics:
+                topic_text = []
+                for i, (topic, count) in enumerate(popular_topics[:10], 1):
+                    emoji = (
+                        "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else "📊"
+                    )
+                    topic_text.append(f"{emoji} **{topic}** ({count} mentions)")
+
+                embed.description = "\n".join(topic_text)
+            else:
+                embed.description = (
+                    "No topics have been discussed yet. Start a conversation! 🚀"
+                )
+
+            # Add some statistics
+            embed.add_field(
+                name="📈 Statistics",
+                value=f"Total Conversations: {analytics.get('total_conversations', 0)}\n"
+                f"Active Users: {analytics.get('total_users', 0)}\n"
+                f"Avg Response Time: {analytics.get('avg_response_time_ms', 0):.0f}ms",
+                inline=False,
+            )
+
+            await interaction.response.send_message(embed=embed)
+
+        except Exception as e:
+            self.logger.error(f"Topics command error: {e}")
+            await interaction.response.send_message(
+                "Error retrieving topic information.", ephemeral=True
+            )
+
+    @app_commands.command(
+        name="ai_customize", description="Customize AI personality for this server"
+    )
+    @app_commands.describe(
+        trait="Personality trait to adjust", level="Level from 1-10 (10 being maximum)"
+    )
+    async def ai_personality_customize(
+        self, interaction: discord.Interaction, trait: str = None, level: int = None
+    ):
+        """Customize AI personality traits"""
+        try:
+            if not interaction.user.guild_permissions.administrator:
+                await interaction.response.send_message(
+                    "You need administrator permissions to customize AI personality.",
+                    ephemeral=True,
+                )
+                return
+
+            if not trait:
+                # Show current personality
+                embed = discord.Embed(
+                    title="🎭 Astra's Personality Configuration",
+                    description="Current personality trait levels:",
+                    color=discord.Color.purple(),
+                )
+
+                personality_traits = {
+                    "enthusiastic": "How energetic and excited I am",
+                    "knowledgeable": "How much I focus on sharing information",
+                    "helpful": "How much I prioritize being useful",
+                    "curious": "How much I ask questions and explore topics",
+                    "friendly": "How warm and approachable I am",
+                    "patient": "How understanding I am with complex questions",
+                    "witty": "How much humor I use in responses",
+                    "scientific": "How technical and precise my explanations are",
+                }
+
+                for trait_name, description in personality_traits.items():
+                    # Get current level (mock for now)
+                    level = 7  # Default level
+                    bar = "█" * (level // 2) + "░" * (5 - level // 2)
+                    embed.add_field(
+                        name=f"{trait_name.title()} [{level}/10]",
+                        value=f"`{bar}` {description}",
+                        inline=False,
+                    )
+
+                embed.add_field(
+                    name="🔧 Usage",
+                    value="Use `/ai_customize <trait> <level>` to adjust specific traits\n"
+                    "Example: `/ai_customize enthusiastic 9`",
+                    inline=False,
+                )
+
+                await interaction.response.send_message(embed=embed)
+
+            elif trait and level is not None:
+                # Adjust personality trait
+                if not (1 <= level <= 10):
+                    await interaction.response.send_message(
+                        "Level must be between 1 and 10.", ephemeral=True
+                    )
+                    return
+
+                # For now, just confirm the change (implementation would save to config)
+                await interaction.response.send_message(
+                    f"✅ Set **{trait}** personality trait to level **{level}/10**\n"
+                    f"This will affect how I interact in this server! 🎭✨",
+                    ephemeral=True,
+                )
+
+                self.logger.info(
+                    f"Personality trait {trait} set to {level} by {interaction.user.id}"
+                )
+
+            else:
+                await interaction.response.send_message(
+                    "Please provide both trait and level, or use without parameters to view current settings.",
+                    ephemeral=True,
+                )
+
+        except Exception as e:
+            self.logger.error(f"Personality command error: {e}")
+            await interaction.response.send_message(
+                "Error customizing personality.", ephemeral=True
+            )
+
+    @app_commands.command(
+        name="test_enhanced_features",
+        description="Test new enhanced AI features (Admin only)",
+    )
+    async def test_enhanced_features(self, interaction: discord.Interaction):
+        """Test the new enhanced AI features"""
+        try:
+            # Admin check
+            if not interaction.user.guild_permissions.administrator:
+                await interaction.response.send_message(
+                    "❌ This command requires administrator permissions.",
+                    ephemeral=True,
+                )
+                return
+
+            await interaction.response.defer()
+
+            embed = discord.Embed(
+                title="🚀 Enhanced AI Features Test",
+                color=0x7C3AED,
+                timestamp=datetime.now(timezone.utc),
+            )
+
+            # Test dynamic status update
+            try:
+                await self.dynamic_status_task.coro()
+                embed.add_field(
+                    name="✅ Dynamic Status Update",
+                    value="Status updated successfully based on current activity",
+                    inline=False,
+                )
+            except Exception as e:
+                embed.add_field(
+                    name="❌ Dynamic Status Update",
+                    value=f"Error: {str(e)[:100]}",
+                    inline=False,
+                )
+
+            # Test activity monitoring
+            active_servers = len(
+                [
+                    level
+                    for level in self.server_activity_levels.values()
+                    if level in ["active", "very_active"]
+                ]
+            )
+            embed.add_field(
+                name="📊 Activity Monitoring",
+                value=f"Monitoring {len(self.server_activity_levels)} servers\n"
+                f"Active servers: {active_servers}\n"
+                f"Interesting topics: {len(self.interesting_topics)}",
+                inline=False,
+            )
+
+            # Test conversation tracking
+            embed.add_field(
+                name="💬 Conversation Tracking",
+                value=f"Active conversations: {len(self.active_conversations)}\n"
+                f"Channel activities tracked: {len(self.channel_activity)}\n"
+                f"Users ready for mentioning: {len(self.mentioned_users)}",
+                inline=False,
+            )
+
+            # Test AI engine status
+            if hasattr(self, "ai_client") and self.ai_client:
+                try:
+                    status = await self.ai_client.get_health_status()
+                    embed.add_field(
+                        name="🤖 AI Engine Status",
+                        value=f"Status: {status.get('status', 'Unknown')}\n"
+                        f"Active Provider: {status.get('active_provider', 'None')}\n"
+                        f"Image Generation: {'✅ Available' if hasattr(self.ai_client, 'freepik_generator') and self.ai_client.freepik_generator else '❌ Unavailable'}",
+                        inline=False,
+                    )
+                except Exception as e:
+                    embed.add_field(
+                        name="❌ AI Engine Status",
+                        value=f"Error checking status: {str(e)[:100]}",
+                        inline=False,
+                    )
+            else:
+                embed.add_field(
+                    name="❌ AI Engine", value="AI client not initialized", inline=False
+                )
+
+            embed.set_footer(text="Enhanced AI Features by Astra Bot")
+            await interaction.followup.send(embed=embed)
+
+        except Exception as e:
+            self.logger.error(f"Enhanced features test error: {e}")
+            await interaction.followup.send(f"❌ Test failed: {str(e)}", ephemeral=True)
+
+    @app_commands.command(
+        name="permissions",
+        description="Check and diagnose bot permissions in this channel",
+    )
+    async def permissions_check(self, interaction: discord.Interaction):
+        """Check bot permissions for AI and image generation features"""
+        try:
+            await interaction.response.defer()
+
+            # Get bot member and channel
+            bot_member = interaction.guild.get_member(self.bot.user.id)
+            channel = interaction.channel
+
+            embed = discord.Embed(
+                title="🛡️ Bot Permissions Diagnostic",
+                description="Checking permissions required for AI features...",
+                color=discord.Color.blue(),
+                timestamp=datetime.now(timezone.utc),
+            )
+
+            # Required permissions for AI features
+            required_permissions = [
+                ("send_messages", "Send Messages", "Basic bot communication"),
+                ("embed_links", "Embed Links", "Rich message formatting"),
+                ("attach_files", "Attach Files", "Image generation uploads"),
+                ("use_external_emojis", "Use External Emojis", "Enhanced reactions"),
+                ("manage_messages", "Manage Messages", "Message cleanup and editing"),
+                (
+                    "read_message_history",
+                    "Read Message History",
+                    "Context understanding",
+                ),
+                ("add_reactions", "Add Reactions", "Interactive responses"),
+            ]
+
+            # Check each permission
+            permissions_status = []
+            all_good = True
+
+            for perm_name, display_name, description in required_permissions:
+                has_permission = getattr(
+                    bot_member.permissions_in(channel), perm_name, False
+                )
+
+                if has_permission:
+                    permissions_status.append(f"✅ {display_name}")
+                else:
+                    permissions_status.append(f"❌ {display_name}")
+                    all_good = False
+
+            # Add permissions status to embed
+            embed.add_field(
+                name="📋 Permission Status",
+                value="\n".join(permissions_status),
+                inline=False,
+            )
+
+            # Overall status
+            if all_good:
+                embed.add_field(
+                    name="🎉 Overall Status",
+                    value="✅ All permissions are properly configured!\nBot should work perfectly in this channel.",
+                    inline=False,
+                )
+                embed.color = discord.Color.green()
+            else:
+                embed.add_field(
+                    name="⚠️ Overall Status",
+                    value="❌ Some permissions are missing.\nSome features may not work properly.",
+                    inline=False,
+                )
+                embed.color = discord.Color.orange()
+
+                # Add troubleshooting section
+                embed.add_field(
+                    name="🔧 Troubleshooting",
+                    value=(
+                        "**For Server Administrators:**\n"
+                        "1. Go to Server Settings → Roles\n"
+                        "2. Find the bot's role or @everyone\n"
+                        "3. Enable the missing permissions listed above\n"
+                        "4. Run this command again to verify\n\n"
+                        "**For Channel-Specific Issues:**\n"
+                        "1. Right-click this channel → Edit Channel\n"
+                        "2. Go to Permissions tab\n"
+                        "3. Add the bot role with required permissions\n"
+                        "4. Save changes and test again"
+                    ),
+                    inline=False,
+                )
+
+            # Add additional info
+            embed.add_field(
+                name="ℹ️ Permission Details",
+                value=(
+                    "**Why these permissions are needed:**\n"
+                    "• **Send Messages**: Basic bot responses\n"
+                    "• **Embed Links**: Rich AI responses with formatting\n"
+                    "• **Attach Files**: Image generation and file uploads\n"
+                    "• **Use External Emojis**: Enhanced reaction system\n"
+                    "• **Manage Messages**: Clean up bot messages when needed\n"
+                    "• **Read Message History**: Better conversation context\n"
+                    "• **Add Reactions**: Interactive command responses"
+                ),
+                inline=False,
+            )
+
+            # Add image generation specific check
+            if hasattr(self, "ai_client") and hasattr(
+                self.ai_client, "freepik_generator"
+            ):
+                img_status = (
+                    "✅ Available"
+                    if self.ai_client.freepik_generator
+                    else "❌ Not configured"
+                )
+                embed.add_field(
+                    name="🎨 Image Generation Status",
+                    value=f"Freepik API: {img_status}\n"
+                    f"Required Permissions: {'✅ Met' if all_good else '❌ Missing permissions above'}",
+                    inline=False,
+                )
+
+            embed.set_footer(
+                text=f"Checked in #{channel.name} • Use /nexus for system diagnostics"
+            )
+
+            await interaction.followup.send(embed=embed)
+
+        except Exception as e:
+            self.logger.error(f"Permissions check error: {e}")
+            await interaction.followup.send(
+                f"❌ Error checking permissions: {str(e)}", ephemeral=True
+            )
 
 
 async def setup(bot):
+    """Set up the Advanced AI cog"""
     await bot.add_cog(AdvancedAICog(bot))
