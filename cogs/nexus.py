@@ -651,7 +651,7 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
 
     @app_commands.command(
         name="ai",
-        description="🤖 AI Control Center - Manage OpenRouter and Freepik APIs",
+        description="🤖 AI Control Center - Manage OpenRouter and Gemini APIs",
     )
     @app_commands.describe(action="AI system action", service="Target AI service")
     @app_commands.choices(
@@ -662,7 +662,7 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
         ],
         service=[
             app_commands.Choice(name="OpenRouter (Text AI)", value="openrouter"),
-            app_commands.Choice(name="Freepik (Image AI)", value="freepik"),
+            app_commands.Choice(name="Gemini (Image AI)", value="gemini"),
             app_commands.Choice(name="All Services", value="all"),
         ],
     )
@@ -717,21 +717,27 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
 
             services_status["OpenRouter"] = (openrouter_status, openrouter_info)
 
-        # Check Freepik
-        if service in ["freepik", "all"]:
+        # Check Gemini
+        if service in ["gemini", "all"]:
             try:
-                from ai.freepik_api_client import FreepikAPIClient
+                from ai.gemini_image_generator import GeminiImageGenerator
 
-                freepik_status = "🟢 ONLINE"
-                freepik_info = "Image AI operational"
+                # Test if Gemini API key is available
+                gemini_key = os.getenv("GEMINI_API_KEY")
+                if gemini_key:
+                    gemini_status = "🟢 ONLINE"
+                    gemini_info = "Image AI operational"
+                else:
+                    gemini_status = "🔴 OFFLINE"
+                    gemini_info = "API key not configured"
             except ImportError:
-                freepik_status = "🔴 OFFLINE"
-                freepik_info = "Module not available"
+                gemini_status = "🔴 OFFLINE"
+                gemini_info = "Module not available"
             except Exception as e:
-                freepik_status = "🟡 ERROR"
-                freepik_info = f"Error: {str(e)[:50]}"
+                gemini_status = "🟡 ERROR"
+                gemini_info = f"Error: {str(e)[:50]}"
 
-            services_status["Freepik"] = (freepik_status, freepik_info)
+            services_status["Gemini"] = (gemini_status, gemini_info)
 
         # Add consolidated AI if exists
         try:
@@ -773,12 +779,12 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
             except Exception as e:
                 restart_results["OpenRouter"] = f"❌ FAILED: {str(e)[:30]}"
 
-        if service in ["freepik", "all"]:
+        if service in ["gemini", "all"]:
             try:
                 # Simulate restart
-                restart_results["Freepik"] = "✅ RESTARTED"
+                restart_results["Gemini"] = "✅ RESTARTED"
             except Exception as e:
-                restart_results["Freepik"] = f"❌ FAILED: {str(e)[:30]}"
+                restart_results["Gemini"] = f"❌ FAILED: {str(e)[:30]}"
 
         # Display results
         for service_name, result in restart_results.items():
@@ -809,12 +815,12 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
                 "Endpoint": "https://openrouter.ai/api/v1",
             }
 
-        if service in ["freepik", "all"]:
-            freepik_key = os.getenv("FREEPIK_API_KEY")
-            config_info["Freepik"] = {
-                "API Key": "🟢 CONFIGURED" if freepik_key else "🔴 MISSING",
+        if service in ["gemini", "all"]:
+            gemini_key = os.getenv("GEMINI_API_KEY")
+            config_info["Gemini"] = {
+                "API Key": "🟢 CONFIGURED" if gemini_key else "🔴 MISSING",
                 "Service": "Image Generation",
-                "Endpoint": "https://api.freepik.com",
+                "Endpoint": "https://generativelanguage.googleapis.com",
             }
 
         # Display configuration
@@ -1083,7 +1089,7 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
 
         embed.add_field(
             name="🤖 AI Service Matrix",
-            value=f"```yaml\nCore Engine: {ai_status}\nOpenRouter: {'🟢 ACTIVE' if os.getenv('AI_API_KEY') else '🔴 OFFLINE'}\nFreepik: {'🟢 ACTIVE' if os.getenv('FREEPIK_API_KEY') else '🔴 OFFLINE'}\nResponse Time: <2s```",
+            value=f"```yaml\nCore Engine: {ai_status}\nOpenRouter: {'🟢 ACTIVE' if os.getenv('AI_API_KEY') else '🔴 OFFLINE'}\nGemini: {'🟢 ACTIVE' if os.getenv('GEMINI_API_KEY') else '🔴 OFFLINE'}\nResponse Time: <2s```",
             inline=True,
         )
 
@@ -1255,8 +1261,8 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
         try:
             if os.getenv("AI_API_KEY"):
                 ai_services.append("OpenRouter: 🟢 CONFIGURED")
-            if os.getenv("FREEPIK_API_KEY"):
-                ai_services.append("Freepik: 🟢 CONFIGURED")
+            if os.getenv("GEMINI_API_KEY"):
+                ai_services.append("Gemini: 🟢 CONFIGURED")
             if os.getenv("OPENAI_API_KEY"):
                 ai_services.append("OpenAI: 🟢 CONFIGURED")
         except:
@@ -1367,12 +1373,12 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
             )
 
         # API Configuration Status
-        freepik_key = os.getenv("FREEPIK_API_KEY")
-        api_status = "🟢 CONFIGURED" if freepik_key else "🔴 MISSING"
+        gemini_key = os.getenv("GEMINI_API_KEY")
+        api_status = "🟢 CONFIGURED" if gemini_key else "🔴 MISSING"
 
         embed.add_field(
             name="🔑 API Configuration",
-            value=f"```yaml\nFreepik API: {api_status}\nAuthentication: {'✓ Valid' if freepik_key else '✗ Required'}\nPermissions: {'Full Access' if freepik_key else 'None'}\nQuota: {'Active' if freepik_key else 'N/A'}```",
+            value=f"```yaml\nGemini API: {api_status}\nAuthentication: {'✓ Valid' if gemini_key else '✗ Required'}\nPermissions: {'Full Access' if gemini_key else 'None'}\nQuota: {'Active' if gemini_key else 'N/A'}```",
             inline=False,
         )
 

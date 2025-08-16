@@ -145,28 +145,28 @@ class AdvancedAICog(commands.Cog):
             self.ai_client = None
 
     def _setup_image_client(self):
-        """Setup dedicated image generation client (independent from AI)"""
+        """Setup dedicated image generation client using Google Gemini"""
         try:
-            if IMAGE_CLIENT_AVAILABLE:
-                # Initialize the dedicated image client
-                freepik_api_key = os.getenv("FREEPIK_API_KEY")
-                self.image_client = FreepikImageClient(freepik_api_key)
+            # Import Gemini image generator
+            from ai.gemini_image_generator import GeminiImageGenerator
 
-                if self.image_client.is_available():
-                    self.logger.info(
-                        "✅ Dedicated Image Generation Client initialized successfully"
-                    )
-                else:
-                    self.logger.warning(
-                        "⚠️ Image client created but API key not available"
-                    )
+            # Initialize the Gemini image generator
+            self.image_client = GeminiImageGenerator()
 
+            if self.image_client.is_available():
+                self.logger.info(
+                    "✅ Gemini Image Generation Client initialized successfully"
+                )
             else:
-                self.logger.error("❌ FreepikImageClient not available!")
-                self.image_client = None
+                self.logger.warning(
+                    "⚠️ Gemini image client created but API key not available"
+                )
 
+        except ImportError as e:
+            self.logger.error(f"❌ Gemini Image Generator not available: {e}")
+            self.image_client = None
         except Exception as e:
-            self.logger.error(f"Failed to setup image client: {e}")
+            self.logger.error(f"Failed to setup Gemini image client: {e}")
             self.image_client = None
 
     async def _generate_ai_response(
@@ -431,27 +431,37 @@ class AdvancedAICog(commands.Cog):
             )
             status_embed.add_field(
                 name="⏱️ Status",
-                value="🔄 Processing with optimized AI engine...",
+                value="🔄 Processing with Google Gemini AI...",
                 inline=False,
             )
             status_embed.set_footer(
-                text="Powered by Freepik AI • Optimized Engine v2.1"
+                text="Powered by Google Gemini • Advanced AI Engine"
             )
 
             status_message = await interaction.followup.send(embed=status_embed)
 
+            # Convert size parameter to actual dimensions
+            size_map = {
+                "square_hd": "1024x1024",
+                "portrait_3_4": "768x1024",
+                "landscape_4_3": "1024x768",
+                "landscape_16_9": "1024x576",
+            }
+            actual_size = size_map.get(size, "1024x1024")
+
             # Generate image with optimized system
             start_time = datetime.now()
-            result = await generator.generate_image_optimized(
+            image_bytes = await generator.generate_image_advanced(
                 prompt=enhanced_prompt,
                 user_id=interaction.user.id,
-                size=size,
-                download_image=True,  # Download bytes for Discord upload
+                channel_id=interaction.channel.id,
+                size=actual_size,
+                style=style,
             )
 
             generation_time = (datetime.now() - start_time).total_seconds()
 
-            if result.get("success"):
+            if image_bytes:
                 # Create success embed
                 embed = discord.Embed(
                     title="🎨 AI Generated Image",
@@ -468,13 +478,13 @@ class AdvancedAICog(commands.Cog):
                 # Add generation details
                 embed.add_field(
                     name="⚡ Performance",
-                    value=f"🕐 {generation_time:.1f}s\n🔄 {result.get('attempts', 1)} attempts\n📐 {size.replace('_', ' ').title()}",
+                    value=f"🕐 {generation_time:.1f}s\n🔄 Gemini AI\n📐 {size.replace('_', ' ').title()}",
                     inline=True,
                 )
 
                 embed.add_field(
                     name="🎯 AI Details",
-                    value=f"🤖 {result.get('provider', 'Freepik AI')}\n🎨 {style.title()} Style\n✨ Enhanced Prompt",
+                    value=f"🤖 Google Gemini\n🎨 {style.title()} Style\n✨ Enhanced Prompt",
                     inline=True,
                 )
 
@@ -486,43 +496,27 @@ class AdvancedAICog(commands.Cog):
                 elif user_permissions["is_mod"]:
                     embed.add_field(name="🛡️ Access", value="Moderator", inline=True)
                 else:
-                    embed.add_field(name="� Access", value="Member", inline=True)
+                    embed.add_field(name="👤 Access", value="Member", inline=True)
 
-                # Handle image upload
-                files = []
+                # Upload image file for better quality
+                image_file = discord.File(
+                    io.BytesIO(image_bytes),
+                    filename=f"gemini_image_{interaction.user.id}_{int(datetime.now().timestamp())}.png",
+                )
+                embed.set_image(url=f"attachment://{image_file.filename}")
 
-                if result.get("image_bytes"):
-                    # Upload actual image file for better quality
-                    image_file = discord.File(
-                        io.BytesIO(result["image_bytes"]),
-                        filename=f"ai_image_{interaction.user.id}_{int(datetime.now().timestamp())}.png",
-                    )
-                    files.append(image_file)
-                    embed.set_image(url=f"attachment://{image_file.filename}")
-
-                    embed.add_field(
-                        name="📁 File Info",
-                        value=f"🗂️ {len(result['image_bytes']) / 1024:.1f} KB\n📋 PNG Format\n🔗 High Quality",
-                        inline=False,
-                    )
-                else:
-                    # Fallback to URL if bytes not available
-                    embed.set_image(url=result["url"])
-                    embed.add_field(
-                        name="� Image Link",
-                        value=f"[View Full Size]({result['url']})",
-                        inline=False,
-                    )
+                embed.add_field(
+                    name="📁 File Info",
+                    value=f"🗂️ {len(image_bytes) / 1024:.1f} KB\n📋 PNG Format\n🔗 High Quality",
+                    inline=False,
+                )
 
                 embed.set_footer(
-                    text="🎨 Powered by Freepik AI • Optimized Engine v2.1 • Use responsibly"
+                    text="🎨 Powered by Google Gemini • Advanced AI • Use responsibly"
                 )
 
                 # Update the status message with final result
-                if files:
-                    await status_message.edit(embed=embed, attachments=files)
-                else:
-                    await status_message.edit(embed=embed)
+                await status_message.edit(embed=embed, attachments=[image_file])
 
                 # Log successful generation
                 logger.info(
@@ -530,8 +524,21 @@ class AdvancedAICog(commands.Cog):
                 )
 
             else:
-                # Handle specific error cases with enhanced UX
-                await self._handle_optimized_errors(interaction, result, status_message)
+                # Handle generation failure
+                error_embed = discord.Embed(
+                    title="❌ Image Generation Failed",
+                    description="Unable to generate the image. Please try again with a different prompt.",
+                    color=0xE74C3C,
+                    timestamp=datetime.now(timezone.utc),
+                )
+                error_embed.add_field(
+                    name="🔧 Suggestions",
+                    value="• Try a simpler, more specific prompt\n• Avoid inappropriate content\n• Wait a moment and try again",
+                    inline=False,
+                )
+                error_embed.set_footer(text="Powered by Google Gemini")
+
+                await status_message.edit(embed=error_embed)
 
         except Exception as e:
             logger.error(f"💥 Enhanced image command error: {e}")
@@ -606,7 +613,7 @@ class AdvancedAICog(commands.Cog):
             )
             embed.add_field(
                 name="👨‍💻 Admin Notice",
-                value="The Freepik API key needs to be reconfigured.",
+                value="The Google Gemini API key needs to be reconfigured.",
                 inline=False,
             )
 
@@ -1993,8 +2000,8 @@ class AdvancedAICog(commands.Cog):
                 )
                 embed.add_field(
                     name="🔧 For Bot Administrators",
-                    value="• Check that `FREEPIK_API_KEY` is set in Railway environment variables\n"
-                    "• Verify the FreepikImageClient is properly imported\n"
+                    value="• Check that `GEMINI_API_KEY` is set in Railway environment variables\n"
+                    "• Verify the GeminiImageGenerator is properly imported\n"
                     "• Restart the bot after setting environment variables",
                     inline=False,
                 )
@@ -2012,8 +2019,8 @@ class AdvancedAICog(commands.Cog):
                 )
                 embed.add_field(
                     name="🔧 Setup Instructions",
-                    value="1. Get API key from: https://www.freepik.com/api\n"
-                    "2. Set `FREEPIK_API_KEY` in Railway environment variables\n"
+                    value="1. Get API key from: https://ai.google.dev/\n"
+                    "2. Set `GEMINI_API_KEY` in Railway environment variables\n"
                     "3. Restart the bot\n"
                     "4. Try the command again",
                     inline=False,
@@ -2393,9 +2400,9 @@ class AdvancedAICog(commands.Cog):
                     )
                     embed.add_field(
                         name="🔧 For Bot Administrators",
-                        value="• Check FREEPIK_API_KEY in Railway environment variables\n"
-                        "• Get your API key at: https://www.freepik.com/api\n"
-                        "• Verify key at: https://www.freepik.com/developers/dashboard/api-key",
+                        value="• Check GEMINI_API_KEY in Railway environment variables\n"
+                        "• Get your API key at: https://ai.google.dev/\n"
+                        "• Verify key at: https://makersuite.google.com/app/apikey",
                         inline=False,
                     )
                     embed.set_footer(
