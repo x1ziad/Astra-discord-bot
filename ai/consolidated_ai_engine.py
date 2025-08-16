@@ -59,7 +59,6 @@ except ImportError:
 logger = logging.getLogger("astra.consolidated_ai")
 
 
-
 # Import the optimized AI engine
 try:
     from ai.optimized_ai_engine import OptimizedAIEngine, get_optimized_engine
@@ -69,7 +68,6 @@ try:
 except ImportError as e:
     OPTIMIZED_ENGINE_AVAILABLE = False
     logger.warning(f"❌ Optimized AI Engine not available: {e}")
-
 
 
 class AIProvider(Enum):

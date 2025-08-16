@@ -355,7 +355,7 @@ class AstraBot(commands.Bot):
                 "cogs.nexus",  # Advanced diagnostic interface
             ],
             # AI and enhanced features (depend on core)
-            ["cogs.advanced_ai", "cogs.server_management"],
+            ["cogs.advanced_ai", "cogs.server_management", "cogs.gemini_image"],
             # Analytics and specialized features
             ["cogs.analytics", "cogs.roles"],
             # Game-specific and optional features
@@ -811,7 +811,7 @@ class AstraBot(commands.Bot):
                     # Optimized rate limiting for large servers (reduced delay)
                     if len(self.guilds) > 200:  # Only for very large deployments
                         await asyncio.sleep(0.01)
-## Vim discable and error handiling, except and error try and fix the thing for auto complation, { getter/ setter}
+                ## Vim discable and error handiling, except and error try and fix the thing for auto complation, { getter/ setter}
                 except Exception as e:
                     self.logger.error(f"Error syncing guild {guild.id}: {e}")
 

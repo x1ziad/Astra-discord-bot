@@ -35,7 +35,7 @@ except ImportError as e:
 # Import optimized AI engine for enhanced performance
 try:
     from ai.optimized_ai_engine import OptimizedAIEngine, get_optimized_engine
-    
+
     OPTIMIZED_AI_AVAILABLE = True
     logger.info("✅ Optimized AI Engine imported successfully")
 except ImportError as e:
@@ -106,18 +106,22 @@ class AdvancedAICog(commands.Cog):
                 try:
                     self.ai_client = get_optimized_engine()
                     self.logger.info("✅ Optimized AI Engine initialized successfully")
-                    
+
                     # Store basic configuration for command compatibility
                     config = EnhancedConfigManager()
                     self.ai_model = config.get_setting(
                         "AI_MODEL", "deepseek/deepseek-r1:nitro"
                     )
                     self.max_tokens = int(config.get_setting("AI_MAX_TOKENS", "1000"))
-                    self.temperature = float(config.get_setting("AI_TEMPERATURE", "0.7"))
+                    self.temperature = float(
+                        config.get_setting("AI_TEMPERATURE", "0.7")
+                    )
                     return
                 except Exception as e:
-                    self.logger.warning(f"Optimized engine failed, falling back to consolidated: {e}")
-            
+                    self.logger.warning(
+                        f"Optimized engine failed, falling back to consolidated: {e}"
+                    )
+
             # Fallback to consolidated engine
             if AI_ENGINE_AVAILABLE:
                 # Initialize the consolidated AI engine
