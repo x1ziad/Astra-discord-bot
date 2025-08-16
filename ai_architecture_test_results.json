@@ -1,0 +1,111 @@
+{
+  "timestamp": 1755356952.9714649,
+  "summary": {
+    "total_tests": 6,
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0,
+    "success_rate": 100.0
+  },
+  "component_status": {
+    "Enhanced Configuration": true,
+    "Universal AI Client": true,
+    "Optimized AI Engine": true,
+    "Consolidated Engine": true
+  },
+  "test_results": {
+    "enhanced_config": {
+      "status": "passed",
+      "optimal_model": "deepseek/deepseek-v3",
+      "max_tokens": 1000,
+      "caching_enabled": true,
+      "recommendations_count": 0
+    },
+    "universal_client": {
+      "status": "passed",
+      "available": false,
+      "provider": "universal",
+      "model": "gpt-3.5-turbo"
+    },
+    "optimized_engine": {
+      "status": "passed",
+      "conversation_results": [
+        {
+          "message": "Hello, how are you?",
+          "response_length": 81,
+          "response_time": 0.00011420249938964844
+        },
+        {
+          "message": "Can you help me with Stellaris strategies?",
+          "response_length": 95,
+          "response_time": 5.316734313964844e-05
+        },
+        {
+          "message": "What's the best way to optimize my empire's economy?",
+          "response_length": 95,
+          "response_time": 0.00022602081298828125
+        }
+      ],
+      "performance_metrics": 8,
+      "optimal_model": "deepseek/deepseek-r1:nitro"
+    },
+    "consolidated_engine": {
+      "status": "passed",
+      "response_time": 0.00021195411682128906,
+      "response_length": 107,
+      "health_status": "no_providers"
+    },
+    "integration": {
+      "status": "passed",
+      "optimized_config_integration": true,
+      "fallback_available": true
+    },
+    "performance": {
+      "status": "passed",
+      "metrics": {
+        "optimized_engine_response_time": {
+          "avg": 0.00013113021850585938,
+          "min": 5.316734313964844e-05,
+          "max": 0.00022602081298828125,
+          "count": 3
+        },
+        "consolidated_engine_response_time": {
+          "avg": 0.00021195411682128906,
+          "min": 0.00021195411682128906,
+          "max": 0.00021195411682128906,
+          "count": 1
+        }
+      },
+      "evaluation": {
+        "optimized_engine_response_time": {
+          "meets_benchmark": true,
+          "avg_time": 0.00013113021850585938,
+          "target": 2.0
+        },
+        "consolidated_engine_response_time": {
+          "meets_benchmark": true,
+          "avg_time": 0.00021195411682128906,
+          "target": 2.0
+        }
+      },
+      "benchmarks": {
+        "response_time_target": 2.0,
+        "token_efficiency": 1000,
+        "cache_hit_rate_target": 0.2
+      }
+    }
+  },
+  "performance_metrics": {
+    "optimized_engine_response_time": [
+      0.00011420249938964844,
+      5.316734313964844e-05,
+      0.00022602081298828125
+    ],
+    "consolidated_engine_response_time": [
+      0.00021195411682128906
+    ]
+  },
+  "recommendations": [
+    "All systems operating optimally!"
+  ]
+}

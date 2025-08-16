@@ -32,6 +32,16 @@ except ImportError as e:
     logger = logging.getLogger("astra.advanced_ai")
     logger.error(f"Failed to import AI systems: {e}")
 
+# Import optimized AI engine for enhanced performance
+try:
+    from ai.optimized_ai_engine import OptimizedAIEngine, get_optimized_engine
+    
+    OPTIMIZED_AI_AVAILABLE = True
+    logger.info("✅ Optimized AI Engine imported successfully")
+except ImportError as e:
+    OPTIMIZED_AI_AVAILABLE = False
+    logger.warning(f"❌ Optimized AI Engine not available: {e}")
+
 # Import dedicated image generation client
 try:
     from ai.freepik_image_client import FreepikImageClient
@@ -101,6 +111,24 @@ class AdvancedAICog(commands.Cog):
     def _setup_ai_client(self):
         """Setup the new consolidated AI engine"""
         try:
+            # Try optimized engine first
+            if OPTIMIZED_AI_AVAILABLE:
+                try:
+                    self.ai_client = get_optimized_engine()
+                    self.logger.info("✅ Optimized AI Engine initialized successfully")
+                    
+                    # Store basic configuration for command compatibility
+                    config = EnhancedConfigManager()
+                    self.ai_model = config.get_setting(
+                        "AI_MODEL", "deepseek/deepseek-r1:nitro"
+                    )
+                    self.max_tokens = int(config.get_setting("AI_MAX_TOKENS", "1000"))
+                    self.temperature = float(config.get_setting("AI_TEMPERATURE", "0.7"))
+                    return
+                except Exception as e:
+                    self.logger.warning(f"Optimized engine failed, falling back to consolidated: {e}")
+            
+            # Fallback to consolidated engine
             if AI_ENGINE_AVAILABLE:
                 # Initialize the consolidated AI engine
                 self.ai_client = ConsolidatedAIEngine()
@@ -115,7 +143,7 @@ class AdvancedAICog(commands.Cog):
                 self.temperature = float(config.get_setting("AI_TEMPERATURE", "0.7"))
 
             else:
-                self.logger.error("❌ Consolidated AI Engine not available!")
+                self.logger.error("❌ No AI Engine available!")
                 self.ai_client = None
 
         except Exception as e:

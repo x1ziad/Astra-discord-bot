@@ -287,7 +287,9 @@ def get_railway_config():
                 # For Railway deployment, DISCORD_TOKEN should always be set
                 # If not set, this is likely a development/testing scenario
                 logger.error("❌ DISCORD_TOKEN is required for Railway deployment!")
-                logger.error("Please set the DISCORD_TOKEN environment variable in Railway")
+                logger.error(
+                    "Please set the DISCORD_TOKEN environment variable in Railway"
+                )
                 raise RuntimeError(
                     "DISCORD_TOKEN environment variable is required but not set. "
                     "Please configure it in your Railway deployment settings."
@@ -298,7 +300,7 @@ def get_railway_config():
         except Exception as e:
             logger.error(f"❌ Failed to initialize Railway configuration: {e}")
             raise RuntimeError(f"Railway configuration initialization failed: {e}")
-    
+
     return _railway_config_instance
 
 
@@ -322,9 +324,9 @@ def setup_railway_logging():
             logging.getLogger("discord").setLevel(logging.WARNING)
             logging.getLogger("discord.http").setLevel(logging.WARNING)
             logging.getLogger("aiohttp").setLevel(logging.WARNING)
-        
+
         logging.getLogger(__name__).info("✅ Railway logging configured successfully")
-    
+
     except Exception as e:
         # Fallback to basic logging if Railway config fails
         logging.basicConfig(
@@ -332,4 +334,6 @@ def setup_railway_logging():
             format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
             handlers=[logging.StreamHandler()],
         )
-        logging.getLogger(__name__).warning(f"⚠️ Using fallback logging due to config error: {e}")
+        logging.getLogger(__name__).warning(
+            f"⚠️ Using fallback logging due to config error: {e}"
+        )

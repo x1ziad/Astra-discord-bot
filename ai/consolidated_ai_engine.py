@@ -79,6 +79,16 @@ except ImportError as e:
     FREEPIK_API_AVAILABLE = False
     logger.warning(f"❌ Freepik API Client not available: {e}")
 
+# Import the optimized AI engine
+try:
+    from ai.optimized_ai_engine import OptimizedAIEngine, get_optimized_engine
+
+    OPTIMIZED_ENGINE_AVAILABLE = True
+    logger.info("✅ Optimized AI Engine imported successfully")
+except ImportError as e:
+    OPTIMIZED_ENGINE_AVAILABLE = False
+    logger.warning(f"❌ Optimized AI Engine not available: {e}")
+
 
 # Legacy FreepikImageGenerator wrapper for backward compatibility
 class FreepikImageGenerator:
@@ -662,7 +672,17 @@ class ConsolidatedAIEngine:
         self.config = config or {}
         self.logger = logger
 
-        # Initialize components
+        # Try to use optimized engine first
+        self.optimized_engine = None
+        if OPTIMIZED_ENGINE_AVAILABLE:
+            try:
+                self.optimized_engine = get_optimized_engine()
+                logger.info("✅ Using Optimized AI Engine for enhanced performance")
+            except Exception as e:
+                logger.warning(f"Failed to initialize optimized engine: {e}")
+                self.optimized_engine = None
+
+        # Initialize components (fallback system)
         self.cache = IntelligentCache(
             CacheConfig(
                 redis_url=self.config.get("redis_url"),
@@ -691,12 +711,12 @@ class ConsolidatedAIEngine:
             },
         }
 
-        # AI providers
+        # AI providers (fallback system)
         self.ai_providers: Dict[AIProvider, Any] = {}
         self.active_provider = None
         self._initialize_providers()
 
-        # Conversation management
+        # Conversation management (fallback system)
         self.conversations: Dict[int, ConversationContext] = {}
         self.user_profiles: Dict[int, UserProfile] = {}
 
@@ -717,7 +737,10 @@ class ConsolidatedAIEngine:
         # Thread pool for CPU-intensive operations
         self.thread_pool = ThreadPoolExecutor(max_workers=4)
 
-        logger.info("Consolidated AI Engine initialized successfully")
+        if self.optimized_engine:
+            logger.info("Consolidated AI Engine initialized with optimized backend")
+        else:
+            logger.info("Consolidated AI Engine initialized with legacy backend")
 
     def _initialize_image_generation(self):
         """Initialize image generation with advanced handler"""
@@ -920,6 +943,21 @@ class ConsolidatedAIEngine:
         context_data: Dict[str, Any] = None,
     ) -> str:
         """Main conversation processing with full optimization"""
+        
+        # Use optimized engine if available
+        if self.optimized_engine:
+            try:
+                return await self.optimized_engine.process_conversation(
+                    message=message,
+                    user_id=user_id,
+                    guild_id=guild_id,
+                    channel_id=channel_id,
+                    context_data=context_data
+                )
+            except Exception as e:
+                logger.warning(f"Optimized engine failed, falling back to legacy: {e}")
+        
+        # Legacy processing (fallback)
         start_time = time.time()
 
         try:
