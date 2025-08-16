@@ -56,7 +56,6 @@ class BotConfig:
         if not self.features:
             self.features = {
                 "ai_chat": True,
-                "image_generation": True,
                 "text_to_speech": True,
                 "analytics": True,
                 "server_management": True,

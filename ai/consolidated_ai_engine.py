@@ -59,25 +59,6 @@ except ImportError:
 logger = logging.getLogger("astra.consolidated_ai")
 
 
-# Import the new advanced image generation system
-try:
-    from ai.image_generation_handler import ImageGenerationHandler, get_image_handler
-
-    IMAGE_HANDLER_AVAILABLE = True
-    logger.info("✅ Advanced Image Generation Handler imported successfully")
-except ImportError as e:
-    IMAGE_HANDLER_AVAILABLE = False
-    logger.warning(f"❌ Image Generation Handler not available: {e}")
-
-# Import the new Freepik API client
-try:
-    from ai.freepik_api_client import FreepikAPIClient, get_freepik_api_client
-
-    FREEPIK_API_AVAILABLE = True
-    logger.info("✅ Advanced Freepik API Client imported successfully")
-except ImportError as e:
-    FREEPIK_API_AVAILABLE = False
-    logger.warning(f"❌ Freepik API Client not available: {e}")
 
 # Import the optimized AI engine
 try:
@@ -89,71 +70,6 @@ except ImportError as e:
     OPTIMIZED_ENGINE_AVAILABLE = False
     logger.warning(f"❌ Optimized AI Engine not available: {e}")
 
-
-# Legacy FreepikImageGenerator wrapper for backward compatibility
-class FreepikImageGenerator:
-    """Legacy wrapper for the new ImageGenerationHandler"""
-
-    def __init__(self, api_key: str):
-        if IMAGE_HANDLER_AVAILABLE:
-            self.handler = ImageGenerationHandler(api_key)
-            logger.info("🔄 Using advanced ImageGenerationHandler")
-        else:
-            self.handler = None
-            logger.warning(
-                "❌ ImageGenerationHandler not available - image generation disabled"
-            )
-
-    async def generate_image(self, prompt: str, user_id: int = None) -> Dict[str, Any]:
-        """Generate image using advanced handler"""
-        if self.handler:
-            # Create context for the handler
-            context = {
-                "user_id": user_id or 0,
-                "channel_id": 0,  # Default channel
-                "guild_id": None,
-                "request_type": "legacy_wrapper",
-            }
-
-            permissions = {
-                "is_admin": True,  # Legacy calls assume admin permissions
-                "is_mod": True,
-            }
-
-            return await self.handler.generate_image(prompt, context, permissions)
-        else:
-            return {
-                "success": False,
-                "error": "Image generation handler not available",
-                "message": "Image generation is not configured",
-            }
-
-    async def close(self):
-        """Close the handler session"""
-        if self.handler:
-            await self.handler.close()
-
-    def is_available(self) -> bool:
-        """Check if image generation handler is available"""
-        if not self.handler:
-            return False
-
-        # Avoid asyncio.run() in async context
-        if hasattr(self.handler, "is_available"):
-            try:
-                # Try to get current event loop
-                loop = asyncio.get_event_loop()
-                if loop.is_running():
-                    # We're in an async context, return True (will be checked later)
-                    return True
-                else:
-                    # Not in async context, safe to use asyncio.run()
-                    return asyncio.run(self.handler.is_available())
-            except RuntimeError:
-                # No event loop, safe to use asyncio.run()
-                return asyncio.run(self.handler.is_available())
-        else:
-            return True
 
 
 class AIProvider(Enum):
@@ -695,22 +611,6 @@ class ConsolidatedAIEngine:
         self.sentiment_analyzer = AdvancedSentimentAnalyzer()
         self.flow_engine = ConversationFlowEngine()
 
-        # Image generation
-        self.freepik_generator = None
-        self._initialize_image_generation()
-
-        # Image generation permissions
-        self.image_config = {
-            "default_channel_id": 1402666535696470169,  # Default channel for regular users
-            "mod_anywhere": True,  # Mods can use image generation anywhere
-            "admin_anywhere": True,  # Admins can use image generation anywhere
-            "rate_limit": {
-                "regular_users": 5,  # 5 images per hour for regular users
-                "mods": 20,  # 20 images per hour for mods
-                "admins": 50,  # 50 images per hour for admins
-            },
-        }
-
         # AI providers (fallback system)
         self.ai_providers: Dict[AIProvider, Any] = {}
         self.active_provider = None
@@ -741,35 +641,6 @@ class ConsolidatedAIEngine:
             logger.info("Consolidated AI Engine initialized with optimized backend")
         else:
             logger.info("Consolidated AI Engine initialized with legacy backend")
-
-    def _initialize_image_generation(self):
-        """Initialize image generation with advanced handler"""
-        freepik_api_key = self.config.get("freepik_api_key") or os.getenv(
-            "FREEPIK_API_KEY"
-        )
-
-        if freepik_api_key and IMAGE_HANDLER_AVAILABLE:
-            try:
-                # Use the advanced image generation handler
-                self.freepik_generator = FreepikImageGenerator(freepik_api_key)
-                logger.info("✅ Image generation initialized with advanced handler")
-                logger.info(
-                    f"🔑 API Key configured: {freepik_api_key[:10]}...{freepik_api_key[-4:]}"
-                )
-            except Exception as e:
-                logger.error(f"❌ Image generation initialization failed: {e}")
-                self.freepik_generator = None
-        elif freepik_api_key and not IMAGE_HANDLER_AVAILABLE:
-            logger.error(
-                "❌ FREEPIK_API_KEY found but ImageGenerationHandler not available"
-            )
-            logger.error("🔧 Check ai/image_generation_handler.py import")
-            self.freepik_generator = None
-        else:
-            logger.warning("⚠️  FREEPIK_API_KEY not found - image generation disabled")
-            logger.warning("🌐 Get your key at: https://www.freepik.com/api")
-            logger.warning("⚙️  Set FREEPIK_API_KEY in Railway environment variables")
-            self.freepik_generator = None
 
     def _initialize_providers(self):
         """Initialize AI providers in order of preference"""
@@ -943,7 +814,7 @@ class ConsolidatedAIEngine:
         context_data: Dict[str, Any] = None,
     ) -> str:
         """Main conversation processing with full optimization"""
-        
+
         # Use optimized engine if available
         if self.optimized_engine:
             try:
@@ -952,11 +823,11 @@ class ConsolidatedAIEngine:
                     user_id=user_id,
                     guild_id=guild_id,
                     channel_id=channel_id,
-                    context_data=context_data
+                    context_data=context_data,
                 )
             except Exception as e:
                 logger.warning(f"Optimized engine failed, falling back to legacy: {e}")
-        
+
         # Legacy processing (fallback)
         start_time = time.time()
 
@@ -1566,223 +1437,6 @@ Key principles:
             channel_id=context.get("channel_id"),
             context_data=context,
         )
-
-    async def generate_image(
-        self,
-        prompt: str,
-        context: Dict[str, Any],
-        user_permissions: Dict[str, bool] = None,
-    ) -> Optional[Dict[str, Any]]:
-        """
-        Generate an image using the advanced image generation handler
-
-        Args:
-            prompt: Description of the image to generate
-            context: Context dictionary with user info, channel_id, etc.
-            user_permissions: Dictionary with is_mod, is_admin flags
-
-        Returns:
-            Dictionary with image data or error information
-        """
-        try:
-            # Use the advanced image generation handler directly
-            if IMAGE_HANDLER_AVAILABLE:
-                logger.info("🎨 Using advanced image generation handler")
-
-                # Get the global image handler
-                image_handler = get_image_handler()
-
-                # Generate image using the handler
-                result = await image_handler.generate_image(
-                    prompt=prompt,
-                    context=context,
-                    user_permissions=user_permissions or {},
-                    size="square_hd",
-                    num_images=1,
-                )
-
-                if result.get("success"):
-                    logger.info(f"✅ Image generated successfully via handler")
-                    return result
-                else:
-                    logger.warning(
-                        f"❌ Image generation failed via handler: {result.get('error')}"
-                    )
-                    # If handler fails, try fallback methods
-
-            # Legacy fallback: Try the Freepik generator wrapper
-            if self.freepik_generator and self.freepik_generator.is_available():
-                logger.info("🔄 Falling back to legacy Freepik generator")
-
-                user_id = context.get("user_id", 0)
-                result = await self.freepik_generator.generate_image(prompt, user_id)
-
-                if result.get("success"):
-                    logger.info("✅ Image generated via legacy generator")
-                    return result
-                else:
-                    logger.warning(f"❌ Legacy generator failed: {result.get('error')}")
-
-            # Final fallback: Return comprehensive error
-            logger.error("❌ All image generation methods failed")
-            return {
-                "success": False,
-                "error": "No image generation providers available",
-                "message": "Image generation is currently unavailable. Please try again later.",
-                "details": {
-                    "advanced_handler_available": IMAGE_HANDLER_AVAILABLE,
-                    "legacy_generator_available": bool(self.freepik_generator),
-                    "freepik_api_key_configured": bool(os.getenv("FREEPIK_API_KEY")),
-                },
-            }
-
-        except Exception as e:
-            logger.error(f"💥 Critical error in image generation: {e}")
-            return {
-                "success": False,
-                "error": "Critical error",
-                "message": f"An unexpected error occurred: {str(e)}",
-            }
-
-            # No image generation providers available
-            return {
-                "success": False,
-                "error": "No image generation providers available",
-                "message": "Image generation is currently unavailable. Please try again later.",
-            }
-
-        except Exception as e:
-            logger.error(f"Error in generate_image: {e}")
-            return {
-                "success": False,
-                "error": str(e),
-                "message": "An error occurred while generating the image.",
-            }
-
-    async def _check_image_generation_permission(
-        self, user_id: int, channel_id: int, user_permissions: Dict[str, bool]
-    ) -> Dict[str, Any]:
-        """Check if user has permission to generate images in this channel"""
-        try:
-            is_admin = user_permissions.get("is_admin", False)
-            is_mod = user_permissions.get("is_mod", False)
-
-            # Admins can use image generation anywhere
-            if is_admin:
-                return {"allowed": True, "reason": "admin_privilege"}
-
-            # Mods can use image generation anywhere (but not admins)
-            if is_mod:
-                return {"allowed": True, "reason": "mod_privilege"}
-
-            # Regular users can only use in the designated channel
-            default_channel = self.image_config["default_channel_id"]
-            if channel_id == default_channel:
-                return {"allowed": True, "reason": "designated_channel"}
-            else:
-                return {
-                    "allowed": False,
-                    "message": f"Regular users can only generate images in <#{default_channel}>. Mods and admins can use this feature anywhere.",
-                }
-
-        except Exception as e:
-            logger.error(f"Permission check error: {e}")
-            return {
-                "allowed": False,
-                "message": "Permission check failed. Please try again.",
-            }
-
-    async def _check_image_rate_limit(
-        self, user_id: int, user_permissions: Dict[str, bool]
-    ) -> Dict[str, Any]:
-        """Check if user has exceeded their image generation rate limit"""
-        try:
-            is_admin = user_permissions.get("is_admin", False)
-            is_mod = user_permissions.get("is_mod", False)
-
-            # Determine rate limit based on user role
-            if is_admin:
-                limit = self.image_config["rate_limit"]["admins"]
-                role = "admin"
-            elif is_mod:
-                limit = self.image_config["rate_limit"]["mods"]
-                role = "mod"
-            else:
-                limit = self.image_config["rate_limit"]["regular_users"]
-                role = "user"
-
-            # Check current usage from cache
-            cache_key = f"image_rate_limit:{user_id}"
-            current_usage = await self.cache.get(cache_key, 0)
-
-            if current_usage >= limit:
-                # Calculate reset time (1 hour from now)
-                reset_time = datetime.now(timezone.utc) + timedelta(hours=1)
-                return {
-                    "allowed": False,
-                    "message": f"Rate limit exceeded. {role.title()}s can generate {limit} images per hour. Try again in an hour.",
-                    "reset_time": reset_time.isoformat(),
-                    "current_usage": current_usage,
-                    "limit": limit,
-                }
-
-            return {
-                "allowed": True,
-                "current_usage": current_usage,
-                "limit": limit,
-                "remaining": limit - current_usage,
-            }
-
-        except Exception as e:
-            logger.error(f"Rate limit check error: {e}")
-            return {
-                "allowed": True,  # Allow on error to avoid blocking users
-                "message": "Rate limit check failed, proceeding with generation.",
-            }
-
-    async def _update_image_rate_limit(self, user_id: int):
-        """Update user's image generation rate limit counter"""
-        try:
-            cache_key = f"image_rate_limit:{user_id}"
-            current_usage = await self.cache.get(cache_key, 0)
-            new_usage = current_usage + 1
-
-            # Set with 1 hour TTL
-            await self.cache.set(cache_key, new_usage, ttl=3600)
-
-        except Exception as e:
-            logger.error(f"Rate limit update error: {e}")
-
-    async def _log_image_generation(
-        self, user_id: int, channel_id: int, prompt: str, provider: str, success: bool
-    ):
-        """Log image generation attempt to database"""
-        try:
-
-            def log_to_db():
-                with sqlite3.connect(self.db_path) as conn:
-                    conn.execute(
-                        """
-                        INSERT INTO image_generations 
-                        (user_id, channel_id, prompt, provider, success, created_at)
-                        VALUES (?, ?, ?, ?, ?, ?)
-                        """,
-                        (
-                            user_id,
-                            channel_id,
-                            prompt[:500],  # Truncate long prompts
-                            provider,
-                            success,
-                            datetime.now(timezone.utc).isoformat(),
-                        ),
-                    )
-                    conn.commit()
-
-            # Run in thread pool to avoid blocking
-            await asyncio.get_event_loop().run_in_executor(self.thread_pool, log_to_db)
-
-        except Exception as e:
-            logger.error(f"Image generation logging failed: {e}")
 
     async def get_health_status(self) -> Dict[str, Any]:
         """

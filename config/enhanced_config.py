@@ -242,7 +242,6 @@ class EnhancedConfigManager:
         # Default features (if not explicitly configured)
         default_features = {
             "ai_chat": True,
-            "image_generation": True,
             "text_to_speech": True,
             "analytics": True,
             "server_management": True,

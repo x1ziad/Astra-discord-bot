@@ -42,16 +42,6 @@ except ImportError as e:
     OPTIMIZED_AI_AVAILABLE = False
     logger.warning(f"❌ Optimized AI Engine not available: {e}")
 
-# Import dedicated image generation client
-try:
-    from ai.freepik_image_client import FreepikImageClient
-
-    IMAGE_CLIENT_AVAILABLE = True
-    logger.info("✅ FreepikImageClient imported successfully")
-except ImportError as e:
-    IMAGE_CLIENT_AVAILABLE = False
-    logger.error(f"❌ Failed to import FreepikImageClient: {e}")
-
 # Backward compatibility imports
 from config.config_manager import config_manager
 
