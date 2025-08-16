@@ -40,7 +40,7 @@ class BotConfig:
     ai_enabled: bool = True
     ai_personality: str = "default"
     ai_temperature: float = 0.7
-    ai_max_tokens: int = 1500
+    ai_max_tokens: int = 1000
     ai_model: str = "DeepSeek-R1-0528"
     ai_provider: str = "github_models"
 

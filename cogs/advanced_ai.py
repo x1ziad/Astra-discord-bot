@@ -111,7 +111,7 @@ class AdvancedAICog(commands.Cog):
                 self.ai_model = config.get_setting(
                     "AI_MODEL", "deepseek/deepseek-r1:nitro"
                 )
-                self.max_tokens = int(config.get_setting("AI_MAX_TOKENS", "2000"))
+                self.max_tokens = int(config.get_setting("AI_MAX_TOKENS", "1000"))
                 self.temperature = float(config.get_setting("AI_TEMPERATURE", "0.7"))
 
             else:

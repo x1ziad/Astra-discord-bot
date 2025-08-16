@@ -34,7 +34,7 @@ class RailwayConfig:
             "ai_api_key": self._get_env("AI_API_KEY"),  # Primary universal API key
             "ai_base_url": self._get_env("AI_BASE_URL", "https://openrouter.ai/api/v1"),
             "ai_model": self._get_env("AI_MODEL", "deepseek/deepseek-r1:nitro"),
-            "ai_max_tokens": int(self._get_env("AI_MAX_TOKENS", "2000")),
+            "ai_max_tokens": int(self._get_env("AI_MAX_TOKENS", "1000")),
             "ai_temperature": float(self._get_env("AI_TEMPERATURE", "0.7")),
             "ai_provider_name": self._get_env("AI_PROVIDER_NAME", "universal"),
             # Legacy OpenRouter Configuration (for backward compatibility)
@@ -45,7 +45,7 @@ class RailwayConfig:
                 "OPENROUTER_MODEL", "deepseek/deepseek-r1:nitro"
             ),
             "openrouter_max_tokens": int(
-                self._get_env("OPENROUTER_MAX_TOKENS", "2000")
+                self._get_env("OPENROUTER_MAX_TOKENS", "1000")
             ),
             "openrouter_temperature": float(
                 self._get_env("OPENROUTER_TEMPERATURE", "0.7")
@@ -55,12 +55,12 @@ class RailwayConfig:
                 "GITHUB_TOKEN"
             ),  # Optional - fallback to OpenAI if not set
             "github_model": self._get_env("GITHUB_MODEL", "deepseek/DeepSeek-R1-0528"),
-            "github_max_tokens": int(self._get_env("GITHUB_MAX_TOKENS", "2000")),
+            "github_max_tokens": int(self._get_env("GITHUB_MAX_TOKENS", "1000")),
             "github_temperature": float(self._get_env("GITHUB_TEMPERATURE", "0.7")),
             # OpenAI Configuration (fallback)
             "openai_api_key": self._get_env("OPENAI_API_KEY"),
             "openai_model": self._get_env("OPENAI_MODEL", "gpt-4"),
-            "openai_max_tokens": int(self._get_env("OPENAI_MAX_TOKENS", "2000")),
+            "openai_max_tokens": int(self._get_env("OPENAI_MAX_TOKENS", "1000")),
             "openai_temperature": float(self._get_env("OPENAI_TEMPERATURE", "0.7")),
             # NASA API
             "nasa_api_key": self._get_env("NASA_API_KEY", "DEMO_KEY"),

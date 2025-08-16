@@ -20,7 +20,7 @@ class AIProviderConfig:
     api_key: Optional[str] = None
     base_url: Optional[str] = None
     model: Optional[str] = None
-    max_tokens: int = 2000
+    max_tokens: int = 1000
     temperature: float = 0.7
     provider_name: Optional[str] = None
 
@@ -81,7 +81,7 @@ class EnhancedConfigManager:
                     "AI_BASE_URL", "https://openrouter.ai/api/v1"
                 ),
                 model=self.get_setting("AI_MODEL", "deepseek/deepseek-r1:nitro"),
-                max_tokens=int(self.get_setting("AI_MAX_TOKENS", "2000")),
+                max_tokens=int(self.get_setting("AI_MAX_TOKENS", "1000")),
                 temperature=float(self.get_setting("AI_TEMPERATURE", "0.7")),
                 provider_name="universal",
             )
@@ -94,7 +94,7 @@ class EnhancedConfigManager:
                 model=self.get_setting(
                     "OPENROUTER_MODEL", "deepseek/deepseek-r1:nitro"
                 ),
-                max_tokens=int(self.get_setting("OPENROUTER_MAX_TOKENS", "2000")),
+                max_tokens=int(self.get_setting("OPENROUTER_MAX_TOKENS", "1000")),
                 temperature=float(self.get_setting("OPENROUTER_TEMPERATURE", "0.7")),
                 provider_name="openrouter",
             )
@@ -105,7 +105,7 @@ class EnhancedConfigManager:
                     "OPENAI_BASE_URL", "https://api.openai.com/v1"
                 ),
                 model=self.get_setting("OPENAI_MODEL", "gpt-4"),
-                max_tokens=int(self.get_setting("OPENAI_MAX_TOKENS", "2000")),
+                max_tokens=int(self.get_setting("OPENAI_MAX_TOKENS", "1000")),
                 temperature=float(self.get_setting("OPENAI_TEMPERATURE", "0.7")),
                 provider_name="openai",
             )
