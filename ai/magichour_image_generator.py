@@ -1,6 +1,6 @@
 """
-Gemini Image Generator for Astra Bot
-Isolated, robust image generation system using Google's Gemini AI
+MagicHour.ai Image Generator for Astra Bot
+High-quality image generation using MagicHour.ai API
 """
 
 import asyncio
@@ -17,19 +17,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 import json
 
-# Google Gemini imports
-try:
-    from google import genai
-    from google.genai import types
-
-    GEMINI_AVAILABLE = True
-except ImportError as e:
-    GEMINI_AVAILABLE = False
-    genai = None
-    types = None
-
 # Set up logging
-logger = logging.getLogger("astra.gemini_image")
+logger = logging.getLogger("astra.magichour_image")
 
 
 class ImageSize(Enum):
@@ -80,22 +69,23 @@ class ImageGenerationResult:
     generation_time: Optional[float] = None
     error: Optional[str] = None
     error_code: Optional[str] = None
-    provider: str = "Gemini"
-    model: str = "gemini-1.5-flash"
+    provider: str = "MagicHour.ai"
+    model: str = "flux-schnell"
     metadata: Dict[str, Any] = field(default_factory=dict)
 
 
-class GeminiImageConfig:
-    """Configuration for Gemini image generation"""
+class MagicHourImageConfig:
+    """Configuration for MagicHour.ai image generation"""
 
     def __init__(self):
-        self.api_key = os.getenv("GEMINI_API_KEY")
-        self.model = "gemini-1.5-flash"  # Use a standard model that supports image generation
+        self.api_key = os.getenv("MAGICHOUR_API_KEY")
+        self.base_url = "https://api.magichour.ai"
+        self.model = "flux-schnell"  # MagicHour.ai's fast model
         self.max_retries = 3
         self.retry_delay = 2.0
-        self.timeout = 60.0
-        self.rate_limit_per_minute = 15
-        self.rate_limit_per_hour = 100
+        self.timeout = 120.0
+        self.rate_limit_per_minute = 20
+        self.rate_limit_per_hour = 200
         self.max_prompt_length = 2000
 
         # Style enhancement prompts
@@ -110,16 +100,16 @@ class GeminiImageConfig:
         }
 
 
-class GeminiImageGenerator:
+class MagicHourImageGenerator:
     """
-    Robust Gemini-based image generation system
-    Isolated from main AI system with comprehensive error handling
+    MagicHour.ai-based image generation system
+    High-quality image generation with comprehensive error handling
     """
 
-    def __init__(self, config: Optional[GeminiImageConfig] = None):
-        self.config = config or GeminiImageConfig()
-        self.logger = logging.getLogger("astra.gemini_image")
-        self.client = None
+    def __init__(self, config: Optional[MagicHourImageConfig] = None):
+        self.config = config or MagicHourImageConfig()
+        self.logger = logging.getLogger("astra.magichour_image")
+        self.session = None
         self.is_initialized = False
 
         # Rate limiting
@@ -132,42 +122,32 @@ class GeminiImageGenerator:
         self.failed_requests = 0
         self.total_generation_time = 0.0
 
-        # Initialize client
+        # Initialize
         self._initialize_client()
 
     def _initialize_client(self) -> bool:
-        """Initialize the Gemini client"""
+        """Initialize the MagicHour.ai client"""
         try:
-            if not GEMINI_AVAILABLE:
-                self.logger.error(
-                    "❌ Google Gemini SDK not available. Install with: pip install google-genai"
-                )
-                return False
-
             if not self.config.api_key:
-                self.logger.error("❌ GEMINI_API_KEY environment variable not set")
+                self.logger.error("❌ MAGICHOUR_API_KEY environment variable not set")
                 return False
 
-            # Initialize Gemini client
-            self.client = genai.Client(api_key=self.config.api_key)
             self.is_initialized = True
-
-            self.logger.info("✅ Gemini Image Generator initialized successfully")
+            self.logger.info("✅ MagicHour.ai Image Generator initialized successfully")
             self.logger.info(
-                f"🔑 API Key configured: {self.config.api_key[:8]}...{self.config.api_key[-4:]}"
+                f"🔑 API Key configured: {self.config.api_key[:16]}...{self.config.api_key[-8:]}"
             )
             self.logger.info(f"🤖 Model: {self.config.model}")
-
             return True
 
         except Exception as e:
-            self.logger.error(f"❌ Failed to initialize Gemini client: {e}")
+            self.logger.error(f"❌ Failed to initialize MagicHour.ai client: {e}")
             self.is_initialized = False
             return False
 
     def is_available(self) -> bool:
         """Check if the generator is available and properly configured"""
-        return self.is_initialized and self.client is not None and GEMINI_AVAILABLE
+        return self.is_initialized and self.config.api_key is not None
 
     def _check_rate_limits(self) -> Tuple[bool, Optional[str]]:
         """Check if request is within rate limits"""
@@ -218,11 +198,18 @@ class GeminiImageGenerator:
 
         return enhanced
 
+    async def _get_session(self) -> aiohttp.ClientSession:
+        """Get or create an aiohttp session"""
+        if self.session is None or self.session.closed:
+            timeout = aiohttp.ClientTimeout(total=self.config.timeout)
+            self.session = aiohttp.ClientSession(timeout=timeout)
+        return self.session
+
     async def generate_image(
         self, request: ImageGenerationRequest
     ) -> ImageGenerationResult:
         """
-        Generate an image using Gemini AI
+        Generate an image using MagicHour.ai API
 
         Args:
             request: ImageGenerationRequest containing all generation parameters
@@ -238,7 +225,7 @@ class GeminiImageGenerator:
             if not self.is_available():
                 return ImageGenerationResult(
                     success=False,
-                    error="Gemini Image Generator not available",
+                    error="MagicHour.ai Image Generator not available",
                     error_code="SERVICE_UNAVAILABLE",
                 )
 
@@ -271,8 +258,8 @@ class GeminiImageGenerator:
             self.request_times.append(now)
             self.hourly_requests.append(now)
 
-            # Generate image with Gemini
-            result = await self._call_gemini_api(final_prompt)
+            # Generate image with MagicHour.ai
+            result = await self._call_magichour_api(final_prompt, request)
 
             generation_time = time.time() - start_time
             self.total_generation_time += generation_time
@@ -318,59 +305,163 @@ class GeminiImageGenerator:
                 generation_time=time.time() - start_time,
             )
 
-    async def _call_gemini_api(self, prompt: str) -> ImageGenerationResult:
-        """Make the actual API call to Gemini"""
+    async def _call_magichour_api(
+        self, prompt: str, request: ImageGenerationRequest
+    ) -> ImageGenerationResult:
+        """Make the actual API call to MagicHour.ai"""
+        session = await self._get_session()
+
+        # Parse size
+        width, height = request.size.value.split("x")
+        width, height = int(width), int(height)
+
+        # Prepare request payload for MagicHour.ai
+        payload = {
+            "prompt": prompt,
+            "model": self.config.model,
+            "width": width,
+            "height": height,
+            "num_inference_steps": 4,  # Fast generation with flux-schnell
+            "guidance_scale": 0.0,  # flux-schnell doesn't use guidance
+            "num_images": request.num_images,
+            "output_format": "png",
+        }
+
+        headers = {
+            "Authorization": f"Bearer {self.config.api_key}",
+            "Content-Type": "application/json",
+        }
+
         try:
-            # Create the API request
-            response = await asyncio.get_event_loop().run_in_executor(
-                None, self._sync_gemini_call, prompt
-            )
+            # Make API request
+            url = f"{self.config.base_url}/generate"
 
-            if not response or not hasattr(response, "candidates"):
-                return ImageGenerationResult(
-                    success=False,
-                    error="No response from Gemini API",
-                    error_code="NO_RESPONSE",
+            self.logger.info(f"🌐 Making request to MagicHour.ai: {url}")
+
+            async with session.post(url, json=payload, headers=headers) as response:
+                if response.status != 200:
+                    error_text = await response.text()
+                    self.logger.error(
+                        f"❌ MagicHour.ai API error {response.status}: {error_text}"
+                    )
+                    return ImageGenerationResult(
+                        success=False,
+                        error=f"API error {response.status}: {error_text}",
+                        error_code="API_ERROR",
+                    )
+
+                response_data = await response.json()
+                self.logger.info(
+                    f"📦 MagicHour.ai response structure: {list(response_data.keys())}"
                 )
 
-            # Extract image and text from response
-            image_data = None
-            text_response = None
+                # Check for errors in response
+                if "error" in response_data:
+                    error_msg = response_data["error"].get("message", "Unknown error")
+                    return ImageGenerationResult(
+                        success=False,
+                        error=f"MagicHour.ai error: {error_msg}",
+                        error_code="GENERATION_ERROR",
+                    )
 
-            for part in response.candidates[0].content.parts:
-                if part.text is not None:
-                    text_response = part.text
-                elif part.inline_data is not None:
-                    # Convert image data to bytes
-                    image_data = part.inline_data.data
+                # Extract image data - try different response formats
+                image_data = None
+                image_url = None
 
-            if not image_data:
+                # Check for base64 image data
+                if "image" in response_data:
+                    try:
+                        # Remove data URL prefix if present
+                        base64_data = response_data["image"]
+                        if base64_data.startswith("data:image"):
+                            base64_data = base64_data.split(",")[1]
+
+                        image_data = base64.b64decode(base64_data)
+                        self.logger.info(
+                            f"✅ Received base64 image data: {len(image_data)} bytes"
+                        )
+
+                        return ImageGenerationResult(
+                            success=True,
+                            image_data=image_data,
+                            text_response=f"Generated with MagicHour.ai {self.config.model}",
+                        )
+                    except Exception as e:
+                        self.logger.error(f"❌ Failed to decode base64 image: {e}")
+
+                # Check for image URL
+                if "url" in response_data:
+                    image_url = response_data["url"]
+                    self.logger.info(f"📥 Downloading image from: {image_url}")
+
+                    async with session.get(image_url) as img_response:
+                        if img_response.status != 200:
+                            return ImageGenerationResult(
+                                success=False,
+                                error=f"Failed to download image: {img_response.status}",
+                                error_code="DOWNLOAD_ERROR",
+                            )
+
+                        image_data = await img_response.read()
+
+                        return ImageGenerationResult(
+                            success=True,
+                            image_data=image_data,
+                            image_url=image_url,
+                            text_response=f"Generated with MagicHour.ai {self.config.model}",
+                        )
+
+                # Check for images array
+                if "images" in response_data and response_data["images"]:
+                    first_image = response_data["images"][0]
+
+                    # Try base64 from images array
+                    if isinstance(first_image, str):
+                        try:
+                            if first_image.startswith("data:image"):
+                                first_image = first_image.split(",")[1]
+                            image_data = base64.b64decode(first_image)
+
+                            return ImageGenerationResult(
+                                success=True,
+                                image_data=image_data,
+                                text_response=f"Generated with MagicHour.ai {self.config.model}",
+                            )
+                        except Exception as e:
+                            self.logger.error(
+                                f"❌ Failed to decode image from array: {e}"
+                            )
+
+                    # Try URL from images array
+                    elif isinstance(first_image, dict) and "url" in first_image:
+                        image_url = first_image["url"]
+                        async with session.get(image_url) as img_response:
+                            if img_response.status == 200:
+                                image_data = await img_response.read()
+                                return ImageGenerationResult(
+                                    success=True,
+                                    image_data=image_data,
+                                    image_url=image_url,
+                                    text_response=f"Generated with MagicHour.ai {self.config.model}",
+                                )
+
                 return ImageGenerationResult(
                     success=False,
-                    error="No image data in response",
+                    error="No valid image data found in response",
                     error_code="NO_IMAGE_DATA",
-                    text_response=text_response,
                 )
 
+        except asyncio.TimeoutError:
             return ImageGenerationResult(
-                success=True, image_data=image_data, text_response=text_response
+                success=False, error="Request timed out", error_code="TIMEOUT"
             )
-
         except Exception as e:
-            self.logger.error(f"❌ Gemini API call failed: {e}")
+            self.logger.error(f"❌ MagicHour.ai API call failed: {e}")
             return ImageGenerationResult(
                 success=False,
                 error=f"API call failed: {str(e)}",
                 error_code="API_ERROR",
             )
-
-    def _sync_gemini_call(self, prompt: str):
-        """Synchronous Gemini API call (run in executor)"""
-        return self.client.models.generate_content(
-            model=self.config.model,
-            contents=prompt,
-            config=types.GenerateContentConfig(response_modalities=["TEXT", "IMAGE"]),
-        )
 
     def get_statistics(self) -> Dict[str, Any]:
         """Get generator statistics"""
@@ -403,16 +494,15 @@ class GeminiImageGenerator:
         }
 
     async def test_connection(self) -> Dict[str, Any]:
-        """Test the connection to Gemini API"""
+        """Test the connection to MagicHour.ai API"""
         try:
             if not self.is_available():
                 return {
                     "success": False,
                     "error": "Generator not available",
                     "details": {
-                        "gemini_sdk": GEMINI_AVAILABLE,
                         "api_key_set": bool(self.config.api_key),
-                        "client_initialized": self.is_initialized,
+                        "initialized": self.is_initialized,
                     },
                 }
 
@@ -432,21 +522,27 @@ class GeminiImageGenerator:
                 "generation_time": result.generation_time,
                 "model": self.config.model,
                 "has_image_data": bool(result.image_data),
+                "image_url": result.image_url,
             }
 
         except Exception as e:
             return {"success": False, "error": f"Test failed: {str(e)}"}
 
+    async def close(self):
+        """Close the session"""
+        if self.session and not self.session.closed:
+            await self.session.close()
+
 
 # Global instance
-_global_generator: Optional[GeminiImageGenerator] = None
+_global_generator: Optional[MagicHourImageGenerator] = None
 
 
-def get_gemini_generator() -> GeminiImageGenerator:
-    """Get the global Gemini image generator instance"""
+def get_magichour_generator() -> MagicHourImageGenerator:
+    """Get the global MagicHour.ai image generator instance"""
     global _global_generator
     if _global_generator is None:
-        _global_generator = GeminiImageGenerator()
+        _global_generator = MagicHourImageGenerator()
     return _global_generator
 
 
@@ -464,7 +560,7 @@ async def generate_image_simple(
     Returns:
         Dictionary with success status and image data or error
     """
-    generator = get_gemini_generator()
+    generator = get_magichour_generator()
 
     # Convert string style to enum
     try:
@@ -481,6 +577,7 @@ async def generate_image_simple(
     return {
         "success": result.success,
         "image_data": result.image_data,
+        "image_url": result.image_url,
         "text_response": result.text_response,
         "error": result.error,
         "generation_time": result.generation_time,
@@ -491,37 +588,25 @@ async def generate_image_simple(
 
 # Example usage and testing
 async def main():
-    """Example usage of the Gemini Image Generator"""
+    """Example usage of the MagicHour.ai Image Generator"""
     # Test the generator
-    generator = get_gemini_generator()
+    generator = get_magichour_generator()
 
-    print("🧪 Testing Gemini Image Generator...")
+    print("🧪 Testing MagicHour.ai Image Generator...")
     test_result = await generator.test_connection()
     print(f"Test result: {test_result}")
 
     if test_result.get("success"):
-        # Generate a test image
-        request = ImageGenerationRequest(
-            prompt="A majestic dragon flying over a cyberpunk city at night",
-            user_id=12345,
-            channel_id=67890,
-            style=ImageStyle.ARTISTIC,
-        )
+        print("✅ MagicHour.ai connection successful!")
 
-        result = await generator.generate_image(request)
+        # Get statistics
+        stats = generator.get_statistics()
+        print(f"📊 Statistics: {stats}")
+    else:
+        print(f"❌ Connection failed: {test_result.get('error')}")
 
-        if result.success and result.image_data:
-            # Save the image
-            image = Image.open(BytesIO(result.image_data))
-            image.save("test_gemini_image.png")
-            print(f"✅ Image saved as test_gemini_image.png")
-            print(f"📝 Text response: {result.text_response}")
-        else:
-            print(f"❌ Generation failed: {result.error}")
-
-    # Print statistics
-    stats = generator.get_statistics()
-    print(f"📊 Statistics: {stats}")
+    # Close session
+    await generator.close()
 
 
 if __name__ == "__main__":

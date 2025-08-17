@@ -651,7 +651,7 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
 
     @app_commands.command(
         name="ai",
-        description="🤖 AI Control Center - Manage OpenRouter and Gemini APIs",
+        description="🤖 AI Control Center - Manage OpenRouter and MagicHour.ai APIs",
     )
     @app_commands.describe(action="AI system action", service="Target AI service")
     @app_commands.choices(
@@ -662,7 +662,7 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
         ],
         service=[
             app_commands.Choice(name="OpenRouter (Text AI)", value="openrouter"),
-            app_commands.Choice(name="Gemini (Image AI)", value="gemini"),
+            app_commands.Choice(name="MagicHour.ai (Image AI)", value="magichour"),
             app_commands.Choice(name="All Services", value="all"),
         ],
     )
@@ -717,27 +717,27 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
 
             services_status["OpenRouter"] = (openrouter_status, openrouter_info)
 
-        # Check Gemini
-        if service in ["gemini", "all"]:
+        # Check MagicHour.ai
+        if service in ["magichour", "all"]:
             try:
-                from ai.gemini_image_generator import GeminiImageGenerator
+                from ai.magichour_image_generator import MagicHourImageGenerator
 
-                # Test if Gemini API key is available
-                gemini_key = os.getenv("GEMINI_API_KEY")
-                if gemini_key:
-                    gemini_status = "🟢 ONLINE"
-                    gemini_info = "Image AI operational"
+                # Test if MagicHour.ai API key is available
+                magichour_key = os.getenv("MAGICHOUR_API_KEY")
+                if magichour_key:
+                    magichour_status = "🟢 ONLINE"
+                    magichour_info = "Image AI operational"
                 else:
-                    gemini_status = "🔴 OFFLINE"
-                    gemini_info = "API key not configured"
+                    magichour_status = "🔴 OFFLINE"
+                    magichour_info = "API key not configured"
             except ImportError:
-                gemini_status = "🔴 OFFLINE"
-                gemini_info = "Module not available"
+                magichour_status = "🔴 OFFLINE"
+                magichour_info = "Module not available"
             except Exception as e:
-                gemini_status = "🟡 ERROR"
-                gemini_info = f"Error: {str(e)[:50]}"
+                magichour_status = "🟡 ERROR"
+                magichour_info = f"Error: {str(e)[:50]}"
 
-            services_status["Gemini"] = (gemini_status, gemini_info)
+            services_status["MagicHour.ai"] = (magichour_status, magichour_info)
 
         # Add consolidated AI if exists
         try:

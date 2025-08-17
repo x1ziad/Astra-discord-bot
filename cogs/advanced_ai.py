@@ -145,21 +145,21 @@ class AdvancedAICog(commands.Cog):
             self.ai_client = None
 
     def _setup_image_client(self):
-        """Setup dedicated image generation client using Google Gemini"""
+        """Setup dedicated image generation client using MagicHour.ai"""
         try:
-            # Import Gemini image generator
-            from ai.gemini_image_generator import GeminiImageGenerator
+            # Import MagicHour.ai image generator
+            from ai.magichour_image_generator import MagicHourImageGenerator
 
-            # Initialize the Gemini image generator
-            self.image_client = GeminiImageGenerator()
+            # Initialize the MagicHour.ai image generator
+            self.image_client = MagicHourImageGenerator()
 
             if self.image_client.is_available():
                 self.logger.info(
-                    "✅ Gemini Image Generation Client initialized successfully"
+                    "✅ MagicHour.ai Image Generation Client initialized successfully"
                 )
             else:
                 self.logger.warning(
-                    "⚠️ Gemini image client created but API key not available"
+                    "⚠️ MagicHour.ai image client created but API key not available"
                 )
 
         except ImportError as e:
@@ -501,7 +501,7 @@ class AdvancedAICog(commands.Cog):
                 # Upload image file for better quality
                 image_file = discord.File(
                     io.BytesIO(image_bytes),
-                    filename=f"gemini_image_{interaction.user.id}_{int(datetime.now().timestamp())}.png",
+                    filename=f"magichour_image_{interaction.user.id}_{int(datetime.now().timestamp())}.png",
                 )
                 embed.set_image(url=f"attachment://{image_file.filename}")
 
@@ -512,7 +512,7 @@ class AdvancedAICog(commands.Cog):
                 )
 
                 embed.set_footer(
-                    text="🎨 Powered by Google Gemini • Advanced AI • Use responsibly"
+                    text="🎨 Powered by MagicHour.ai • Advanced AI • Use responsibly"
                 )
 
                 # Update the status message with final result
@@ -2000,8 +2000,8 @@ class AdvancedAICog(commands.Cog):
                 )
                 embed.add_field(
                     name="🔧 For Bot Administrators",
-                    value="• Check that `GEMINI_API_KEY` is set in Railway environment variables\n"
-                    "• Verify the GeminiImageGenerator is properly imported\n"
+                    value="• Check that `MAGICHOUR_API_KEY` is set in Railway environment variables\n"
+                    "• Verify the MagicHourImageGenerator is properly imported\n"
                     "• Restart the bot after setting environment variables",
                     inline=False,
                 )
@@ -2009,18 +2009,18 @@ class AdvancedAICog(commands.Cog):
                 await message.channel.send(embed=embed)
                 return
 
-            # Check if Freepik API is available
+            # Check if MagicHour.ai API is available
             if not self.image_client.is_available():
                 embed = discord.Embed(
                     title="🔑 API Key Required",
-                    description="Freepik API key is not configured or invalid.",
+                    description="MagicHour.ai API key is not configured or invalid.",
                     color=0xE74C3C,
                     timestamp=datetime.now(timezone.utc),
                 )
                 embed.add_field(
                     name="🔧 Setup Instructions",
-                    value="1. Get API key from: https://ai.google.dev/\n"
-                    "2. Set `GEMINI_API_KEY` in Railway environment variables\n"
+                    value="1. Get API key from: https://magichour.ai/\n"
+                    "2. Set `MAGICHOUR_API_KEY` in Railway environment variables\n"
                     "3. Restart the bot\n"
                     "4. Try the command again",
                     inline=False,
@@ -2037,7 +2037,7 @@ class AdvancedAICog(commands.Cog):
                 timestamp=datetime.now(timezone.utc),
             )
             status_embed.set_footer(
-                text="Using Freepik AI • This may take 30-60 seconds"
+                text="Using MagicHour.ai • This may take 10-30 seconds"
             )
 
             status_msg = await message.channel.send(embed=status_embed)

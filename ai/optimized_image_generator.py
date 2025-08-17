@@ -1,54 +1,56 @@
 """
 Optimized Image Generator for Astra Bot
-Provides a high-level interface to the Gemini Image Generator
+Provides a high-level interface to the MagicHour.ai Image Generator
 """
 
 import logging
 from typing import Optional, Union, Dict, Any
 import asyncio
 
-# Import the Gemini Image Generator
+# Import the MagicHour.ai Image Generator
 try:
-    from ai.gemini_image_generator import (
-        GeminiImageGenerator,
+    from ai.magichour_image_generator import (
+        MagicHourImageGenerator,
         ImageGenerationRequest,
         ImageSize,
         ImageStyle,
-        get_gemini_generator,
+        get_magichour_generator,
         generate_image_simple,
     )
 
-    GEMINI_AVAILABLE = True
+    MAGICHOUR_AVAILABLE = True
 except ImportError as e:
-    GEMINI_AVAILABLE = False
-    GeminiImageGenerator = None
+    MAGICHOUR_AVAILABLE = False
+    MagicHourImageGenerator = None
     ImageGenerationRequest = None
     ImageSize = None
     ImageStyle = None
-    get_gemini_generator = None
+    get_magichour_generator = None
     generate_image_simple = None
 
 logger = logging.getLogger("astra.optimized_image")
 
 
 class OptimizedImageGenerator:
-    """Optimized wrapper around GeminiImageGenerator"""
+    """Optimized wrapper around MagicHourImageGenerator"""
 
     def __init__(self):
         self.generator = None
         self._initialize()
 
     def _initialize(self):
-        """Initialize the Gemini image generator"""
-        if GEMINI_AVAILABLE:
+        """Initialize the MagicHour.ai image generator"""
+        if MAGICHOUR_AVAILABLE:
             try:
-                self.generator = get_gemini_generator()
-                logger.info("✅ Optimized Image Generator initialized with Gemini")
+                self.generator = get_magichour_generator()
+                logger.info(
+                    "✅ Optimized Image Generator initialized with MagicHour.ai"
+                )
             except Exception as e:
-                logger.error(f"❌ Failed to initialize Gemini generator: {e}")
+                logger.error(f"❌ Failed to initialize MagicHour.ai generator: {e}")
                 self.generator = None
         else:
-            logger.error("❌ Gemini Image Generator not available")
+            logger.error("❌ MagicHour.ai Image Generator not available")
 
     def is_available(self) -> bool:
         """Check if the generator is available"""
