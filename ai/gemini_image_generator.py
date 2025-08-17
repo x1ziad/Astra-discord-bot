@@ -81,7 +81,7 @@ class ImageGenerationResult:
     error: Optional[str] = None
     error_code: Optional[str] = None
     provider: str = "Gemini"
-    model: str = "gemini-2.0-flash-preview-image-generation"
+    model: str = "gemini-1.5-flash"
     metadata: Dict[str, Any] = field(default_factory=dict)
 
 
@@ -90,7 +90,7 @@ class GeminiImageConfig:
 
     def __init__(self):
         self.api_key = os.getenv("GEMINI_API_KEY")
-        self.model = "gemini-2.0-flash-preview-image-generation"
+        self.model = "gemini-1.5-flash"  # Use a standard model that supports image generation
         self.max_retries = 3
         self.retry_delay = 2.0
         self.timeout = 60.0
