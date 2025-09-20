@@ -127,7 +127,7 @@ def log_performance(logger: logging.Logger):
                 )
                 logger.debug(traceback.format_exc())
                 raise
-
+## for a new 
         @functools.wraps(func)
         def sync_wrapper(*args, **kwargs):
             start_time = time.time()
