@@ -2,6 +2,13 @@
 
 A sophisticated AI-powered Discord bot with advanced image generation capabilities and comprehensive server management features.
 
+## 🚀 Quick Start
+
+[![Discord](https://img.shields.io/badge/Discord-Join%20Server-7289da?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/pdxPDhjS)
+[![GitHub](https://img.shields.io/badge/GitHub-Repository-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/x1ziad/Astra-discord-bot)
+
+**[🎮 Join Our Discord Server](https://discord.gg/pdxPDhjS)** to get support, see the bot in action, and connect with the community!
+
 ## Features
 
 ### 🤖 AI Integration
@@ -97,4 +104,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Support
 
-For support and questions, please join our [Discord server](https://discord.gg/your-invite-link) or create an issue on GitHub.
+For support and questions, please join our [Discord server](https://discord.gg/pdxPDhjS) or create an issue on GitHub.
+
+### 🔗 Quick Links
+- **Discord Server**: [Join our community](https://discord.gg/pdxPDhjS)
+- **GitHub Issues**: [Report bugs or request features](https://github.com/x1ziad/Astra-discord-bot/issues)
