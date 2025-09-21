@@ -1237,7 +1237,7 @@ class ConsolidatedAIEngine:
                     if hasattr(client, "generate_response"):
                         # Pass enhanced context information to the client
                         user_profile_data = {
-                            "name": user_profile.name or "",
+                            "name": user_profile.display_name or "",
                             "interaction_count": user_profile.total_interactions,
                             "communication_style": user_profile.communication_style,
                             "preferred_topics": user_profile.preferred_topics,
