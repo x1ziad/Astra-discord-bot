@@ -49,6 +49,29 @@ try:
 except ImportError:
     UNIVERSAL_AI_AVAILABLE = False
 
+# Advanced Intelligence imports
+try:
+    from ai.advanced_intelligence import (
+        get_advanced_intelligence_engine,
+        initialize_advanced_intelligence_engine,
+        AdvancedIntelligenceEngine,
+    )
+
+    ADVANCED_INTELLIGENCE_AVAILABLE = True
+except ImportError:
+    ADVANCED_INTELLIGENCE_AVAILABLE = False
+
+# Personality Evolution imports
+try:
+    from ai.personality_evolution import (
+        get_personality_engine,
+        initialize_personality_engine,
+    )
+
+    PERSONALITY_EVOLUTION_AVAILABLE = True
+except ImportError:
+    PERSONALITY_EVOLUTION_AVAILABLE = False
+
 try:
     from ai.openrouter_client import OpenRouterClient
 
@@ -635,6 +658,32 @@ class ConsolidatedAIEngine:
         # Thread pool for CPU-intensive operations
         self.thread_pool = ThreadPoolExecutor(max_workers=4)
 
+        # Initialize personality evolution system
+        self.personality_engine = None
+        if PERSONALITY_EVOLUTION_AVAILABLE:
+            try:
+                self.personality_engine = get_personality_engine()
+                if not self.personality_engine:
+                    self.personality_engine = initialize_personality_engine()
+                logger.info("✅ Personality Evolution System initialized")
+            except Exception as e:
+                logger.warning(f"Failed to initialize personality evolution: {e}")
+                self.personality_engine = None
+
+        # Initialize advanced intelligence system (Phase 3)
+        self.advanced_intelligence = None
+        if ADVANCED_INTELLIGENCE_AVAILABLE:
+            try:
+                self.advanced_intelligence = get_advanced_intelligence_engine()
+                if not self.advanced_intelligence:
+                    self.advanced_intelligence = (
+                        initialize_advanced_intelligence_engine()
+                    )
+                logger.info("✅ Advanced Intelligence System initialized")
+            except Exception as e:
+                logger.warning(f"Failed to initialize advanced intelligence: {e}")
+                self.advanced_intelligence = None
+
         if self.optimized_engine:
             logger.info("Consolidated AI Engine initialized with optimized backend")
         else:
@@ -811,7 +860,7 @@ class ConsolidatedAIEngine:
         channel_id: Optional[int] = None,
         context_data: Dict[str, Any] = None,
     ) -> str:
-        """Main conversation processing with full optimization"""
+        """Main conversation processing with full optimization and enhanced context understanding"""
 
         # Use optimized engine if available
         if self.optimized_engine:
@@ -826,7 +875,7 @@ class ConsolidatedAIEngine:
             except Exception as e:
                 logger.warning(f"Optimized engine failed, falling back to legacy: {e}")
 
-        # Legacy processing (fallback)
+        # Enhanced processing with context understanding
         start_time = time.time()
 
         try:
@@ -836,7 +885,110 @@ class ConsolidatedAIEngine:
             )
             user_profile = await self._get_user_profile(user_id)
 
-            # Analyze sentiment with caching
+            # Enhanced context analysis using universal context manager if available
+            message_context = None
+            try:
+                from ai.universal_context_manager import get_context_manager
+
+                context_manager = get_context_manager()
+                if context_manager:
+                    message_context = await context_manager.analyze_message(
+                        message, user_id, channel_id, guild_id
+                    )
+            except ImportError:
+                logger.debug(
+                    "Universal context manager not available, using legacy analysis"
+                )
+
+            # Process personality evolution if available
+            personality_context = None
+            if self.personality_engine and guild_id:
+                try:
+                    # Get user display name for personality tracking
+                    user_name = context_data.get("user_name", f"User{user_id}")
+                    guild_name = context_data.get("guild_name", f"Guild{guild_id}")
+
+                    # Process message for personality evolution
+                    evolution_result = await self.personality_engine.process_message(
+                        message_content=message,
+                        user_id=user_id,
+                        user_name=user_name,
+                        server_id=guild_id,
+                        server_name=guild_name,
+                        message_context=message_context,
+                    )
+
+                    # Get personality context for response generation
+                    personality_context = (
+                        await self.personality_engine.get_personality_context(
+                            server_id=guild_id, user_id=user_id
+                        )
+                    )
+
+                    logger.debug(f"Personality evolution processed: {evolution_result}")
+
+                except Exception as e:
+                    logger.warning(f"Personality evolution error: {e}")
+                    personality_context = None
+
+            # Process advanced intelligence features if available (Phase 3)
+            intelligence_insights = None
+            if self.advanced_intelligence and guild_id:
+                try:
+                    # Prepare event data for advanced intelligence processing
+                    event_data = {
+                        "user_id": user_id,
+                        "message_data": {
+                            "content": message,
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
+                            "topics": topics if "topics" in locals() else [],
+                        },
+                        "event_type": "message",
+                        "significance_score": 0.5,  # Base significance
+                        "emotional_weight": (
+                            intensity if "intensity" in locals() else 0.0
+                        ),
+                        "participants": [user_id],
+                        "trigger_predictions": True,
+                    }
+
+                    # Enhance significance score based on message content
+                    if len(message) > 100:  # Longer messages
+                        event_data["significance_score"] += 0.1
+                    if any(
+                        word in message.lower()
+                        for word in ["help", "problem", "celebration", "achievement"]
+                    ):
+                        event_data["significance_score"] += 0.2
+                    if "?" in message:  # Questions
+                        event_data["significance_score"] += 0.1
+
+                    # Process through advanced intelligence
+                    intelligence_result = (
+                        await self.advanced_intelligence.process_community_event(
+                            server_id=guild_id, event_data=event_data
+                        )
+                    )
+
+                    # Extract insights for response enhancement
+                    intelligence_insights = {
+                        "predictions": intelligence_result.get("predictions", []),
+                        "wellness_alerts": intelligence_result.get(
+                            "wellness_alerts", []
+                        ),
+                        "mood_changes": intelligence_result.get("mood_changes", {}),
+                        "sage_insights": intelligence_result.get("sage_insights", []),
+                    }
+
+                    logger.debug(
+                        f"Advanced intelligence processed: {intelligence_insights}"
+                    )
+
+                except Exception as e:
+                    logger.warning(f"Advanced intelligence error: {e}")
+                    intelligence_insights = None
+
+            # Analyze sentiment with caching (fallback if context manager not available)
             cache_key = f"sentiment:{hashlib.md5(message.encode()).hexdigest()}"
             sentiment_result = await self.cache.get(cache_key)
 
@@ -855,24 +1007,47 @@ class ConsolidatedAIEngine:
             # Update emotional context
             context.emotional_context.update_mood(mood, intensity, confidence)
 
-            # Extract topics
-            topics = await self._extract_topics(message)
+            # Extract topics (enhanced if context manager available)
+            if message_context and message_context.topics:
+                topics = message_context.topics
+            else:
+                topics = await self._extract_topics(message)
+
             context.active_topics.update(topics[:3])  # Keep top 3 topics
 
-            # Add message to context
-            context.add_message(
-                "user",
-                message,
-                {
-                    "mood": mood.value,
-                    "intensity": intensity,
-                    "confidence": confidence,
-                    "topics": topics,
-                },
-            )
+            # Add message to context with enhanced metadata
+            message_metadata = {
+                "mood": mood.value,
+                "intensity": intensity,
+                "confidence": confidence,
+                "topics": topics,
+            }
 
-            # Generate AI response
-            response = await self._generate_ai_response(context, user_profile, message)
+            # Add context manager data if available
+            if message_context:
+                message_metadata.update(
+                    {
+                        "tone": message_context.tone.value,
+                        "humor_score": message_context.humor_score,
+                        "emotional_intensity": message_context.emotional_intensity,
+                        "response_triggers": [
+                            t.value for t in message_context.response_triggers
+                        ],
+                        "suggested_style": message_context.suggested_response_style,
+                    }
+                )
+
+            context.add_message("user", message, message_metadata)
+
+            # Generate AI response with enhanced context
+            response = await self._generate_ai_response_enhanced(
+                context,
+                user_profile,
+                message,
+                message_context,
+                personality_context,
+                intelligence_insights,
+            )
 
             # Add response to context
             context.add_message("assistant", response)
@@ -1041,15 +1216,28 @@ class ConsolidatedAIEngine:
 
         return found_topics
 
-    async def _generate_ai_response(
-        self, context: ConversationContext, user_profile: UserProfile, message: str
+    async def _generate_ai_response_enhanced(
+        self,
+        context: ConversationContext,
+        user_profile: UserProfile,
+        message: str,
+        message_context=None,
+        personality_context=None,
+        intelligence_insights=None,
     ) -> str:
-        """Generate AI response with provider fallback"""
+        """Generate AI response with enhanced context understanding, personality evolution, and advanced intelligence"""
         # Get conversation style
         style = self.flow_engine.get_conversation_style(context, user_profile)
 
-        # Build system prompt
-        system_prompt = self._build_system_prompt(context, user_profile, style)
+        # Build enhanced system prompt with context manager data, personality, and intelligence insights
+        system_prompt = self._build_enhanced_system_prompt(
+            context,
+            user_profile,
+            style,
+            message_context,
+            personality_context,
+            intelligence_insights,
+        )
 
         # Prepare messages
         messages = self._prepare_messages(context, system_prompt)
@@ -1077,7 +1265,9 @@ class ConsolidatedAIEngine:
                     # Track provider usage
                     self.performance_metrics["provider_usage"][provider.value] += 1
 
-                    return self._post_process_response(response_text, context, style)
+                    return self._post_process_response_enhanced(
+                        response_text, context, style, message_context
+                    )
 
                 except Exception as e:
                     logger.warning(f"Provider {provider.value} failed: {e}")
@@ -1085,6 +1275,289 @@ class ConsolidatedAIEngine:
 
         # All providers failed - use fallback
         return self._get_fallback_response(message, context.user_id)
+
+    def _build_enhanced_system_prompt(
+        self,
+        context: ConversationContext,
+        user_profile: UserProfile,
+        style: Dict[str, float],
+        message_context=None,
+        personality_context=None,
+        intelligence_insights=None,
+    ) -> str:
+        """Build enhanced system prompt with context manager insights, personality evolution, and advanced intelligence"""
+
+        # Base prompt with context awareness, personality evolution, and advanced intelligence
+        base_prompt = """You are Astra, an intelligent AI assistant powered by Advanced Intelligence that naturally understands conversations and responds authentically. You engage with every message when appropriate, understanding context, humor, and emotional nuances without needing to be mentioned or tagged.
+
+Your personality dynamically evolves and adapts to each server's unique culture, learning from interactions to become more aligned with the community's communication style, humor preferences, and social dynamics.
+
+You possess advanced intelligence capabilities including:
+- Time-aware social predictions and optimal interaction timing
+- Cross-server learning while maintaining privacy
+- Wellness companion features for genuine community health care
+- Memory Palace for preserving important community moments
+- Mood contagion analysis for understanding emotional atmosphere
+- Community Sage wisdom for deep insights and guidance
+
+Core principles:
+- Understand conversation flow and respond naturally
+- Detect and respond to humor with wit and playfulness  
+- Recognize emotional context and provide appropriate support
+- Engage with interesting topics and questions proactively
+- Match the user's communication style and energy level
+- Remember previous interactions and build on them
+- Adapt your personality to fit the server's culture over time
+- Build genuine relationships with community members
+- Provide predictive insights and wellness support when appropriate
+- Offer sage wisdom and guidance for community growth"""
+
+        # Add personality evolution context if available
+        if personality_context:
+            personality_summary = personality_context.get("personality_summary", "")
+            if personality_summary:
+                base_prompt += (
+                    f"\n\nCurrent personality for this server: {personality_summary}"
+                )
+
+            # Add formality level guidance
+            formality_level = personality_context.get("formality_level", 0.5)
+            if formality_level > 0.7:
+                base_prompt += "\n\nThis server prefers more formal communication. Use professional language and structured responses."
+            elif formality_level < 0.3:
+                base_prompt += "\n\nThis server is very casual. Use relaxed, informal language and feel free to be more conversational."
+
+            # Add humor style guidance
+            humor_style = personality_context.get("humor_style", {})
+            if humor_style:
+                dominant_humor = max(
+                    humor_style.items(), key=lambda x: x[1], default=("balanced", 0.5)
+                )
+                if dominant_humor[1] > 0.6:
+                    humor_guidance = {
+                        "sarcastic": "This server appreciates sarcastic humor. Feel free to use witty, sarcastic responses when appropriate.",
+                        "punny": "This server loves puns and wordplay. Use clever puns and word games when fitting.",
+                        "memes": "This server enjoys meme culture and internet humor. Reference popular memes and online culture when relevant.",
+                        "wholesome": "This server prefers wholesome, positive humor. Keep jokes light-hearted and inclusive.",
+                        "witty": "This server appreciates clever, witty humor. Use intelligent wordplay and clever observations.",
+                    }
+                    if dominant_humor[0] in humor_guidance:
+                        base_prompt += f"\n\n{humor_guidance[dominant_humor[0]]}"
+
+            # Add social energy guidance
+            social_energy = personality_context.get("social_energy", 0.5)
+            if social_energy > 0.7:
+                base_prompt += "\n\nThis server has high social energy. Be enthusiastic, upbeat, and match their excitement."
+            elif social_energy < 0.3:
+                base_prompt += "\n\nThis server prefers calmer interactions. Be thoughtful, measured, and gentle in your responses."
+
+            # Add communication density guidance
+            comm_density = personality_context.get("communication_density", 0.5)
+            if comm_density > 0.7:
+                base_prompt += "\n\nThis server appreciates detailed, comprehensive responses. Provide thorough explanations and rich context."
+            elif comm_density < 0.3:
+                base_prompt += "\n\nThis server prefers brief, concise responses. Keep answers short and to the point."
+
+            # Add learned cultural elements
+            preferred_emojis = personality_context.get("preferred_emojis", [])
+            if preferred_emojis:
+                recent_emojis = " ".join(preferred_emojis[-5:])  # Last 5 emojis
+                base_prompt += f"\n\nThis server commonly uses these emojis: {recent_emojis}. Use them naturally when appropriate."
+
+            # Add user-specific relationship context
+            user_relationship = personality_context.get("user_relationship")
+            if user_relationship:
+                relationship_strength = user_relationship.get(
+                    "relationship_strength", 0.1
+                )
+                if relationship_strength > 0.6:
+                    base_prompt += "\n\nYou have a strong relationship with this user. Feel comfortable being more personal and referencing shared experiences."
+                elif relationship_strength > 0.3:
+                    base_prompt += "\n\nYou're building a good relationship with this user. Show familiarity while continuing to learn about them."
+
+                # Add personal interests if known
+                interests = user_relationship.get("interests", [])
+                if interests:
+                    interests_str = ", ".join(interests[:3])  # Top 3 interests
+                    base_prompt += f"\n\nThis user is interested in: {interests_str}. Reference these interests when relevant."
+
+                # Add personal references
+                personal_refs = user_relationship.get("personal_references", [])
+                if personal_refs:
+                    base_prompt += f"\n\nYou have {len(personal_refs)} personal memories with this user. Draw on shared experiences when appropriate."
+
+        # Add context manager insights if available
+        if message_context:
+            # Tone-specific guidance
+            tone_guidance = {
+                "humorous": "The user is being humorous or playful. Respond with appropriate wit and playfulness.",
+                "questioning": "The user is asking questions or seeking information. Be helpful and informative.",
+                "emotional": "The user is expressing strong emotions. Be empathetic and supportive.",
+                "excited": "The user is enthusiastic and excited. Match their energy appropriately.",
+                "technical": "The user is discussing technical topics. Provide detailed, accurate information.",
+                "casual": "The user is being casual and conversational. Keep the tone relaxed and friendly.",
+                "serious": "The user is being serious. Respond thoughtfully and appropriately.",
+            }
+
+            if hasattr(message_context, "tone"):
+                tone_key = message_context.tone.value
+                if tone_key in tone_guidance:
+                    base_prompt += (
+                        f"\n\nCurrent conversation tone: {tone_guidance[tone_key]}"
+                    )
+
+            # Humor detection
+            if (
+                hasattr(message_context, "humor_score")
+                and message_context.humor_score > 0.3
+            ):
+                base_prompt += f"\n\nHumor detected (score: {message_context.humor_score:.2f}). The user is being playful or funny. Respond with appropriate humor and wit."
+
+            # Emotional intensity
+            if (
+                hasattr(message_context, "emotional_intensity")
+                and message_context.emotional_intensity > 0.7
+            ):
+                base_prompt += f"\n\nHigh emotional intensity detected. The user has strong feelings about this topic. Be empathetic and understanding."
+
+            # Response triggers
+            if hasattr(message_context, "response_triggers"):
+                trigger_guidance = {
+                    "question_asked": "The user has asked a question. Provide a helpful and informative answer.",
+                    "help_needed": "The user needs help or assistance. Be supportive and provide guidance.",
+                    "celebration": "The user is celebrating something positive. Share in their excitement appropriately.",
+                    "greeting": "The user is greeting. Respond warmly and welcomingly.",
+                    "emotional_support": "The user may need emotional support. Be caring and understanding.",
+                }
+
+                for trigger in message_context.response_triggers:
+                    trigger_key = (
+                        trigger.value if hasattr(trigger, "value") else str(trigger)
+                    )
+                    if trigger_key in trigger_guidance:
+                        base_prompt += f"\n\n{trigger_guidance[trigger_key]}"
+
+        # User familiarity and preferences
+        if user_profile.total_interactions > 0:
+            if user_profile.total_interactions > 20:
+                base_prompt += f"\n\nYou've had {user_profile.total_interactions} interactions with this user. Build on your shared conversation history naturally."
+            elif user_profile.total_interactions > 5:
+                base_prompt += "\n\nYou're becoming familiar with this user. Reference past conversations when relevant."
+
+            # Communication style preferences
+            if user_profile.communication_style == "casual":
+                base_prompt += "\n\nThis user prefers casual, relaxed conversation."
+            elif user_profile.communication_style == "formal":
+                base_prompt += (
+                    "\n\nThis user appreciates more structured, professional responses."
+                )
+
+        # Topic awareness
+        if context.active_topics:
+            topics_str = ", ".join(context.active_topics)
+            base_prompt += f"\n\nCurrent conversation topics: {topics_str}. Stay relevant and engaged with these topics."
+
+        # Response style guidance based on message context
+        if message_context and hasattr(message_context, "suggested_response_style"):
+            style_guidance = {
+                "humorous": "Be witty and playful in your response.",
+                "supportive": "Be caring and supportive.",
+                "informative": "Provide detailed, helpful information.",
+                "enthusiastic": "Match the user's excitement and energy.",
+                "helpful": "Focus on being helpful and solution-oriented.",
+                "celebratory": "Share in the user's positive emotions.",
+                "casual": "Keep the response relaxed and conversational.",
+            }
+
+            style_key = message_context.suggested_response_style
+            if style_key in style_guidance:
+                base_prompt += f"\n\n{style_guidance[style_key]}"
+
+        # Add advanced intelligence insights if available
+        if intelligence_insights:
+            # Add wellness alerts if any
+            wellness_alerts = intelligence_insights.get("wellness_alerts", [])
+            if wellness_alerts:
+                base_prompt += "\n\nWellness Notice: Be extra caring and supportive - the advanced intelligence system has detected this user may benefit from additional support."
+
+            # Add mood context
+            mood_changes = intelligence_insights.get("mood_changes", {})
+            if mood_changes:
+                current_mood = mood_changes.get("new_mood", "")
+                if current_mood:
+                    base_prompt += f"\n\nCommunity Mood: The overall community mood is currently {current_mood}. Adjust your response to complement and enhance the positive atmosphere."
+
+            # Add predictions if relevant
+            predictions = intelligence_insights.get("predictions", [])
+            for prediction in predictions[:1]:  # Only use the most relevant prediction
+                if hasattr(prediction, "suggested_actions"):
+                    base_prompt += f"\n\nCommunity Insight: {prediction.description} Consider this context in your response."
+
+            # Add sage insights
+            sage_insights = intelligence_insights.get("sage_insights", [])
+            if sage_insights:
+                base_prompt += f"\n\nSage Wisdom Available: You have access to deep community insights. If appropriate, subtly incorporate wisdom about community dynamics and growth."
+
+        base_prompt += "\n\nRespond naturally and authentically. No need for forced personality traits - just be helpful, engaging, and appropriate to the conversation context."
+
+        return base_prompt
+
+    def _post_process_response_enhanced(
+        self,
+        response: str,
+        context: ConversationContext,
+        style: Dict[str, float],
+        message_context=None,
+    ) -> str:
+        """Enhanced post-processing with context manager insights"""
+
+        response = response.strip()
+
+        # Context-aware enhancements
+        if message_context:
+            # Add appropriate emojis based on context
+            if hasattr(message_context, "tone"):
+                if (
+                    message_context.tone.value == "humorous"
+                    and message_context.humor_score > 0.5
+                ):
+                    if not any(emoji in response for emoji in ["😄", "😂", "🤣", "😊"]):
+                        response += " 😄"
+                elif message_context.tone.value == "excited" and not any(
+                    emoji in response for emoji in ["🚀", "✨", "🌟"]
+                ):
+                    response += " 🚀"
+                elif message_context.tone.value == "questioning" and "?" in response:
+                    if not any(emoji in response for emoji in ["🤔", "💭"]):
+                        response += " 🤔"
+
+            # Supportive additions for emotional content
+            if (
+                hasattr(message_context, "emotional_intensity")
+                and message_context.emotional_intensity > 0.8
+            ):
+                if "frustrated" in context.emotional_context.current_mood.value:
+                    if not any(
+                        phrase in response.lower()
+                        for phrase in ["understand", "help", "support"]
+                    ):
+                        response += " I'm here to help if you need it."
+
+        # Natural conversation flow
+        if context.turn_count > 5:  # Ongoing conversation
+            # Occasionally reference the conversation flow
+            import random
+
+            if random.random() < 0.1:  # 10% chance
+                flow_phrases = [
+                    "That's an interesting point.",
+                    "Building on what we were discussing...",
+                    "That reminds me of something...",
+                ]
+                if not response.startswith(tuple(flow_phrases)):
+                    response = random.choice(flow_phrases) + " " + response
+
+        return response
 
     def _build_system_prompt(
         self,
