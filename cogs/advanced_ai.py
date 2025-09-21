@@ -754,7 +754,10 @@ class AdvancedAICog(commands.Cog):
             if len(message.content) > 50:
                 import random
 
-                engagement_chance = 0.15 if len(message.content) > 100 else 0.08
+                # Increased engagement for better auto-response testing
+                engagement_chance = (
+                    0.7 if len(message.content) > 100 else 0.5
+                )  # Much higher for testing
 
                 if random.random() < engagement_chance:
                     decision.update(
@@ -763,10 +766,13 @@ class AdvancedAICog(commands.Cog):
                             "interaction_type": "community_building",
                             "confidence": 0.3,
                             "response_method": (
-                                "reaction" if random.random() < 0.6 else "text"
+                                "reaction"
+                                if random.random() < 0.4
+                                else "text"  # More text responses
                             ),
                             "priority_level": 2,
                             "suggested_reactions": ["👍", "🤔", "💯", "🔥"],
+                            "should_reply": True,  # Enable text responses for community building
                         }
                     )
                     return decision
@@ -790,6 +796,24 @@ class AdvancedAICog(commands.Cog):
                             "response_method": "reaction",
                             "priority_level": 1,
                             "suggested_reactions": ["👍", "😊", "❤️", "🙏"],
+                        }
+                    )
+                    return decision
+
+            # 🎯 CATCH-ALL ENGAGEMENT (For Testing - Respond to almost everything)
+            if len(message.content) > 10:  # Any meaningful message
+                import random
+
+                # High chance to respond to any message for testing auto-response
+                if random.random() < 0.8:  # 80% chance for testing
+                    decision.update(
+                        {
+                            "should_interact": True,
+                            "interaction_type": "general_engagement",
+                            "confidence": 0.2,
+                            "response_method": "reaction",  # Start with reactions for less spam
+                            "priority_level": 1,
+                            "suggested_reactions": ["👍", "👀", "🤔"],
                         }
                     )
                     return decision

@@ -629,19 +629,16 @@ class AstraBot(commands.Bot):
                 # Store message in context for AI understanding even if not responding
                 await self._store_message_context(message)
 
-                # Check if bot should engage in this specific message
-                should_respond = await self._should_bot_respond(message)
-
-                if should_respond:
-                    # Let the AdvancedAICog handle the actual AI response
-                    # This ensures we don't have duplicate handling but still track all messages
-                    pass
+                # Let the AdvancedAICog handle ALL messages with its sophisticated interaction system
+                # The AdvancedAI cog has a much more intelligent decision engine that determines
+                # how to interact with every single message (text, reactions, emojis, etc.)
+                # No filtering needed here - let the sophisticated system handle everything
 
             except Exception as e:
                 self.logger.error(f"Error processing message context: {e}")
 
-            # Let the AdvancedAICog handle AI responses to avoid conflicts
-            # The cog has more sophisticated AI handling logic
+            # The AdvancedAICog on_message listener will handle all AI responses
+            # with its sophisticated universal message interaction system
 
         @self.event
         async def on_command(ctx):
