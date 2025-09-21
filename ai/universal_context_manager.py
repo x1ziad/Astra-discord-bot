@@ -45,6 +45,13 @@ class ResponseTrigger(Enum):
     RANDOM_ENGAGEMENT = "random_engagement"
     GREETING = "greeting"
     CELEBRATION = "celebration"
+    BOT_MENTIONED = "bot_mentioned"
+    CONVERSATION_STARTER = "conversation_starter"
+    OPINION_SHARING = "opinion_sharing"
+    STORY_TELLING = "story_telling"
+    FOLLOW_UP = "follow_up"
+    COLLABORATIVE_DISCUSSION = "collaborative_discussion"
+    REACTION_WORTHY = "reaction_worthy"
 
 
 @dataclass
@@ -53,7 +60,7 @@ class MessageContext:
 
     user_id: int
     content: str
-    tone: ConversationTone
+    tone: ConversationTone = ConversationTone.CASUAL  # Default tone
     humor_score: float = 0.0
     emotional_intensity: float = 0.5
     topics: List[str] = field(default_factory=list)
@@ -300,6 +307,44 @@ class ConversationAnalyzer:
             r"\b(celebrate|party|congratulations|congrats)\b",
         ]
 
+        # New patterns for enhanced conversation flow
+        self.bot_mention_patterns = [
+            r"\b(astra|bot|ai|assistant)\b",
+            r"\b(hey (you|there)|talk to me|what do you think)\b",
+            r"\b(your (opinion|thoughts|take))\b",
+        ]
+
+        self.conversation_starter_patterns = [
+            r"^(so|well|anyway|btw|by the way)",
+            r"\b(i think|i believe|in my opinion|personally)\b",
+            r"\b(just wanted to say|wanted to share|thought you.*might)\b",
+            r"\b(did you (know|hear|see)|have you (ever|tried))\b",
+        ]
+
+        self.opinion_patterns = [
+            r"\b(i think|i believe|i feel|in my opinion|personally|imho)\b",
+            r"\b(what.*think|your thoughts|any opinions)\b",
+            r"\b(agree|disagree|thoughts on)\b",
+        ]
+
+        self.story_patterns = [
+            r"\b(just happened|today i|yesterday|this morning|last night)\b",
+            r"\b(funny story|guess what|you won't believe)\b",
+            r"\b(so i was|i was just|i went to)\b",
+        ]
+
+        self.collaborative_patterns = [
+            r"\b(let's|should we|we could|we should)\b",
+            r"\b(anyone want|who wants|does anyone)\b",
+            r"\b(together|team up|collaborate|work on)\b",
+        ]
+
+        self.reaction_worthy_patterns = [
+            r"\b(wow|whoa|no way|really|seriously|omg)\b",
+            r"\b(that's (crazy|wild|insane|cool|awesome))\b",
+            r"\b(can't believe|mind blown|plot twist)\b",
+        ]
+
         self.emotion_patterns = {
             "excited": [
                 r"\b(excited|thrilled|pumped|hyped|stoked)\b",
@@ -472,6 +517,37 @@ class ConversationAnalyzer:
         if any(re.search(pattern, text_lower) for pattern in self.celebration_patterns):
             triggers.append(ResponseTrigger.CELEBRATION)
 
+        # Bot mentions - NEW
+        if any(re.search(pattern, text_lower) for pattern in self.bot_mention_patterns):
+            triggers.append(ResponseTrigger.BOT_MENTIONED)
+
+        # Conversation starters - NEW
+        if any(
+            re.search(pattern, text_lower)
+            for pattern in self.conversation_starter_patterns
+        ):
+            triggers.append(ResponseTrigger.CONVERSATION_STARTER)
+
+        # Opinion sharing - NEW
+        if any(re.search(pattern, text_lower) for pattern in self.opinion_patterns):
+            triggers.append(ResponseTrigger.OPINION_SHARING)
+
+        # Story telling - NEW
+        if any(re.search(pattern, text_lower) for pattern in self.story_patterns):
+            triggers.append(ResponseTrigger.STORY_TELLING)
+
+        # Collaborative discussion - NEW
+        if any(
+            re.search(pattern, text_lower) for pattern in self.collaborative_patterns
+        ):
+            triggers.append(ResponseTrigger.COLLABORATIVE_DISCUSSION)
+
+        # Reaction worthy content - NEW
+        if any(
+            re.search(pattern, text_lower) for pattern in self.reaction_worthy_patterns
+        ):
+            triggers.append(ResponseTrigger.REACTION_WORTHY)
+
         # Topic matches
         if self._extract_topics(text):
             triggers.append(ResponseTrigger.TOPIC_MATCH)
@@ -482,46 +558,81 @@ class ConversationAnalyzer:
                 triggers.append(ResponseTrigger.EMOTIONAL_SUPPORT)
                 break
 
+        # Conversation flow detection - NEW
+        # Detect if this message seems to be continuing an ongoing conversation
+        if (
+            len(text) > 20  # Substantial message
+            and not any(
+                re.search(pattern, text_lower) for pattern in self.greeting_patterns
+            )  # Not a greeting
+            and (text.count(".") > 0 or text.count(",") > 1)
+        ):  # Has sentence structure
+            triggers.append(ResponseTrigger.CONVERSATION_FLOW)
+
         return triggers
 
     def _calculate_response_probability(self, context: MessageContext) -> float:
         """Calculate probability that bot should respond (0.0 to 1.0)"""
         probability = 0.0
 
-        # Base trigger probabilities
+        # Base trigger probabilities - Enhanced weights
         trigger_weights = {
-            ResponseTrigger.QUESTION_ASKED: 0.9,
-            ResponseTrigger.HELP_NEEDED: 0.85,
-            ResponseTrigger.HUMOR_DETECTED: 0.4,
-            ResponseTrigger.GREETING: 0.6,
-            ResponseTrigger.CELEBRATION: 0.5,
-            ResponseTrigger.EMOTIONAL_SUPPORT: 0.7,
-            ResponseTrigger.TOPIC_MATCH: 0.3,
+            ResponseTrigger.QUESTION_ASKED: 0.95,
+            ResponseTrigger.HELP_NEEDED: 0.9,
+            ResponseTrigger.BOT_MENTIONED: 0.85,  # NEW: Direct bot mentions
+            ResponseTrigger.GREETING: 0.75,  # Increased from 0.6
+            ResponseTrigger.EMOTIONAL_SUPPORT: 0.8,  # Increased from 0.7
+            ResponseTrigger.CELEBRATION: 0.6,  # Increased from 0.5
+            ResponseTrigger.CONVERSATION_STARTER: 0.6,  # NEW
+            ResponseTrigger.OPINION_SHARING: 0.5,  # NEW
+            ResponseTrigger.COLLABORATIVE_DISCUSSION: 0.7,  # NEW
+            ResponseTrigger.STORY_TELLING: 0.4,  # NEW
+            ResponseTrigger.REACTION_WORTHY: 0.45,  # NEW
+            ResponseTrigger.HUMOR_DETECTED: 0.5,  # Increased from 0.4
+            ResponseTrigger.TOPIC_MATCH: 0.4,  # Increased from 0.3
+            ResponseTrigger.CONVERSATION_FLOW: 0.35,  # NEW: Ongoing conversations
         }
 
         # Calculate max probability from triggers
         for trigger in context.response_triggers:
             probability = max(probability, trigger_weights.get(trigger, 0.1))
 
-        # Boost probability based on context
+        # Boost probability based on context - Enhanced
         if context.humor_score > 0.5:
-            probability += 0.2
+            probability += 0.25  # Increased from 0.2
 
         if context.emotional_intensity > 0.7:
-            probability += 0.15
+            probability += 0.2  # Increased from 0.15
 
         if len(context.topics) > 1:  # Multiple topics = more engagement
-            probability += 0.1
+            probability += 0.15  # Increased from 0.1
+        elif len(context.topics) == 1:  # Single topic still valuable
+            probability += 0.05  # NEW
 
-        # Tone adjustments
+        # Message length considerations - NEW
+        content_length = len(context.content)
+        if content_length > 100:  # Substantial messages deserve responses
+            probability += 0.1
+        elif content_length > 50:
+            probability += 0.05
+
+        # Tone adjustments - Enhanced
         tone_modifiers = {
-            ConversationTone.QUESTIONING: 0.2,
-            ConversationTone.EMOTIONAL: 0.15,
-            ConversationTone.EXCITED: 0.1,
-            ConversationTone.HUMOROUS: 0.1,
+            ConversationTone.QUESTIONING: 0.25,  # Increased from 0.2
+            ConversationTone.EMOTIONAL: 0.2,  # Increased from 0.15
+            ConversationTone.EXCITED: 0.15,  # Increased from 0.1
+            ConversationTone.HUMOROUS: 0.15,  # Increased from 0.1
+            ConversationTone.CASUAL: 0.05,  # NEW: Encourage casual conversation
         }
 
         probability += tone_modifiers.get(context.tone, 0.0)
+
+        # Encourage varied conversation - NEW
+        # If multiple triggers are present, boost probability
+        if len(context.response_triggers) > 2:
+            probability += 0.1
+        elif len(context.response_triggers) > 1:
+            probability += 0.05
 
         return min(1.0, probability)
 
@@ -545,6 +656,28 @@ class ConversationAnalyzer:
         if ResponseTrigger.CELEBRATION in context.response_triggers:
             return "celebratory"
 
+        # NEW: Handle new trigger types
+        if ResponseTrigger.BOT_MENTIONED in context.response_triggers:
+            return "engaging"
+
+        if ResponseTrigger.CONVERSATION_STARTER in context.response_triggers:
+            return "conversational"
+
+        if ResponseTrigger.OPINION_SHARING in context.response_triggers:
+            return "thoughtful"
+
+        if ResponseTrigger.STORY_TELLING in context.response_triggers:
+            return "interested"
+
+        if ResponseTrigger.COLLABORATIVE_DISCUSSION in context.response_triggers:
+            return "collaborative"
+
+        if ResponseTrigger.REACTION_WORTHY in context.response_triggers:
+            return "reactive"
+
+        if ResponseTrigger.GREETING in context.response_triggers:
+            return "friendly"
+
         return "casual"
 
 
@@ -566,14 +699,16 @@ class UniversalContextManager:
             {}
         )  # channel_id -> last response time
 
-        # Configuration
+        # Configuration - Adjusted for better conversation flow
         self.min_response_interval = timedelta(
-            seconds=10
+            seconds=8  # Reduced from 10 seconds
         )  # Min time between responses to same user
         self.channel_response_interval = timedelta(
-            seconds=30
+            seconds=20  # Reduced from 30 seconds
         )  # Min time between responses in same channel
-        self.max_responses_per_hour = 20  # Max responses per hour per channel
+        self.max_responses_per_hour = (
+            30  # Increased from 20 - Max responses per hour per channel
+        )
 
         # Database setup
         self.db_path = Path("data/context_manager.db")
@@ -686,30 +821,63 @@ class UniversalContextManager:
         # Check rate limiting
         current_time = datetime.now(timezone.utc)
 
-        # User-specific rate limiting
+        # User-specific rate limiting - Relaxed for better conversation flow
         if context.user_id in self.last_responses:
             time_since_last = current_time - self.last_responses[context.user_id]
             if time_since_last < self.min_response_interval:
-                return False, "user_rate_limit"
+                # Allow immediate responses to high-priority triggers even during rate limit
+                high_priority_override = [
+                    ResponseTrigger.QUESTION_ASKED,
+                    ResponseTrigger.HELP_NEEDED,
+                    ResponseTrigger.BOT_MENTIONED,
+                ]
+                if not any(
+                    trigger in context.response_triggers
+                    for trigger in high_priority_override
+                ):
+                    return False, "user_rate_limit"
 
-        # Channel-specific rate limiting
+        # Channel-specific rate limiting - Relaxed
         if channel_id and channel_id in self.channel_last_response:
             time_since_last = current_time - self.channel_last_response[channel_id]
             if time_since_last < self.channel_response_interval:
-                return False, "channel_rate_limit"
+                # Allow responses to very high priority triggers
+                very_high_priority = [
+                    ResponseTrigger.QUESTION_ASKED,
+                    ResponseTrigger.HELP_NEEDED,
+                    ResponseTrigger.BOT_MENTIONED,
+                ]
+                if not any(
+                    trigger in context.response_triggers
+                    for trigger in very_high_priority
+                ):
+                    return False, "channel_rate_limit"
 
         # Always respond to high-priority triggers
         high_priority_triggers = [
             ResponseTrigger.QUESTION_ASKED,
             ResponseTrigger.HELP_NEEDED,
+            ResponseTrigger.BOT_MENTIONED,  # NEW: Always respond when bot is mentioned
         ]
 
-        if any(
-            trigger in context.response_triggers for trigger in high_priority_triggers
-        ):
-            return True, f"high_priority_trigger"
+        for trigger in high_priority_triggers:
+            if trigger in context.response_triggers:
+                return True, f"high_priority_trigger_{trigger.value}"
 
-        # Use probability for other cases
+        # Always respond to very engaging content
+        very_engaging_triggers = [
+            ResponseTrigger.GREETING,
+            ResponseTrigger.EMOTIONAL_SUPPORT,
+            ResponseTrigger.COLLABORATIVE_DISCUSSION,
+        ]
+
+        for trigger in very_engaging_triggers:
+            if trigger in context.response_triggers:
+                # Higher chance for these triggers
+                if random.random() < 0.8:  # 80% chance
+                    return True, f"engaging_trigger_{trigger.value}"
+
+        # Enhanced probability-based responses
         import random
 
         # Adjust probability based on user engagement
@@ -719,15 +887,66 @@ class UniversalContextManager:
         if user_state:
             # Boost probability for engaged users
             if user_state.engagement_level > 0.7:
-                adjusted_probability *= 1.2
+                adjusted_probability *= 1.3  # Increased from 1.2
             elif user_state.engagement_level < 0.3:
-                adjusted_probability *= 0.8
+                adjusted_probability *= 0.9  # More lenient than 0.8
+
+            # Recent conversation boost - NEW
+            if (
+                user_state.last_interaction
+                and (current_time - user_state.last_interaction).seconds < 300
+            ):  # 5 minutes
+                adjusted_probability *= 1.2
+
+        # Context-specific boosts - NEW
+        context_boosts = 0.0
+
+        # Boost for conversation starters
+        if ResponseTrigger.CONVERSATION_STARTER in context.response_triggers:
+            context_boosts += 0.15
+
+        # Boost for opinion sharing (encourage discussion)
+        if ResponseTrigger.OPINION_SHARING in context.response_triggers:
+            context_boosts += 0.1
+
+        # Boost for story telling (show interest)
+        if ResponseTrigger.STORY_TELLING in context.response_triggers:
+            context_boosts += 0.1
+
+        # Boost for reaction-worthy content
+        if ResponseTrigger.REACTION_WORTHY in context.response_triggers:
+            context_boosts += 0.15
+
+        # Apply context boosts
+        adjusted_probability += context_boosts
+        adjusted_probability = min(1.0, adjusted_probability)
+
+        # Lower threshold for some scenarios - NEW
+        # Be more responsive to conversation flow
+        if (
+            ResponseTrigger.CONVERSATION_FLOW in context.response_triggers
+            and adjusted_probability > 0.25
+        ):
+            adjusted_probability = max(adjusted_probability, 0.4)  # Minimum 40% chance
 
         # Random check against probability
-        if random.random() < adjusted_probability:
-            return True, f"probability_trigger_{adjusted_probability:.2f}"
+        random_value = random.random()
+        if random_value < adjusted_probability:
+            return (
+                True,
+                f"probability_trigger_{adjusted_probability:.2f}_rolled_{random_value:.2f}",
+            )
 
-        return False, "probability_too_low"
+        # Fallback: occasionally respond to maintain engagement - NEW
+        # Small chance to respond even to low-probability messages to keep conversation alive
+        if (
+            len(context.content) > 30  # Substantial message
+            and len(context.response_triggers) > 0  # Has some triggers
+            and random.random() < 0.1
+        ):  # 10% chance
+            return True, "engagement_maintenance"
+
+        return False, f"probability_too_low_{adjusted_probability:.2f}"
 
     async def get_response_context(self, context: MessageContext) -> Dict[str, Any]:
         """Get context information for generating a response"""

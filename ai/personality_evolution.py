@@ -65,12 +65,11 @@ class PersonalityProfile:
     formality_level: float = 0.3  # 0.0 = very casual, 1.0 = very formal
     topic_enthusiasm: Dict[str, float] = field(
         default_factory=lambda: {
-            "stellaris": 0.5,
-            "space": 0.5,
-            "gaming": 0.4,
-            "technology": 0.4,
-            "science": 0.4,
-            "social": 0.5,
+            # Start with neutral baseline - will be learned from server activity
+            "general": 0.5,
+            "community": 0.5,
+            "chat": 0.5,
+            "discussion": 0.5,
         }
     )
 
@@ -513,15 +512,19 @@ class PersonalityEvolutionEngine:
                     if row[3]:
                         personality.last_evolution = datetime.fromisoformat(row[3])
                 else:
-                    # Create new personality
-                    personality = PersonalityProfile(
-                        server_id=server_id, server_name=server_name
+                    # Create new adaptive personality (no astronomy defaults)
+                    logger.info(
+                        f"Creating new adaptive personality for server: {server_name} ({server_id})"
+                    )
+                    personality = await self.initialize_server_personality(
+                        server_id, server_name
                     )
 
         except Exception as e:
             logger.warning(f"Error loading personality for server {server_id}: {e}")
-            personality = PersonalityProfile(
-                server_id=server_id, server_name=server_name
+            # Create new adaptive personality on error
+            personality = await self.initialize_server_personality(
+                server_id, server_name
             )
 
         self.server_personalities[server_id] = personality
@@ -802,6 +805,282 @@ class PersonalityEvolutionEngine:
 
         except Exception as e:
             logger.error(f"Error saving relationship: {e}")
+
+    async def initialize_server_personality(
+        self,
+        server_id: int,
+        server_name: str = "",
+        initial_context: Dict[str, Any] = None,
+    ) -> PersonalityProfile:
+        """Initialize a new adaptive personality for a server"""
+        logger.info(
+            f"Initializing adaptive personality for server: {server_name} ({server_id})"
+        )
+
+        # Create base personality with neutral defaults (no astronomy bias)
+        personality = PersonalityProfile(server_id=server_id, server_name=server_name)
+
+        # If we have initial context (e.g., server description, channels), use it
+        if initial_context:
+            await self._analyze_initial_server_context(personality, initial_context)
+
+        # Save the new personality
+        await self._save_personality(personality)
+        self.server_personalities[server_id] = personality
+
+        logger.info(
+            f"✅ Adaptive personality initialized for {server_name} - will learn from community interactions"
+        )
+        return personality
+
+    async def _analyze_initial_server_context(
+        self, personality: PersonalityProfile, context: Dict[str, Any]
+    ):
+        """Analyze initial server context to create topic enthusiasm preferences"""
+
+        # Analyze server name and description for topic hints
+        server_text = (
+            f"{context.get('server_name', '')} {context.get('server_description', '')}"
+        )
+
+        # Detect topic categories from server info
+        topic_indicators = {
+            "gaming": [
+                "game",
+                "gaming",
+                "play",
+                "player",
+                "steam",
+                "discord",
+                "lobby",
+                "match",
+                "tournament",
+            ],
+            "technology": [
+                "tech",
+                "programming",
+                "code",
+                "dev",
+                "software",
+                "hardware",
+                "computer",
+                "coding",
+            ],
+            "community": [
+                "community",
+                "chat",
+                "friends",
+                "social",
+                "hangout",
+                "general",
+                "lounge",
+            ],
+            "creative": [
+                "art",
+                "music",
+                "creative",
+                "design",
+                "drawing",
+                "writing",
+                "creator",
+            ],
+            "education": [
+                "study",
+                "school",
+                "learn",
+                "education",
+                "homework",
+                "student",
+                "class",
+            ],
+            "business": [
+                "business",
+                "work",
+                "professional",
+                "corporate",
+                "company",
+                "startup",
+            ],
+            "hobby": [
+                "hobby",
+                "craft",
+                "diy",
+                "collect",
+                "enthusiast",
+                "fan",
+                "interest",
+            ],
+        }
+
+        # Reset topic enthusiasm to neutral baseline
+        personality.topic_enthusiasm = {
+            "general": 0.5,
+            "community": 0.5,
+            "chat": 0.5,
+            "discussion": 0.5,
+        }
+
+        # Analyze server text for topic indicators
+        server_text_lower = server_text.lower()
+        for topic_category, keywords in topic_indicators.items():
+            score = sum(1 for keyword in keywords if keyword in server_text_lower)
+            if score > 0:
+                # Boost enthusiasm for detected topics
+                enthusiasm_boost = min(0.8, 0.5 + (score * 0.1))
+                personality.topic_enthusiasm[topic_category] = enthusiasm_boost
+
+        logger.debug(
+            f"Initial topic analysis for {personality.server_name}: {personality.topic_enthusiasm}"
+        )
+
+    async def adapt_to_server_activity(
+        self, server_id: int, channel_sample: List[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """Analyze recent server activity to rapidly adapt personality"""
+        personality = await self._get_server_personality(server_id)
+
+        if not channel_sample:
+            return {"message": "No activity sample provided"}
+
+        adaptation_changes = {}
+
+        # Analyze communication patterns from channel samples
+        total_messages = len(channel_sample)
+        if total_messages == 0:
+            return {"message": "No messages to analyze"}
+
+        # Analyze formality patterns
+        formal_indicators = 0
+        casual_indicators = 0
+        emoji_count = 0
+
+        # Detect topics being discussed
+        topic_mentions = defaultdict(int)
+
+        for message_data in channel_sample:
+            content = message_data.get("content", "").lower()
+
+            # Count formality indicators
+            formal_words = [
+                "please",
+                "thank you",
+                "could you",
+                "would you mind",
+                "sir",
+                "madam",
+            ]
+            casual_words = [
+                "hey",
+                "sup",
+                "gonna",
+                "wanna",
+                "yeah",
+                "nah",
+                "lol",
+                "haha",
+            ]
+
+            formal_indicators += sum(1 for word in formal_words if word in content)
+            casual_indicators += sum(1 for word in casual_words if word in content)
+
+            # Count emojis and reactions
+            emoji_count += len(
+                [
+                    char
+                    for char in content
+                    if char
+                    in "😀😃😄😁😆😅😂🤣😊😇🙂🙃😉😌😍🥰😘😗😙😚😋😛😝😜🤪🤨🧐🤓😎🤩🥳😏😒😞😔😟😕🙁☹️😣😖😫😩🥺😢😭😤😠😡🤬🤯😳🥵🥶😱😨😰😥😓🤗🤔🤭🤫🤥😶😐😑😬🙄😯😦😧😮😲🥱😴🤤😪😵🤐🥴🤢🤮🤧😷🤒🤕🤑🤠"
+                ]
+            )
+
+            # Extract topics being discussed
+            for word in content.split():
+                if len(word) > 3:  # Avoid short common words
+                    topic_mentions[word] += 1
+
+        # Adapt formality level based on communication patterns
+        if total_messages > 5:  # Only adapt if we have enough samples
+            formality_ratio = formal_indicators / (
+                formal_indicators + casual_indicators + 1
+            )
+
+            # Gradually adjust formality towards observed pattern
+            adaptation_rate = min(
+                0.3, total_messages * 0.02
+            )  # Faster adaptation with more data
+            target_formality = formality_ratio
+
+            old_formality = personality.formality_level
+            personality.formality_level = (
+                old_formality * (1 - adaptation_rate)
+                + target_formality * adaptation_rate
+            )
+
+            if abs(personality.formality_level - old_formality) > 0.05:
+                adaptation_changes["formality_adaptation"] = {
+                    "old": old_formality,
+                    "new": personality.formality_level,
+                    "samples_analyzed": total_messages,
+                }
+
+        # Adapt social energy based on emoji usage and message patterns
+        emoji_ratio = emoji_count / total_messages if total_messages > 0 else 0
+        if emoji_ratio > 0.3:  # High emoji usage indicates high energy
+            energy_boost = min(0.2, emoji_ratio * 0.3)
+            old_energy = personality.social_energy
+            personality.social_energy = min(1.0, old_energy + energy_boost)
+
+            if abs(personality.social_energy - old_energy) > 0.05:
+                adaptation_changes["energy_adaptation"] = {
+                    "old": old_energy,
+                    "new": personality.social_energy,
+                    "emoji_ratio": emoji_ratio,
+                }
+
+        # Learn topic preferences from actual discussions
+        most_discussed_topics = sorted(
+            topic_mentions.items(), key=lambda x: x[1], reverse=True
+        )[:5]
+
+        for topic, mentions in most_discussed_topics:
+            if mentions >= 3:  # Topic mentioned multiple times
+                # Boost enthusiasm for topics actually being discussed
+                if topic not in personality.topic_enthusiasm:
+                    personality.topic_enthusiasm[topic] = 0.6
+                else:
+                    # Gradually increase enthusiasm for popular topics
+                    boost = min(0.2, mentions * 0.05)
+                    personality.topic_enthusiasm[topic] = min(
+                        1.0, personality.topic_enthusiasm[topic] + boost
+                    )
+
+        if most_discussed_topics:
+            adaptation_changes["topic_learning"] = {
+                "discovered_topics": [topic for topic, _ in most_discussed_topics],
+                "updated_enthusiasm": {
+                    topic: personality.topic_enthusiasm.get(topic, 0.5)
+                    for topic, _ in most_discussed_topics
+                },
+            }
+
+        # Increase culture confidence based on analysis
+        old_confidence = personality.culture_confidence
+        confidence_boost = min(0.3, total_messages * 0.02)
+        personality.culture_confidence = min(1.0, old_confidence + confidence_boost)
+
+        adaptation_changes["confidence_boost"] = {
+            "old": old_confidence,
+            "new": personality.culture_confidence,
+            "messages_analyzed": total_messages,
+        }
+
+        # Save the adapted personality
+        await self._save_personality(personality)
+
+        logger.info(
+            f"🎯 Rapid adaptation completed for {personality.server_name}: {len(adaptation_changes)} changes"
+        )
+        return adaptation_changes
 
     async def get_analytics(self, server_id: int = None) -> Dict[str, Any]:
         """Get personality evolution analytics"""

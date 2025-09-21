@@ -522,7 +522,7 @@ class AstraBot(commands.Bot):
 
         @self.event
         async def on_guild_join(guild):
-            """Enhanced guild join handling"""
+            """Enhanced guild join handling with adaptive personality initialization"""
             self.stats.guilds_joined += 1
 
             self.logger.info(f"🎉 Joined guild: {guild.name} (ID: {guild.id})")
@@ -532,6 +532,49 @@ class AstraBot(commands.Bot):
 
             # Initialize guild configuration
             await self._initialize_guild_config(guild)
+
+            # Initialize adaptive personality for this server
+            try:
+                from ai.consolidated_ai_engine import get_engine
+
+                ai_engine = get_engine()
+                if ai_engine:
+                    # Prepare initial context about the server
+                    initial_context = {
+                        "server_name": guild.name,
+                        "server_description": guild.description or "",
+                        "member_count": guild.member_count,
+                        "created_at": guild.created_at.isoformat(),
+                        "features": list(guild.features) if guild.features else [],
+                        "owner": str(guild.owner) if guild.owner else "Unknown",
+                    }
+
+                    # Initialize adaptive personality (no astronomy defaults)
+                    personality_result = await ai_engine.initialize_server_personality(
+                        guild_id=guild.id,
+                        guild_name=guild.name,
+                        initial_context=initial_context,
+                    )
+
+                    if personality_result.get("success"):
+                        self.logger.info(
+                            f"🧠 Adaptive personality initialized for {guild.name}"
+                        )
+                        self.logger.info(
+                            f"   🎯 Learning from community: {personality_result.get('message', 'Ready to adapt')}"
+                        )
+                    else:
+                        self.logger.warning(
+                            f"⚠️ Personality initialization failed: {personality_result.get('error', 'Unknown error')}"
+                        )
+
+                    # Schedule adaptive learning after some initial activity
+                    asyncio.create_task(self._schedule_initial_learning(guild))
+
+            except Exception as e:
+                self.logger.error(
+                    f"❌ Failed to initialize adaptive personality for {guild.name}: {e}"
+                )
 
             # Sync commands if enabled
             if self.config.command_sync_on_join:
@@ -790,6 +833,83 @@ class AstraBot(commands.Bot):
 
         await db.set("guild_configs", str(guild.id), config)
         self.logger.debug(f"📋 Initialized config for guild: {guild.name}")
+
+    async def _schedule_initial_learning(self, guild: discord.Guild):
+        """Schedule initial adaptive learning for a new server"""
+        try:
+            # Wait a bit for initial activity
+            await asyncio.sleep(300)  # 5 minutes
+
+            # Collect recent messages from public channels for rapid adaptation
+            recent_messages = []
+
+            for channel in guild.text_channels:
+                # Only analyze public channels bot can read
+                if channel.permissions_for(guild.me).read_messages:
+                    try:
+                        # Get recent messages (last 20 from each channel, max 100 total)
+                        async for message in channel.history(limit=20):
+                            if len(recent_messages) >= 100:
+                                break
+
+                            # Skip bot messages and system messages
+                            if not message.author.bot and message.content.strip():
+                                recent_messages.append(
+                                    {
+                                        "content": message.content,
+                                        "author_id": message.author.id,
+                                        "channel_id": message.channel.id,
+                                        "timestamp": message.created_at.isoformat(),
+                                        "has_reactions": len(message.reactions) > 0,
+                                    }
+                                )
+
+                        if len(recent_messages) >= 100:
+                            break
+
+                    except Exception as e:
+                        self.logger.debug(f"Couldn't read from {channel.name}: {e}")
+                        continue
+
+            if recent_messages:
+                # Trigger rapid adaptation
+                from ai.consolidated_ai_engine import get_engine
+
+                ai_engine = get_engine()
+                if ai_engine:
+                    adaptation_result = await ai_engine.adapt_to_server_activity(
+                        guild_id=guild.id, recent_messages=recent_messages
+                    )
+
+                    if adaptation_result.get("success"):
+                        adaptations = adaptation_result.get("adaptations", {})
+                        self.logger.info(
+                            f"🎯 Rapid adaptation completed for {guild.name}"
+                        )
+                        self.logger.info(
+                            f"   📊 Analyzed {len(recent_messages)} messages"
+                        )
+
+                        if adaptations:
+                            changes = len(adaptations)
+                            self.logger.info(
+                                f"   🔄 Made {changes} personality adaptations"
+                            )
+                    else:
+                        self.logger.warning(
+                            f"⚠️ Adaptation failed: {adaptation_result.get('error')}"
+                        )
+                else:
+                    self.logger.warning("⚠️ AI engine not available for adaptation")
+            else:
+                self.logger.info(
+                    f"📭 No recent activity found in {guild.name} - will adapt as interactions occur"
+                )
+
+        except Exception as e:
+            self.logger.error(
+                f"❌ Initial learning scheduling failed for {guild.name}: {e}"
+            )
 
     async def _cleanup_guild_data(self, guild_id: int):
         """Clean up data for a guild that was left"""

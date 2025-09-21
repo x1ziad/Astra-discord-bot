@@ -1909,6 +1909,58 @@ Key principles:
             context_data=context,
         )
 
+    async def initialize_server_personality(
+        self,
+        guild_id: int,
+        guild_name: str = "",
+        initial_context: Dict[str, Any] = None,
+    ) -> Dict[str, Any]:
+        """Initialize adaptive personality for a new server"""
+        if not self.personality_engine:
+            return {"error": "Personality evolution system not available"}
+
+        try:
+            # Initialize adaptive personality (no astronomy defaults)
+            personality = await self.personality_engine.initialize_server_personality(
+                server_id=guild_id,
+                server_name=guild_name,
+                initial_context=initial_context,
+            )
+
+            return {
+                "success": True,
+                "message": f"Adaptive personality initialized for {guild_name}",
+                "personality_summary": personality.get_personality_summary(),
+                "server_id": guild_id,
+                "culture_confidence": personality.culture_confidence,
+            }
+
+        except Exception as e:
+            self.logger.error(f"Error initializing server personality: {e}")
+            return {"error": str(e)}
+
+    async def adapt_to_server_activity(
+        self, guild_id: int, recent_messages: List[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """Rapidly adapt personality based on server activity analysis"""
+        if not self.personality_engine:
+            return {"error": "Personality evolution system not available"}
+
+        try:
+            adaptation_result = await self.personality_engine.adapt_to_server_activity(
+                server_id=guild_id, channel_sample=recent_messages or []
+            )
+
+            return {
+                "success": True,
+                "adaptations": adaptation_result,
+                "server_id": guild_id,
+            }
+
+        except Exception as e:
+            self.logger.error(f"Error adapting to server activity: {e}")
+            return {"error": str(e)}
+
     async def get_health_status(self) -> Dict[str, Any]:
         """
         Get the health status of the AI engine and its providers
