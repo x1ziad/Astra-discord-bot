@@ -238,15 +238,15 @@ class AstraBot(commands.Bot):
         """Create all necessary directories"""
         directories = [
             "logs",
+            "temp",
             "data",
-            "data/ai",
-            "data/ai/audio",
+            "data/quiz",
+            "data/space",
             "data/analytics",
             "data/analytics/daily_reports",
             "data/guilds",
             "data/database",
             "config",
-            "ai/personalities",
         ]
 
         for directory in directories:
