@@ -86,6 +86,7 @@ try:
     # Import and run AI credentials debug (optional)
     try:
         from debug_ai_credentials import debug_ai_credentials
+
         debug_ai_credentials()
         logging.getLogger("astra.startup").info("✅ AI credentials debug completed")
     except (ImportError, FileNotFoundError):
@@ -391,7 +392,7 @@ class AstraBot(commands.Bot):
             # Core utilities (no dependencies) - Performance optimized loading order
             [
                 "cogs.admin_optimized",  # Optimized consolidated admin system
-                "cogs.performance",  # Performance monitoring 
+                "cogs.performance",  # Performance monitoring
                 "cogs.bot_status",
                 "cogs.utilities",
                 "cogs.stats",
