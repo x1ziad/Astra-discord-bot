@@ -532,72 +532,80 @@ class AdvancedSentimentAnalyzer:
 
 
 class ConversationFlowEngine:
-    """Dynamic conversation flow system that adapts to user vibes without rigid personality constraints"""
+    """Dynamic conversation flow system that perfectly mirrors user communication patterns"""
 
     def __init__(self):
-        # Base interaction principles instead of personality traits
+        # Style matching is the core focus
         self.base_interaction_style = {
-            "helpfulness": 0.9,  # Always try to be helpful
-            "adaptability": 0.8,  # Adapt to user's communication style
+            "style_mirroring": 0.95,  # Primary goal: mirror conversation style
+            "adaptability": 0.9,  # Adapt to user's patterns
             "contextual_awareness": 0.9,  # Understand conversation context
-            "natural_flow": 0.8,  # Maintain natural conversation flow
-            "conciseness": 0.7,  # Balance between concise and detailed
+            "natural_flow": 0.85,  # Maintain natural conversation flow
+            "authenticity": 0.95,  # Be genuine in responses
             "engagement": 0.8,  # Stay engaged but not forced
         }
 
     def get_conversation_style(
         self, context: ConversationContext, user_profile: UserProfile
     ) -> Dict[str, float]:
-        """Get conversation style adapted to current context and user vibe"""
+        """Get conversation style that perfectly mirrors the current interaction"""
         style = self.base_interaction_style.copy()
 
-        # Adapt based on user's recent communication patterns
+        # Analyze recent messages for style mirroring
         if context.messages:
             recent_user_messages = [
                 msg for msg in list(context.messages)[-5:] if msg.get("role") == "user"
             ]
 
             if recent_user_messages:
-                # Analyze user's current communication style
+                # Mirror message length patterns
                 avg_length = sum(
                     len(msg.get("content", "")) for msg in recent_user_messages
                 ) / len(recent_user_messages)
 
-                # Adjust conciseness based on user's message length
-                if avg_length < 30:  # User sends short messages
-                    style["conciseness"] = 0.9
-                elif avg_length > 100:  # User sends long messages
-                    style["conciseness"] = 0.4
+                # Adjust response length to match
+                if avg_length < 20:
+                    style["response_length"] = 0.3  # Short responses
+                elif avg_length < 50:
+                    style["response_length"] = 0.5  # Medium responses
+                elif avg_length < 100:
+                    style["response_length"] = 0.7  # Longer responses
+                else:
+                    style["response_length"] = 0.9  # Detailed responses
 
-                # Check for question patterns
-                question_ratio = sum(
-                    1 for msg in recent_user_messages if "?" in msg.get("content", "")
-                ) / len(recent_user_messages)
-                if question_ratio > 0.5:  # User asks lots of questions
-                    style["helpfulness"] = 0.95
+                # Mirror punctuation and capitalization patterns
+                total_messages = len(recent_user_messages)
+                exclamation_count = sum(
+                    msg.get("content", "").count("!") for msg in recent_user_messages
+                )
+                question_count = sum(
+                    msg.get("content", "").count("?") for msg in recent_user_messages
+                )
+                caps_ratio = sum(
+                    sum(1 for c in msg.get("content", "") if c.isupper())
+                    / max(1, len(msg.get("content", "")))
+                    for msg in recent_user_messages
+                ) / total_messages
 
-        # Mood-based adjustments (subtle, not forced)
-        mood = context.emotional_context.current_mood
-        if mood == ConversationMood.CONFUSED:
-            style["helpfulness"] = 0.95
-            style["conciseness"] = 0.6  # Be more detailed when explaining
-        elif mood == ConversationMood.EXCITED:
-            style["engagement"] = 0.9
-        elif mood == ConversationMood.SAD:
-            style["helpfulness"] = 0.9
-            style["engagement"] = 0.7  # More supportive, less energetic
+                # Adjust enthusiasm and questioning based on patterns
+                if exclamation_count / total_messages > 0.5:
+                    style["enthusiasm"] = 0.9
+                if question_count / total_messages > 0.3:
+                    style["questioning"] = 0.8
+                if caps_ratio > 0.3:
+                    style["emphasis"] = 0.8
 
-        # Topic-based adjustments (flexible, not rigid)
+        # Topic-based subtle adjustments (don't override style mirroring)
         if context.active_topics:
-            # Technical topics might need more detail
-            technical_topics = ["programming", "science", "technology", "stellaris"]
+            # Technical topics might need slightly more detail
+            technical_topics = ["programming", "science", "technology", "gaming"]
             if any(topic in technical_topics for topic in context.active_topics):
-                style["conciseness"] = max(0.3, style["conciseness"] - 0.2)
+                style["detail_level"] = max(0.4, style.get("response_length", 0.5) + 0.1)
 
-        # User relationship adjustments
+        # User relationship influences (subtle)
         if user_profile.total_interactions > 10:
-            style["contextual_awareness"] = 0.95  # Better context understanding
-            style["natural_flow"] = 0.9  # More natural conversation flow
+            style["familiarity"] = 0.8  # More comfortable, natural responses
+            style["contextual_awareness"] = 0.95
 
         return style
 
@@ -826,6 +834,7 @@ class ConsolidatedAIEngine:
         guild_id: Optional[int] = None,
         channel_id: Optional[int] = None,
         context_data: Dict[str, Any] = None,
+        context: Dict[str, Any] = None,
     ) -> str:
         """Main conversation processing with full optimization and enhanced context understanding"""
 
@@ -845,11 +854,12 @@ class ConsolidatedAIEngine:
         # Enhanced processing with context understanding
         start_time = time.time()
 
+        # Get or create conversation context and user profile
+        conversation_context = await self._get_conversation_context(
+            user_id, guild_id, channel_id
+        )
+
         try:
-            # Get or create conversation context and user profile
-            context = await self._get_conversation_context(
-                user_id, guild_id, channel_id
-            )
             user_profile = await self._get_user_profile(user_id)
 
             # Enhanced context analysis using universal context manager if available
@@ -972,7 +982,7 @@ class ConsolidatedAIEngine:
                 mood = ConversationMood(mood) if isinstance(mood, str) else mood
 
             # Update emotional context
-            context.emotional_context.update_mood(mood, intensity, confidence)
+            conversation_context.emotional_context.update_mood(mood, intensity, confidence)
 
             # Extract topics (enhanced if context manager available)
             if message_context and message_context.topics:
@@ -980,7 +990,7 @@ class ConsolidatedAIEngine:
             else:
                 topics = await self._extract_topics(message)
 
-            context.active_topics.update(topics[:3])  # Keep top 3 topics
+            conversation_context.active_topics.update(topics[:3])  # Keep top 3 topics
 
             # Add message to context with enhanced metadata
             message_metadata = {
@@ -1004,11 +1014,11 @@ class ConsolidatedAIEngine:
                     }
                 )
 
-            context.add_message("user", message, message_metadata)
+            conversation_context.add_message("user", message, message_metadata)
 
             # Generate AI response with enhanced context
             response = await self._generate_ai_response_enhanced(
-                context,
+                conversation_context,
                 user_profile,
                 message,
                 message_context,
@@ -1017,7 +1027,7 @@ class ConsolidatedAIEngine:
             )
 
             # Add response to context
-            context.add_message("assistant", response)
+            conversation_context.add_message("assistant", response)
 
             # Update user profile
             response_time = (time.time() - start_time) * 1000
@@ -1042,7 +1052,7 @@ class ConsolidatedAIEngine:
             # Save to database (async to avoid blocking)
             asyncio.create_task(
                 self._save_conversation_async(
-                    context,
+                    conversation_context,
                     message,
                     response,
                     mood,
@@ -1198,7 +1208,7 @@ class ConsolidatedAIEngine:
 
         # Build enhanced system prompt with context manager data, personality, and intelligence insights
         system_prompt = self._build_enhanced_system_prompt(
-            context,
+            conversation_context,
             user_profile,
             style,
             message_context,
@@ -1207,7 +1217,7 @@ class ConsolidatedAIEngine:
         )
 
         # Prepare messages
-        messages = self._prepare_messages(context, system_prompt)
+        messages = self._prepare_messages(conversation_context, system_prompt)
 
         # Try providers in order
         for provider in [self.active_provider] + [
@@ -1241,7 +1251,7 @@ class ConsolidatedAIEngine:
                     continue
 
         # All providers failed - use fallback
-        return self._get_fallback_response(message, context.user_id)
+        return self._get_fallback_response(message, user_id)
 
     def _build_enhanced_system_prompt(
         self,
@@ -1255,29 +1265,28 @@ class ConsolidatedAIEngine:
         """Build enhanced system prompt with context manager insights, personality evolution, and advanced intelligence"""
 
         # Base prompt with context awareness, personality evolution, and advanced intelligence
-        base_prompt = """You are Astra, an intelligent AI assistant powered by Advanced Intelligence that naturally understands conversations and responds authentically. You engage with every message when appropriate, understanding context, humor, and emotional nuances without needing to be mentioned or tagged.
+        base_prompt = """You are Astra, an intelligent AI assistant that naturally understands conversations and responds authentically. Your primary goal is to match the conversation's vibe, style, and flow perfectly.
 
-Your personality dynamically evolves and adapts to each server's unique culture, learning from interactions to become more aligned with the community's communication style, humor preferences, and social dynamics.
+You adapt your personality dynamically to each server's unique culture, learning from every interaction to mirror the community's communication patterns, humor style, and social dynamics.
 
-You possess advanced intelligence capabilities including:
-- Time-aware social predictions and optimal interaction timing
-- Cross-server learning while maintaining privacy
-- Wellness companion features for genuine community health care
-- Memory Palace for preserving important community moments
-- Mood contagion analysis for understanding emotional atmosphere
-- Community Sage wisdom for deep insights and guidance
+Key adaptation principles:
+- Mirror the user's message length and complexity
+- Match their formality level (casual ↔ formal)
+- Adopt their humor style (sarcastic, punny, wholesome, witty)
+- Follow their energy level (calm, enthusiastic, supportive)
+- Use similar vocabulary and phrasing patterns
+- Respond in character with the ongoing conversation theme
+- Build on previous messages naturally
+- Never force personality traits - let the conversation guide you
 
-Core principles:
-- Understand conversation flow and respond naturally
-- Detect and respond to humor with wit and playfulness  
-- Recognize emotional context and provide appropriate support
-- Engage with interesting topics and questions proactively
-- Match the user's communication style and energy level
-- Remember previous interactions and build on them
-- Adapt your personality to fit the server's culture over time
-- Build genuine relationships with community members
-- Provide predictive insights and wellness support when appropriate
-- Offer sage wisdom and guidance for community growth"""
+Advanced capabilities:
+- Deep conversation context understanding
+- Emotional intelligence and appropriate responses
+- Cultural adaptation to server norms
+- Memory of user preferences and past interactions
+- Predictive engagement based on conversation patterns
+
+Always respond in a way that feels like a natural continuation of the conversation, matching the exact style and tone of the messages around you."""
 
         # Add personality evolution context if available
         if personality_context:
@@ -1476,53 +1485,60 @@ Core principles:
         style: Dict[str, float],
         message_context=None,
     ) -> str:
-        """Enhanced post-processing with context manager insights"""
+        """Enhanced post-processing with perfect style mirroring"""
 
         response = response.strip()
 
-        # Context-aware enhancements
-        if message_context:
-            # Add appropriate emojis based on context
-            if hasattr(message_context, "tone"):
-                if (
-                    message_context.tone.value == "humorous"
-                    and message_context.humor_score > 0.5
-                ):
-                    if not any(emoji in response for emoji in ["😄", "😂", "🤣", "😊"]):
-                        response += " 😄"
-                elif message_context.tone.value == "excited" and not any(
-                    emoji in response for emoji in ["🚀", "✨", "🌟"]
-                ):
-                    response += " 🚀"
-                elif message_context.tone.value == "questioning" and "?" in response:
-                    if not any(emoji in response for emoji in ["🤔", "💭"]):
-                        response += " 🤔"
+        # Style mirroring adjustments
+        if context.messages:
+            recent_user_messages = [
+                msg for msg in list(context.messages)[-3:] if msg.get("role") == "user"
+            ]
 
-            # Supportive additions for emotional content
-            if (
-                hasattr(message_context, "emotional_intensity")
-                and message_context.emotional_intensity > 0.8
-            ):
-                if "frustrated" in context.emotional_context.current_mood.value:
-                    if not any(
-                        phrase in response.lower()
-                        for phrase in ["understand", "help", "support"]
-                    ):
-                        response += " I'm here to help if you need it."
+            if recent_user_messages:
+                # Mirror emoji usage patterns
+                user_emoji_count = sum(
+                    len([c for c in msg.get("content", "") if ord(c) > 127])
+                    for msg in recent_user_messages
+                )
+                user_message_count = len(recent_user_messages)
+
+                if user_emoji_count / user_message_count > 0.5:  # Users use emojis frequently
+                    # Add contextually appropriate emoji if response lacks them
+                    if not any(ord(c) > 127 for c in response):
+                        # Add emoji based on response sentiment
+                        if any(word in response.lower() for word in ["yes", "good", "great", "awesome"]):
+                            response += " �"
+                        elif any(word in response.lower() for word in ["thanks", "thank"]):
+                            response += " 😊"
+                        elif "?" in response:
+                            response += " 🤔"
+                        elif any(word in response.lower() for word in ["wow", "amazing", "incredible"]):
+                            response += " ✨"
+
+                # Mirror punctuation enthusiasm
+                user_exclamations = sum(
+                    msg.get("content", "").count("!") for msg in recent_user_messages
+                )
+                if user_exclamations / user_message_count > 0.3 and not response.endswith("!"):
+                    if len(response.split()) < 10:  # Short responses
+                        response += "!"
 
         # Natural conversation flow
-        if context.turn_count > 5:  # Ongoing conversation
-            # Occasionally reference the conversation flow
+        if context.turn_count > 3:  # Deeper conversation
+            # Occasionally add conversational connectors
             import random
 
-            if random.random() < 0.1:  # 10% chance
-                flow_phrases = [
-                    "That's an interesting point.",
-                    "Building on what we were discussing...",
-                    "That reminds me of something...",
+            if random.random() < 0.15:  # 15% chance for deeper conversations
+                connectors = [
+                    "That makes sense.",
+                    "I see what you mean.",
+                    "Building on that...",
+                    "That's interesting.",
+                    "Following up on your point...",
                 ]
-                if not response.startswith(tuple(flow_phrases)):
-                    response = random.choice(flow_phrases) + " " + response
+                if not response.startswith(tuple(connectors)):
+                    response = random.choice(connectors) + " " + response
 
         return response
 
@@ -1994,11 +2010,13 @@ def get_engine() -> Optional[ConsolidatedAIEngine]:
 
 
 # Convenience functions for backward compatibility
-async def process_conversation(message: str, user_id: int, **kwargs) -> str:
+async def process_conversation(message: str, user_id: int, guild_id: Optional[int] = None, channel_id: Optional[int] = None, context_data: Dict[str, Any] = None, context: Dict[str, Any] = None, **kwargs) -> str:
     """Process conversation using global engine"""
     engine = get_engine()
     if engine:
-        return await engine.process_conversation(message, user_id, **kwargs)
+        # Use context_data or context
+        final_context = context_data or context
+        return await engine.process_conversation(message, user_id, guild_id, channel_id, context_data=final_context, **kwargs)
     else:
         return "AI engine not initialized"
 

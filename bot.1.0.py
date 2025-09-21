@@ -393,7 +393,13 @@ class AstraBot(commands.Bot):
                 "cogs.advanced_intelligence",  # Phase 3: Advanced Intelligence
             ],
             # AI and enhanced features (depend on core)
-            ["cogs.advanced_ai", "cogs.server_management"],
+            [
+                "cogs.advanced_ai",
+                "cogs.server_management",
+                "cogs.interactive_storytelling",
+                "cogs.collaborative_creativity_hub",
+                "cogs.emotional_soundtrack",
+            ],
             # Analytics and specialized features
             ["cogs.analytics", "cogs.roles"],
             # Game-specific and optional features

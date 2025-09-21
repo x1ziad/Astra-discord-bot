@@ -4,7 +4,7 @@ Provides database, error handling, permissions, and HTTP utilities
 """
 
 # Import all utility modules to ensure they're available
-from utils.database import db, DatabaseManager
+from utils.database import db, SimpleDatabaseManager as DatabaseManager
 from utils.error_handler import ErrorHandler, ErrorSeverity, setup_error_handler
 from utils.permissions import (
     PermissionLevel,

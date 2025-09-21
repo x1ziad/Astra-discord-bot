@@ -23,6 +23,7 @@ OPTIMIZED_AI_AVAILABLE = False
 
 try:
     from ai.consolidated_ai_engine import get_engine, initialize_engine
+
     AI_ENGINE_AVAILABLE = True
     logger.info("✅ Consolidated AI Engine imported successfully")
 except ImportError as e:
@@ -30,6 +31,7 @@ except ImportError as e:
 
 try:
     from ai.optimized_ai_engine import OptimizedAIEngine, get_optimized_engine
+
     OPTIMIZED_AI_AVAILABLE = True
     logger.info("✅ Optimized AI Engine imported successfully")
 except ImportError as e:
@@ -37,7 +39,11 @@ except ImportError as e:
 
 # Import context manager
 try:
-    from ai.universal_context_manager import get_context_manager, initialize_context_manager
+    from ai.universal_context_manager import (
+        get_context_manager,
+        initialize_context_manager,
+    )
+
     CONTEXT_MANAGER_AVAILABLE = True
     logger.info("✅ Universal Context Manager imported successfully")
 except ImportError as e:
@@ -71,7 +77,9 @@ class AdvancedAICog(commands.Cog):
             self.conversation_cleanup_task.start()
             self.logger.info("✅ Advanced AI Cog initialized successfully")
         else:
-            self.logger.error("❌ Advanced AI Cog failed to initialize - no AI client available")
+            self.logger.error(
+                "❌ Advanced AI Cog failed to initialize - no AI client available"
+            )
 
     def _setup_ai_client(self):
         """Setup AI engine with fallback options"""
@@ -92,11 +100,13 @@ class AdvancedAICog(commands.Cog):
 
             # Initialize engine if not available
             try:
-                self.ai_client = initialize_engine({
-                    "ai_api_key": os.getenv("AI_API_KEY"),
-                    "ai_model": os.getenv("AI_MODEL", "deepseek/deepseek-r1:nitro"),
-                    "openrouter_api_key": os.getenv("OPENROUTER_API_KEY"),
-                })
+                self.ai_client = initialize_engine(
+                    {
+                        "ai_api_key": os.getenv("AI_API_KEY"),
+                        "ai_model": os.getenv("AI_MODEL", "deepseek/deepseek-r1:nitro"),
+                        "openrouter_api_key": os.getenv("OPENROUTER_API_KEY"),
+                    }
+                )
                 if self.ai_client:
                     self.logger.info("✅ Initialized new AI Engine")
                     return
@@ -121,17 +131,19 @@ class AdvancedAICog(commands.Cog):
         """Generate AI response with simplified error handling"""
         try:
             if not self.ai_client:
-                return "❌ AI service is not configured. Please check the configuration."
+                return (
+                    "❌ AI service is not configured. Please check the configuration."
+                )
 
             # Get conversation history
             history = self.conversation_history.get(user_id, [])
 
             # Generate response using available AI engine
-            if hasattr(self.ai_client, 'process_conversation'):
+            if hasattr(self.ai_client, "process_conversation"):
                 response = await self.ai_client.process_conversation(
                     prompt, user_id, guild_id=guild_id, channel_id=channel_id
                 )
-            elif hasattr(self.ai_client, 'generate_response'):
+            elif hasattr(self.ai_client, "generate_response"):
                 response = await self.ai_client.generate_response(
                     prompt, context={"history": history}
                 )
@@ -144,16 +156,25 @@ class AdvancedAICog(commands.Cog):
                 if user_id not in self.conversation_history:
                     self.conversation_history[user_id] = []
 
-                self.conversation_history[user_id].append({"role": "user", "content": prompt})
-                self.conversation_history[user_id].append({"role": "assistant", "content": response})
+                self.conversation_history[user_id].append(
+                    {"role": "user", "content": prompt}
+                )
+                self.conversation_history[user_id].append(
+                    {"role": "assistant", "content": response}
+                )
 
                 # Keep only recent messages
-                if len(self.conversation_history[user_id]) > self.max_history_length * 2:
-                    self.conversation_history[user_id] = self.conversation_history[user_id][-self.max_history_length * 2:]
+                if (
+                    len(self.conversation_history[user_id])
+                    > self.max_history_length * 2
+                ):
+                    self.conversation_history[user_id] = self.conversation_history[
+                        user_id
+                    ][-self.max_history_length * 2 :]
 
             self.api_calls_made += 1
             self.successful_responses += 1
-            
+
             return response
 
         except Exception as e:
@@ -170,7 +191,7 @@ class AdvancedAICog(commands.Cog):
             if not self.ai_client:
                 await interaction.followup.send(
                     "❌ AI service is not available. Please try again later.",
-                    ephemeral=True
+                    ephemeral=True,
                 )
                 return
 
@@ -194,7 +215,7 @@ class AdvancedAICog(commands.Cog):
                 name=interaction.user.display_name,
                 icon_url=interaction.user.display_avatar.url,
             )
-            
+
             # Add user message as field
             message_preview = message[:1000] + ("..." if len(message) > 1000 else "")
             embed.add_field(
@@ -226,12 +247,14 @@ class AdvancedAICog(commands.Cog):
             if not self.ai_client:
                 await interaction.followup.send(
                     "❌ AI service is not available. Please try again later.",
-                    ephemeral=True
+                    ephemeral=True,
                 )
                 return
 
             analysis_prompt = f"Please analyze the following content and provide insights, key points, and summary:\n\n{content}"
-            response = await self._generate_ai_response(analysis_prompt, interaction.user.id)
+            response = await self._generate_ai_response(
+                analysis_prompt, interaction.user.id
+            )
 
             embed = discord.Embed(
                 title="🔍 AI Content Analysis",
@@ -239,7 +262,7 @@ class AdvancedAICog(commands.Cog):
                 color=0x7289DA,
                 timestamp=datetime.now(timezone.utc),
             )
-            
+
             content_preview = content[:500] + ("..." if len(content) > 500 else "")
             embed.add_field(
                 name="📝 Analyzed Content",
@@ -269,12 +292,14 @@ class AdvancedAICog(commands.Cog):
             if not self.ai_client:
                 await interaction.followup.send(
                     "❌ AI service is not available. Please try again later.",
-                    ephemeral=True
+                    ephemeral=True,
                 )
                 return
 
             summarize_prompt = f"Please provide a concise summary of the following content:\n\n{content}"
-            response = await self._generate_ai_response(summarize_prompt, interaction.user.id)
+            response = await self._generate_ai_response(
+                summarize_prompt, interaction.user.id
+            )
 
             embed = discord.Embed(
                 title="📋 AI Summary",
@@ -282,7 +307,7 @@ class AdvancedAICog(commands.Cog):
                 color=0x7289DA,
                 timestamp=datetime.now(timezone.utc),
             )
-            
+
             content_preview = content[:500] + ("..." if len(content) > 500 else "")
             embed.add_field(
                 name="📄 Original Content",
@@ -302,7 +327,9 @@ class AdvancedAICog(commands.Cog):
                 f"❌ Error summarizing content: {str(e)}", ephemeral=True
             )
 
-    @app_commands.command(name="translate", description="Translate text to another language")
+    @app_commands.command(
+        name="translate", description="Translate text to another language"
+    )
     @app_commands.describe(
         text="Text to translate",
         target_language="Target language (e.g., Spanish, French, German)",
@@ -317,19 +344,23 @@ class AdvancedAICog(commands.Cog):
             if not self.ai_client:
                 await interaction.followup.send(
                     "❌ AI service is not available. Please try again later.",
-                    ephemeral=True
+                    ephemeral=True,
                 )
                 return
 
-            translate_prompt = f"Translate the following text to {target_language}:\n\n{text}"
-            response = await self._generate_ai_response(translate_prompt, interaction.user.id)
+            translate_prompt = (
+                f"Translate the following text to {target_language}:\n\n{text}"
+            )
+            response = await self._generate_ai_response(
+                translate_prompt, interaction.user.id
+            )
 
             embed = discord.Embed(
                 title="🌐 AI Translation",
                 color=0x7289DA,
                 timestamp=datetime.now(timezone.utc),
             )
-            
+
             text_preview = text[:500] + ("..." if len(text) > 500 else "")
             embed.add_field(
                 name="📝 Original Text",
@@ -337,9 +368,9 @@ class AdvancedAICog(commands.Cog):
                 inline=False,
             )
             embed.add_field(
-                name=f"🔄 Translation ({target_language})", 
-                value=response[:1000] + ("..." if len(response) > 1000 else ""), 
-                inline=False
+                name=f"🔄 Translation ({target_language})",
+                value=response[:1000] + ("..." if len(response) > 1000 else ""),
+                inline=False,
             )
             embed.set_author(
                 name=interaction.user.display_name,
@@ -384,16 +415,20 @@ class AdvancedAICog(commands.Cog):
                     )
 
                     # Check if bot should respond
-                    should_respond, response_reason = await context_manager.should_respond(
-                        message_context,
-                        message.channel.id,
-                        message.guild.id if message.guild else None,
+                    should_respond, response_reason = (
+                        await context_manager.should_respond(
+                            message_context,
+                            message.channel.id,
+                            message.guild.id if message.guild else None,
+                        )
                     )
 
                     if should_respond:
                         await self._process_ai_conversation(message)
-                        await context_manager.mark_response_sent(message_context, message.channel.id)
-                    
+                        await context_manager.mark_response_sent(
+                            message_context, message.channel.id
+                        )
+
                     return
 
             # Fallback to basic response logic
@@ -411,13 +446,15 @@ class AdvancedAICog(commands.Cog):
 
         # Check cooldown
         if user_id in self.conversation_cooldowns:
-            if datetime.now(timezone.utc) - self.conversation_cooldowns[user_id] < timedelta(seconds=5):
+            if datetime.now(timezone.utc) - self.conversation_cooldowns[
+                user_id
+            ] < timedelta(seconds=5):
                 return False
 
         # Always respond to mentions and DMs
         if self.bot.user in message.mentions:
             return True
-        
+
         if isinstance(message.channel, discord.DMChannel):
             return True
 
@@ -454,20 +491,20 @@ class AdvancedAICog(commands.Cog):
             # Send response (handle long messages)
             if len(response) > 2000:
                 # Split at sentence boundaries
-                sentences = response.split('. ')
+                sentences = response.split(". ")
                 chunks = []
                 current_chunk = ""
-                
+
                 for sentence in sentences:
-                    if len(current_chunk + sentence + '. ') > 1900:
+                    if len(current_chunk + sentence + ". ") > 1900:
                         if current_chunk:
                             chunks.append(current_chunk.strip())
-                            current_chunk = sentence + '. '
+                            current_chunk = sentence + ". "
                         else:
                             chunks.append(sentence[:1900])
                     else:
-                        current_chunk += sentence + '. '
-                
+                        current_chunk += sentence + ". "
+
                 if current_chunk:
                     chunks.append(current_chunk.strip())
 
@@ -484,7 +521,9 @@ class AdvancedAICog(commands.Cog):
         except Exception as e:
             self.logger.error(f"AI conversation processing error: {e}")
             try:
-                await message.channel.send("I'm having some trouble thinking right now. Give me a moment! 🤖")
+                await message.channel.send(
+                    "I'm having some trouble thinking right now. Give me a moment! 🤖"
+                )
             except:
                 pass  # Don't crash if we can't send error message
 
@@ -505,8 +544,13 @@ class AdvancedAICog(commands.Cog):
 
             # Clean up old conversation history
             for user_id in list(self.conversation_history.keys()):
-                if len(self.conversation_history[user_id]) > self.max_history_length * 2:
-                    self.conversation_history[user_id] = self.conversation_history[user_id][-self.max_history_length * 2:]
+                if (
+                    len(self.conversation_history[user_id])
+                    > self.max_history_length * 2
+                ):
+                    self.conversation_history[user_id] = self.conversation_history[
+                        user_id
+                    ][-self.max_history_length * 2 :]
 
             self.logger.debug("Conversation cleanup completed")
 
@@ -527,7 +571,7 @@ class AdvancedAICog(commands.Cog):
         try:
             embed = discord.Embed(
                 title="🤖 AI System Status",
-                color=0x00ff00 if self.ai_client else 0xff0000,
+                color=0x00FF00 if self.ai_client else 0xFF0000,
                 timestamp=datetime.now(timezone.utc),
             )
 
@@ -537,13 +581,23 @@ class AdvancedAICog(commands.Cog):
 
             # Performance Stats
             uptime = datetime.now(timezone.utc) - self.start_time
-            embed.add_field(name="Uptime", value=str(uptime).split('.')[0], inline=True)
-            embed.add_field(name="API Calls", value=f"{self.api_calls_made:,}", inline=True)
-            embed.add_field(name="Successful Responses", value=f"{self.successful_responses:,}", inline=True)
-            
+            embed.add_field(name="Uptime", value=str(uptime).split(".")[0], inline=True)
+            embed.add_field(
+                name="API Calls", value=f"{self.api_calls_made:,}", inline=True
+            )
+            embed.add_field(
+                name="Successful Responses",
+                value=f"{self.successful_responses:,}",
+                inline=True,
+            )
+
             # Active Conversations
             active_conversations = len(self.conversation_history)
-            embed.add_field(name="Active Conversations", value=f"{active_conversations:,}", inline=True)
+            embed.add_field(
+                name="Active Conversations",
+                value=f"{active_conversations:,}",
+                inline=True,
+            )
 
             # System Info
             embed.add_field(
@@ -553,7 +607,7 @@ class AdvancedAICog(commands.Cog):
                     f"• Consolidated Engine: {'✅' if AI_ENGINE_AVAILABLE else '❌'}\n"
                     f"• Context Manager: {'✅' if CONTEXT_MANAGER_AVAILABLE else '❌'}"
                 ),
-                inline=False
+                inline=False,
             )
 
             await interaction.response.send_message(embed=embed, ephemeral=True)

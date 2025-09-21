@@ -27,6 +27,7 @@ logger = logging.getLogger("astra.utilities")
 # Fallback for config
 try:
     from config.enhanced_config import EnhancedConfigManager
+
     CONFIG_AVAILABLE = True
 except ImportError:
     CONFIG_AVAILABLE = False
@@ -39,7 +40,7 @@ class Utilities(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.logger = logging.getLogger("astra.utilities")
-        
+
         if CONFIG_AVAILABLE:
             try:
                 self.config = EnhancedConfigManager()
@@ -61,7 +62,7 @@ class Utilities(commands.Cog):
     ):
         """Get detailed information about a user"""
         await interaction.response.defer()
-        
+
         target_user = user or interaction.user
 
         embed = discord.Embed(
@@ -95,7 +96,9 @@ class Utilities(commands.Cog):
             created_timestamp = int(target_user.created_at.timestamp())
             if isinstance(target_user, discord.Member) and target_user.joined_at:
                 joined_timestamp = int(target_user.joined_at.timestamp())
-                days_in_server = (datetime.now(timezone.utc) - target_user.joined_at).days
+                days_in_server = (
+                    datetime.now(timezone.utc) - target_user.joined_at
+                ).days
 
                 embed.add_field(
                     name="📅 Account Info",
@@ -141,9 +144,11 @@ class Utilities(commands.Cog):
                             activities.append(f"📺 Streaming {activity.name}")
                         elif isinstance(activity, discord.Activity):
                             activities.append(f"🎯 {activity.name}")
-                    
+
                     if activities:
-                        activity_info = "\n".join(activities[:3])  # Limit to 3 activities
+                        activity_info = "\n".join(
+                            activities[:3]
+                        )  # Limit to 3 activities
 
                 embed.add_field(
                     name="🔄 Status & Activity",
@@ -154,12 +159,14 @@ class Utilities(commands.Cog):
 
                 # Roles information
                 if target_user.roles:
-                    roles = [role.mention for role in target_user.roles[1:]]  # Skip @everyone
+                    roles = [
+                        role.mention for role in target_user.roles[1:]
+                    ]  # Skip @everyone
                     if roles:
                         roles_text = ", ".join(roles[:10])  # Limit to 10 roles
                         if len(target_user.roles) > 11:  # 10 + @everyone
                             roles_text += f" and {len(target_user.roles) - 11} more..."
-                        
+
                         embed.add_field(
                             name=f"🏷️ Roles ({len(target_user.roles) - 1})",
                             value=roles_text,
@@ -181,7 +188,7 @@ class Utilities(commands.Cog):
                         key_perms.append("👢 Kick Members")
                     elif target_user.guild_permissions.ban_members:
                         key_perms.append("🔨 Ban Members")
-                    
+
                     if key_perms:
                         embed.add_field(
                             name="🔑 Key Permissions",

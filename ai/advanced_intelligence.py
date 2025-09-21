@@ -1664,6 +1664,46 @@ class AdvancedIntelligenceEngine:
 
         return insights
 
+    async def predict_optimal_posting_time(
+        self,
+        guild_id: int,
+        content_type: str = "general",
+        target_audience: str = "community",
+    ) -> Dict[str, Any]:
+        """Predict optimal posting time for content"""
+        return await self.social_predictor.predict_optimal_posting_time(
+            guild_id, content_type
+        )
+
+    async def check_user_wellness(
+        self, user_id: int, recent_activity: List[str]
+    ) -> Dict[str, Any]:
+        """Check user wellness based on recent activity"""
+        wellness_alert = await self.wellness_companion.monitor_user_wellness(
+            user_id, 0, {"recent_activity": recent_activity}
+        )
+        if wellness_alert:
+            intervention = await self.wellness_companion.suggest_intervention(
+                user_id, 0, wellness_alert
+            )
+            return {
+                "wellness_status": wellness_alert.value,
+                "intervention": intervention,
+            }
+        return {"wellness_status": "good"}
+
+    async def analyze_community_mood(
+        self, guild_id: int, time_window_hours: int = 24
+    ) -> Dict[str, Any]:
+        """Analyze community mood over time window"""
+        current_mood = await self.mood_contagion._calculate_current_mood(guild_id)
+        return {
+            "dominant_mood": (
+                current_mood.overall_mood.value if current_mood else "neutral"
+            ),
+            "intensity": current_mood.mood_intensity if current_mood else 0.5,
+        }
+
 
 # Global advanced intelligence engine instance
 _advanced_intelligence_engine: Optional[AdvancedIntelligenceEngine] = None
