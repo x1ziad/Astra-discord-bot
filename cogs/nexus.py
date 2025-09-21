@@ -662,7 +662,6 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
         ],
         service=[
             app_commands.Choice(name="OpenRouter (Text AI)", value="openrouter"),
-            app_commands.Choice(name="MagicHour.ai (Image AI)", value="magichour"),
             app_commands.Choice(name="All Services", value="all"),
         ],
     )
@@ -720,13 +719,11 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
         # Check MagicHour.ai
         if service in ["magichour", "all"]:
             try:
-                from ai.magichour_image_generator import MagicHourImageGenerator
 
                 # Test if MagicHour.ai API key is available
                 magichour_key = os.getenv("MAGICHOUR_API_KEY")
                 if magichour_key:
                     magichour_status = "🟢 ONLINE"
-                    magichour_info = "Image AI operational"
                 else:
                     magichour_status = "🔴 OFFLINE"
                     magichour_info = "API key not configured"
@@ -819,7 +816,7 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
             gemini_key = os.getenv("GEMINI_API_KEY")
             config_info["Gemini"] = {
                 "API Key": "🟢 CONFIGURED" if gemini_key else "🔴 MISSING",
-                "Service": "Image Generation",
+                "Service": "AI Chat & Analysis",
                 "Endpoint": "https://generativelanguage.googleapis.com",
             }
 
@@ -1278,113 +1275,6 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
         )
 
         embed.set_footer(text="NEXUS Diagnostics • Advanced system troubleshooting")
-        await interaction.followup.send(embed=embed)
-
-    @app_commands.command(
-        name="imageperf", description="🎨 Image Generation Performance Analytics"
-    )
-    @app_commands.checks.cooldown(1, 15)
-    async def image_performance_command(self, interaction: discord.Interaction):
-        """Image generation performance and optimization analytics"""
-        await interaction.response.defer()
-
-        embed = discord.Embed(
-            title="🎨 IMAGE GENERATION PERFORMANCE ANALYTICS",
-            description="*Optimized AI Image Engine diagnostics and metrics*",
-            color=0x9B59B6,
-            timestamp=datetime.now(timezone.utc),
-        )
-
-        # Check optimized generator availability
-        try:
-            from ai.optimized_image_generator import get_optimized_generator
-
-            generator = get_optimized_generator()
-            engine_status = "🟢 OPTIMIZED ENGINE ACTIVE"
-
-            # Get performance metrics
-            metrics = await generator.get_performance_metrics()
-
-            embed.add_field(
-                name="⚡ Engine Status",
-                value=f"```yaml\nEngine: {engine_status}\nVersion: v2.1 Optimized\nProvider: Freepik AI\nConnection Pool: Active```",
-                inline=False,
-            )
-
-            embed.add_field(
-                name="📊 Performance Metrics",
-                value=f"```yaml\nTotal Requests: {metrics.get('total_requests', 0)}\nSuccess Rate: {metrics.get('success_rate', 0):.1f}%\nAvg Response Time: {metrics.get('avg_response_time', 0):.2f}s\nFastest Generation: {metrics.get('fastest_time', 0):.2f}s```",
-                inline=True,
-            )
-
-            embed.add_field(
-                name="🚀 Cache Performance",
-                value=f"```yaml\nCache Hits: {metrics.get('cache_hits', 0)}\nCache Hit Rate: {metrics.get('cache_hit_rate', 0):.1f}%\nCache Size: {metrics.get('cache_size', 0)} entries\nMemory Saved: {metrics.get('bandwidth_saved', 0):.1f} MB```",
-                inline=True,
-            )
-
-            embed.add_field(
-                name="🔗 Connection Health",
-                value=f"```yaml\nActive Connections: {metrics.get('active_connections', 0)}\nConnection Pool Size: 20 max\nRetry Success Rate: {metrics.get('retry_success_rate', 0):.1f}%\nRate Limit Status: {'🟢 CLEAR' if not metrics.get('rate_limited', False) else '🟡 LIMITED'}```",
-                inline=False,
-            )
-
-            # Rate limiting info
-            rate_info = metrics.get("rate_limits", {})
-            embed.add_field(
-                name="⏱️ Rate Limiting",
-                value=f"```yaml\nMinute Limit: {rate_info.get('per_minute', 30)}/min\nHour Limit: {rate_info.get('per_hour', 200)}/hour\nDaily Limit: {rate_info.get('per_day', 1000)}/day\nCurrent Usage: {rate_info.get('current_usage', 0)}%```",
-                inline=True,
-            )
-
-            # Quality metrics
-            quality_score = metrics.get("avg_quality_score", 85)
-            quality_status = (
-                "🟢 EXCELLENT"
-                if quality_score > 90
-                else "🟡 GOOD" if quality_score > 75 else "🔴 NEEDS IMPROVEMENT"
-            )
-
-            embed.add_field(
-                name="🎯 Quality Metrics",
-                value=f"```yaml\nAvg Quality Score: {quality_score}/100\nQuality Status: {quality_status}\nUser Satisfaction: {metrics.get('user_satisfaction', 92)}%\nError Rate: {metrics.get('error_rate', 0):.1f}%```",
-                inline=True,
-            )
-
-        except ImportError:
-            # Fallback to legacy system check
-            embed.add_field(
-                name="⚡ Engine Status",
-                value="```yaml\nEngine: 🟡 LEGACY SYSTEM\nVersion: v1.0 Standard\nProvider: Freepik AI\nOptimization: Recommended```",
-                inline=False,
-            )
-
-            embed.add_field(
-                name="💡 Optimization Available",
-                value="```yaml\nStatus: Optimized engine available\nBenefits: 3x faster, caching, pooling\nUpgrade: Contact administrator\nPerformance: Standard (upgrade available)```",
-                inline=False,
-            )
-
-        except Exception as e:
-            embed.add_field(
-                name="❌ Engine Error",
-                value=f"```yaml\nStatus: Service Unavailable\nError: {str(e)[:50]}...\nAction: Contact administrator\nFallback: Legacy system available```",
-                inline=False,
-            )
-
-        # API Configuration Status
-        gemini_key = os.getenv("GEMINI_API_KEY")
-        api_status = "🟢 CONFIGURED" if gemini_key else "🔴 MISSING"
-
-        embed.add_field(
-            name="🔑 API Configuration",
-            value=f"```yaml\nGemini API: {api_status}\nAuthentication: {'✓ Valid' if gemini_key else '✗ Required'}\nPermissions: {'Full Access' if gemini_key else 'None'}\nQuota: {'Active' if gemini_key else 'N/A'}```",
-            inline=False,
-        )
-
-        embed.set_footer(
-            text="NEXUS Image Analytics • Real-time performance monitoring"
-        )
         await interaction.followup.send(embed=embed)
 
     @app_commands.command(
