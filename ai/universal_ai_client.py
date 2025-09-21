@@ -99,7 +99,9 @@ class UniversalAIClient:
         self.model = kwargs.get("model", self.config[self.provider]["default_model"])
 
         # Enhanced context settings
-        self.max_context_messages = kwargs.get("max_context_messages", 20)
+        self.max_context_messages = kwargs.get(
+            "max_context_messages", 8
+        )  # Reduced for performance
         self.context_window_tokens = kwargs.get("context_window_tokens", 4000)
         self.enable_emotional_intelligence = kwargs.get(
             "enable_emotional_intelligence", True
@@ -302,6 +304,151 @@ class UniversalAIClient:
             )
 
         return self.conversation_contexts[context_key]
+
+    async def load_conversation_context_from_db(
+        self,
+        user_id: int,
+        guild_id: Optional[int] = None,
+        channel_id: Optional[int] = None,
+        db_connection=None,
+    ) -> Optional[ConversationContext]:
+        """Load conversation context from database storage"""
+        try:
+            if not db_connection:
+                # Try to import the database connection if available
+                try:
+                    from utils.database import db
+
+                    db_connection = db
+                except ImportError:
+                    logger.warning(
+                        "Database connection not available for context loading"
+                    )
+                    return None
+
+            # Load from database using the same key format as the main bot
+            context_db_key = (
+                f"message_context_{guild_id if guild_id else 'dm'}_{channel_id}"
+            )
+            db_context = await db_connection.get(
+                "conversation_contexts", context_db_key, {}
+            )
+
+            if not db_context or not db_context.get("messages"):
+                return None
+
+            # Convert database context to ConversationContext
+            recent_messages = db_context.get("messages", [])[-20:]  # Last 20 messages
+
+            # Build message history in the format expected by AI
+            message_history = []
+            for msg in recent_messages:
+                role = "assistant" if msg.get("user_id") == "bot" else "user"
+                message_history.append(
+                    {
+                        "role": role,
+                        "content": msg.get("content", ""),
+                        "timestamp": msg.get("timestamp", ""),
+                    }
+                )
+
+            # Create conversation context
+            context = ConversationContext(
+                user_id=user_id,
+                guild_id=guild_id,
+                channel_id=channel_id,
+                message_history=message_history,
+                last_interaction=datetime.fromisoformat(
+                    db_context.get("last_activity", datetime.now().isoformat())
+                ),
+            )
+
+            # Extract topics from recent messages
+            if self.enable_topic_tracking:
+                all_content = " ".join(
+                    [msg.get("content", "") for msg in recent_messages]
+                )
+                context.topics = self._extract_topics(all_content)
+
+            # Store in memory cache
+            context_key = self._get_context_key(user_id, guild_id, channel_id)
+            self.conversation_contexts[context_key] = context
+
+            return context
+
+        except Exception as e:
+            logger.error(f"Error loading conversation context from database: {e}")
+            return None
+
+    async def save_conversation_context_to_db(
+        self, context: ConversationContext, db_connection=None
+    ):
+        """Save conversation context to database storage"""
+        try:
+            if not db_connection:
+                try:
+                    from utils.database import db
+
+                    db_connection = db
+                except ImportError:
+                    logger.warning(
+                        "Database connection not available for context saving"
+                    )
+                    return
+
+            # Convert ConversationContext to database format
+            context_db_key = f"message_context_{context.guild_id if context.guild_id else 'dm'}_{context.channel_id}"
+
+            # Get existing context or create new
+            existing_context = await db_connection.get(
+                "conversation_contexts", context_db_key, {"messages": []}
+            )
+
+            # Add recent interactions to database format
+            for msg in context.message_history[-5:]:  # Last 5 messages for performance
+                db_message = {
+                    "user_id": context.user_id if msg.get("role") == "user" else "bot",
+                    "username": "Bot" if msg.get("role") == "assistant" else "User",
+                    "content": msg.get("content", ""),
+                    "timestamp": msg.get("timestamp", datetime.now().isoformat()),
+                    "channel_id": context.channel_id,
+                    "guild_id": context.guild_id,
+                }
+
+                # Check if message already exists (avoid duplicates)
+                if not any(
+                    existing_msg.get("content") == db_message["content"]
+                    and existing_msg.get("timestamp") == db_message["timestamp"]
+                    for existing_msg in existing_context["messages"]
+                ):
+                    existing_context["messages"].append(db_message)
+
+            # Update metadata
+            existing_context.update(
+                {
+                    "last_activity": (
+                        context.last_interaction.isoformat()
+                        if context.last_interaction
+                        else datetime.now().isoformat()
+                    ),
+                    "channel_id": context.channel_id,
+                    "guild_id": context.guild_id,
+                    "topics": context.topics if context.topics else [],
+                    "conversation_stage": context.conversation_stage,
+                }
+            )
+
+            # Keep only recent messages
+            if len(existing_context["messages"]) > 50:
+                existing_context["messages"] = existing_context["messages"][-50:]
+
+            # Save to database
+            await db_connection.set(
+                "conversation_contexts", context_db_key, existing_context
+            )
+
+        except Exception as e:
+            logger.error(f"Error saving conversation context to database: {e}")
 
     def _analyze_emotional_context(self, message: str) -> Dict[str, Any]:
         """Advanced emotional context analysis with sentiment and intensity detection"""
@@ -596,11 +743,64 @@ class UniversalAIClient:
     def _build_enhanced_system_prompt(
         self, context: ConversationContext, current_message: str
     ) -> str:
-        """Build an enhanced system prompt with rich context and emotional intelligence"""
+        """Build a system prompt - concise or detailed based on config"""
+        from config.unified_config import unified_config
+
+        # Check if concise prompts are enabled (default: True for performance)
+        use_concise = unified_config.get_setting("use_concise_prompts", True)
+
+        if use_concise:
+            return self._build_concise_prompt(context, current_message)
+        else:
+            return self._build_detailed_prompt(context, current_message)
+
+    def _build_concise_prompt(
+        self, context: ConversationContext, current_message: str
+    ) -> str:
+        """Build a concise system prompt for faster responses"""
+        base_prompt = "You are Astra, a helpful AI assistant for Discord. Be natural, engaging, and context-aware."
+
+        prompt_parts = [base_prompt]
+
+        # Add key user context only
+        if context.user_profile:
+            name = context.user_profile.get("name", "")
+            if name:
+                prompt_parts.append(f"User: {name}")
+
+            # Simplified relationship level
+            count = context.user_profile.get("interaction_count", 0)
+            if count > 10:
+                prompt_parts.append("Familiar user - be friendly")
+            elif count > 3:
+                prompt_parts.append("Getting to know them")
+
+        # Essential emotional context only
+        if context.emotional_context:
+            emotion = context.emotional_context.get("dominant_emotion", "neutral")
+            if emotion in ["sad", "angry", "anxious"]:
+                prompt_parts.append(f"User seems {emotion} - be supportive")
+            elif emotion in ["excited", "happy"]:
+                prompt_parts.append(f"User is {emotion} - match their energy")
+
+        # Recent topics (max 2)
+        if context.topics:
+            recent = context.topics[-2:]
+            if recent:
+                prompt_parts.append(f"Topics: {', '.join(recent)}")
+
+        # Simple guidelines
+        prompt_parts.append("Be helpful, natural, and conversational.")
+
+        return " | ".join(prompt_parts)
+
+    def _build_detailed_prompt(
+        self, context: ConversationContext, current_message: str
+    ) -> str:
+        """Build a detailed system prompt (original version for when detail is needed)"""
         prompt_parts = [
             "You are Astra, an advanced AI assistant for a Discord community. You are helpful, engaging, and highly context-aware.",
             "You possess emotional intelligence and adapt your responses based on the user's emotional state, conversation history, and communication patterns.",
-            "Your goal is to provide natural, contextually appropriate responses that feel like they come from someone who truly understands the conversation.",
         ]
 
         # Add memory-based user context
@@ -610,20 +810,11 @@ class UniversalAIClient:
             )
             if relevant_memories:
                 prompt_parts.append("\nWhat you remember about this user:")
-                for memory in relevant_memories[:3]:  # Top 3 most relevant
-                    if memory["type"] in [
-                        "name",
-                        "occupation",
-                        "location",
-                        "interests",
-                    ]:
+                for memory in relevant_memories[:2]:  # Top 2 most relevant
+                    if memory["type"] in ["name", "occupation", "interests"]:
                         prompt_parts.append(f"- {memory['content']}")
 
-                prompt_parts.append(
-                    "Use this information naturally in conversation when relevant, but don't be overly obvious about it."
-                )
-
-        # Add user context and relationship building
+        # Add user context
         if context.user_profile:
             name = context.user_profile.get("name", "")
             if name:
@@ -632,140 +823,37 @@ class UniversalAIClient:
             interaction_count = context.user_profile.get("interaction_count", 0)
             if interaction_count > 20:
                 prompt_parts.append(
-                    "You have a well-established relationship with this user. Reference shared experiences and inside jokes when appropriate."
+                    "You have a well-established relationship with this user."
                 )
             elif interaction_count > 10:
                 prompt_parts.append(
-                    "You're developing a good relationship with this user. Build on previous conversations naturally."
+                    "You're developing a good relationship with this user."
                 )
             elif interaction_count > 3:
-                prompt_parts.append(
-                    "You're getting to know this user better. Show growing familiarity."
-                )
-            else:
-                prompt_parts.append(
-                    "This is one of your early interactions with this user. Be welcoming and help establish rapport."
-                )
+                prompt_parts.append("You're getting to know this user better.")
 
-            communication_style = context.user_profile.get("communication_style", "")
-            if communication_style:
-                style_guidance = {
-                    "casual": "This user prefers relaxed, informal conversation. Use casual language and don't be overly formal.",
-                    "formal": "This user appreciates structured, professional communication. Maintain a more polished tone.",
-                    "humorous": "This user enjoys humor and wit. Feel free to be playful and include appropriate jokes.",
-                    "direct": "This user prefers straightforward, to-the-point communication. Be clear and concise.",
-                    "supportive": "This user values emotional support and encouragement. Be extra caring and positive.",
-                }
-                if communication_style in style_guidance:
-                    prompt_parts.append(style_guidance[communication_style])
-
-        # Add advanced emotional context
+        # Add emotional context
         if context.emotional_context:
             emotion = context.emotional_context.get("dominant_emotion", "neutral")
-            intensity = context.emotional_context.get("emotional_intensity", 0)
-            conversation_stage = context.emotional_context.get(
-                "conversation_stage", "ongoing"
-            )
-            urgency = context.emotional_context.get("urgency_indicators", {})
-
-            # Emotional response guidance
-            if emotion != "neutral" and intensity > 0.2:
-                emotion_responses = {
-                    "excited": f"The user is excited (intensity: {intensity:.1f})! Match their enthusiasm and energy. Be celebratory and positive.",
-                    "happy": f"The user is in a good mood (intensity: {intensity:.1f}). Be positive, engaging, and help maintain their good spirits.",
-                    "sad": f"The user seems sad (intensity: {intensity:.1f}). Be empathetic, supportive, and comforting. Offer help if appropriate.",
-                    "angry": f"The user appears frustrated or angry (intensity: {intensity:.1f}). Be understanding, calm, and helpful. Don't escalate the situation.",
-                    "confused": f"The user is confused (intensity: {intensity:.1f}). Be patient, clear, and provide step-by-step explanations.",
-                    "anxious": f"The user seems worried or anxious (intensity: {intensity:.1f}). Be reassuring, supportive, and help calm their concerns.",
-                    "grateful": f"The user is expressing gratitude (intensity: {intensity:.1f}). Acknowledge their thanks warmly and continue to be helpful.",
-                    "frustrated": f"The user seems frustrated (intensity: {intensity:.1f}). Be patient, understanding, and focus on solutions.",
+            if emotion != "neutral":
+                emotion_guidance = {
+                    "excited": "The user is excited! Match their enthusiasm.",
+                    "happy": "The user is in a good mood. Be positive.",
+                    "sad": "The user seems sad. Be empathetic and supportive.",
+                    "angry": "The user appears frustrated. Be understanding and calm.",
+                    "anxious": "The user seems worried. Be reassuring.",
                 }
+                if emotion in emotion_guidance:
+                    prompt_parts.append(emotion_guidance[emotion])
 
-                if emotion in emotion_responses:
-                    prompt_parts.append(emotion_responses[emotion])
-
-            # Conversation stage guidance
-            if conversation_stage == "greeting":
-                prompt_parts.append(
-                    "This appears to be the start of a conversation. Be welcoming, warm, and set a positive tone."
-                )
-            elif conversation_stage == "farewell":
-                prompt_parts.append(
-                    "The user seems to be ending the conversation. Respond appropriately to their farewell and leave them with a positive impression."
-                )
-
-            # Urgency and response expectations
-            if urgency.get("expects_quick_response", False):
-                if urgency.get("has_questions", False):
-                    prompt_parts.append(
-                        "The user has asked questions and expects answers. Be direct and informative."
-                    )
-                if urgency.get("urgency_score", 0) > 0.3:
-                    prompt_parts.append(
-                        "The user seems to need urgent help. Prioritize being helpful and efficient."
-                    )
-
-        # Add topic context and conversation flow
+        # Add topics
         if context.topics:
-            recent_topics = context.topics[-3:]  # Last 3 topics
+            recent_topics = context.topics[-2:]
             topics_str = ", ".join(recent_topics)
-            prompt_parts.append(
-                f"Recent conversation topics: {topics_str}. Stay relevant to these topics and build on the established conversation thread."
-            )
+            prompt_parts.append(f"Recent topics: {topics_str}")
 
-            # Topic-specific guidance
-            topic_guidance = {
-                "gaming": "The conversation involves gaming. Feel free to use gaming terminology and references.",
-                "programming": "Technical discussion is happening. Be precise and use appropriate technical language.",
-                "music": "Music is being discussed. You can reference musical concepts and show enthusiasm for music.",
-                "work": "Work-related topics are being discussed. Be professional and supportive.",
-                "school": "Educational topics are being discussed. Be encouraging and helpful with learning.",
-                "emotional_support": "This appears to be a support conversation. Prioritize empathy and understanding.",
-            }
-
-            for topic in recent_topics:
-                if topic in topic_guidance:
-                    prompt_parts.append(topic_guidance[topic])
-
-        # Add conversation history context
-        if context.message_history:
-            history_length = len(context.message_history)
-            if history_length > 10:
-                prompt_parts.append(
-                    "This is an ongoing conversation with substantial history. Reference previous messages naturally and maintain conversation continuity."
-                )
-            elif history_length > 3:
-                prompt_parts.append(
-                    "This conversation has some history. Build on previous messages appropriately."
-                )
-
-        # Add time context
-        if context.last_interaction:
-            time_diff = datetime.now() - context.last_interaction
-            if time_diff.total_seconds() > 86400:  # More than a day
-                prompt_parts.append(
-                    "It's been more than a day since your last interaction. Acknowledge the time gap if appropriate."
-                )
-            elif time_diff.total_seconds() > 3600:  # More than an hour
-                prompt_parts.append(
-                    "It's been a while since your last interaction. You can acknowledge this if it feels natural."
-                )
-
-        # Add response style guidance
-        prompt_parts.extend(
-            [
-                "",
-                "Response Guidelines:",
-                "- Respond naturally and authentically as yourself",
-                "- Match the user's communication style and energy level",
-                "- Use the conversation context to inform your response",
-                "- Be helpful while maintaining appropriate boundaries",
-                "- Show genuine interest in the user and conversation",
-                "- Adapt your personality to fit the conversation flow",
-                "- Remember that every interaction helps build your relationship with this user",
-                "- If you remember something about the user, reference it naturally without being obvious",
-            ]
-        )
+        # Add guidelines
+        prompt_parts.append("Respond naturally and be helpful.")
 
         return "\n".join(prompt_parts)
 
@@ -826,9 +914,16 @@ class UniversalAIClient:
         # Get or create conversation context if user info provided
         conversation_context = None
         if user_id is not None:
-            conversation_context = self._get_or_create_context(
+            # First try to load from database for full conversation history
+            conversation_context = await self.load_conversation_context_from_db(
                 user_id, guild_id, channel_id
             )
+
+            # If no database context, create new one
+            if not conversation_context:
+                conversation_context = self._get_or_create_context(
+                    user_id, guild_id, channel_id
+                )
 
             # Update user profile if provided
             if user_profile:
@@ -956,6 +1051,15 @@ class UniversalAIClient:
                 confidence_score = self._calculate_confidence_score(
                     conversation_context, usage
                 )
+
+                # Save updated conversation context to database
+                if conversation_context:
+                    try:
+                        await self.save_conversation_context_to_db(conversation_context)
+                    except Exception as e:
+                        logger.warning(
+                            f"Failed to save conversation context to database: {e}"
+                        )
 
                 return AIResponse(
                     content=content,

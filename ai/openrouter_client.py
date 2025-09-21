@@ -96,11 +96,11 @@ class OpenRouterClient:
         if context:
             messages.extend(context)
         else:
-            # Default system message for better context understanding
+            # Concise system message for faster responses
             messages.append(
                 {
                     "role": "system",
-                    "content": "You are Astra, an advanced AI assistant for a Discord community. You are helpful, engaging, context-aware, and adapt your responses based on conversation flow and user needs. Maintain conversation continuity and respond appropriately to the user's tone and intent.",
+                    "content": "You are Astra, a helpful AI assistant for Discord. Be natural, engaging, and context-aware.",
                 }
             )
 

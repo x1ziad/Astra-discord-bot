@@ -415,7 +415,7 @@ class AdvancedAICog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
-        """Enhanced message listener with context manager integration"""
+        """Enhanced message listener with comprehensive context understanding"""
         if message.author.bot:
             return
 
@@ -426,7 +426,10 @@ class AdvancedAICog(commands.Cog):
             return
 
         try:
-            # Use context manager if available
+            # Always analyze the message for context, even if not responding
+            await self._analyze_message_for_context(message)
+
+            # Use enhanced context manager if available
             if CONTEXT_MANAGER_AVAILABLE:
                 context_manager = get_context_manager()
                 if not context_manager:
@@ -452,23 +455,71 @@ class AdvancedAICog(commands.Cog):
                     )
 
                     if should_respond:
-                        await self._process_ai_conversation(message)
+                        await self._process_ai_conversation_enhanced(
+                            message, message_context
+                        )
                         await context_manager.mark_response_sent(
                             message_context, message.channel.id
                         )
 
                     return
 
-            # Fallback to basic response logic
-            should_respond = await self._should_ai_respond(message)
+            # Fallback to enhanced response logic
+            should_respond = await self._should_ai_respond_enhanced(message)
             if should_respond:
-                await self._process_ai_conversation(message)
+                await self._process_ai_conversation_enhanced(message)
 
         except Exception as e:
             self.logger.error(f"Error in message processing: {e}")
 
-    async def _should_ai_respond(self, message: discord.Message) -> bool:
-        """Simplified AI response determination"""
+    async def _analyze_message_for_context(self, message: discord.Message):
+        """Analyze every message for context building, regardless of response"""
+        try:
+            user_id = message.author.id
+
+            # Update conversation history for context
+            if user_id not in self.conversation_history:
+                self.conversation_history[user_id] = []
+
+            # Add message to history
+            self.conversation_history[user_id].append(
+                {
+                    "role": "user",
+                    "content": message.content,
+                    "timestamp": message.created_at.isoformat(),
+                    "channel_id": message.channel.id,
+                    "guild_id": message.guild.id if message.guild else None,
+                    "has_mentions": len(message.mentions) > 0,
+                    "is_question": "?" in message.content,
+                    "length": len(message.content),
+                }
+            )
+
+            # Keep reasonable history length
+            if len(self.conversation_history[user_id]) > self.max_history_length * 3:
+                self.conversation_history[user_id] = self.conversation_history[user_id][
+                    -self.max_history_length * 2 :
+                ]
+
+            # Extract important information for long-term memory
+            if self.ai_client and hasattr(self.ai_client, "_extract_important_facts"):
+                try:
+                    # This would store important facts for later use
+                    facts = self.ai_client._extract_important_facts(
+                        message.content, "", user_id
+                    )
+                    if facts:
+                        self.logger.debug(
+                            f"Extracted {len(facts)} facts from user {user_id}"
+                        )
+                except Exception as e:
+                    self.logger.debug(f"Fact extraction failed: {e}")
+
+        except Exception as e:
+            self.logger.error(f"Error analyzing message context: {e}")
+
+    async def _should_ai_respond_enhanced(self, message: discord.Message) -> bool:
+        """Enhanced AI response determination with better context awareness"""
         user_id = message.author.id
         content_lower = message.content.lower()
 
@@ -476,7 +527,9 @@ class AdvancedAICog(commands.Cog):
         if user_id in self.conversation_cooldowns:
             if datetime.now(timezone.utc) - self.conversation_cooldowns[
                 user_id
-            ] < timedelta(seconds=5):
+            ] < timedelta(
+                seconds=3
+            ):  # Reduced cooldown for better engagement
                 return False
 
         # Always respond to mentions and DMs
@@ -486,74 +539,277 @@ class AdvancedAICog(commands.Cog):
         if isinstance(message.channel, discord.DMChannel):
             return True
 
-        # Respond to AI keywords
-        ai_keywords = ["astra", "hey bot", "ai help"]
-        if any(keyword in content_lower for keyword in ai_keywords):
+        # Respond to direct address
+        bot_indicators = [
+            "astra",
+            "hey bot",
+            "ai help",
+            "bot help",
+            "hey ai",
+            f"<@{self.bot.user.id}>",
+            f"<@!{self.bot.user.id}>",
+        ]
+        if any(indicator in content_lower for indicator in bot_indicators):
             return True
 
-        # Respond to questions
+        # Respond to questions in active conversations
         if "?" in message.content:
+            # Check if this is part of an active conversation
+            recent_history = self.conversation_history.get(user_id, [])
+            if recent_history:
+                last_interaction = recent_history[-1].get("timestamp")
+                if last_interaction:
+                    last_time = datetime.fromisoformat(last_interaction)
+                    if (
+                        datetime.now(timezone.utc) - last_time
+                    ).total_seconds() < 1800:  # 30 minutes
+                        return True
+
+            # Respond to questions that seem directed at the channel/community
+            community_question_indicators = [
+                "anyone",
+                "somebody",
+                "someone",
+                "does anyone",
+                "has anyone",
+                "what do you",
+                "how do you",
+                "where can",
+                "when should",
+                "thoughts",
+                "opinions",
+                "advice",
+                "help",
+                "recommend",
+            ]
+            if any(
+                indicator in content_lower
+                for indicator in community_question_indicators
+            ):
+                return True
+
+        # Respond to help requests
+        help_indicators = [
+            "help",
+            "assistance",
+            "support",
+            "stuck",
+            "confused",
+            "lost",
+            "don't understand",
+            "can't figure",
+            "need advice",
+            "any ideas",
+        ]
+        if any(indicator in content_lower for indicator in help_indicators):
             return True
 
-        # Random engagement (low probability)
-        if len(message.content) > 30:
-            return random.random() < 0.1  # 10% chance for longer messages
+        # Respond to conversation starters or interesting topics
+        engagement_indicators = [
+            "what do you think",
+            "your opinion",
+            "thoughts on",
+            "agree with",
+            "disagree with",
+            "interesting",
+            "fascinating",
+            "amazing",
+            "wow",
+            "check this out",
+            "look at this",
+            "share with you",
+        ]
+        if any(indicator in content_lower for indicator in engagement_indicators):
+            return True
+
+        # Context-aware responses: if user has been chatting recently with bot
+        if user_id in self.conversation_history:
+            recent_messages = self.conversation_history[user_id][-5:]  # Last 5 messages
+            if recent_messages:
+                last_message = recent_messages[-1]
+                last_time = datetime.fromisoformat(last_message["timestamp"])
+
+                # If user was recently talking to bot, continue conversation with higher probability
+                if (
+                    datetime.now(timezone.utc) - last_time
+                ).total_seconds() < 600:  # 10 minutes
+                    if len(message.content) > 20:  # Substantial message
+                        return True
+
+        # Smart engagement for community building
+        if len(message.content) > 50:
+            # Higher chance for longer, more thoughtful messages
+            import random
+
+            # Check if message contains complex topics
+            complex_topics = [
+                "technology",
+                "science",
+                "philosophy",
+                "programming",
+                "development",
+                "learning",
+                "education",
+                "career",
+                "future",
+                "innovation",
+                "research",
+                "discussion",
+                "debate",
+                "analysis",
+                "strategy",
+                "solution",
+                "problem",
+            ]
+
+            if any(topic in content_lower for topic in complex_topics):
+                return random.random() < 0.3  # 30% chance for complex topics
+
+            return random.random() < 0.1  # 10% chance for other long messages
 
         return False
 
-    async def _process_ai_conversation(self, message: discord.Message):
-        """Process AI conversation with simplified logic"""
+    async def _process_ai_conversation_enhanced(
+        self, message: discord.Message, message_context=None
+    ):
+        """Enhanced AI conversation processing with improved context handling"""
         try:
             if not self.ai_client:
                 return
 
-            # Generate response
-            response = await self._generate_ai_response(
-                message.content,
-                message.author.id,
-                guild_id=message.guild.id if message.guild else None,
-                channel_id=message.channel.id,
-                username=str(message.author),
-            )
+            # Get enhanced conversation context
+            user_id = message.author.id
+            user_history = self.conversation_history.get(user_id, [])
 
-            # Send response (handle long messages)
-            if len(response) > 2000:
-                # Split at sentence boundaries
-                sentences = response.split(". ")
-                chunks = []
-                current_chunk = ""
+            # Build enhanced context for AI
+            enhanced_context = {
+                "user_id": user_id,
+                "username": str(message.author),
+                "display_name": message.author.display_name,
+                "guild_id": message.guild.id if message.guild else None,
+                "guild_name": message.guild.name if message.guild else "Direct Message",
+                "channel_id": message.channel.id,
+                "channel_name": getattr(message.channel, "name", "DM"),
+                "message_history": user_history[-10:],  # Last 10 messages
+                "timestamp": message.created_at.isoformat(),
+                "is_dm": isinstance(message.channel, discord.DMChannel),
+                "has_mentions": len(message.mentions) > 0,
+                "is_reply": message.reference is not None,
+                "member_since": (
+                    message.author.joined_at.isoformat()
+                    if hasattr(message.author, "joined_at") and message.author.joined_at
+                    else None
+                ),
+            }
 
-                for sentence in sentences:
-                    if len(current_chunk + sentence + ". ") > 1900:
-                        if current_chunk:
-                            chunks.append(current_chunk.strip())
-                            current_chunk = sentence + ". "
-                        else:
-                            chunks.append(sentence[:1900])
-                    else:
-                        current_chunk += sentence + ". "
-
-                if current_chunk:
-                    chunks.append(current_chunk.strip())
-
-                # Send chunks
-                for chunk in chunks:
-                    await message.channel.send(chunk)
-                    await asyncio.sleep(0.5)  # Small delay between chunks
+            # Generate response using available AI engine with enhanced context
+            if hasattr(self.ai_client, "process_conversation"):
+                response = await self.ai_client.process_conversation(
+                    message.content,
+                    user_id,
+                    guild_id=message.guild.id if message.guild else None,
+                    channel_id=message.channel.id,
+                    enhanced_context=enhanced_context,
+                )
+            elif hasattr(self.ai_client, "generate_response"):
+                response = await self.ai_client.generate_response(
+                    message.content,
+                    context=user_history,
+                    user_id=user_id,
+                    guild_id=message.guild.id if message.guild else None,
+                    channel_id=message.channel.id,
+                    user_profile=enhanced_context,
+                )
             else:
-                await message.channel.send(response)
+                # Basic response with context awareness
+                context_hint = ""
+                if user_history:
+                    context_hint = f" (Based on our conversation, I remember we were discussing various topics.)"
+
+                response = f"I understand you're saying: '{message.content[:100]}...' I'm here to help and engage in our conversation!{context_hint}"
+
+            # Update conversation history
+            if user_id and response:
+                self.conversation_history[user_id].append(
+                    {
+                        "role": "assistant",
+                        "content": response,
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                        "channel_id": message.channel.id,
+                        "guild_id": message.guild.id if message.guild else None,
+                    }
+                )
+
+            # Send response with smart chunking
+            await self._send_response_chunks(message.channel, response)
 
             # Update cooldown
             self.conversation_cooldowns[message.author.id] = datetime.now(timezone.utc)
 
         except Exception as e:
-            self.logger.error(f"AI conversation processing error: {e}")
+            self.logger.error(f"Enhanced AI conversation processing error: {e}")
             try:
                 await message.channel.send(
-                    "I'm having some trouble thinking right now. Give me a moment! 🤖"
+                    "I'm processing a lot of conversations right now! Give me just a moment to catch up. 🤖✨"
                 )
             except:
                 pass  # Don't crash if we can't send error message
+
+    async def _send_response_chunks(self, channel, response: str):
+        """Send response in appropriately sized chunks"""
+        try:
+            if len(response) <= 2000:
+                await channel.send(response)
+                return
+
+            # Split at sentence boundaries for better readability
+            sentences = response.split(". ")
+            chunks = []
+            current_chunk = ""
+
+            for sentence in sentences:
+                # Add period back except for last sentence
+                sentence_with_period = sentence + (
+                    ". " if not sentence.endswith(".") else " "
+                )
+
+                if (
+                    len(current_chunk + sentence_with_period) > 1800
+                ):  # Leave room for formatting
+                    if current_chunk:
+                        chunks.append(current_chunk.strip())
+                        current_chunk = sentence_with_period
+                    else:
+                        # Single sentence too long, force split
+                        chunks.append(sentence[:1800])
+                        current_chunk = sentence[1800:] + ". "
+                else:
+                    current_chunk += sentence_with_period
+
+            if current_chunk:
+                chunks.append(current_chunk.strip())
+
+            # Send chunks with minimal delay
+            for i, chunk in enumerate(chunks):
+                if i > 0:
+                    await asyncio.sleep(0.5)  # Brief pause between chunks
+                await channel.send(chunk)
+
+        except Exception as e:
+            self.logger.error(f"Error sending response chunks: {e}")
+            # Fallback: send truncated response
+            try:
+                await channel.send(response[:1900] + "... *(response truncated)*")
+            except:
+                pass
+
+    async def _should_ai_respond(self, message: discord.Message) -> bool:
+        """Legacy AI response determination (kept for fallback compatibility)"""
+        return await self._should_ai_respond_enhanced(message)
+
+    async def _process_ai_conversation(self, message: discord.Message):
+        """Legacy AI conversation processing (kept for fallback compatibility)"""
+        await self._process_ai_conversation_enhanced(message)
 
     @tasks.loop(hours=1)
     async def conversation_cleanup_task(self):

@@ -618,11 +618,27 @@ class AstraBot(commands.Bot):
             # Always process commands first to avoid conflicts
             await self.process_commands(message)
 
-            # Skip AI processing if this was a command
+            # Skip further processing if this was a command
             if message.content.startswith(
                 tuple(await self._get_dynamic_prefix(self, message))
             ):
                 return
+
+            # Universal message tracking for context understanding
+            try:
+                # Store message in context for AI understanding even if not responding
+                await self._store_message_context(message)
+
+                # Check if bot should engage in this specific message
+                should_respond = await self._should_bot_respond(message)
+
+                if should_respond:
+                    # Let the AdvancedAICog handle the actual AI response
+                    # This ensures we don't have duplicate handling but still track all messages
+                    pass
+
+            except Exception as e:
+                self.logger.error(f"Error processing message context: {e}")
 
             # Let the AdvancedAICog handle AI responses to avoid conflicts
             # The cog has more sophisticated AI handling logic
@@ -842,6 +858,118 @@ class AstraBot(commands.Bot):
 
         error_key = f"{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_{interaction.user.id}"
         await db.set("error_logs", error_key, error_data)
+
+    async def _store_message_context(self, message: discord.Message):
+        """Store message context for AI understanding and conversation tracking"""
+        try:
+            # Create message context for storage
+            message_context = {
+                "message_id": message.id,
+                "user_id": message.author.id,
+                "username": str(message.author),
+                "guild_id": message.guild.id if message.guild else None,
+                "channel_id": message.channel.id,
+                "content": message.content[:2000],  # Limit content length
+                "timestamp": message.created_at.isoformat(),
+                "has_mentions": len(message.mentions) > 0,
+                "has_attachments": len(message.attachments) > 0,
+                "is_reply": message.reference is not None,
+                "reply_to": message.reference.message_id if message.reference else None,
+            }
+
+            # Store in conversation context for AI systems
+            context_key = f"message_context_{message.guild.id if message.guild else 'dm'}_{message.channel.id}"
+
+            # Get existing context or create new
+            existing_context = await db.get(
+                "conversation_contexts", context_key, {"messages": []}
+            )
+
+            # Add new message
+            existing_context["messages"].append(message_context)
+
+            # Keep only recent messages (last 50 per channel)
+            if len(existing_context["messages"]) > 50:
+                existing_context["messages"] = existing_context["messages"][-50:]
+
+            # Update last activity
+            existing_context["last_activity"] = datetime.now(timezone.utc).isoformat()
+            existing_context["channel_id"] = message.channel.id
+            existing_context["guild_id"] = message.guild.id if message.guild else None
+
+            # Store updated context
+            await db.set("conversation_contexts", context_key, existing_context)
+
+        except Exception as e:
+            self.logger.error(f"Error storing message context: {e}")
+
+    async def _should_bot_respond(self, message: discord.Message) -> bool:
+        """Determine if bot should respond to this message based on context and engagement patterns"""
+        try:
+            # Always respond to mentions and DMs
+            if self.user in message.mentions:
+                return True
+
+            if isinstance(message.channel, discord.DMChannel):
+                return True
+
+            # Check for direct address without mention
+            content_lower = message.content.lower()
+            bot_names = ["astra", "bot", "ai"]
+            if any(name in content_lower for name in bot_names):
+                return True
+
+            # Respond to questions directed at the channel
+            if "?" in message.content and len(message.content) > 10:
+                return True
+
+            # Check conversation context - respond if recently active
+            context_key = f"message_context_{message.guild.id if message.guild else 'dm'}_{message.channel.id}"
+            context = await db.get("conversation_contexts", context_key, {})
+
+            if context.get("last_activity"):
+                last_activity = datetime.fromisoformat(context["last_activity"])
+                if (
+                    datetime.now(timezone.utc) - last_activity
+                ).total_seconds() < 300:  # 5 minutes
+                    # Check if bot was recently mentioned in this conversation
+                    recent_messages = context.get("messages", [])[
+                        -10:
+                    ]  # Last 10 messages
+                    for msg in recent_messages:
+                        if msg.get("has_mentions"):
+                            return True
+
+            # Smart engagement: respond to interesting or complex messages occasionally
+            if len(message.content) > 100:  # Longer messages
+                # Look for engagement indicators
+                engagement_words = [
+                    "think",
+                    "opinion",
+                    "advice",
+                    "help",
+                    "recommend",
+                    "suggest",
+                    "anyone",
+                    "thoughts",
+                    "ideas",
+                    "experience",
+                    "know",
+                ]
+                if any(word in content_lower for word in engagement_words):
+                    return True
+
+            # Random engagement for community building (very low probability)
+            if len(message.content) > 50:
+                import random
+
+                return random.random() < 0.05  # 5% chance for longer messages
+
+            return False
+
+        except Exception as e:
+            self.logger.error(f"Error determining response need: {e}")
+            return False
 
     def create_task(self, coro, *, name: str = None) -> asyncio.Task:
         """Create and track async tasks for proper cleanup"""

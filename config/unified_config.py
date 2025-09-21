@@ -25,6 +25,7 @@ class AIProviderConfig:
     max_tokens: int = 1000
     temperature: float = 0.7
     provider_name: Optional[str] = None
+    use_concise_prompts: bool = True  # Optimized for faster responses
 
 
 @dataclass
