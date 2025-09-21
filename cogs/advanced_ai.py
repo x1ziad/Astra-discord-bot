@@ -709,16 +709,20 @@ class AdvancedAICog(commands.Cog):
                     user_id,
                     guild_id=message.guild.id if message.guild else None,
                     channel_id=message.channel.id,
-                    enhanced_context=enhanced_context,
                 )
             elif hasattr(self.ai_client, "generate_response"):
+                # Build context dictionary for ConsolidatedAIEngine compatibility
+                context_dict = {
+                    "user_id": user_id,
+                    "guild_id": message.guild.id if message.guild else None,
+                    "channel_id": message.channel.id,
+                    "username": str(message.author),
+                    "channel_type": "dm" if isinstance(message.channel, discord.DMChannel) else "guild",
+                    "message_history": user_history[-5:],  # Last 5 messages for context
+                }
                 response = await self.ai_client.generate_response(
                     message.content,
-                    context=user_history,
-                    user_id=user_id,
-                    guild_id=message.guild.id if message.guild else None,
-                    channel_id=message.channel.id,
-                    user_profile=enhanced_context,
+                    context_dict
                 )
             else:
                 # Basic response with context awareness
