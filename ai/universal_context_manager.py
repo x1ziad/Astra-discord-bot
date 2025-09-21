@@ -188,19 +188,155 @@ class ConversationAnalyzer:
 
     def __init__(self):
         self.topic_keywords = {
-            "stellaris": [
-                "stellaris",
-                "empire",
-                "species",
-                "galactic",
-                "federation",
-                "ethics",
-                "ascension",
-                "hyperlane",
-                "paradox",
+            "gaming": [
+                "game",
+                "gaming",
+                "play",
+                "player",
+                "level",
+                "achievement",
                 "strategy",
-                "expansion",
-                "diplomacy",
+                "multiplayer",
+                "campaign",
+                "mod",
+                "dlc",
+                "steam",
+                "pc gaming",
+                "console",
+                "mobile game",
+                "esports",
+            ],
+            "technology": [
+                "ai",
+                "artificial intelligence",
+                "machine learning",
+                "robot",
+                "tech",
+                "computer",
+                "software",
+                "programming",
+                "algorithm",
+                "quantum",
+                "coding",
+                "development",
+                "app",
+                "digital",
+                "internet",
+                "web",
+            ],
+            "entertainment": [
+                "movie",
+                "film",
+                "tv show",
+                "series",
+                "music",
+                "song",
+                "album",
+                "artist",
+                "book",
+                "novel",
+                "anime",
+                "manga",
+                "podcast",
+                "streaming",
+                "netflix",
+                "youtube",
+                "video",
+                "content",
+            ],
+            "lifestyle": [
+                "food",
+                "cooking",
+                "recipe",
+                "travel",
+                "vacation",
+                "hobby",
+                "fitness",
+                "workout",
+                "health",
+                "wellness",
+                "fashion",
+                "style",
+                "photography",
+                "art",
+                "craft",
+                "diy",
+                "home",
+                "garden",
+            ],
+            "social": [
+                "friend",
+                "community",
+                "together",
+                "team",
+                "group",
+                "chat",
+                "talk",
+                "conversation",
+                "discuss",
+                "share",
+                "opinion",
+                "thoughts",
+                "relationship",
+                "family",
+                "social media",
+                "dating",
+            ],
+            "education": [
+                "learn",
+                "study",
+                "school",
+                "college",
+                "university",
+                "course",
+                "class",
+                "teacher",
+                "student",
+                "education",
+                "knowledge",
+                "skill",
+                "training",
+                "tutorial",
+                "exam",
+                "homework",
+                "research",
+                "academic",
+            ],
+            "business": [
+                "work",
+                "job",
+                "career",
+                "business",
+                "company",
+                "office",
+                "project",
+                "meeting",
+                "team",
+                "management",
+                "startup",
+                "entrepreneur",
+                "finance",
+                "money",
+                "investment",
+                "marketing",
+                "sales",
+                "productivity",
+            ],
+            "science": [
+                "science",
+                "research",
+                "discovery",
+                "experiment",
+                "theory",
+                "physics",
+                "chemistry",
+                "biology",
+                "mathematics",
+                "scientific method",
+                "data",
+                "analysis",
+                "statistics",
+                "innovation",
             ],
             "space": [
                 "space",
@@ -216,45 +352,24 @@ class ConversationAnalyzer:
                 "rocket",
                 "nasa",
                 "spacex",
+                "astrology",
+                "satellite",
             ],
-            "gaming": [
-                "game",
-                "gaming",
-                "play",
-                "player",
-                "level",
-                "achievement",
+            "stellaris": [
+                "stellaris",
+                "empire",
+                "species",
+                "galactic",
+                "federation",
+                "ethics",
+                "ascension",
+                "hyperlane",
+                "paradox",
                 "strategy",
-                "multiplayer",
-                "campaign",
-                "mod",
-                "dlc",
-                "steam",
-                "pc gaming",
-            ],
-            "technology": [
-                "ai",
-                "artificial intelligence",
-                "machine learning",
-                "robot",
-                "tech",
-                "computer",
-                "software",
-                "programming",
-                "algorithm",
-                "quantum",
-            ],
-            "science": [
-                "science",
-                "research",
-                "discovery",
-                "experiment",
-                "theory",
-                "physics",
-                "chemistry",
-                "biology",
-                "mathematics",
-                "scientific method",
+                "expansion",
+                "diplomacy",
+                "4x game",
+                "grand strategy",
             ],
             "help": [
                 "help",
@@ -269,20 +384,10 @@ class ConversationAnalyzer:
                 "issue",
                 "stuck",
                 "error",
-            ],
-            "social": [
-                "friend",
-                "community",
-                "together",
-                "team",
-                "group",
-                "chat",
-                "talk",
-                "conversation",
-                "discuss",
-                "share",
-                "opinion",
-                "thoughts",
+                "question",
+                "advice",
+                "tip",
+                "suggestion",
             ],
         }
 
@@ -575,54 +680,57 @@ class ConversationAnalyzer:
         """Calculate probability that bot should respond (0.0 to 1.0)"""
         probability = 0.0
 
-        # Base trigger probabilities - Enhanced weights
+        # Base trigger probabilities - More responsive weights
         trigger_weights = {
             ResponseTrigger.QUESTION_ASKED: 0.95,
             ResponseTrigger.HELP_NEEDED: 0.9,
-            ResponseTrigger.BOT_MENTIONED: 0.85,  # NEW: Direct bot mentions
-            ResponseTrigger.GREETING: 0.75,  # Increased from 0.6
-            ResponseTrigger.EMOTIONAL_SUPPORT: 0.8,  # Increased from 0.7
-            ResponseTrigger.CELEBRATION: 0.6,  # Increased from 0.5
-            ResponseTrigger.CONVERSATION_STARTER: 0.6,  # NEW
-            ResponseTrigger.OPINION_SHARING: 0.5,  # NEW
-            ResponseTrigger.COLLABORATIVE_DISCUSSION: 0.7,  # NEW
-            ResponseTrigger.STORY_TELLING: 0.4,  # NEW
-            ResponseTrigger.REACTION_WORTHY: 0.45,  # NEW
-            ResponseTrigger.HUMOR_DETECTED: 0.5,  # Increased from 0.4
-            ResponseTrigger.TOPIC_MATCH: 0.4,  # Increased from 0.3
-            ResponseTrigger.CONVERSATION_FLOW: 0.35,  # NEW: Ongoing conversations
+            ResponseTrigger.BOT_MENTIONED: 0.85,
+            ResponseTrigger.GREETING: 0.8,  # Increased from 0.75
+            ResponseTrigger.EMOTIONAL_SUPPORT: 0.8,
+            ResponseTrigger.CELEBRATION: 0.7,  # Increased from 0.6
+            ResponseTrigger.CONVERSATION_STARTER: 0.65,  # Increased from 0.6
+            ResponseTrigger.COLLABORATIVE_DISCUSSION: 0.7,
+            ResponseTrigger.OPINION_SHARING: 0.6,  # Increased from 0.5
+            ResponseTrigger.HUMOR_DETECTED: 0.6,  # Increased from 0.5
+            ResponseTrigger.REACTION_WORTHY: 0.55,  # Increased from 0.45
+            ResponseTrigger.STORY_TELLING: 0.5,  # Increased from 0.4
+            ResponseTrigger.TOPIC_MATCH: 0.5,  # Increased from 0.4
+            ResponseTrigger.CONVERSATION_FLOW: 0.45,  # Increased from 0.35
         }
 
         # Calculate max probability from triggers
         for trigger in context.response_triggers:
             probability = max(probability, trigger_weights.get(trigger, 0.1))
 
-        # Boost probability based on context - Enhanced
-        if context.humor_score > 0.5:
+        # Boost probability based on context - More generous
+        if context.humor_score > 0.4:  # Lowered threshold from 0.5
+            probability += 0.3  # Increased from 0.25
+
+        if context.emotional_intensity > 0.6:  # Lowered threshold from 0.7
             probability += 0.25  # Increased from 0.2
 
-        if context.emotional_intensity > 0.7:
-            probability += 0.2  # Increased from 0.15
-
         if len(context.topics) > 1:  # Multiple topics = more engagement
-            probability += 0.15  # Increased from 0.1
+            probability += 0.2  # Increased from 0.15
         elif len(context.topics) == 1:  # Single topic still valuable
-            probability += 0.05  # NEW
+            probability += 0.1  # Increased from 0.05
 
-        # Message length considerations - NEW
+        # Message length considerations - More responsive
         content_length = len(context.content)
-        if content_length > 100:  # Substantial messages deserve responses
-            probability += 0.1
-        elif content_length > 50:
-            probability += 0.05
+        if (
+            content_length > 80
+        ):  # Reduced from 100 - Substantial messages deserve responses
+            probability += 0.15  # Increased from 0.1
+        elif content_length > 40:  # Reduced from 50
+            probability += 0.1  # Increased from 0.05
 
-        # Tone adjustments - Enhanced
+        # Tone adjustments - More generous
         tone_modifiers = {
-            ConversationTone.QUESTIONING: 0.25,  # Increased from 0.2
-            ConversationTone.EMOTIONAL: 0.2,  # Increased from 0.15
-            ConversationTone.EXCITED: 0.15,  # Increased from 0.1
-            ConversationTone.HUMOROUS: 0.15,  # Increased from 0.1
-            ConversationTone.CASUAL: 0.05,  # NEW: Encourage casual conversation
+            ConversationTone.QUESTIONING: 0.3,  # Increased from 0.25
+            ConversationTone.EMOTIONAL: 0.25,  # Increased from 0.2
+            ConversationTone.EXCITED: 0.2,  # Increased from 0.15
+            ConversationTone.HUMOROUS: 0.2,  # Increased from 0.15
+            ConversationTone.CASUAL: 0.1,  # Increased from 0.05
+            ConversationTone.TECHNICAL: 0.15,  # NEW: Encourage technical discussions
         }
 
         probability += tone_modifiers.get(context.tone, 0.0)
@@ -637,45 +745,59 @@ class ConversationAnalyzer:
         return min(1.0, probability)
 
     def _suggest_response_style(self, context: MessageContext) -> str:
-        """Suggest appropriate response style"""
+        """Suggest appropriate response style based on context and topics"""
+
+        # Humor always takes priority
         if context.humor_score > 0.4:
             return "humorous"
 
+        # Topic-based personality adaptation
+        if context.topics:
+            primary_topic = context.topics[0]  # Use the first detected topic
+
+            topic_personalities = {
+                "gaming": "enthusiastic_gamer",  # Excited, uses gaming terminology
+                "entertainment": "cultural_enthusiast",  # Knowledgeable about media, engaging
+                "technology": "tech_savvy",  # Informative, forward-thinking
+                "lifestyle": "supportive_friend",  # Encouraging, personal
+                "education": "helpful_mentor",  # Patient, educational
+                "business": "professional_advisor",  # Formal, solution-oriented
+                "science": "curious_researcher",  # Analytical, fact-based
+                "space": "cosmic_explorer",  # Wonder-filled, expansive
+                "stellaris": "strategic_advisor",  # Tactical, empire-focused
+                "social": "social_connector",  # Warm, community-focused
+                "help": "helpful_assistant",  # Patient, step-by-step
+            }
+
+            if primary_topic in topic_personalities:
+                return topic_personalities[primary_topic]
+
+        # Fallback to tone-based styles
         if context.tone == ConversationTone.TECHNICAL:
             return "informative"
-
-        if context.tone == ConversationTone.EMOTIONAL:
+        elif context.tone == ConversationTone.EMOTIONAL:
             return "supportive"
-
-        if context.tone == ConversationTone.EXCITED:
+        elif context.tone == ConversationTone.EXCITED:
             return "enthusiastic"
 
+        # Response trigger-based styles
         if ResponseTrigger.HELP_NEEDED in context.response_triggers:
             return "helpful"
-
-        if ResponseTrigger.CELEBRATION in context.response_triggers:
+        elif ResponseTrigger.CELEBRATION in context.response_triggers:
             return "celebratory"
-
-        # NEW: Handle new trigger types
-        if ResponseTrigger.BOT_MENTIONED in context.response_triggers:
+        elif ResponseTrigger.BOT_MENTIONED in context.response_triggers:
             return "engaging"
-
-        if ResponseTrigger.CONVERSATION_STARTER in context.response_triggers:
+        elif ResponseTrigger.CONVERSATION_STARTER in context.response_triggers:
             return "conversational"
-
-        if ResponseTrigger.OPINION_SHARING in context.response_triggers:
+        elif ResponseTrigger.OPINION_SHARING in context.response_triggers:
             return "thoughtful"
-
-        if ResponseTrigger.STORY_TELLING in context.response_triggers:
+        elif ResponseTrigger.STORY_TELLING in context.response_triggers:
             return "interested"
-
-        if ResponseTrigger.COLLABORATIVE_DISCUSSION in context.response_triggers:
+        elif ResponseTrigger.COLLABORATIVE_DISCUSSION in context.response_triggers:
             return "collaborative"
-
-        if ResponseTrigger.REACTION_WORTHY in context.response_triggers:
+        elif ResponseTrigger.REACTION_WORTHY in context.response_triggers:
             return "reactive"
-
-        if ResponseTrigger.GREETING in context.response_triggers:
+        elif ResponseTrigger.GREETING in context.response_triggers:
             return "friendly"
 
         return "casual"
@@ -699,15 +821,15 @@ class UniversalContextManager:
             {}
         )  # channel_id -> last response time
 
-        # Configuration - Adjusted for better conversation flow
+        # Configuration - More permissive for better conversation flow
         self.min_response_interval = timedelta(
-            seconds=8  # Reduced from 10 seconds
+            seconds=5  # Reduced from 8 seconds
         )  # Min time between responses to same user
         self.channel_response_interval = timedelta(
-            seconds=20  # Reduced from 30 seconds
+            seconds=15  # Reduced from 20 seconds
         )  # Min time between responses in same channel
         self.max_responses_per_hour = (
-            30  # Increased from 20 - Max responses per hour per channel
+            40  # Increased from 30 - Max responses per hour per channel
         )
 
         # Database setup
@@ -887,47 +1009,47 @@ class UniversalContextManager:
         if user_state:
             # Boost probability for engaged users
             if user_state.engagement_level > 0.7:
-                adjusted_probability *= 1.3  # Increased from 1.2
+                adjusted_probability *= 1.4  # Increased from 1.3
             elif user_state.engagement_level < 0.3:
-                adjusted_probability *= 0.9  # More lenient than 0.8
+                adjusted_probability *= 0.95  # More lenient than 0.9
 
-            # Recent conversation boost - NEW
+            # Recent conversation boost - More generous
             if (
                 user_state.last_interaction
-                and (current_time - user_state.last_interaction).seconds < 300
-            ):  # 5 minutes
-                adjusted_probability *= 1.2
+                and (current_time - user_state.last_interaction).seconds < 600
+            ):  # Increased from 300 to 600 seconds (10 minutes)
+                adjusted_probability *= 1.3  # Increased from 1.2
 
-        # Context-specific boosts - NEW
+        # Context-specific boosts - Enhanced
         context_boosts = 0.0
 
         # Boost for conversation starters
         if ResponseTrigger.CONVERSATION_STARTER in context.response_triggers:
-            context_boosts += 0.15
+            context_boosts += 0.2  # Increased from 0.15
 
         # Boost for opinion sharing (encourage discussion)
         if ResponseTrigger.OPINION_SHARING in context.response_triggers:
-            context_boosts += 0.1
+            context_boosts += 0.15  # Increased from 0.1
 
         # Boost for story telling (show interest)
         if ResponseTrigger.STORY_TELLING in context.response_triggers:
-            context_boosts += 0.1
+            context_boosts += 0.15  # Increased from 0.1
 
         # Boost for reaction-worthy content
         if ResponseTrigger.REACTION_WORTHY in context.response_triggers:
-            context_boosts += 0.15
+            context_boosts += 0.2  # Increased from 0.15
 
         # Apply context boosts
         adjusted_probability += context_boosts
         adjusted_probability = min(1.0, adjusted_probability)
 
-        # Lower threshold for some scenarios - NEW
+        # Lower threshold for some scenarios - More responsive
         # Be more responsive to conversation flow
         if (
             ResponseTrigger.CONVERSATION_FLOW in context.response_triggers
-            and adjusted_probability > 0.25
+            and adjusted_probability > 0.2  # Lowered from 0.25
         ):
-            adjusted_probability = max(adjusted_probability, 0.4)  # Minimum 40% chance
+            adjusted_probability = max(adjusted_probability, 0.45)  # Increased from 0.4
 
         # Random check against probability
         random_value = random.random()
@@ -937,13 +1059,13 @@ class UniversalContextManager:
                 f"probability_trigger_{adjusted_probability:.2f}_rolled_{random_value:.2f}",
             )
 
-        # Fallback: occasionally respond to maintain engagement - NEW
+        # Fallback: occasionally respond to maintain engagement - More generous
         # Small chance to respond even to low-probability messages to keep conversation alive
         if (
-            len(context.content) > 30  # Substantial message
+            len(context.content) > 20  # Reduced from 30 - Respond to shorter messages
             and len(context.response_triggers) > 0  # Has some triggers
-            and random.random() < 0.1
-        ):  # 10% chance
+            and random.random() < 0.15  # Increased from 0.1 (15% chance)
+        ):
             return True, "engagement_maintenance"
 
         return False, f"probability_too_low_{adjusted_probability:.2f}"

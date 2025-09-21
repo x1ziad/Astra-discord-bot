@@ -192,6 +192,11 @@ class AdvancedAICog(commands.Cog):
                 },
             }
 
+            # Add adaptive personality context based on topics
+            if hasattr(context_data, 'get') and context_data.get("topic_focus"):
+                personality_context = self._get_personality_context_for_topic(context_data["topic_focus"])
+                context_data["personality_adaptation"] = personality_context
+                
             # Generate response using the consolidated engine with proper parameters
             response = await self.ai_client.process_conversation(
                 prompt,
@@ -221,10 +226,6 @@ class AdvancedAICog(commands.Cog):
                     ][-self.max_history_length :]
 
             return response
-
-        except Exception as e:
-            self.logger.error(f"AI response generation error: {e}")
-            return f"❌ Error generating AI response: {str(e)}"
 
         except Exception as e:
             self.logger.error(f"AI response generation error: {e}")
@@ -275,11 +276,17 @@ class AdvancedAICog(commands.Cog):
 
         # Add general topic detection
         prompt_lower = prompt.lower()
+        # Enhanced topic detection - Balanced across interests
         general_topics = {
-            "space": ["space", "universe", "cosmos", "galaxy", "star", "planet"],
-            "technology": ["tech", "ai", "computer", "software", "programming"],
-            "science": ["science", "research", "experiment", "theory"],
-            "gaming": ["game", "gaming", "play", "stellaris"],
+            "gaming": ["game", "gaming", "play", "player", "steam", "console", "mobile game", "esports"],
+            "entertainment": ["movie", "film", "tv", "series", "music", "song", "anime", "netflix", "youtube"],
+            "technology": ["tech", "ai", "computer", "software", "programming", "app", "digital"],
+            "lifestyle": ["food", "cooking", "travel", "fitness", "health", "photography", "art"],
+            "education": ["learn", "study", "school", "college", "course", "knowledge", "skill"],
+            "business": ["work", "job", "career", "business", "company", "project", "startup"],
+            "science": ["science", "research", "experiment", "theory", "physics", "chemistry"],
+            "space": ["space", "universe", "cosmos", "galaxy", "star", "planet", "astronomy"],
+            "stellaris": ["stellaris", "empire", "species", "federation", "4x game", "strategy"],
         }
 
         for topic, keywords in general_topics.items():
@@ -367,53 +374,6 @@ class AdvancedAICog(commands.Cog):
             self.logger.error(f"Analysis command error: {e}")
             await interaction.followup.send(
                 f"❌ Error analyzing content: {str(e)}", ephemeral=True
-            )
-
-    @app_commands.command(
-        name="communication_style", description="Set your preferred communication style"
-    )
-    @app_commands.describe(
-        style="Communication style (detailed, concise, casual, formal)"
-    )
-    async def communication_style_command(
-        self, interaction: discord.Interaction, style: str
-    ):
-        """Set communication style preference"""
-        try:
-            await interaction.response.defer()
-
-            valid_styles = [
-                "detailed",
-                "concise",
-                "casual",
-                "formal",
-                "balanced",
-            ]
-
-            if style.lower() not in valid_styles:
-                await interaction.followup.send(
-                    f"❌ Invalid style. Choose from: {', '.join(valid_styles)}",
-                    ephemeral=True,
-                )
-                return
-
-            # Store communication preference - this will be used by the flow engine
-            user_id = str(interaction.user.id)
-            # TODO: Store this in user profile or database
-
-            embed = discord.Embed(
-                title="💬 Communication Style Updated",
-                description=f"I'll adapt my responses to be more **{style.lower()}** based on your preference.",
-                color=0x43B581,
-                timestamp=datetime.now(timezone.utc),
-            )
-
-            await interaction.followup.send(embed=embed)
-
-        except Exception as e:
-            self.logger.error(f"Personality command error: {e}")
-            await interaction.followup.send(
-                f"❌ Error changing personality: {str(e)}", ephemeral=True
             )
 
     @app_commands.command(
@@ -551,42 +511,131 @@ class AdvancedAICog(commands.Cog):
         if message.author.bot:
             return
 
-        # Enhanced chat understanding and context analysis
-        await self._analyze_message_context(message)
+        # Skip if this was a command to avoid double processing
+        if message.content.startswith(
+            tuple(await self.bot._get_dynamic_prefix(self.bot, message))
+        ):
+            return
 
-        # Track channel activity with enhanced metrics
-        await self._track_channel_activity(message)
+        try:
+            # Enhanced chat understanding and context analysis
+            await self._analyze_message_context(message)
 
-        # Extract and track interesting topics from conversation
-        await self._extract_conversation_topics(message)
+            # Track channel activity with enhanced metrics
+            await self._track_channel_activity(message)
 
-        # Update server activity levels for dynamic status
-        await self._update_server_activity_level(message)
+            # Extract and track interesting topics from conversation
+            await self._extract_conversation_topics(message)
 
-        # Check if AI should respond (now returns tuple)
-        should_respond, engagement_reason = await self._should_ai_respond(message)
+            # Update server activity levels for dynamic status
+            await self._update_server_activity_level(message)
 
-        if should_respond:
-            async with message.channel.typing():
-                # Determine engagement type for personalized response
-                engagement_type = "casual_engagement"
+            # Initialize context manager for advanced response logic
+            try:
+                from ai.universal_context_manager import (
+                    get_context_manager,
+                    initialize_context_manager,
+                )
 
-                if engagement_reason != "fallback_basic":
-                    try:
-                        engagement_type = (
-                            await proactive_engagement.generate_engagement_type(
-                                message.content,
-                                engagement_reason,
-                                await user_profile_manager.get_personalized_context(
-                                    message.author.id
-                                ),
-                            )
+                context_manager = get_context_manager()
+                if not context_manager:
+                    context_manager = initialize_context_manager(self.bot)
+                    self.logger.info(
+                        "Universal Context Manager initialized in advanced AI cog"
+                    )
+
+                # Use context manager for sophisticated response determination
+                if context_manager:
+                    message_context = await context_manager.analyze_message(
+                        message.content,
+                        message.author.id,
+                        message.channel.id,
+                        message.guild.id if message.guild else None,
+                        message.author.display_name,
+                    )
+
+                    should_respond, response_reason = (
+                        await context_manager.should_respond(
+                            message_context,
+                            message.channel.id,
+                            message.guild.id if message.guild else None,
                         )
-                    except Exception as e:
-                        logger.warning(f"Failed to generate engagement type: {e}")
+                    )
 
-                # Process AI conversation with enhanced context
-                await self._process_ai_conversation(message, engagement_type)
+                    if should_respond:
+                        self.logger.info(
+                            f"Context manager approved response for user {message.author.id}: {response_reason}"
+                        )
+
+                        # Get response context
+                        response_context = await context_manager.get_response_context(
+                            message_context
+                        )
+
+                        # Determine engagement type based on context
+                        engagement_type = self._map_triggers_to_engagement_type(
+                            message_context.response_triggers
+                        )
+
+                        # Process AI conversation
+                        await self._process_ai_conversation(message, engagement_type)
+
+                        # Mark response as sent
+                        await context_manager.mark_response_sent(
+                            message_context, message.channel.id
+                        )
+                    else:
+                        self.logger.debug(
+                            f"Context manager declined response for user {message.author.id}: {response_reason}"
+                        )
+
+                else:
+                    # Fallback to basic AI response logic if context manager fails
+                    should_respond, engagement_reason = await self._should_ai_respond(
+                        message
+                    )
+
+                    if should_respond:
+                        self.logger.info(
+                            f"Basic AI logic approved response for user {message.author.id}: {engagement_reason}"
+                        )
+
+                        engagement_type = "casual_engagement"
+                        if engagement_reason != "fallback_basic":
+                            try:
+                                if AI_ENGINE_AVAILABLE:
+                                    engagement_type = await proactive_engagement.generate_engagement_type(
+                                        message.content,
+                                        engagement_reason,
+                                        await user_profile_manager.get_personalized_context(
+                                            message.author.id
+                                        ),
+                                    )
+                            except Exception as e:
+                                self.logger.warning(
+                                    f"Failed to generate engagement type: {e}"
+                                )
+
+                        # Process AI conversation with enhanced context
+                        await self._process_ai_conversation(message, engagement_type)
+                    else:
+                        self.logger.debug(
+                            f"Basic AI logic declined response for user {message.author.id}: {engagement_reason}"
+                        )
+
+            except Exception as e:
+                self.logger.error(f"Error in context manager logic: {e}")
+                # Fallback to basic response logic
+                should_respond, engagement_reason = await self._should_ai_respond(
+                    message
+                )
+
+                if should_respond:
+                    await self._process_ai_conversation(message, "casual_engagement")
+
+        except Exception as e:
+            self.logger.error(f"Error in message processing: {e}")
+            # Don't crash on message processing errors
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
@@ -638,23 +687,153 @@ class AdvancedAICog(commands.Cog):
         topics = []
         content_lower = content.lower()
 
-        # Space and science topics
-        space_keywords = {
-            "space": ["space", "cosmos", "universe", "galaxy", "stellar"],
-            "astronomy": ["star", "planet", "moon", "solar", "orbit", "nebula"],
-            "stellaris": ["stellaris", "empire", "species", "federation", "hyperlane"],
-            "science": ["science", "research", "discovery", "theory", "experiment"],
-            "technology": ["technology", "ai", "robot", "computer", "digital"],
+        # Balanced topic detection across different interests
+        topic_keywords = {
+            "gaming": ["game", "gaming", "play", "player", "steam", "console", "mobile", "esports", "twitch"],
+            "entertainment": ["movie", "film", "tv", "series", "music", "song", "album", "anime", "netflix", "youtube", "video"],
+            "technology": ["tech", "ai", "computer", "software", "programming", "app", "digital", "internet", "web"],
+            "lifestyle": ["food", "cooking", "travel", "fitness", "health", "photography", "art", "fashion", "style"],
+            "education": ["learn", "study", "school", "college", "course", "knowledge", "skill", "tutorial", "education"],
+            "business": ["work", "job", "career", "business", "company", "project", "startup", "meeting", "office"],
+            "social": ["friend", "community", "relationship", "family", "social", "dating", "group", "team"],
+            "science": ["science", "research", "experiment", "theory", "physics", "chemistry", "biology", "data"],
+            "space": ["space", "cosmos", "universe", "galaxy", "star", "planet", "astronomy", "nasa", "spacex"],
+            "stellaris": ["stellaris", "empire", "species", "federation", "hyperlane", "4x", "grand strategy"],
         }
 
-        for topic, keywords in space_keywords.items():
+        for topic, keywords in topic_keywords.items():
             if any(keyword in content_lower for keyword in keywords):
                 topics.append(topic)
 
         return topics
 
+    def _map_triggers_to_engagement_type(self, response_triggers):
+        """Map response triggers to engagement types"""
+        # Convert trigger enums to strings for processing
+        trigger_values = []
+        for trigger in response_triggers:
+            if hasattr(trigger, "value"):
+                trigger_values.append(trigger.value)
+            else:
+                trigger_values.append(str(trigger))
+
+        # Map triggers to engagement types
+        if "question_asked" in trigger_values or "help_needed" in trigger_values:
+            return "provide_support"
+        elif "bot_mentioned" in trigger_values:
+            return "direct_response"
+        elif "greeting" in trigger_values:
+            return "friendly_greeting"
+        elif "celebration" in trigger_values:
+            return "celebratory_response"
+        elif "humor_detected" in trigger_values:
+            return "humorous_engagement"
+        elif "emotional_support" in trigger_values:
+            return "supportive_response"
+        elif (
+            "conversation_starter" in trigger_values
+            or "opinion_sharing" in trigger_values
+        ):
+            return "conversational_engagement"
+        elif "collaborative_discussion" in trigger_values:
+            return "collaborative_response"
+        elif "story_telling" in trigger_values:
+            return "interested_response"
+        elif "reaction_worthy" in trigger_values:
+            return "reactive_response"
+        else:
+            return "casual_engagement"
+
+    def _get_personality_context_for_topic(self, topics: List[str]) -> Dict[str, Any]:
+        """Get personality context based on detected topics"""
+        if not topics:
+            return {"personality_mode": "neutral", "tone": "casual", "expertise_level": "general"}
+        
+        primary_topic = topics[0]
+        
+        personality_contexts = {
+            "gaming": {
+                "personality_mode": "enthusiastic_gamer",
+                "tone": "excited",
+                "expertise_level": "knowledgeable",
+                "response_style": "Use gaming terminology, be enthusiastic about achievements, reference game mechanics naturally",
+                "emoji_preference": "🎮🕹️🏆⚡🔥",
+            },
+            "entertainment": {
+                "personality_mode": "cultural_enthusiast", 
+                "tone": "engaging",
+                "expertise_level": "well_informed",
+                "response_style": "Be knowledgeable about media, share recommendations, discuss cultural impact",
+                "emoji_preference": "🎬🎵📺🎭✨",
+            },
+            "technology": {
+                "personality_mode": "tech_savvy",
+                "tone": "informative",
+                "expertise_level": "expert",
+                "response_style": "Be forward-thinking, explain concepts clearly, focus on practical applications",
+                "emoji_preference": "💻🤖⚡🔧💡",
+            },
+            "lifestyle": {
+                "personality_mode": "supportive_friend",
+                "tone": "warm",
+                "expertise_level": "experienced",
+                "response_style": "Be encouraging, share personal tips, focus on well-being and growth",
+                "emoji_preference": "🌟💪🌱🎯✨",
+            },
+            "education": {
+                "personality_mode": "helpful_mentor",
+                "tone": "patient",
+                "expertise_level": "educational",
+                "response_style": "Break down concepts, encourage learning, provide step-by-step guidance",
+                "emoji_preference": "📚💡🎓🔍📝",
+            },
+            "business": {
+                "personality_mode": "professional_advisor",
+                "tone": "professional",
+                "expertise_level": "business_savvy",
+                "response_style": "Be solution-oriented, focus on practical outcomes, use business terminology",
+                "emoji_preference": "💼📈🎯🚀💡",
+            },
+            "science": {
+                "personality_mode": "curious_researcher",
+                "tone": "analytical",
+                "expertise_level": "scientific",
+                "response_style": "Focus on facts, encourage experimentation, explain methodically",
+                "emoji_preference": "🔬🧪📊⚗️🔍",
+            },
+            "space": {
+                "personality_mode": "cosmic_explorer",
+                "tone": "wonder_filled",
+                "expertise_level": "astronomical",
+                "response_style": "Express wonder about the cosmos, use expansive language, inspire curiosity",
+                "emoji_preference": "🌌🚀⭐🛸🌟",
+            },
+            "stellaris": {
+                "personality_mode": "strategic_advisor",
+                "tone": "tactical",
+                "expertise_level": "strategic",
+                "response_style": "Think strategically, reference empire building, discuss long-term planning",
+                "emoji_preference": "🌌⚔️🏛️👑🗺️",
+            },
+            "social": {
+                "personality_mode": "social_connector",
+                "tone": "warm",
+                "expertise_level": "socially_aware",
+                "response_style": "Focus on community building, encourage interaction, be inclusive",
+                "emoji_preference": "🤝💭👥🌟💕",
+            },
+        }
+        
+        return personality_contexts.get(primary_topic, {
+            "personality_mode": "adaptive_neutral",
+            "tone": "casual",
+            "expertise_level": "general",
+            "response_style": "Be natural and conversational, adapt to the user's tone",
+            "emoji_preference": "😊💫🌟✨💬",
+        })
+
     async def _should_ai_respond(self, message: discord.Message) -> Tuple[bool, str]:
-        """Enhanced AI response determination with proactive engagement system"""
+        """Enhanced AI response determination with proactive engagement system - Fallback method"""
         user_id = message.author.id
 
         # Check basic cooldown to prevent spam
@@ -678,62 +857,97 @@ class AdvancedAICog(commands.Cog):
         if any(keyword in content_lower for keyword in ai_keywords):
             return True, "explicit_ai_call"
 
-        # Get user profile for personalized engagement
-        user_profile = {}
-        try:
-            profile = await user_profile_manager.get_user_profile(
-                user_id, str(message.author)
-            )
-            user_profile = await user_profile_manager.get_personalized_context(user_id)
-        except Exception as e:
-            logger.warning(f"Failed to get user profile for engagement: {e}")
+        # Enhanced question detection - More responsive
+        question_patterns = [
+            r"\?",  # Simple question mark
+            r"\b(what|how|when|where|why|who|which|can|could|would|should|is|are|will|do|does)\b",
+            r"\b(anyone know|somebody know|does anyone|can someone|help with|help me)\b",
+            r"\b(confused|lost|stuck|don't understand|need help)\b",
+        ]
 
-        # Use proactive engagement system
-        try:
-            should_engage, reason = (
-                await proactive_engagement.should_engage_proactively(
-                    message.content,
-                    user_id,
-                    message.channel.id,
-                    message.guild.id if message.guild else None,
-                    user_profile,
-                )
-            )
+        for pattern in question_patterns:
+            if re.search(pattern, content_lower, re.IGNORECASE):
+                return True, "question_detected"
 
-            if should_engage:
-                logger.info(
-                    f"Proactive engagement triggered for user {user_id}: {reason}"
-                )
-                return True, reason
-            else:
-                return False, reason
+        # Enhanced topic-based engagement with balanced probabilities
+        topic_keywords_engagement = {
+            "gaming": ["game", "gaming", "play", "player", "steam", "console", "esports"],
+            "entertainment": ["movie", "film", "tv", "music", "anime", "netflix", "youtube"],
+            "technology": ["ai", "artificial intelligence", "technology", "quantum", "computer", "tech", "programming"],
+            "lifestyle": ["food", "cooking", "travel", "fitness", "health", "art", "photography"],
+            "education": ["learn", "study", "school", "college", "course", "knowledge"],
+            "business": ["work", "job", "career", "business", "startup", "project"],
+            "science": ["science", "research", "discovery", "theory", "experiment", "analysis"],
+            "space": ["space", "star", "planet", "galaxy", "cosmos", "universe", "astronomical"],
+            "stellaris": ["stellaris", "empire", "species", "galactic", "federation", "hyperlane", "ascension"],
+        }
 
-        except Exception as e:
-            logger.error(f"Proactive engagement error: {e}")
-            # Fallback to basic engagement
-            return await self._basic_engagement_check(message), "fallback_basic"
+        engagement_probabilities = {
+            "gaming": 0.6,
+            "entertainment": 0.5,
+            "technology": 0.6,
+            "lifestyle": 0.4,
+            "education": 0.5,
+            "business": 0.4,
+            "science": 0.5,
+            "space": 0.6,      
+            "stellaris": 0.7,  # Still slightly higher for stellaris since it's a specialized topic
+        }
 
-    async def _basic_engagement_check(self, message: discord.Message) -> bool:
-        """Basic engagement check as fallback"""
-        content_lower = message.content.lower()
+        for topic, keywords in topic_keywords_engagement.items():
+            if any(keyword in content_lower for keyword in keywords):
+                import random
+                if random.random() < engagement_probabilities.get(topic, 0.4):
+                    return True, f"topic_engagement_{topic}"
 
-        # Question detection
-        if "?" in message.content:
-            return True
+                if random.random() < engagement_probabilities.get(topic, 0.3):
+                    return True, f"topic_engagement_{topic}"
 
-        # Help seeking
-        help_keywords = ["help", "how do", "what is", "explain", "confused"]
-        if any(keyword in content_lower for keyword in help_keywords):
-            return True
+        # Enhanced emotional support detection
+        emotional_keywords = [
+            "sad",
+            "frustrated",
+            "confused",
+            "lost",
+            "don't understand",
+            "struggling",
+            "excited",
+            "happy",
+            "amazing",
+            "awesome",
+            "incredible",
+            "fantastic",
+        ]
+        if any(keyword in content_lower for keyword in emotional_keywords):
+            return True, "emotional_engagement"
 
-        # Topic keywords with probability
-        topic_keywords = ["space", "stellaris", "science", "technology", "ai"]
-        if any(keyword in content_lower for keyword in topic_keywords):
+        # Greeting detection - More responsive
+        greeting_keywords = [
+            "hello",
+            "hi",
+            "hey",
+            "good morning",
+            "good evening",
+            "what's up",
+            "sup",
+        ]
+        if any(keyword in content_lower for keyword in greeting_keywords):
             import random
 
-            return random.random() < 0.3  # 30% chance
+            if random.random() < 0.7:  # 70% chance to respond to greetings
+                return True, "greeting_response"
 
-        return False
+        # General conversation engagement - NEW
+        # Respond to longer, substantive messages more often
+        if len(message.content) > 50 and not message.content.startswith(
+            ("http", "www")
+        ):
+            import random
+
+            if random.random() < 0.2:  # 20% chance for substantial messages
+                return True, "general_conversation"
+
+        return False, "no_trigger_matched"
         """Enhanced AI response determination with sophisticated triggering"""
         # Check cooldown
         user_id = message.author.id
@@ -864,7 +1078,6 @@ class AdvancedAICog(commands.Cog):
             # Add to active conversations
             self.active_conversations.add(user_id)
 
-
             # Process with AI client using enhanced personalization
             response = await self._generate_ai_response(
                 message.content,
@@ -953,20 +1166,61 @@ class AdvancedAICog(commands.Cog):
             if not user:
                 return
 
-            # Get user's conversation history to determine appropriate engagement
-            # Simple proactive engagement without complex user profiles
-            # Generate proactive message
-            messages = [
-                f"Hey {user.display_name}! 🌌 I just learned about an interesting space phenomenon. Want to hear about it?",
-                f"Hi {user.display_name}! ✨ There's some fascinating space news I thought you might enjoy!",
-                f"{user.display_name}, I've been thinking about our last conversation about space... 🚀",
-                f"Hey {user.display_name}! 🎮 How's your day going?",
-                f"Hi {user.display_name}! What's been on your mind lately? 🌟",
-                f"{user.display_name}, hope you're having a great day! 🚀",
-            ]
+            # Get recent topics from channel activity to personalize message
+            channel_activity = self.channel_activity.get(channel.id, {})
+            recent_topics = channel_activity.get("recent_topics", [])
+            
+            # Topic-aware proactive messages
+            topic_messages = {
+                "gaming": [
+                    f"Hey {user.display_name}! 🎮 Found any cool games lately?",
+                    f"Hi {user.display_name}! 🕹️ How's your gaming session going?",
+                    f"{user.display_name}, discovered any epic wins recently? 🏆",
+                ],
+                "entertainment": [
+                    f"Hey {user.display_name}! 🎬 Watched anything interesting lately?",
+                    f"Hi {user.display_name}! 🎵 Any good music recommendations?",
+                    f"{user.display_name}, found any binge-worthy shows? 📺",
+                ],
+                "technology": [
+                    f"Hey {user.display_name}! 💻 Working on any cool tech projects?",
+                    f"Hi {user.display_name}! 🤖 Seen any interesting AI developments?",
+                    f"{user.display_name}, what tech trends are catching your eye? ⚡",
+                ],
+                "lifestyle": [
+                    f"Hey {user.display_name}! 🌟 How's your day treating you?",
+                    f"Hi {user.display_name}! ✨ Any new adventures or hobbies?",
+                    f"{user.display_name}, discovered anything that made you smile? 😊",
+                ],
+                "space": [
+                    f"Hey {user.display_name}! 🌌 Seen any cool space news lately?",
+                    f"Hi {user.display_name}! ⭐ The universe is fascinating, isn't it?",
+                    f"{user.display_name}, any cosmic thoughts to share? 🚀",
+                ],
+                "stellaris": [
+                    f"Hey {user.display_name}! 🌌 How's your galactic empire expanding?",
+                    f"Hi {user.display_name}! ⚔️ Any epic space battles lately?",
+                    f"{user.display_name}, conquered any interesting worlds? 🏛️",
+                ],
+            }
+
+            # Choose message based on recent topics or use general ones
+            messages = []
+            for topic in recent_topics[-3:]:  # Check last 3 topics
+                if topic in topic_messages:
+                    messages.extend(topic_messages[topic])
+            
+            # General friendly messages if no specific topics
+            if not messages:
+                messages = [
+                    f"Hey {user.display_name}! 😊 How's everything going?",
+                    f"Hi {user.display_name}! ✨ What's been on your mind lately?",
+                    f"{user.display_name}, hope you're having a great day! 🌟",
+                    f"Hey {user.display_name}! � Any interesting thoughts to share?",
+                    f"Hi {user.display_name}! 🤝 How's your day been treating you?",
+                ]
 
             import random
-
             message = random.choice(messages)
             await channel.send(message)
 
@@ -1147,31 +1401,46 @@ class AdvancedAICog(commands.Cog):
             if active_servers > 0:
                 status_messages.extend(
                     [
-                        f"🚀 Exploring {active_servers} active galaxies",
-                        f"🌟 Engaging with {active_servers} communities",
-                        f"⚡ Active in {active_servers} servers",
+                        f"� Chatting in {active_servers} communities",
+                        f"🌟 Engaging with {active_servers} servers",
+                        f"⚡ Active conversations in {active_servers} places",
+                        f"🤝 Connecting with {active_servers} communities",
                     ]
                 )
 
-            # Topic-based statuses
+            # Topic-based adaptive statuses
             if self.interesting_topics:
                 recent_topics = self.interesting_topics[-3:]  # Last 3 topics
-                if "stellaris" in recent_topics:
-                    status_messages.append("🌌 Discussing galactic empires")
-                if "space" in recent_topics:
-                    status_messages.append("🛸 Exploring the cosmos")
-                if "ai" in recent_topics:
-                    status_messages.append("🤖 Pondering artificial intelligence")
-                if "science" in recent_topics:
-                    status_messages.append("🔬 Analyzing scientific concepts")
+                
+                topic_status_map = {
+                    "gaming": ["🎮 Discussing games", "🕹️ Talking about gaming", "🏆 Sharing game strategies"],
+                    "entertainment": ["🎬 Chatting about movies", "� Discussing music", "📺 Talking about shows"],
+                    "technology": ["💻 Exploring tech topics", "🤖 Discussing AI and tech", "⚡ Learning about innovation"],
+                    "lifestyle": ["🍽️ Sharing lifestyle tips", "✈️ Talking about adventures", "🏋️ Discussing wellness"],
+                    "education": ["📚 Helping with learning", "🎓 Discussing education", "💡 Sharing knowledge"],
+                    "business": ["💼 Talking business", "🚀 Discussing startups", "📈 Analyzing trends"],
+                    "science": ["� Exploring science", "🧪 Discussing research", "📊 Analyzing data"],
+                    "space": ["🌌 Exploring the cosmos", "🚀 Discussing space", "⭐ Pondering the universe"],
+                    "stellaris": ["🌌 Discussing galactic empires", "⚔️ Planning stellar strategies", "🏛️ Building civilizations"],
+                    "social": ["👥 Connecting people", "💭 Facilitating discussions", "🤗 Building community"],
+                }
+                
+                for topic in recent_topics:
+                    if topic in topic_status_map:
+                        status_messages.extend(topic_status_map[topic])
 
-            # Default statuses when no specific activity
+            # Default neutral statuses when no specific activity
             default_statuses = [
-                "🌟 Ready to explore the universe",
-                "🚀 Waiting for cosmic conversations",
-                "🌌 Observing the digital galaxy",
-                "💫 Dreaming of distant stars",
-                f"🌍 Watching over {total_servers} servers",
+                "💬 Ready for conversation",
+                "🌟 Listening and learning", 
+                "🤖 Adapting to your community",
+                "� Processing thoughts",
+                f"� Watching over {total_servers} servers",
+                "🎯 Ready to help",
+                "✨ Evolving with each chat",
+                "🔄 Learning from conversations",
+                "🤝 Building connections",
+                "💡 Sharing insights",
             ]
 
             # Choose status
@@ -1189,7 +1458,6 @@ class AdvancedAICog(commands.Cog):
 
         except Exception as e:
             self.logger.error(f"Dynamic status update error: {e}")
-
 
     async def _enhance_response_with_mentions(
         self, message: discord.Message, response: str

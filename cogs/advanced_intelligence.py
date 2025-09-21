@@ -54,7 +54,6 @@ class AdvancedIntelligenceCommands(commands.Cog):
                     "• `intelligence predictions` - Social pattern predictions\n"
                     "• `intelligence wellness` - Community health monitoring\n"
                     "• `intelligence memory` - Memory Palace insights\n"
-                    "• `intelligence mood` - Mood contagion analysis\n"
                     "• `intelligence sage` - Community wisdom and advice\n"
                     "• `intelligence insights` - Comprehensive community analysis\n"
                     "• `intelligence config` - Configure intelligence settings\n\n"
@@ -62,7 +61,6 @@ class AdvancedIntelligenceCommands(commands.Cog):
                     "→ Predicts optimal posting times\n"
                     "→ Monitors community wellness\n"
                     "→ Remembers important moments\n"
-                    "→ Tracks emotional atmosphere\n"
                     "→ Provides sage wisdom and guidance\n"
                     "→ Learns from broader Discord ecosystem"
                 ),
@@ -394,110 +392,6 @@ class AdvancedIntelligenceCommands(commands.Cog):
             embed = EmbedBuilder.error(
                 title="❌ Memory Palace Error",
                 description=f"Unable to access memories: {str(e)}",
-            )
-            await ctx.send(embed=embed)
-
-    @intelligence_group.command(name="mood", aliases=["atmosphere", "vibe"])
-    async def mood_analysis(self, ctx):
-        """View community mood and emotional atmosphere analysis"""
-        try:
-            embed = EmbedBuilder.primary(
-                title="🌊 Community Mood & Atmosphere",
-                description="Real-time emotional atmosphere tracking and mood contagion analysis",
-            )
-
-            # Current mood (simulated)
-            current_mood = "Content"
-            mood_intensity = 0.65
-            mood_emoji = "😌"
-
-            embed.add_field(
-                name=f"{mood_emoji} Current Community Mood",
-                value=f"**{current_mood}** (Intensity: {mood_intensity*100:.0f}%)\n"
-                f"The community feels {current_mood.lower()} with moderate positive energy",
-                inline=False,
-            )
-
-            # Mood trends
-            embed.add_field(
-                name="📈 24-Hour Mood Trend",
-                value="```\n"
-                "😌 Content     ████████░░  80%\n"
-                "😊 Excited     ██████░░░░  60%\n"
-                "😐 Neutral     ████░░░░░░  40%\n"
-                "😟 Concerned   ██░░░░░░░░  20%\n"
-                "```",
-                inline=True,
-            )
-
-            # Dominant emotions
-            embed.add_field(
-                name="🎭 Dominant Emotions",
-                value="**Joy**: 45% 😄\n"
-                "**Curiosity**: 30% 🤔\n"
-                "**Excitement**: 20% ⚡\n"
-                "**Calmness**: 25% 😌\n"
-                "**Frustration**: 5% 😤",
-                inline=True,
-            )
-
-            # Mood influencers
-            embed.add_field(
-                name="🌟 Mood Influencers",
-                value="**Positive Contributors:**\n"
-                "• Encouraging responses (+15%)\n"
-                "• Shared achievements (+12%)\n"
-                "• Helpful answers (+10%)\n\n"
-                "**Energy Boosters:**\n"
-                "• Game night announcements\n"
-                "• Space discovery news\n"
-                "• Member celebrations",
-                inline=False,
-            )
-
-            # Mood contagion insights
-            embed.add_field(
-                name="🔄 Mood Contagion Analysis",
-                value="**Spread Pattern**: Positive moods spread 3x faster\n"
-                "**Influence Radius**: 5-7 connected users per mood shift\n"
-                "**Recovery Time**: Community rebounds in ~2 hours\n"
-                "**Amplifiers**: Emojis, reactions, and direct replies",
-                inline=False,
-            )
-
-            # Predictions and recommendations
-            embed.add_field(
-                name="🔮 Mood Predictions",
-                value="**Next 4 hours**: Mood likely to remain stable\n"
-                "**Evening forecast**: Slight energy increase expected\n"
-                "**Weekend outlook**: Traditional relaxed atmosphere\n\n"
-                "**🎯 Recommendations:**\n"
-                "• Share positive news to boost mood\n"
-                "• Plan interactive activities during high-energy periods\n"
-                "• Monitor for any mood dips and respond supportively",
-                inline=False,
-            )
-
-            # Emotional health indicators
-            embed.add_field(
-                name="💚 Emotional Health Score",
-                value="**Overall**: 8.2/10 (Excellent)\n"
-                "**Resilience**: High - Community recovers quickly from setbacks\n"
-                "**Support**: Strong - Members actively lift each other up\n"
-                "**Stability**: Good - Mood swings are gentle and natural",
-                inline=False,
-            )
-
-            embed.set_footer(
-                text="Mood tracking helps maintain a positive community atmosphere"
-            )
-            await ctx.send(embed=embed)
-
-        except Exception as e:
-            self.logger.error(f"Error in mood command: {e}")
-            embed = EmbedBuilder.error(
-                title="❌ Mood Analysis Error",
-                description=f"Unable to analyze community mood: {str(e)}",
             )
             await ctx.send(embed=embed)
 

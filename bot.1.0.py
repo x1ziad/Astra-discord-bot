@@ -1,6 +1,6 @@
 """
 Astra Discord Bot - Enhanced Main Application
-A comprehensive AI-powered Discord bot for space exploration and server management
+A comprehensive AI-powered Discord bot with adaptive personality and natural conversation
 
 Author: x1ziad
 Version: 2.0.0
@@ -9,6 +9,8 @@ License: MIT
 
 Features:
 - Advanced AI capabilities with multi-provider integration
+- Adaptive personality that shifts based on conversation topics
+- Natural conversation flow and context understanding
 - Comprehensive server management and analytics
 - Real-time monitoring and health checks
 - Graceful error handling and recovery
@@ -173,7 +175,7 @@ class AstraBot(commands.Bot):
             command_prefix=self._get_dynamic_prefix,
             intents=intents,
             activity=discord.Activity(
-                type=discord.ActivityType.watching, name="the cosmic frontier 🌌"
+                type=discord.ActivityType.watching, name="conversations and learning 💬"
             ),
             status=discord.Status.online,
             allowed_mentions=discord.AllowedMentions(
@@ -388,7 +390,6 @@ class AstraBot(commands.Bot):
                 "cogs.utilities",
                 "cogs.nexus",  # Advanced diagnostic interface
                 "cogs.context_manager",  # Context understanding management
-                "cogs.personality_evolution",  # Dynamic personality evolution
                 "cogs.advanced_intelligence",  # Phase 3: Advanced Intelligence
             ],
             # AI and enhanced features (depend on core)
@@ -604,133 +605,17 @@ class AstraBot(commands.Bot):
 
             self.stats.messages_processed += 1
 
-            # Initialize context manager if not already done
-            try:
-                from ai.universal_context_manager import (
-                    get_context_manager,
-                    initialize_context_manager,
-                )
-
-                context_manager = get_context_manager()
-                if not context_manager:
-                    context_manager = initialize_context_manager(self)
-                    self.logger.info(
-                        "Universal Context Manager initialized in message handler"
-                    )
-            except Exception as e:
-                self.logger.warning(f"Context manager initialization failed: {e}")
-                context_manager = None
-
-            # Analyze message context if context manager is available
-            should_respond = False
-            response_reason = "no_context_manager"
-
-            if context_manager:
-                try:
-                    # Analyze the message
-                    message_context = await context_manager.analyze_message(
-                        message.content,
-                        message.author.id,
-                        message.channel.id,
-                        message.guild.id if message.guild else None,
-                        message.author.display_name,
-                    )
-
-                    # Determine if AI should respond
-                    should_respond, response_reason = (
-                        await context_manager.should_respond(
-                            message_context,
-                            message.channel.id,
-                            message.guild.id if message.guild else None,
-                        )
-                    )
-
-                    # If context manager says respond, generate AI response
-                    if should_respond:
-                        try:
-                            # Show typing indicator
-                            async with message.channel.typing():
-                                # Get enhanced context for AI generation
-                                response_context = (
-                                    await context_manager.get_response_context(
-                                        message_context
-                                    )
-                                )
-
-                                # Enhance context with personality evolution data
-                                if message.guild:
-                                    response_context["user_name"] = (
-                                        message.author.display_name
-                                    )
-                                    response_context["guild_name"] = message.guild.name
-                                    response_context["guild_id"] = message.guild.id
-                                response_context["user_id"] = message.author.id
-                                response_context["channel_id"] = message.channel.id
-
-                                # Get AI engine
-                                from ai.consolidated_ai_engine import get_engine
-
-                                ai_engine = get_engine()
-
-                                if ai_engine:
-                                    # Generate AI response with enhanced context
-                                    ai_response = await ai_engine.process_conversation(
-                                        message.content,
-                                        message.author.id,
-                                        guild_id=(
-                                            message.guild.id if message.guild else None
-                                        ),
-                                        channel_id=message.channel.id,
-                                        context_data=response_context,
-                                    )
-
-                                    # Send the response
-                                    if ai_response and len(ai_response.strip()) > 0:
-                                        # Add small delay for natural feel
-                                        import random
-
-                                        await asyncio.sleep(random.uniform(0.5, 2.0))
-
-                                        # Send response (try different methods)
-                                        try:
-                                            await message.reply(ai_response)
-                                        except discord.HTTPException:
-                                            # Fallback to regular message
-                                            await message.channel.send(ai_response)
-
-                                        # Mark response as sent in context manager
-                                        await context_manager.mark_response_sent(
-                                            message_context, message.channel.id
-                                        )
-
-                                        self.logger.info(
-                                            f"AI responded to {message.author.id} in channel {message.channel.id}: {response_reason}"
-                                        )
-
-                                else:
-                                    self.logger.warning(
-                                        "AI engine not available for context response"
-                                    )
-
-                        except Exception as e:
-                            self.logger.error(f"Error generating AI response: {e}")
-                            # Optionally send a brief error message
-                            if (
-                                "help" in message.content.lower()
-                                or "?" in message.content
-                            ):
-                                try:
-                                    await message.channel.send(
-                                        "I'm having some trouble thinking right now, but I'm here! 🤖"
-                                    )
-                                except:
-                                    pass
-
-                except Exception as e:
-                    self.logger.error(f"Context analysis error: {e}")
-
-            # Always process commands regardless of AI response
+            # Always process commands first to avoid conflicts
             await self.process_commands(message)
+
+            # Skip AI processing if this was a command
+            if message.content.startswith(
+                tuple(await self._get_dynamic_prefix(self, message))
+            ):
+                return
+
+            # Let the AdvancedAICog handle AI responses to avoid conflicts
+            # The cog has more sophisticated AI handling logic
 
         @self.event
         async def on_command(ctx):
