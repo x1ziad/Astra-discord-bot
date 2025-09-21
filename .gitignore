@@ -24,3 +24,4 @@ data/*.db
 # Local testing files
 test_*.py
 *_test.py
+config/config.json
