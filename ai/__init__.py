@@ -12,20 +12,25 @@ Components:
 - enhanced_ai_config: AI configuration management
 """
 
-from .consolidated_ai_engine import ConsolidatedAIEngine, UniversalAIClient, AIResponse, ConversationContext
+from .consolidated_ai_engine import (
+    ConsolidatedAIEngine,
+    UniversalAIClient,
+    AIResponse,
+    ConversationContext,
+)
 from .universal_ai_client import UniversalAIClient as UAIClient, AIProvider
 from .openrouter_client import OpenRouterClient
 from .user_profiling import UserProfileManager
 
 __all__ = [
-    'ConsolidatedAIEngine',
-    'UniversalAIClient', 
-    'UAIClient',
-    'OpenRouterClient',
-    'AIResponse',
-    'ConversationContext',
-    'AIProvider',
-    'UserProfileManager'
+    "ConsolidatedAIEngine",
+    "UniversalAIClient",
+    "UAIClient",
+    "OpenRouterClient",
+    "AIResponse",
+    "ConversationContext",
+    "AIProvider",
+    "UserProfileManager",
 ]
 
 __version__ = "2.0.0"
