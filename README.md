@@ -2,7 +2,371 @@
 
 
 
-**The World's Most Advanced AI Discord Bot** with revolutionary intelligence capabilities, dynamic personality evolution, and genuine community care.**The World's Most Advanced AI Di### 🎨 Advanced AI Integration
+# 🌟 Astra Discord Bot
+
+**The World's Most Advanced AI Discord Bot** with revolutionary intelligence capabilities, dynamic personality evolution, and genuine community care.
+
+[![Discord](https://img.shields.io/badge/Discord-Join%20Server-7289da?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/pdxPDhjS)
+[![GitHub](https://img.shields.io/badge/GitHub-Repository-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/x1ziad/Astra-discord-bot)
+[![License](https://img.shields.io/badge/License-AGPL--3.0-blue?style=for-the-badge)](LICENSE)
+[![Version](https://img.shields.io/badge/Version-v2.0.0-green?style=for-the-badge)](https://github.com/x1ziad/Astra-discord-bot/releases)
+
+> 🎯 **Revolutionary AI Technology** | 🧠 **Advanced Intelligence** | 💚 **Community Wellness** | 🔮 **Predictive Insights**
+
+## 🧠 Advanced Intelligence Features
+
+### 🔮 Time-Aware Social Predictions
+- **Predictive Analytics**: Advanced behavioral pattern analysis across time windows
+- **Social Trend Forecasting**: Predict community dynamics and engagement patterns
+- **Temporal Context**: Time-sensitive insights that evolve with community behavior
+
+### 🌐 Cross-Server Intelligence
+- **Global Pattern Recognition**: Learn from interactions across multiple servers
+- **Universal Insights**: Apply collective wisdom to individual server contexts
+- **Privacy-First**: Maintains complete data privacy while sharing intelligence patterns
+
+### 💚 Wellness Companion
+- **Mental Health Support**: Proactive wellness monitoring and gentle interventions
+- **Stress Detection**: Advanced sentiment analysis to identify when users need support
+- **Crisis Prevention**: Early warning system for community tension
+
+### 🏛️ Memory Palace System
+- **Comprehensive Memory**: Advanced long-term context retention across conversations
+- **Relationship Mapping**: Understands complex user relationships and history
+- **Personal Growth Tracking**: Monitors individual user development patterns
+
+### 🌊 Mood Contagion Dynamics
+- **Emotional Intelligence**: Real-time mood analysis across server channels
+- **Viral Positivity**: Identify and amplify positive emotional states
+- **Community Harmony**: Maintain optimal emotional balance in communities
+
+### 🎓 Community Sage Mode
+- **Collective Wisdom**: Synthesize community knowledge into actionable insights
+- **Cultural Understanding**: Deep comprehension of server culture and dynamics
+- **Wise Guidance**: Provide thoughtful, context-aware advice and mediation
+
+## ✨ Core Features
+
+### � Advanced AI Integration
+- **Universal AI Client**: Seamlessly integrates multiple AI providers (OpenRouter, Gemini, Claude, GPT-4)
+- **Dynamic Personality Evolution**: Bot personality that grows and adapts based on interactions
+- **Context-Aware Responses**: Maintains conversation context with intelligent memory management
+- **Proactive Engagement**: Initiates meaningful conversations and provides timely assistance
+
+### 🖼️ Professional Image Generation
+- **Multiple AI Engines**: ModelsLab, MagicHour, and specialized image generators
+- **Style Variants**: Realistic, artistic, anime, and custom style options
+- **High Quality Output**: Professional-grade image generation with customizable parameters
+- **Smart Caching**: Efficient image storage and retrieval system
+
+### 🛡️ Comprehensive Server Management
+- **Advanced Admin Tools**: Sophisticated moderation and server management capabilities
+- **Role Management**: Intelligent role assignment and permission handling
+- **Analytics Dashboard**: Deep insights into server activity and engagement metrics
+- **Automated Moderation**: Smart content filtering and user behavior monitoring
+
+### 🎯 Interactive Entertainment
+- **Space Exploration**: Immersive space-themed games and simulations
+- **Quiz System**: Customizable quizzes with intelligent scoring
+- **Community Games**: Engaging multiplayer activities and challenges
+- **Notion Integration**: Seamless productivity and note-taking features
+
+## 🎮 Command Reference
+
+### 🧠 Advanced Intelligence Commands
+- `astra predictions` - Get AI-powered social and engagement predictions
+- `astra wellness [user]` - Access wellness insights and mental health support
+- `astra memory [query]` - Explore conversation history and personal growth
+- `astra mood` - View community emotional landscape and mood analysis
+- `astra sage [question]` - Get community wisdom and thoughtful guidance
+- `astra insights [scope]` - Comprehensive intelligence analysis across all systems
+
+### 🎨 AI & Image Generation
+- `astra chat [message]` - Engage with advanced AI conversation
+- `astra image [prompt]` - Generate high-quality AI images
+- `astra style [style] [prompt]` - Create images with specific artistic styles
+- `astra personality` - View and manage bot personality evolution
+
+### 🛡️ Administration & Moderation
+- `astra setup` - Comprehensive server setup and configuration
+- `astra admin [command]` - Advanced administrative tools
+- `astra roles [action]` - Intelligent role management system
+- `astra analytics` - Deep server analytics and insights
+
+### 🎯 Entertainment & Utilities
+- `astra space [action]` - Interactive space exploration features
+- `astra quiz [topic]` - Customizable quiz system
+- `astra notion [command]` - Productivity and note-taking integration
+- `astra help [command]` - Comprehensive help system
+
+## 🚀 Installation & Setup
+
+### Prerequisites
+- Python 3.8 or higher
+- Discord Bot Token
+- API keys for AI services (OpenRouter, MagicHour, etc.)
+
+### Quick Start
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/x1ziad/Astra-discord-bot.git
+   cd AstraBot
+   ```
+
+2. **Install dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **Configure the bot**:
+   - Copy `config.json` template and add your API keys
+   - Set up Discord bot token and permissions
+   - Configure AI service credentials
+
+4. **Launch Astra**:
+   ```bash
+   python bot.1.0.py
+   ```
+
+### Environment Configuration
+Create a `.env` file or update `config.json` with:
+```json
+{
+  "discord_token": "YOUR_DISCORD_BOT_TOKEN",
+  "openrouter_api_key": "YOUR_OPENROUTER_KEY",
+  "magichour_api_key": "YOUR_MAGICHOUR_KEY",
+  "gemini_api_key": "YOUR_GEMINI_KEY"
+}
+```
+
+## 🌐 Deployment Options
+
+### Railway (Recommended)
+- Optimized configuration with `railway.toml`
+- Automatic deployments from GitHub
+- Environment variable management
+- Scalable infrastructure
+
+### Docker
+```bash
+docker build -t astra-bot .
+docker run -d --env-file .env astra-bot
+```
+
+### Self-Hosted
+- Full control over hosting environment
+- Custom database configurations
+- Advanced logging and monitoring
+
+## 🔧 Technical Architecture
+
+### Core Technologies
+- **Framework**: Discord.py 2.6.3
+- **AI Integration**: OpenRouter, Gemini, Claude, GPT-4
+- **Database**: SQLite with advanced schema
+- **Image Generation**: ModelsLab, MagicHour APIs
+- **Architecture**: Modular cog-based system
+
+### Advanced Systems
+- **Intelligence Engine**: Multi-layered AI processing
+- **Memory Management**: Persistent context and relationships
+- **Emotional Analysis**: Real-time sentiment and mood tracking
+- **Predictive Analytics**: Behavioral pattern recognition
+- **Cross-Server Learning**: Collective intelligence sharing
+
+## 🤝 Contributing
+
+We welcome contributions! Want to enhance Astra's capabilities? Reach out at our Discord server or submit a pull request.
+
+### Development Setup
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Make your changes with proper testing
+4. Submit a pull request with detailed description
+
+### Contact for Collaboration
+Interested in contributing to this project? Reach out to collaborate on further enhancements:
+📧 **Contact**: Join our [Discord server](https://discord.gg/pdxPDhjS) for collaboration opportunities
+
+## 📞 Support & Community
+
+- 💬 **Discord Support**: [Join our community server](https://discord.gg/pdxPDhjS)
+- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/x1ziad/Astra-discord-bot/issues)
+- 💡 **Feature Requests**: [GitHub Discussions](https://github.com/x1ziad/Astra-discord-bot/discussions)
+
+## 📄 License
+
+This project is licensed under the AGPL-3.0 License - see the [LICENSE](LICENSE) file for complete details.
+
+---
+
+**[🚀 Invite Astra to Your Server](https://discord.gg/pdxPDhjS)** | **[⭐ Star on GitHub](https://github.com/x1ziad/Astra-discord-bot)**
+
+*Built with ❤️ for the future of community intelligence*
+
+## 🧠 Advanced Intelligence Features
+
+### 🔮 Time-Aware Social Predictions
+- **Predictive Analytics**: Advanced behavioral pattern analysis across time windows
+- **Social Trend Forecasting**: Predict community dynamics and engagement patterns
+- **Temporal Context**: Time-sensitive insights that evolve with community behavior
+- **Command**: `astra predictions` - Get intelligent forecasts about your server
+
+### 🌐 Cross-Server Intelligence
+- **Global Pattern Recognition**: Learn from interactions across multiple servers
+- **Universal Insights**: Apply collective wisdom to individual server contexts
+- **Adaptive Learning**: Continuously improve through cross-community analysis
+- **Privacy-First**: Maintains complete data privacy while sharing intelligence patterns
+
+### 💚 Wellness Companion
+- **Mental Health Support**: Proactive wellness monitoring and gentle interventions
+- **Stress Detection**: Advanced sentiment analysis to identify when users need support
+- **Positive Reinforcement**: Encourage healthy community interactions
+- **Crisis Prevention**: Early warning system for community tension
+- **Command**: `astra wellness` - Get personalized wellness insights and support
+
+### 🏛️ Memory Palace System
+- **Comprehensive Memory**: Advanced long-term context retention across conversations
+- **Relationship Mapping**: Understands complex user relationships and history
+- **Context Evolution**: Memories that grow and adapt over time
+- **Personal Growth Tracking**: Monitors individual user development patterns
+- **Command**: `astra memory` - Explore your conversation history and growth
+
+### 🌊 Mood Contagion Dynamics
+- **Emotional Intelligence**: Real-time mood analysis across server channels
+- **Viral Positivity**: Identify and amplify positive emotional states
+- **Tension Diffusion**: Proactively address negative mood spirals
+- **Community Harmony**: Maintain optimal emotional balance in communities
+- **Command**: `astra mood` - View current community emotional landscape
+
+### 🎓 Community Sage Mode
+- **Collective Wisdom**: Synthesize community knowledge into actionable insights
+- **Cultural Understanding**: Deep comprehension of server culture and dynamics
+- **Wise Guidance**: Provide thoughtful, context-aware advice and mediation
+- **Growth Facilitation**: Help communities evolve and improve naturally
+- **Command**: `astra sage` - Access community wisdom and guidance
+
+## ✨ Core Features
+
+### 🎨 Advanced AI Integration
+- **Universal AI Client**: Seamlessly integrates multiple AI providers (OpenRouter, Gemini, Claude, GPT-4)
+- **Dynamic Personality Evolution**: Bot personality that grows and adapts based on interactions
+- **Context-Aware Responses**: Maintains conversation context with intelligent memory management
+- **Proactive Engagement**: Initiates meaningful conversations and provides timely assistance
+
+### 🖼️ Professional Image Generation
+- **Multiple AI Engines**: ModelsLab, MagicHour, and specialized image generators
+- **Style Variants**: Realistic, artistic, anime, and custom style options
+- **High Quality Output**: Professional-grade image generation with customizable parameters
+- **Smart Caching**: Efficient image storage and retrieval system
+
+### 🛡️ Comprehensive Server Management
+- **Advanced Admin Tools**: Sophisticated moderation and server management capabilities
+- **Role Management**: Intelligent role assignment and permission handling
+- **Analytics Dashboard**: Deep insights into server activity and engagement metrics
+- **Automated Moderation**: Smart content filtering and user behavior monitoring
+
+### 🎯 Interactive Entertainment
+- **Space Exploration**: Immersive space-themed games and simulations
+- **Quiz System**: Customizable quizzes with intelligent scoring
+- **Community Games**: Engaging multiplayer activities and challenges
+- **Notion Integration**: Seamless productivity and note-taking features
+
+## 🎮 Command Reference
+
+### 🧠 Advanced Intelligence Commands
+- `astra predictions` - Get AI-powered social and engagement predictions
+- `astra wellness [user]` - Access wellness insights and mental health support
+- `astra memory [query]` - Explore conversation history and personal growth
+- `astra mood` - View community emotional landscape and mood analysis
+- `astra sage [question]` - Get community wisdom and thoughtful guidance
+- `astra insights [scope]` - Comprehensive intelligence analysis across all systems
+
+### 🎨 AI & Image Generation
+- `astra chat [message]` - Engage with advanced AI conversation
+- `astra image [prompt]` - Generate high-quality AI images
+- `astra style [style] [prompt]` - Create images with specific artistic styles
+- `astra personality` - View and manage bot personality evolution
+
+### 🛡️ Administration & Moderation
+- `astra setup` - Comprehensive server setup and configuration
+- `astra admin [command]` - Advanced administrative tools
+- `astra roles [action]` - Intelligent role management system
+- `astra analytics` - Deep server analytics and insights
+
+### 🎯 Entertainment & Utilities
+- `astra space [action]` - Interactive space exploration features
+- `astra quiz [topic]` - Customizable quiz system
+- `astra notion [command]` - Productivity and note-taking integration
+- `astra help [command]` - Comprehensive help system
+
+## 🚀 Installation & Setup
+
+### Prerequisites
+- Python 3.8 or higher
+- Discord Bot Token
+- API keys for AI services (OpenRouter, MagicHour, etc.)
+
+### Quick Start
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/x1ziad/Astra-discord-bot.git
+   cd AstraBot
+   ```
+
+2. **Install dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **Configure the bot**:
+   - Copy `config.json` template and add your API keys
+   - Set up Discord bot token and permissions
+   - Configure AI service credentials
+
+4. **Launch Astra**:
+   ```bash
+   python bot.1.0.py
+   ```
+
+### Environment Configuration
+Create a `.env` file or update `config.json` with:
+```json
+{
+  "discord_token": "YOUR_DISCORD_BOT_TOKEN",
+  "openrouter_api_key": "YOUR_OPENROUTER_KEY",
+  "magichour_api_key": "YOUR_MAGICHOUR_KEY",
+  "gemini_api_key": "YOUR_GEMINI_KEY"
+}
+```
+
+## 🌐 Deployment Options
+
+### Railway (Recommended)
+- Optimized configuration with `railway.toml`
+- Automatic deployments from GitHub
+- Environment variable management
+- Scalable infrastructure
+
+### Docker
+```bash
+docker build -t astra-bot .
+docker run -d --env-file .env astra-bot
+```
+
+### Self-Hosted
+- Full control over hosting environment
+- Custom database configurations
+- Advanced logging and monitoring
+
+## 🔧 Technical Architecture
+
+### Core Technologies
+- **Framework**: Discord.py 2.6.3
+- **AI Integration**: OpenRouter, Gemini, Claude, GPT-4
+- **Database**: SQLite with advanced schema
+- **Image Generation**: ModelsLab, MagicHour APIs
+- **Architecture**: Modular cog-based system**The World's Most Advanced AI Di### 🎨 Advanced AI Integration
 
 - **Universal AI Client**: Seamlessly integrates multiple AI providers (OpenRouter, Gemini, Claude, GPT-4)
 
