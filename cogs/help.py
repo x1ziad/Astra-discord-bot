@@ -1,6 +1,9 @@
 import discord
 from discord import app_commands
 from discord.ext import commands
+import logging
+
+logger = logging.getLogger("astra.help")
 
 
 class Help(commands.Cog):
@@ -13,7 +16,7 @@ class Help(commands.Cog):
         """Show help information with error handling and permission checks"""
         try:
             user = interaction.user
-            is_admin = interaction.user.guild_permissions.administrator
+            is_admin = user.guild_permissions.administrator if interaction.guild else False
 
             embed = discord.Embed(
                 title="🚀 Astra Bot Commands",
@@ -21,67 +24,77 @@ class Help(commands.Cog):
                 color=0x5865F2,
             )
 
+            # Core AI Features
             embed.add_field(
                 name="🤖 AI Features",
-                value="`/chat` - Chat with Astra AI\n`/analyze` - AI text analysis\n`/summarize` - Summarize content",
+                value="`/chat` - Chat with Astra AI\n`/analyze` - AI text analysis\n`/summarize` - Summarize content\n`/translate` - Translate text",
                 inline=False,
             )
 
+            # Entertainment & Games
             embed.add_field(
-                name="🎮 Quiz & Games",
-                value="`/quiz` - Interactive quiz\n`/leaderboard` - Quiz rankings",
+                name="🎮 Entertainment",
+                value="`/quiz` - Interactive quiz\n`/leaderboard` - Quiz rankings\n`/fact` - Random space facts",
                 inline=False,
             )
 
+            # Space & Science
             embed.add_field(
-                name="🌌 Space & Astronomy",
-                value="`/apod` - NASA Picture of the Day\n`/fact` - Random space facts\n`/meteor` - Meteor shower info",
+                name="🌌 Space & Science",
+                value="`/apod` - NASA Picture of the Day\n`/meteor` - Meteor shower info\n`/space` - Space exploration commands",
                 inline=False,
             )
 
+            # Server Management
             embed.add_field(
-                name="🏛️ Stellaris Empire",
-                value="`/empire` - Choose your empire role\n`/lore [topic]` - Stellaris lore",
+                name="📊 Server Tools",
+                value="`/stats` - Server statistics\n`/ping` - Bot latency\n`/status` - Bot status info",
                 inline=False,
             )
 
+            # Utility Commands
             embed.add_field(
-                name="📊 Server Stats",
-                value="`/stats` - Server statistics\n`/ping` - Bot latency\n`/uptime` - Bot uptime",
+                name="� Utilities",
+                value="`/roles` - Role management\n`/utilities` - General utilities\n`/nexus` - Advanced diagnostics",
                 inline=False,
             )
 
-            embed.add_field(
-                name="📓 Notion Integration",
-                value="`/reminders` - Upcoming events\n`/todo` - Task management",
-                inline=False,
-            )
-
+            # Admin Commands (only show to admins)
             if is_admin:
                 embed.add_field(
-                    name="🔧 Admin Commands",
-                    value="`/admin` - Administrative controls\n`/config` - Bot configuration",
+                    name="⚙️ Admin Commands",
+                    value="`/admin` - Administrative controls\n`/config` - Bot configuration\n`/reload` - Reload extensions",
                     inline=False,
                 )
 
-            embed.set_thumbnail(
-                url=self.bot.user.avatar.url if self.bot.user.avatar else None
-            )
-            embed.set_footer(text="Use /help [category] for detailed command info")
+            # Set thumbnail and footer
+            if self.bot.user and self.bot.user.avatar:
+                embed.set_thumbnail(url=self.bot.user.avatar.url)
+            
+            embed.set_footer(text=f"Astra Bot • {len(self.bot.guilds)} servers • Use /help [category] for details")
 
-            await interaction.response.send_message(embed=embed)
+            # Send the help message
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            logger.info(f"Help command used by {user} ({user.id})")
 
+        except discord.InteractionResponse as e:
+            # Handle case where interaction was already responded to
+            logger.error(f"Interaction already responded to: {e}")
+            if not interaction.response.is_done():
+                await interaction.response.send_message(
+                    "❌ Error displaying help information", ephemeral=True
+                )
         except Exception as e:
-            await interaction.response.send_message(
-                f"❌ Error displaying help: {str(e)}", ephemeral=True
-            )
-            embed.add_field(
-                name="🔧 Admin Tools",
-                value="`/reload` - Reload specific cog\n`/shutdown` - Stop the bot",
-                inline=False,
-            )
-
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+            logger.error(f"Help command error: {e}")
+            # Only respond if we haven't already
+            if not interaction.response.is_done():
+                await interaction.response.send_message(
+                    f"❌ Error displaying help: {str(e)}", ephemeral=True
+                )
+            else:
+                await interaction.followup.send(
+                    f"❌ Error displaying help: {str(e)}", ephemeral=True
+                )
 
 
 async def setup(bot):

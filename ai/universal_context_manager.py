@@ -509,7 +509,7 @@ class ConversationAnalyzer:
         """Enhanced systematic tone detection based on multiple linguistic indicators"""
         text_lower = text.lower()
         text_len = len(text)
-        
+
         # Initialize tone scoring system
         tone_scores = {
             ConversationTone.HUMOROUS: 0,
@@ -518,7 +518,7 @@ class ConversationAnalyzer:
             ConversationTone.EXCITED: 0,
             ConversationTone.QUESTIONING: 0,
             ConversationTone.SERIOUS: 0,
-            ConversationTone.CASUAL: 0
+            ConversationTone.CASUAL: 0,
         }
 
         # 1. Humor Detection (highest priority)
@@ -534,49 +534,108 @@ class ConversationAnalyzer:
 
         # 3. Technical Content Analysis
         tech_indicators = [
-            "function", "algorithm", "code", "syntax", "error", "debug", "compile",
-            "api", "database", "server", "framework", "library", "repository",
-            "implementation", "configuration", "deployment", "optimization",
-            "architecture", "protocol", "interface", "documentation", "version"
+            "function",
+            "algorithm",
+            "code",
+            "syntax",
+            "error",
+            "debug",
+            "compile",
+            "api",
+            "database",
+            "server",
+            "framework",
+            "library",
+            "repository",
+            "implementation",
+            "configuration",
+            "deployment",
+            "optimization",
+            "architecture",
+            "protocol",
+            "interface",
+            "documentation",
+            "version",
         ]
         tech_score = sum(1 for word in tech_indicators if word in text_lower)
         tone_scores[ConversationTone.TECHNICAL] += min(tech_score, 5)
 
         # 4. Excitement Indicators
         excitement_patterns = [
-            r'\b(wow|awesome|amazing|incredible|fantastic|epic|stellar)\b',
-            r'[!]{2,}', r'[A-Z]{3,}', r'😍|🤩|🔥|⚡|💯|🚀|🌟|✨',
-            r'\b(omg|lol|lmao|rofl)\b'
+            r"\b(wow|awesome|amazing|incredible|fantastic|epic|stellar)\b",
+            r"[!]{2,}",
+            r"[A-Z]{3,}",
+            r"😍|🤩|🔥|⚡|💯|🚀|🌟|✨",
+            r"\b(omg|lol|lmao|rofl)\b",
         ]
-        excitement_score = sum(len(re.findall(pattern, text_lower)) for pattern in excitement_patterns)
+        excitement_score = sum(
+            len(re.findall(pattern, text_lower)) for pattern in excitement_patterns
+        )
         tone_scores[ConversationTone.EXCITED] += min(excitement_score * 2, 5)
 
         # 5. Emotional Content
         emotional_indicators = [
-            r'\b(love|hate|feel|emotion|heart|soul|pain|joy|sad|happy|angry|frustrated)\b',
-            r'❤️|💔|😢|😭|😡|😤|😔|🥺|😊|😀|😃', 
-            r'\b(wonderful|terrible|devastating|beautiful|ugly|amazing)\b'
+            r"\b(love|hate|feel|emotion|heart|soul|pain|joy|sad|happy|angry|frustrated)\b",
+            r"❤️|💔|😢|😭|😡|😤|😔|🥺|😊|😀|😃",
+            r"\b(wonderful|terrible|devastating|beautiful|ugly|amazing)\b",
         ]
-        emotional_score = sum(len(re.findall(pattern, text_lower)) for pattern in emotional_indicators)
+        emotional_score = sum(
+            len(re.findall(pattern, text_lower)) for pattern in emotional_indicators
+        )
         tone_scores[ConversationTone.EMOTIONAL] += min(emotional_score * 2, 5)
 
         # 6. Casual vs Formal Language Analysis
         casual_indicators = [
-            "lol", "haha", "yeah", "nah", "gonna", "wanna", "sup", "hey", "yo",
-            "dude", "bro", "man", "tbh", "ngl", "imo", "btw", "rn", "omg",
-            "'ll", "'re", "'ve", "'d", "isn't", "won't", "can't", "don't"
+            "lol",
+            "haha",
+            "yeah",
+            "nah",
+            "gonna",
+            "wanna",
+            "sup",
+            "hey",
+            "yo",
+            "dude",
+            "bro",
+            "man",
+            "tbh",
+            "ngl",
+            "imo",
+            "btw",
+            "rn",
+            "omg",
+            "'ll",
+            "'re",
+            "'ve",
+            "'d",
+            "isn't",
+            "won't",
+            "can't",
+            "don't",
         ]
         casual_score = sum(1 for word in casual_indicators if word in text_lower)
         tone_scores[ConversationTone.CASUAL] += min(casual_score, 5)
 
         # 7. Formal/Serious Language Indicators
         formal_indicators = [
-            "therefore", "however", "furthermore", "nevertheless", "consequently",
-            "additionally", "specifically", "particularly", "regarding", "concerning",
-            "implementation", "consideration", "evaluation", "assessment", "analysis"
+            "therefore",
+            "however",
+            "furthermore",
+            "nevertheless",
+            "consequently",
+            "additionally",
+            "specifically",
+            "particularly",
+            "regarding",
+            "concerning",
+            "implementation",
+            "consideration",
+            "evaluation",
+            "assessment",
+            "analysis",
         ]
         formal_score = sum(1 for word in formal_indicators if word in text_lower)
-        
+
         # Long, structured messages tend to be more serious
         if text_len > 150 and formal_score > 0:
             tone_scores[ConversationTone.SERIOUS] += 3
@@ -585,25 +644,25 @@ class ConversationAnalyzer:
 
         # 8. Contextual Adjustments
         # Multiple punctuation suggests excitement or emotion
-        if len(re.findall(r'[!?]{2,}', text)) > 0:
+        if len(re.findall(r"[!?]{2,}", text)) > 0:
             tone_scores[ConversationTone.EXCITED] += 2
-            
+
         # All caps words suggest emphasis/excitement
-        caps_words = len(re.findall(r'\b[A-Z]{2,}\b', text))
+        caps_words = len(re.findall(r"\b[A-Z]{2,}\b", text))
         if caps_words > 0:
             tone_scores[ConversationTone.EXCITED] += caps_words
 
         # Short messages with minimal punctuation tend to be casual
-        if text_len < 50 and not any(char in text for char in '!?'):
+        if text_len < 50 and not any(char in text for char in "!?"):
             tone_scores[ConversationTone.CASUAL] += 2
 
         # Return the tone with the highest score
         max_tone = max(tone_scores.items(), key=lambda x: x[1])
-        
+
         # If no clear winner (all scores are low), default to casual
         if max_tone[1] <= 1:
             return ConversationTone.CASUAL
-            
+
         return max_tone[0]
 
     def _extract_topics(self, text: str) -> List[str]:
@@ -800,7 +859,7 @@ class ConversationAnalyzer:
 
     def _suggest_response_style(self, context: MessageContext) -> str:
         """Enhanced systematic response style determination based on topic, tone, and triggers"""
-        
+
         # Priority 1: Humor always takes precedence (highest engagement value)
         if context.humor_score > 0.4:
             return "humorous_companion"
@@ -810,17 +869,17 @@ class ConversationAnalyzer:
             primary_topic = context.topics[0]  # Use the first detected topic
 
             topic_personalities = {
-                "gaming": "enthusiastic_gamer",        # Excited, competitive, uses gaming terminology
-                "entertainment": "cultural_enthusiast", # Knowledgeable about media, engaging, appreciative
-                "technology": "tech_savvy_expert",     # Informative, forward-thinking, solution-oriented
-                "lifestyle": "supportive_friend",      # Encouraging, personal, empathetic
-                "education": "patient_mentor",         # Educational, structured, encouraging
-                "business": "professional_advisor",    # Formal, strategic, solution-oriented
-                "science": "curious_researcher",       # Analytical, fact-based, questioning
-                "space": "cosmic_explorer",           # Wonder-filled, expansive, inspirational
-                "stellaris": "strategic_advisor",      # Tactical, empire-focused, strategic
-                "social": "social_connector",         # Warm, community-focused, inclusive
-                "help": "helpful_guide",             # Patient, step-by-step, supportive
+                "gaming": "enthusiastic_gamer",  # Excited, competitive, uses gaming terminology
+                "entertainment": "cultural_enthusiast",  # Knowledgeable about media, engaging, appreciative
+                "technology": "tech_savvy_expert",  # Informative, forward-thinking, solution-oriented
+                "lifestyle": "supportive_friend",  # Encouraging, personal, empathetic
+                "education": "patient_mentor",  # Educational, structured, encouraging
+                "business": "professional_advisor",  # Formal, strategic, solution-oriented
+                "science": "curious_researcher",  # Analytical, fact-based, questioning
+                "space": "cosmic_explorer",  # Wonder-filled, expansive, inspirational
+                "stellaris": "strategic_advisor",  # Tactical, empire-focused, strategic
+                "social": "social_connector",  # Warm, community-focused, inclusive
+                "help": "helpful_guide",  # Patient, step-by-step, supportive
             }
 
             if primary_topic in topic_personalities:
@@ -828,29 +887,29 @@ class ConversationAnalyzer:
 
         # Priority 3: Tone-based adaptation (medium specificity)
         tone_personality_map = {
-            ConversationTone.TECHNICAL: "technical_expert",       # Clear, precise, in-depth
-            ConversationTone.EMOTIONAL: "empathetic_supporter",   # Caring, understanding, validating
-            ConversationTone.EXCITED: "energetic_enthusiast",    # High energy, matching excitement
-            ConversationTone.HUMOROUS: "witty_companion",        # Already handled above, but backup
-            ConversationTone.QUESTIONING: "patient_educator",    # Thorough, explanatory, helpful
-            ConversationTone.SERIOUS: "thoughtful_advisor",      # Measured, professional, considered
-            ConversationTone.CASUAL: "friendly_conversationalist" # Relaxed, approachable, natural
+            ConversationTone.TECHNICAL: "technical_expert",  # Clear, precise, in-depth
+            ConversationTone.EMOTIONAL: "empathetic_supporter",  # Caring, understanding, validating
+            ConversationTone.EXCITED: "energetic_enthusiast",  # High energy, matching excitement
+            ConversationTone.HUMOROUS: "witty_companion",  # Already handled above, but backup
+            ConversationTone.QUESTIONING: "patient_educator",  # Thorough, explanatory, helpful
+            ConversationTone.SERIOUS: "thoughtful_advisor",  # Measured, professional, considered
+            ConversationTone.CASUAL: "friendly_conversationalist",  # Relaxed, approachable, natural
         }
-        
+
         if context.tone in tone_personality_map:
             return tone_personality_map[context.tone]
 
         # Priority 4: Response trigger-based personalities (general context)
         trigger_personality_map = {
             ResponseTrigger.HELP_NEEDED: "helpful_guide",
-            ResponseTrigger.CELEBRATION: "celebratory_cheerleader", 
+            ResponseTrigger.CELEBRATION: "celebratory_cheerleader",
             ResponseTrigger.BOT_MENTIONED: "engaging_responder",
             ResponseTrigger.CONVERSATION_STARTER: "conversation_catalyst",
             ResponseTrigger.OPINION_SHARING: "thoughtful_discussant",
             ResponseTrigger.STORY_TELLING: "interested_listener",
             ResponseTrigger.COLLABORATIVE_DISCUSSION: "collaborative_partner",
             ResponseTrigger.REACTION_WORTHY: "responsive_reactor",
-            ResponseTrigger.GREETING: "warm_welcomer"
+            ResponseTrigger.GREETING: "warm_welcomer",
         }
 
         # Check triggers in order of priority
@@ -862,13 +921,13 @@ class ConversationAnalyzer:
         # Complex multi-topic discussions
         if len(context.topics) > 2:
             return "multi_topic_synthesizer"
-            
+
         # Detailed, analytical content
-        if hasattr(context, 'message_length') and context.message_length > 200:
+        if hasattr(context, "message_length") and context.message_length > 200:
             return "detailed_analyst"
-            
+
         # Quick, brief interactions
-        if hasattr(context, 'message_length') and context.message_length < 30:
+        if hasattr(context, "message_length") and context.message_length < 30:
             return "quick_responder"
 
         # Default: balanced, adaptable personality

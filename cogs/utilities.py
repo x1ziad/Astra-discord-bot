@@ -13,12 +13,24 @@ import hashlib
 import base64
 import random
 import string
+import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Dict, Any, Union
 import re
 import urllib.parse
 
-from config.enhanced_config import EnhancedConfigManager
+# Import enhanced error handling
+from utils.enhanced_error_handler import handle_command_errors, safe_send_message
+
+logger = logging.getLogger("astra.utilities")
+
+# Fallback for config
+try:
+    from config.enhanced_config import EnhancedConfigManager
+    CONFIG_AVAILABLE = True
+except ImportError:
+    CONFIG_AVAILABLE = False
+    logger.warning("Enhanced config not available, using fallback")
 
 
 class Utilities(commands.Cog):
@@ -26,7 +38,16 @@ class Utilities(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        self.config = EnhancedConfigManager()
+        self.logger = logging.getLogger("astra.utilities")
+        
+        if CONFIG_AVAILABLE:
+            try:
+                self.config = EnhancedConfigManager()
+            except Exception as e:
+                self.logger.error(f"Failed to initialize enhanced config: {e}")
+                self.config = None
+        else:
+            self.config = None
 
     @app_commands.command(
         name="userinfo", description="👤 Get detailed information about a user"
@@ -34,10 +55,13 @@ class Utilities(commands.Cog):
     @app_commands.describe(
         user="The user to get information about (defaults to yourself)"
     )
+    @handle_command_errors(ephemeral=False)
     async def userinfo_command(
         self, interaction: discord.Interaction, user: Optional[discord.Member] = None
     ):
         """Get detailed information about a user"""
+        await interaction.response.defer()
+        
         target_user = user or interaction.user
 
         embed = discord.Embed(
@@ -51,7 +75,10 @@ class Utilities(commands.Cog):
         )
 
         # Set user avatar as thumbnail
-        embed.set_thumbnail(url=target_user.display_avatar.url)
+        try:
+            embed.set_thumbnail(url=target_user.display_avatar.url)
+        except Exception as e:
+            self.logger.warning(f"Failed to set thumbnail: {e}")
 
         # Basic information
         embed.add_field(
@@ -64,109 +91,111 @@ class Utilities(commands.Cog):
         )
 
         # Account information
-        created_timestamp = int(target_user.created_at.timestamp())
-        if isinstance(target_user, discord.Member) and target_user.joined_at:
-            joined_timestamp = int(target_user.joined_at.timestamp())
+        try:
+            created_timestamp = int(target_user.created_at.timestamp())
+            if isinstance(target_user, discord.Member) and target_user.joined_at:
+                joined_timestamp = int(target_user.joined_at.timestamp())
+                days_in_server = (datetime.now(timezone.utc) - target_user.joined_at).days
 
+                embed.add_field(
+                    name="📅 Account Info",
+                    value=f"**Created:** <t:{created_timestamp}:R>\n"
+                    f"**Joined:** <t:{joined_timestamp}:R>\n"
+                    f"**Days in Server:** {days_in_server}",
+                    inline=True,
+                )
+            else:
+                embed.add_field(
+                    name="📅 Account Info",
+                    value=f"**Created:** <t:{created_timestamp}:R>\n"
+                    f"**Joined:** Not available\n"
+                    f"**Status:** Outside server",
+                    inline=True,
+                )
+        except Exception as e:
+            self.logger.error(f"Error processing account info: {e}")
             embed.add_field(
                 name="📅 Account Info",
-                value=f"**Created:** <t:{created_timestamp}:R>\n"
-                f"**Joined:** <t:{joined_timestamp}:R>\n"
-                f"**Days in Server:** {(datetime.now(timezone.utc) - target_user.joined_at).days}",
-                inline=True,
-            )
-        else:
-            embed.add_field(
-                name="📅 Account Info",
-                value=f"**Created:** <t:{created_timestamp}:R>\n"
-                f"**Joined:** Not available\n"
-                f"**Status:** Outside server",
+                value="Error retrieving account information",
                 inline=True,
             )
 
         # Server-specific information (only if it's a member)
         if isinstance(target_user, discord.Member):
-            # Status and activity
-            status_emoji = {
-                discord.Status.online: "🟢",
-                discord.Status.idle: "🟡",
-                discord.Status.dnd: "🔴",
-                discord.Status.offline: "⚫",
-            }
+            try:
+                # Status and activity
+                status_emoji = {
+                    discord.Status.online: "🟢",
+                    discord.Status.idle: "🟡",
+                    discord.Status.dnd: "🔴",
+                    discord.Status.offline: "⚫",
+                }
 
-            activity_info = "None"
-            if target_user.activities:
-                activities = []
-                for activity in target_user.activities:
-                    if isinstance(activity, discord.Game):
-                        activities.append(f"🎮 Playing {activity.name}")
-                    elif isinstance(activity, discord.Streaming):
-                        activities.append(f"📺 Streaming {activity.name}")
-                    elif isinstance(activity, discord.Listening):
-                        activities.append(f"🎵 Listening to {activity.name}")
-                    elif isinstance(activity, discord.Watching):
-                        activities.append(f"👀 Watching {activity.name}")
-                    elif isinstance(activity, discord.CustomActivity):
-                        activities.append(f"💭 {activity.name}")
+                activity_info = "None"
+                if target_user.activities:
+                    activities = []
+                    for activity in target_user.activities:
+                        if isinstance(activity, discord.Game):
+                            activities.append(f"🎮 Playing {activity.name}")
+                        elif isinstance(activity, discord.Streaming):
+                            activities.append(f"📺 Streaming {activity.name}")
+                        elif isinstance(activity, discord.Activity):
+                            activities.append(f"🎯 {activity.name}")
+                    
+                    if activities:
+                        activity_info = "\n".join(activities[:3])  # Limit to 3 activities
 
-                activity_info = "\n".join(activities[:3])  # Limit to 3 activities
-
-            embed.add_field(
-                name="🌐 Status & Activity",
-                value=f"**Status:** {status_emoji.get(target_user.status, '❓')} {target_user.status.name.title()}\n"
-                f"**Activity:** {activity_info}",
-                inline=False,
-            )
-
-            # Roles information
-            roles = [
-                role.mention
-                for role in sorted(
-                    target_user.roles[1:], key=lambda r: r.position, reverse=True
-                )
-            ]
-            if roles:
-                role_text = ", ".join(roles[:10])  # Limit to first 10 roles
-                if len(target_user.roles) > 11:  # 10 + @everyone
-                    role_text += f" (+{len(target_user.roles) - 11} more)"
-            else:
-                role_text = "No roles"
-
-            embed.add_field(
-                name=f"🎭 Roles [{len(target_user.roles) - 1}]",
-                value=role_text,
-                inline=False,
-            )
-
-            # Permissions (for server members)
-            key_perms = []
-            if target_user.guild_permissions.administrator:
-                key_perms.append("👑 Administrator")
-            if target_user.guild_permissions.manage_guild:
-                key_perms.append("⚙️ Manage Server")
-            if target_user.guild_permissions.manage_channels:
-                key_perms.append("📝 Manage Channels")
-            if target_user.guild_permissions.manage_roles:
-                key_perms.append("🎭 Manage Roles")
-            if target_user.guild_permissions.kick_members:
-                key_perms.append("👢 Kick Members")
-            if target_user.guild_permissions.ban_members:
-                key_perms.append("🔨 Ban Members")
-
-            if key_perms:
                 embed.add_field(
-                    name="🔑 Key Permissions",
-                    value="\n".join(key_perms[:6]),
+                    name="🔄 Status & Activity",
+                    value=f"**Status:** {status_emoji.get(target_user.status, '⚫')} {target_user.status.name.title()}\n"
+                    f"**Activity:** {activity_info}",
                     inline=True,
                 )
 
-        # Add footer with additional info
-        embed.set_footer(
-            text=f"Requested by {interaction.user.display_name}",
-            icon_url=interaction.user.display_avatar.url,
-        )
+                # Roles information
+                if target_user.roles:
+                    roles = [role.mention for role in target_user.roles[1:]]  # Skip @everyone
+                    if roles:
+                        roles_text = ", ".join(roles[:10])  # Limit to 10 roles
+                        if len(target_user.roles) > 11:  # 10 + @everyone
+                            roles_text += f" and {len(target_user.roles) - 11} more..."
+                        
+                        embed.add_field(
+                            name=f"🏷️ Roles ({len(target_user.roles) - 1})",
+                            value=roles_text,
+                            inline=False,
+                        )
 
-        await interaction.response.send_message(embed=embed)
+                # Permissions (top-level only)
+                if target_user.guild_permissions:
+                    key_perms = []
+                    if target_user.guild_permissions.administrator:
+                        key_perms.append("👑 Administrator")
+                    elif target_user.guild_permissions.manage_guild:
+                        key_perms.append("🛠️ Manage Server")
+                    elif target_user.guild_permissions.manage_channels:
+                        key_perms.append("📁 Manage Channels")
+                    elif target_user.guild_permissions.manage_messages:
+                        key_perms.append("🗑️ Manage Messages")
+                    elif target_user.guild_permissions.kick_members:
+                        key_perms.append("👢 Kick Members")
+                    elif target_user.guild_permissions.ban_members:
+                        key_perms.append("🔨 Ban Members")
+                    
+                    if key_perms:
+                        embed.add_field(
+                            name="🔑 Key Permissions",
+                            value="\n".join(key_perms),
+                            inline=True,
+                        )
+
+            except Exception as e:
+                self.logger.error(f"Error processing member info: {e}")
+
+        # Set footer
+        embed.set_footer(text=f"Requested by {interaction.user.display_name}")
+
+        await interaction.followup.send(embed=embed)
 
     @app_commands.command(
         name="serverinfo", description="🏛️ Get detailed information about this server"
