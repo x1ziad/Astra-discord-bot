@@ -17,6 +17,8 @@ import psutil
 import sys
 
 from config.enhanced_config import EnhancedConfigManager
+from utils.command_optimizer import optimize_command
+from utils.performance_optimizer import ResponseCache
 
 
 class BotStatus(commands.Cog):
@@ -27,6 +29,12 @@ class BotStatus(commands.Cog):
         self.config = EnhancedConfigManager()
         self.start_time = time.time()
         self.command_stats = {}
+
+        # Performance optimization
+        self.cache = ResponseCache(
+            max_size=200, ttl=60
+        )  # 1-minute cache for status data
+
         self.performance_data = {
             "uptime": 0,
             "memory_usage": [],

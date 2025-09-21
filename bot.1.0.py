@@ -45,6 +45,10 @@ from utils.database import db
 from utils.error_handler import ErrorHandler
 from utils.permissions import PermissionLevel, has_permission
 
+# Performance optimization imports
+from utils.performance_optimizer import performance_optimizer
+from utils.command_optimizer import auto_optimize_commands
+
 # Railway configuration support
 try:
     from config.railway_config import get_railway_config, setup_railway_logging
@@ -139,6 +143,7 @@ class BotStats:
         self.uptime_seconds = self.get_uptime().total_seconds()
 
 
+@auto_optimize_commands
 class AstraBot(commands.Bot):
     """Enhanced Astra Discord Bot with comprehensive features and monitoring"""
 
@@ -302,6 +307,9 @@ class AstraBot(commands.Bot):
         # Initialize AI engine and context manager
         await self._initialize_ai_systems()
 
+        # Start performance monitoring
+        performance_optimizer.start_monitoring()
+
         self.logger.info("✅ Enhanced setup hook completed successfully")
 
     async def _setup_http_session(self):
@@ -379,15 +387,16 @@ class AstraBot(commands.Bot):
     async def _load_extensions_with_dependencies(self):
         """Load extensions with proper dependency management and error recovery"""
 
-        # Extension loading order with dependencies
+        # Extension loading order with dependencies - OPTIMIZED
         extension_groups = [
-            # Core utilities (no dependencies)
+            # Core utilities (no dependencies) - Performance optimized loading order
             [
-                "cogs.enhanced_admin",
-                "cogs.stats",
-                "cogs.bot_setup",
+                "cogs.admin_optimized",  # Optimized consolidated admin system
+                "cogs.performance",  # Performance monitoring (if available)
                 "cogs.bot_status",
                 "cogs.utilities",
+                "cogs.stats",
+                "cogs.bot_setup_enhanced",  # Consolidated setup system
                 "cogs.nexus",  # Advanced diagnostic interface
                 "cogs.context_manager",  # Context understanding management
                 "cogs.advanced_intelligence",  # Phase 3: Advanced Intelligence
@@ -1205,6 +1214,9 @@ class AstraBot(commands.Bot):
             self.logger.error(f"❌ Error during shutdown: {e}")
 
         finally:
+            # Stop performance monitoring
+            performance_optimizer.stop_monitoring()
+
             # Call parent close
             await super().close()
             self.logger.info("👋 Astra bot shutdown completed")

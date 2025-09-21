@@ -16,6 +16,8 @@ import traceback
 
 # Use the new config_manager import
 from config.config_manager import config_manager
+from utils.command_optimizer import optimize_command
+from utils.performance_optimizer import ResponseCache
 
 
 class Stats(commands.GroupCog, name="stats"):
@@ -26,6 +28,9 @@ class Stats(commands.GroupCog, name="stats"):
         self.bot = bot
         self.config = config_manager
         self.logger = bot.logger
+
+        # Performance optimization
+        self.cache = ResponseCache(max_size=300, ttl=120)  # 2-minute cache for stats
 
     @app_commands.command(
         name="uptime", description="Show bot uptime and system information"

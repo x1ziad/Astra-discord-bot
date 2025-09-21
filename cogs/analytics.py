@@ -18,6 +18,8 @@ from io import BytesIO
 
 from config.config_manager import config_manager
 from utils.permissions import has_permission, PermissionLevel
+from utils.command_optimizer import optimize_command
+from utils.performance_optimizer import ResponseCache
 
 
 class Analytics(commands.GroupCog, name="analytics"):
@@ -28,6 +30,11 @@ class Analytics(commands.GroupCog, name="analytics"):
         self.bot = bot
         self.config = config_manager
         self.logger = bot.logger
+
+        # Performance optimization
+        self.cache = ResponseCache(
+            max_size=500, ttl=300
+        )  # 5-minute cache for analytics
 
         # Data storage
         self.data_dir = Path("data/analytics")

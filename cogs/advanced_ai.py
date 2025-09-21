@@ -15,6 +15,10 @@ import json
 import re
 import os
 
+# Performance optimization imports
+from utils.command_optimizer import optimize_command, optimized_send
+from utils.performance_optimizer import performance_optimizer
+
 logger = logging.getLogger("astra.advanced_ai")
 
 # Import AI systems with proper error handling
@@ -183,8 +187,9 @@ class AdvancedAICog(commands.Cog):
 
     @app_commands.command(name="chat", description="Chat with Astra AI")
     @app_commands.describe(message="Your message to the AI")
+    @optimize_command(rate_limit_enabled=True, rate_limit_per_minute=20)
     async def chat_command(self, interaction: discord.Interaction, message: str):
-        """Chat with AI assistant"""
+        """Chat with AI assistant - Optimized for performance"""
         try:
             await interaction.response.defer()
 
@@ -195,16 +200,29 @@ class AdvancedAICog(commands.Cog):
                 )
                 return
 
-            # Generate AI response
+            # Optimize AI request
+            guild_id = interaction.guild.id if interaction.guild else None
+            optimized_prompt, metadata = (
+                await performance_optimizer.ai_optimizer.optimize_ai_request(
+                    message, interaction.user.id, guild_id
+                )
+            )
+
+            # Generate AI response with optimization
             response = await self._generate_ai_response(
-                message,
+                optimized_prompt,
                 interaction.user.id,
-                guild_id=interaction.guild.id if interaction.guild else None,
+                guild_id=guild_id,
                 channel_id=interaction.channel.id,
                 username=str(interaction.user),
             )
 
-            # Create embed
+            # Cache the response
+            await performance_optimizer.ai_optimizer.cache_response(
+                message, response, guild_id, metadata
+            )
+
+            # Create optimized embed
             embed = discord.Embed(
                 title="🤖 Astra AI Chat",
                 description=response[:4000],  # Ensure it fits in embed
@@ -224,7 +242,13 @@ class AdvancedAICog(commands.Cog):
                 inline=False,
             )
 
-            await interaction.followup.send(embed=embed)
+            # Add optimization info for debugging
+            if metadata.get("optimization_applied"):
+                embed.set_footer(
+                    text=f"⚡ Optimized • Model: {metadata.get('model_selected', 'default')}"
+                )
+
+            await optimized_send(interaction.followup, embed=embed)
 
         except Exception as e:
             self.logger.error(f"Chat command error: {e}")
