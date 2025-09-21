@@ -428,23 +428,27 @@ class AdvancedAICog(commands.Cog):
         try:
             # UNIVERSAL MESSAGE ANALYSIS - Process every single message
             await self._analyze_message_for_context(message)
-            
+
             # SOPHISTICATED INTERACTION DECISION ENGINE
             interaction_decision = await self._determine_interaction_type(message)
-            
+
             # EXECUTE INTERACTION BASED ON DECISION
             if interaction_decision["should_interact"]:
-                await self._execute_sophisticated_interaction(message, interaction_decision)
+                await self._execute_sophisticated_interaction(
+                    message, interaction_decision
+                )
 
         except Exception as e:
             self.logger.error(f"Error in sophisticated message processing: {e}")
 
-    async def _determine_interaction_type(self, message: discord.Message) -> Dict[str, Any]:
+    async def _determine_interaction_type(
+        self, message: discord.Message
+    ) -> Dict[str, Any]:
         """🧠 SOPHISTICATED INTERACTION DECISION ENGINE - Determines how to interact with each message"""
         try:
             user_id = message.author.id
             content_lower = message.content.lower()
-            
+
             # Initialize interaction decision
             decision = {
                 "should_interact": False,
@@ -456,195 +460,349 @@ class AdvancedAICog(commands.Cog):
                 "suggested_reactions": [],
                 "suggested_emojis": [],
                 "should_reply": False,
-                "priority_level": 0
+                "priority_level": 0,
             }
-            
+
             # COOLDOWN CHECK with sophisticated timing
             if user_id in self.conversation_cooldowns:
-                time_since_last = datetime.now(timezone.utc) - self.conversation_cooldowns[user_id]
-                if time_since_last < timedelta(seconds=2):  # Very short cooldown for reactions/emojis
+                time_since_last = (
+                    datetime.now(timezone.utc) - self.conversation_cooldowns[user_id]
+                )
+                if time_since_last < timedelta(
+                    seconds=2
+                ):  # Very short cooldown for reactions/emojis
                     if time_since_last < timedelta(seconds=1):
                         return decision  # Too recent, skip
                     else:
                         # Allow reactions/emojis but not full responses
                         decision["response_method"] = "reaction"
-            
+
             # 🎯 PRIORITY INTERACTION TRIGGERS (Always respond)
-            
+
             # 1. DIRECT MENTIONS (Highest Priority)
             if self.bot.user in message.mentions:
-                decision.update({
-                    "should_interact": True,
-                    "interaction_type": "direct_mention",
-                    "confidence": 0.95,
-                    "response_method": "text",
-                    "priority_level": 10,
-                    "should_reply": True
-                })
+                decision.update(
+                    {
+                        "should_interact": True,
+                        "interaction_type": "direct_mention",
+                        "confidence": 0.95,
+                        "response_method": "text",
+                        "priority_level": 10,
+                        "should_reply": True,
+                    }
+                )
                 return decision
-            
+
             # 2. DIRECT MESSAGES (Highest Priority)
             if isinstance(message.channel, discord.DMChannel):
-                decision.update({
-                    "should_interact": True,
-                    "interaction_type": "direct_message",
-                    "confidence": 0.95,
-                    "response_method": "text",
-                    "priority_level": 10,
-                    "should_reply": True
-                })
+                decision.update(
+                    {
+                        "should_interact": True,
+                        "interaction_type": "direct_message",
+                        "confidence": 0.95,
+                        "response_method": "text",
+                        "priority_level": 10,
+                        "should_reply": True,
+                    }
+                )
                 return decision
-            
+
             # 3. BOT NAME MENTIONS (High Priority)
-            bot_indicators = ["astra", "hey bot", "ai help", "bot help", "hey ai", "hello astra", "hi astra"]
+            bot_indicators = [
+                "astra",
+                "hey bot",
+                "ai help",
+                "bot help",
+                "hey ai",
+                "hello astra",
+                "hi astra",
+            ]
             for indicator in bot_indicators:
                 if indicator in content_lower:
-                    decision.update({
-                        "should_interact": True,
-                        "interaction_type": "name_mention",
-                        "confidence": 0.9,
-                        "response_method": "text",
-                        "priority_level": 9,
-                        "should_reply": True
-                    })
+                    decision.update(
+                        {
+                            "should_interact": True,
+                            "interaction_type": "name_mention",
+                            "confidence": 0.9,
+                            "response_method": "text",
+                            "priority_level": 9,
+                            "should_reply": True,
+                        }
+                    )
                     return decision
-            
+
             # 🚨 HELP AND URGENT REQUESTS (High Priority)
             help_urgent_indicators = [
-                "help", "emergency", "urgent", "asap", "quickly", "immediately", 
-                "stuck", "confused", "lost", "don't understand", "can't figure",
-                "need assistance", "support", "please help", "anyone help"
+                "help",
+                "emergency",
+                "urgent",
+                "asap",
+                "quickly",
+                "immediately",
+                "stuck",
+                "confused",
+                "lost",
+                "don't understand",
+                "can't figure",
+                "need assistance",
+                "support",
+                "please help",
+                "anyone help",
             ]
             for indicator in help_urgent_indicators:
                 if indicator in content_lower:
-                    decision.update({
-                        "should_interact": True,
-                        "interaction_type": "help_request",
-                        "confidence": 0.85,
-                        "response_method": "text",
-                        "urgency": "high",
-                        "priority_level": 8,
-                        "should_reply": True
-                    })
+                    decision.update(
+                        {
+                            "should_interact": True,
+                            "interaction_type": "help_request",
+                            "confidence": 0.85,
+                            "response_method": "text",
+                            "urgency": "high",
+                            "priority_level": 8,
+                            "should_reply": True,
+                        }
+                    )
                     return decision
-            
+
             # 💬 QUESTIONS AND COMMUNITY ENGAGEMENT (Medium-High Priority)
             if "?" in message.content and len(message.content) > 10:
                 question_indicators = [
-                    "what", "how", "why", "where", "when", "who", "which",
-                    "anyone", "somebody", "someone", "does anyone", "has anyone",
-                    "thoughts", "opinions", "advice", "recommend", "suggest"
+                    "what",
+                    "how",
+                    "why",
+                    "where",
+                    "when",
+                    "who",
+                    "which",
+                    "anyone",
+                    "somebody",
+                    "someone",
+                    "does anyone",
+                    "has anyone",
+                    "thoughts",
+                    "opinions",
+                    "advice",
+                    "recommend",
+                    "suggest",
                 ]
                 for indicator in question_indicators:
                     if indicator in content_lower:
-                        decision.update({
-                            "should_interact": True,
-                            "interaction_type": "community_question",
-                            "confidence": 0.75,
-                            "response_method": "text",
-                            "priority_level": 7,
-                            "should_reply": True
-                        })
+                        decision.update(
+                            {
+                                "should_interact": True,
+                                "interaction_type": "community_question",
+                                "confidence": 0.75,
+                                "response_method": "text",
+                                "priority_level": 7,
+                                "should_reply": True,
+                            }
+                        )
                         return decision
-            
+
             # 🎭 EMOTIONAL EXPRESSION DETECTION (Medium Priority - React with emojis)
             emotional_expressions = {
-                "excited": ["amazing", "awesome", "incredible", "fantastic", "wow", "omg", "excited", "🎉", "🔥", "⚡"],
-                "happy": ["happy", "joy", "great", "wonderful", "perfect", "love", "😊", "😄", "🥰", "❤️"],
-                "sad": ["sad", "depressed", "down", "upset", "crying", "😢", "😭", "💔", "😞"],
-                "angry": ["angry", "mad", "furious", "rage", "annoyed", "😡", "🤬", "😤"],
-                "confused": ["confused", "lost", "puzzled", "wtf", "what", "huh", "🤔", "😕", "❓"],
-                "celebration": ["celebrate", "party", "achievement", "success", "win", "won", "🎉", "🎊", "🥳", "🏆"]
+                "excited": [
+                    "amazing",
+                    "awesome",
+                    "incredible",
+                    "fantastic",
+                    "wow",
+                    "omg",
+                    "excited",
+                    "🎉",
+                    "🔥",
+                    "⚡",
+                ],
+                "happy": [
+                    "happy",
+                    "joy",
+                    "great",
+                    "wonderful",
+                    "perfect",
+                    "love",
+                    "😊",
+                    "😄",
+                    "🥰",
+                    "❤️",
+                ],
+                "sad": [
+                    "sad",
+                    "depressed",
+                    "down",
+                    "upset",
+                    "crying",
+                    "😢",
+                    "😭",
+                    "💔",
+                    "😞",
+                ],
+                "angry": [
+                    "angry",
+                    "mad",
+                    "furious",
+                    "rage",
+                    "annoyed",
+                    "😡",
+                    "🤬",
+                    "😤",
+                ],
+                "confused": [
+                    "confused",
+                    "lost",
+                    "puzzled",
+                    "wtf",
+                    "what",
+                    "huh",
+                    "🤔",
+                    "😕",
+                    "❓",
+                ],
+                "celebration": [
+                    "celebrate",
+                    "party",
+                    "achievement",
+                    "success",
+                    "win",
+                    "won",
+                    "🎉",
+                    "🎊",
+                    "🥳",
+                    "🏆",
+                ],
             }
-            
+
             for emotion, indicators in emotional_expressions.items():
                 for indicator in indicators:
                     if indicator in content_lower:
-                        decision.update({
-                            "should_interact": True,
-                            "interaction_type": "emotional_response",
-                            "confidence": 0.6,
-                            "response_method": "emoji" if len(message.content) < 50 else "multi",
-                            "emotional_tone": emotion,
-                            "priority_level": 5,
-                            "suggested_emojis": self._get_emotion_emojis(emotion)
-                        })
+                        decision.update(
+                            {
+                                "should_interact": True,
+                                "interaction_type": "emotional_response",
+                                "confidence": 0.6,
+                                "response_method": (
+                                    "emoji" if len(message.content) < 50 else "multi"
+                                ),
+                                "emotional_tone": emotion,
+                                "priority_level": 5,
+                                "suggested_emojis": self._get_emotion_emojis(emotion),
+                            }
+                        )
                         return decision
-            
+
             # 📚 COMPLEX TOPICS AND DISCUSSIONS (Medium Priority)
             complex_topics = [
-                "technology", "science", "programming", "development", "ai", "machine learning",
-                "philosophy", "research", "innovation", "future", "analysis", "discussion",
-                "debate", "strategy", "solution", "problem", "learning", "education"
+                "technology",
+                "science",
+                "programming",
+                "development",
+                "ai",
+                "machine learning",
+                "philosophy",
+                "research",
+                "innovation",
+                "future",
+                "analysis",
+                "discussion",
+                "debate",
+                "strategy",
+                "solution",
+                "problem",
+                "learning",
+                "education",
             ]
-            
+
             for topic in complex_topics:
                 if topic in content_lower and len(message.content) > 30:
                     import random
+
                     if random.random() < 0.4:  # 40% chance for complex topics
-                        decision.update({
-                            "should_interact": True,
-                            "interaction_type": "complex_topic",
-                            "confidence": 0.4,
-                            "response_method": "text",
-                            "priority_level": 4,
-                            "should_reply": True
-                        })
+                        decision.update(
+                            {
+                                "should_interact": True,
+                                "interaction_type": "complex_topic",
+                                "confidence": 0.4,
+                                "response_method": "text",
+                                "priority_level": 4,
+                                "should_reply": True,
+                            }
+                        )
                         return decision
-            
+
             # 🎯 CONVERSATION CONTINUITY (Medium Priority)
             recent_history = self.conversation_history.get(user_id, [])
             if recent_history:
                 last_interaction = recent_history[-1].get("timestamp")
                 if last_interaction:
                     last_time = datetime.fromisoformat(last_interaction)
-                    if (datetime.now(timezone.utc) - last_time).total_seconds() < 1800:  # 30 minutes
+                    if (
+                        datetime.now(timezone.utc) - last_time
+                    ).total_seconds() < 1800:  # 30 minutes
                         if len(message.content) > 20:
-                            decision.update({
-                                "should_interact": True,
-                                "interaction_type": "conversation_continuity",
-                                "confidence": 0.5,
-                                "response_method": "text",
-                                "priority_level": 3,
-                                "should_reply": True
-                            })
+                            decision.update(
+                                {
+                                    "should_interact": True,
+                                    "interaction_type": "conversation_continuity",
+                                    "confidence": 0.5,
+                                    "response_method": "text",
+                                    "priority_level": 3,
+                                    "should_reply": True,
+                                }
+                            )
                             return decision
-            
+
             # 🎲 SMART ENGAGEMENT FOR COMMUNITY BUILDING (Low Priority)
             if len(message.content) > 50:
                 import random
+
                 engagement_chance = 0.15 if len(message.content) > 100 else 0.08
-                
+
                 if random.random() < engagement_chance:
-                    decision.update({
-                        "should_interact": True,
-                        "interaction_type": "community_building",
-                        "confidence": 0.3,
-                        "response_method": "reaction" if random.random() < 0.6 else "text",
-                        "priority_level": 2,
-                        "suggested_reactions": ["👍", "🤔", "💯", "🔥"]
-                    })
+                    decision.update(
+                        {
+                            "should_interact": True,
+                            "interaction_type": "community_building",
+                            "confidence": 0.3,
+                            "response_method": (
+                                "reaction" if random.random() < 0.6 else "text"
+                            ),
+                            "priority_level": 2,
+                            "suggested_reactions": ["👍", "🤔", "💯", "🔥"],
+                        }
+                    )
                     return decision
-            
+
             # 🎉 POSITIVE REACTIONS (Low Priority - Just react)
-            positive_indicators = ["thanks", "thank you", "good job", "well done", "nice", "cool"]
+            positive_indicators = [
+                "thanks",
+                "thank you",
+                "good job",
+                "well done",
+                "nice",
+                "cool",
+            ]
             for indicator in positive_indicators:
                 if indicator in content_lower:
-                    decision.update({
-                        "should_interact": True,
-                        "interaction_type": "positive_acknowledgment",
-                        "confidence": 0.4,
-                        "response_method": "reaction",
-                        "priority_level": 1,
-                        "suggested_reactions": ["👍", "😊", "❤️", "🙏"]
-                    })
+                    decision.update(
+                        {
+                            "should_interact": True,
+                            "interaction_type": "positive_acknowledgment",
+                            "confidence": 0.4,
+                            "response_method": "reaction",
+                            "priority_level": 1,
+                            "suggested_reactions": ["👍", "😊", "❤️", "🙏"],
+                        }
+                    )
                     return decision
-            
+
             return decision
-            
+
         except Exception as e:
             self.logger.error(f"Error in interaction decision engine: {e}")
-            return {"should_interact": False, "interaction_type": "error", "confidence": 0.0}
+            return {
+                "should_interact": False,
+                "interaction_type": "error",
+                "confidence": 0.0,
+            }
 
     def _get_emotion_emojis(self, emotion: str) -> List[str]:
         """Get appropriate emojis for emotional responses"""
@@ -654,18 +812,22 @@ class AdvancedAICog(commands.Cog):
             "sad": ["😢", "🥺", "💙", "🫂", "🌧️"],
             "angry": ["😤", "💪", "🌋"],
             "confused": ["🤔", "❓", "🧐", "💭"],
-            "celebration": ["🎉", "🎊", "🥳", "🏆", "👏", "🙌"]
+            "celebration": ["🎉", "🎊", "🥳", "🏆", "👏", "🙌"],
         }
         return emoji_map.get(emotion, ["👍", "😊"])
 
-    async def _execute_sophisticated_interaction(self, message: discord.Message, decision: Dict[str, Any]):
+    async def _execute_sophisticated_interaction(
+        self, message: discord.Message, decision: Dict[str, Any]
+    ):
         """🚀 SOPHISTICATED INTERACTION EXECUTOR - Executes the determined interaction"""
         try:
             interaction_type = decision["interaction_type"]
             response_method = decision["response_method"]
-            
-            self.logger.info(f"Executing {interaction_type} interaction via {response_method} (confidence: {decision['confidence']:.2f})")
-            
+
+            self.logger.info(
+                f"Executing {interaction_type} interaction via {response_method} (confidence: {decision['confidence']:.2f})"
+            )
+
             # 1. REACTION-BASED INTERACTIONS
             if response_method == "reaction":
                 reactions = decision.get("suggested_reactions", ["👍"])
@@ -675,25 +837,29 @@ class AdvancedAICog(commands.Cog):
                         await asyncio.sleep(0.5)  # Small delay between reactions
                     except discord.HTTPException:
                         continue  # Skip if reaction fails
-                
+
                 # Update cooldown for reactions (shorter than text responses)
-                self.conversation_cooldowns[message.author.id] = datetime.now(timezone.utc)
+                self.conversation_cooldowns[message.author.id] = datetime.now(
+                    timezone.utc
+                )
                 return
-            
+
             # 2. EMOJI-BASED INTERACTIONS
             elif response_method == "emoji":
                 emojis = decision.get("suggested_emojis", ["😊"])
                 emoji_response = " ".join(emojis[:3])  # Max 3 emojis
-                
+
                 try:
                     await message.channel.send(emoji_response)
                 except discord.HTTPException:
                     # Fallback to reaction if sending fails
                     await message.add_reaction(emojis[0])
-                
-                self.conversation_cooldowns[message.author.id] = datetime.now(timezone.utc)
+
+                self.conversation_cooldowns[message.author.id] = datetime.now(
+                    timezone.utc
+                )
                 return
-            
+
             # 3. MULTI-METHOD INTERACTIONS (Reaction + Text/Emoji)
             elif response_method == "multi":
                 # First add a reaction
@@ -702,23 +868,27 @@ class AdvancedAICog(commands.Cog):
                     await message.add_reaction(reactions[0])
                 except discord.HTTPException:
                     pass
-                
+
                 # Then send appropriate response
                 if decision.get("should_reply", False):
                     await self._process_ai_conversation_enhanced(message)
                 else:
                     emojis = decision.get("suggested_emojis", ["😊"])
                     await message.channel.send(" ".join(emojis[:2]))
-                
-                self.conversation_cooldowns[message.author.id] = datetime.now(timezone.utc)
+
+                self.conversation_cooldowns[message.author.id] = datetime.now(
+                    timezone.utc
+                )
                 return
-            
+
             # 4. TEXT-BASED INTERACTIONS (Full AI Response)
             elif response_method == "text" and decision.get("should_reply", False):
                 await self._process_ai_conversation_enhanced(message, decision)
-                self.conversation_cooldowns[message.author.id] = datetime.now(timezone.utc)
+                self.conversation_cooldowns[message.author.id] = datetime.now(
+                    timezone.utc
+                )
                 return
-            
+
             # 5. CONTEXTUAL SMART REACTIONS
             else:
                 # Intelligent contextual reaction based on message content
@@ -728,47 +898,46 @@ class AdvancedAICog(commands.Cog):
                         await message.add_reaction(smart_reaction)
                     except discord.HTTPException:
                         pass
-                
-                self.conversation_cooldowns[message.author.id] = datetime.now(timezone.utc)
-            
+
+                self.conversation_cooldowns[message.author.id] = datetime.now(
+                    timezone.utc
+                )
+
         except Exception as e:
             self.logger.error(f"Error executing sophisticated interaction: {e}")
 
     def _determine_smart_reaction(self, content: str) -> str:
         """Determine smart contextual reaction based on message content"""
         content_lower = content.lower()
-        
+
         # Smart reaction mapping
         reaction_map = {
             # Programming & Tech
             ("code", "programming", "python", "javascript", "tech"): "💻",
             ("bug", "error", "crash", "broken"): "🐛",
             ("deploy", "release", "launch", "ship"): "🚀",
-            
             # Emotions & Celebrations
             ("birthday", "anniversary", "celebration"): "🎉",
             ("achievement", "success", "completed", "finished"): "🏆",
             ("love", "heart", "romantic"): "❤️",
             ("funny", "haha", "lol", "joke"): "😂",
-            
             # Activities & Interests
             ("food", "cooking", "recipe", "eat"): "🍕",
             ("music", "song", "artist", "album"): "🎵",
             ("game", "gaming", "play", "level"): "🎮",
             ("travel", "vacation", "trip", "holiday"): "✈️",
             ("book", "reading", "novel", "story"): "📚",
-            
             # General Positive
             ("good", "great", "awesome", "amazing"): "👍",
             ("thank", "thanks", "grateful"): "🙏",
             ("question", "help", "how", "what"): "🤔",
-            ("fire", "hot", "lit", "cool"): "🔥"
+            ("fire", "hot", "lit", "cool"): "🔥",
         }
-        
+
         for keywords, emoji in reaction_map.items():
             if any(keyword in content_lower for keyword in keywords):
                 return emoji
-        
+
         # Default reactions for different message lengths
         if len(content) > 200:
             return "📖"  # Long message
@@ -995,10 +1164,26 @@ class AdvancedAICog(commands.Cog):
                 "guild_name": message.guild.name if message.guild else "Direct Message",
                 "channel_id": message.channel.id,
                 "channel_name": getattr(message.channel, "name", "DM"),
-                "interaction_type": interaction_decision.get("interaction_type", "unknown") if interaction_decision else "legacy",
-                "confidence": interaction_decision.get("confidence", 0.5) if interaction_decision else 0.5,
-                "urgency": interaction_decision.get("urgency", "normal") if interaction_decision else "normal",
-                "emotional_tone": interaction_decision.get("emotional_tone", "neutral") if interaction_decision else "neutral",
+                "interaction_type": (
+                    interaction_decision.get("interaction_type", "unknown")
+                    if interaction_decision
+                    else "legacy"
+                ),
+                "confidence": (
+                    interaction_decision.get("confidence", 0.5)
+                    if interaction_decision
+                    else 0.5
+                ),
+                "urgency": (
+                    interaction_decision.get("urgency", "normal")
+                    if interaction_decision
+                    else "normal"
+                ),
+                "emotional_tone": (
+                    interaction_decision.get("emotional_tone", "neutral")
+                    if interaction_decision
+                    else "neutral"
+                ),
                 "message_history": user_history[-10:],  # Last 10 messages
                 "timestamp": message.created_at.isoformat(),
                 "is_dm": isinstance(message.channel, discord.DMChannel),
@@ -1057,7 +1242,9 @@ class AdvancedAICog(commands.Cog):
                 )
 
             # 🚀 SOPHISTICATED RESPONSE ENHANCEMENT
-            enhanced_response = await self._enhance_response_based_on_interaction(response, interaction_decision, message)
+            enhanced_response = await self._enhance_response_based_on_interaction(
+                response, interaction_decision, message
+            )
 
             # Send response with smart chunking
             await self._send_response_chunks(message.channel, enhanced_response)
@@ -1221,18 +1408,23 @@ class AdvancedAICog(commands.Cog):
                 f"❌ Error checking AI status: {str(e)}", ephemeral=True
             )
 
-    async def _enhance_response_based_on_interaction(self, response: str, interaction_decision: Dict[str, Any], message: discord.Message) -> str:
+    async def _enhance_response_based_on_interaction(
+        self,
+        response: str,
+        interaction_decision: Dict[str, Any],
+        message: discord.Message,
+    ) -> str:
         """🎨 SOPHISTICATED RESPONSE ENHANCEMENT - Enhance response based on interaction type and context"""
         try:
             if not interaction_decision:
                 return response
-                
+
             interaction_type = interaction_decision.get("interaction_type", "unknown")
             emotional_tone = interaction_decision.get("emotional_tone", "neutral")
             urgency = interaction_decision.get("urgency", "normal")
-            
+
             enhanced_response = response
-            
+
             # 1. EMOTIONAL TONE ENHANCEMENT
             if emotional_tone == "excited":
                 enhanced_response = f"🎉 {enhanced_response} ✨"
@@ -1242,30 +1434,36 @@ class AdvancedAICog(commands.Cog):
                 enhanced_response = f"🤗 {enhanced_response} 💙"
             elif emotional_tone == "celebration":
                 enhanced_response = f"🎊 {enhanced_response} 🎉"
-            
+
             # 2. URGENCY ENHANCEMENT
             if urgency == "high" or urgency == "urgent":
                 enhanced_response = f"⚡ {enhanced_response}"
-            
+
             # 3. INTERACTION TYPE SPECIFIC ENHANCEMENTS
             if interaction_type == "help_request":
                 enhanced_response = f"🆘 {enhanced_response}\n\n💡 *I'm here to help - feel free to ask follow-up questions!*"
             elif interaction_type == "community_question":
-                enhanced_response = f"{enhanced_response}\n\n🤔 *What do others think about this?*"
+                enhanced_response = (
+                    f"{enhanced_response}\n\n🤔 *What do others think about this?*"
+                )
             elif interaction_type == "complex_topic":
                 enhanced_response = f"🧠 {enhanced_response}\n\n📚 *This is quite an interesting topic to dive into!*"
             elif interaction_type == "direct_mention":
                 enhanced_response = f"👋 {enhanced_response}"
-            
+
             # 4. ADD CONTEXTUAL REACTIONS SUGGESTIONS
             if len(enhanced_response) > 100:
-                contextual_emojis = self._get_contextual_reaction_suggestions(message.content)
+                contextual_emojis = self._get_contextual_reaction_suggestions(
+                    message.content
+                )
                 if contextual_emojis:
                     # Add reactions to the message
-                    asyncio.create_task(self._add_contextual_reactions(message, contextual_emojis))
-            
+                    asyncio.create_task(
+                        self._add_contextual_reactions(message, contextual_emojis)
+                    )
+
             return enhanced_response
-            
+
         except Exception as e:
             self.logger.error(f"Error enhancing response: {e}")
             return response
@@ -1274,26 +1472,37 @@ class AdvancedAICog(commands.Cog):
         """Get contextual reaction suggestions based on message content"""
         content_lower = content.lower()
         reactions = []
-        
+
         # Technology reactions
-        if any(word in content_lower for word in ["code", "programming", "tech", "ai", "computer"]):
+        if any(
+            word in content_lower
+            for word in ["code", "programming", "tech", "ai", "computer"]
+        ):
             reactions.extend(["💻", "⚡"])
-        
+
         # Achievement reactions
-        if any(word in content_lower for word in ["completed", "finished", "success", "achievement"]):
+        if any(
+            word in content_lower
+            for word in ["completed", "finished", "success", "achievement"]
+        ):
             reactions.extend(["🏆", "🎉"])
-        
+
         # Learning reactions
-        if any(word in content_lower for word in ["learn", "study", "education", "knowledge"]):
+        if any(
+            word in content_lower
+            for word in ["learn", "study", "education", "knowledge"]
+        ):
             reactions.extend(["🧠", "📚"])
-        
+
         # Question reactions
         if "?" in content:
             reactions.extend(["🤔", "💭"])
-        
+
         return reactions[:2]  # Max 2 reactions
 
-    async def _add_contextual_reactions(self, message: discord.Message, reactions: List[str]):
+    async def _add_contextual_reactions(
+        self, message: discord.Message, reactions: List[str]
+    ):
         """Add contextual reactions to a message"""
         try:
             for reaction in reactions:
@@ -1307,17 +1516,25 @@ class AdvancedAICog(commands.Cog):
         """Get comprehensive interaction analytics"""
         try:
             total_conversations = len(self.conversation_history)
-            total_messages = sum(len(history) for history in self.conversation_history.values())
-            
+            total_messages = sum(
+                len(history) for history in self.conversation_history.values()
+            )
+
             return {
                 "total_conversations": total_conversations,
                 "total_messages_processed": total_messages,
                 "api_calls_made": self.api_calls_made,
                 "successful_responses": self.successful_responses,
-                "active_conversations": len([h for h in self.conversation_history.values() if h]),
-                "average_conversation_length": total_messages / max(total_conversations, 1),
+                "active_conversations": len(
+                    [h for h in self.conversation_history.values() if h]
+                ),
+                "average_conversation_length": total_messages
+                / max(total_conversations, 1),
                 "uptime": datetime.now(timezone.utc) - self.start_time,
-                "success_rate": (self.successful_responses / max(self.api_calls_made, 1)) * 100
+                "success_rate": (
+                    self.successful_responses / max(self.api_calls_made, 1)
+                )
+                * 100,
             }
         except Exception as e:
             self.logger.error(f"Error getting analytics: {e}")
