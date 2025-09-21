@@ -23,13 +23,7 @@ class Help(commands.Cog):
 
             embed.add_field(
                 name="🤖 AI Features",
-                value="`/chat` - Chat with Astra AI\n`/image` - Generate AI images with Gemini\n`/analyze` - AI text analysis\n`/summarize` - Summarize content",
-                inline=False,
-            )
-
-            embed.add_field(
-                name="🎨 Image Generation",
-                value="`/gemini-image` - High-quality Gemini images\n`/gemini-status` - Check Gemini status\n`/gemini-help` - Image generation help",
+                value="`/chat` - Chat with Astra AI\n`/analyze` - AI text analysis\n`/summarize` - Summarize content",
                 inline=False,
             )
 

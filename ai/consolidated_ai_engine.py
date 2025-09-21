@@ -813,41 +813,8 @@ class ConsolidatedAIEngine:
                     "CREATE INDEX IF NOT EXISTS idx_performance_metrics_timestamp ON performance_metrics (timestamp)"
                 )
 
-                # Image generations table
-                conn.execute(
-                    """
-                    CREATE TABLE IF NOT EXISTS image_generations (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        user_id INTEGER NOT NULL,
-                        channel_id INTEGER NOT NULL,
-                        prompt TEXT NOT NULL,
-                        provider TEXT NOT NULL,
-                        success BOOLEAN NOT NULL DEFAULT 0,
-                        error_message TEXT,
-                        image_url TEXT,
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                    )
-                """
-                )
-
-                # Create indexes for image_generations table
-                conn.execute(
-                    "CREATE INDEX IF NOT EXISTS idx_image_generations_user_id ON image_generations (user_id)"
-                )
-                conn.execute(
-                    "CREATE INDEX IF NOT EXISTS idx_image_generations_channel_id ON image_generations (channel_id)"
-                )
-                conn.execute(
-                    "CREATE INDEX IF NOT EXISTS idx_image_generations_created_at ON image_generations (created_at)"
-                )
-                conn.execute(
-                    "CREATE INDEX IF NOT EXISTS idx_image_generations_provider ON image_generations (provider)"
-                )
-
                 conn.commit()
-                logger.info(
-                    "Database initialized with optimized schema including image generations"
-                )
+                logger.info("Database initialized with optimized schema")
 
         except Exception as e:
             logger.error(f"Database initialization failed: {e}")

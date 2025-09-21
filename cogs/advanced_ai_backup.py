@@ -1495,16 +1495,15 @@ class AdvancedAICog(commands.Cog):
             # Add to active conversations
             self.active_conversations.add(user_id)
 
-            # Image generation temporarily disabled
-            # # Check if this is an image generation request
-            # image_request = await self._detect_image_request(message.content)
+            # Check if this is an image generation request
+            image_request = await self._detect_image_request(message.content)
 
-            # if image_request:
-            #     await self._handle_image_generation(message, image_request)
-            #     return
+            if image_request:
+                await self._handle_image_generation(message, image_request)
+                return
 
-            # # Check for invalid image generation attempts and provide guidance
-            # await self._check_invalid_image_attempts(message)
+            # Check for invalid image generation attempts and provide guidance
+            await self._check_invalid_image_attempts(message)
 
             # Process with AI client using enhanced personalization
             response = await self._generate_ai_response(

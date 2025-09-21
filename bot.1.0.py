@@ -238,7 +238,6 @@ class AstraBot(commands.Bot):
             "logs",
             "data",
             "data/ai",
-            "data/ai/images",
             "data/ai/audio",
             "data/analytics",
             "data/analytics/daily_reports",
@@ -393,7 +392,7 @@ class AstraBot(commands.Bot):
                 "cogs.advanced_intelligence",  # Phase 3: Advanced Intelligence
             ],
             # AI and enhanced features (depend on core)
-            ["cogs.advanced_ai", "cogs.server_management", "cogs.gemini_image"],
+            ["cogs.advanced_ai", "cogs.server_management"],
             # Analytics and specialized features
             ["cogs.analytics", "cogs.roles"],
             # Game-specific and optional features

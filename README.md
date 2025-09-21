@@ -19,7 +19,6 @@ Astra is an **intelligent, multifunctional Discord bot** that brings advanced AI
 ## ✨ Core Features
 
 - 🧠 **AI-Powered Chat** – Natural conversation with advanced AI models.
-- 🎨 **Image Generation** – Create stunning AI images from text prompts.
 - 📊 **Predictive Insights** – Server activity & engagement forecasting.
 - 💚 **Wellness & Mood Tracking** – Community sentiment & individual insights.
 - 🌌 **Space & Science Tools** – Quizzes, space facts, and astronomy updates.
@@ -32,8 +31,7 @@ Astra is an **intelligent, multifunctional Discord bot** that brings advanced AI
 ## 🧠 Advanced Intelligence Features
 
 - 🔍 **AI Chat** – Configurable personality & tone for server conversations.
-- 🖼 **AI Images** – Generate artwork, memes, and scientific illustrations.
-- 🔮 **Predictions** – Detect trends in community engagement.
+- **Predictions** – Detect trends in community engagement.
 - 💡 **Wisdom Mode** – Tap into community-generated advice.
 - 🧘 **Wellness Mode** – Check stress levels, mood, and collective energy.
 
@@ -44,7 +42,6 @@ Astra is an **intelligent, multifunctional Discord bot** that brings advanced AI
 | Command            | Description                       |
 | ------------------ | --------------------------------- |
 | `/chat [message]`  | Engage in AI-powered conversation |
-| `/image [prompt]`  | Generate AI images                |
 | `/predictions`     | Get server engagement forecasts   |
 | `/wellness [user]` | Wellness insights for a member    |
 | `/mood`            | Analyze community mood            |
