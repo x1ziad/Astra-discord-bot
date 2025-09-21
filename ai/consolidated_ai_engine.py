@@ -1233,8 +1233,32 @@ class ConsolidatedAIEngine:
                 try:
                     client = self.ai_providers[provider]
 
-                    # Check if this is our universal client pattern
-                    if hasattr(client, "chat_completion"):
+                    # Use enhanced context for universal and openrouter clients
+                    if hasattr(client, "generate_response"):
+                        # Pass enhanced context information to the client
+                        user_profile_data = {
+                            "name": user_profile.name or "",
+                            "interaction_count": user_profile.total_interactions,
+                            "communication_style": user_profile.communication_style,
+                            "preferred_topics": user_profile.preferred_topics,
+                        }
+
+                        response = await client.generate_response(
+                            message=message,
+                            context=messages,
+                            user_id=context.user_id,
+                            guild_id=context.guild_id,
+                            channel_id=context.channel_id,
+                            user_profile=user_profile_data,
+                        )
+
+                        response_text = (
+                            response.content
+                            if hasattr(response, "content")
+                            else str(response)
+                        )
+                    elif hasattr(client, "chat_completion"):
+                        # Legacy client pattern
                         response = await client.chat_completion(messages)
                         response_text = (
                             response.content
@@ -1242,7 +1266,7 @@ class ConsolidatedAIEngine:
                             else str(response)
                         )
                     else:
-                        # Fallback for other client types
+                        # Basic fallback for other client types
                         response_text = await client.generate_text(message)
 
                     # Track provider usage
@@ -1257,7 +1281,7 @@ class ConsolidatedAIEngine:
                     continue
 
         # All providers failed - use fallback
-        return self._get_fallback_response(message, user_id)
+        return self._get_fallback_response(message, context.user_id)
 
     def _build_enhanced_system_prompt(
         self,
