@@ -38,6 +38,7 @@ class BotConfig:
     status: str = "online"
     activity_type: str = "watching"
     activity_name: str = "the cosmos"
+    owner_id: Optional[int] = None
 
 
 @dataclass
@@ -171,6 +172,13 @@ class UnifiedConfigManager:
         if token := os.getenv("DISCORD_TOKEN"):
             self.bot_token = token
 
+        # Bot owner ID
+        if owner_id := os.getenv("OWNER_ID"):
+            try:
+                self.bot_config.owner_id = int(owner_id)
+            except ValueError:
+                logger.warning(f"Invalid OWNER_ID value: {owner_id}")
+
         # AI configuration
         if api_key := os.getenv("AI_API_KEY", os.getenv("OPENROUTER_API_KEY")):
             self.ai_config.api_key = api_key
@@ -289,7 +297,17 @@ class UnifiedConfigManager:
 
     def get_owner_id(self) -> Optional[int]:
         """Get bot owner ID"""
-        return os.getenv("OWNER_ID", self.get_guild_setting(0, "owner_id"))
+        # First try bot config, then environment, then guild setting
+        if self.bot_config.owner_id is not None:
+            return self.bot_config.owner_id
+
+        if owner_id_env := os.getenv("OWNER_ID"):
+            try:
+                return int(owner_id_env)
+            except ValueError:
+                pass
+
+        return self.get_guild_setting(0, "owner_id")
 
     def get_all_settings(self) -> Dict[str, Any]:
         """Get all configuration settings"""
