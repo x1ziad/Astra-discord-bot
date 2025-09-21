@@ -1214,7 +1214,7 @@ class ConsolidatedAIEngine:
 
         # Build enhanced system prompt with context manager data, personality, and intelligence insights
         system_prompt = self._build_enhanced_system_prompt(
-            conversation_context,
+            context,
             user_profile,
             style,
             message_context,
@@ -1223,7 +1223,7 @@ class ConsolidatedAIEngine:
         )
 
         # Prepare messages
-        messages = self._prepare_messages(conversation_context, system_prompt)
+        messages = self._prepare_messages(context, system_prompt)
 
         # Try providers in order
         for provider in [self.active_provider] + [
