@@ -268,7 +268,7 @@ def auto_optimize_commands(bot_class):
 
     async def optimized_load_extension(self, name, *args, **kwargs):
         """Load extension with command optimization"""
-        result = await original_load_extension(name, *args, **kwargs)
+        result = await original_load_extension(self, name, *args, **kwargs)
 
         # Get the loaded cog
         cog_name = name.split(".")[-1]

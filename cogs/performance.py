@@ -12,7 +12,7 @@ import json
 from typing import Dict, List, Any, Optional
 from datetime import datetime, timezone
 
-from utils.performance_tester import initialize_performance_tester
+# from utils.performance_tester import initialize_performance_tester  # Temporarily disabled
 from utils.performance_optimizer import performance_optimizer
 from utils.command_optimizer import optimize_command, optimized_send
 
@@ -24,7 +24,8 @@ class PerformanceCog(commands.Cog, name="Performance"):
 
     def __init__(self, bot):
         self.bot = bot
-        self.performance_tester = initialize_performance_tester(bot)
+        # self.performance_tester = initialize_performance_tester(bot)  # Temporarily disabled
+        self.performance_tester = None  # Placeholder
         self.logger = logger
 
     @app_commands.command(
@@ -68,7 +69,13 @@ class PerformanceCog(commands.Cog, name="Performance"):
             await interaction.followup.send(embed=embed)
 
             # Run the test
-            test_results = await self.performance_tester.run_comprehensive_test()
+            if self.performance_tester:
+                test_results = await self.performance_tester.run_comprehensive_test()
+            else:
+                test_results = {
+                    "status": "disabled",
+                    "message": "Performance tester temporarily disabled",
+                }
 
             # Create results embed
             results_embed = discord.Embed(
@@ -407,7 +414,13 @@ class PerformanceCog(commands.Cog, name="Performance"):
 
         try:
             # Run quick performance analysis
-            test_results = await self.performance_tester.run_comprehensive_test()
+            if self.performance_tester:
+                test_results = await self.performance_tester.run_comprehensive_test()
+            else:
+                test_results = {
+                    "status": "disabled",
+                    "message": "Performance tester temporarily disabled",
+                }
 
             # Create summary embed
             embed = discord.Embed(

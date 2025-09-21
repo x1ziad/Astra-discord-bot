@@ -41,7 +41,7 @@ class OptimizedAdmin(commands.GroupCog, name="admin"):
         self.owner_id = self.config.get_owner_id()
 
         # Performance optimizations
-        self.cache = ResponseCache(max_size=1000, ttl=300)  # 5-minute cache
+        self.cache = ResponseCache(max_size=1000, default_ttl=300)  # 5-minute cache
         self._system_info_cache = {}
         self._cache_time = 0
         self._cache_duration = 60  # 1 minute

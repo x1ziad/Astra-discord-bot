@@ -33,7 +33,7 @@ class Analytics(commands.GroupCog, name="analytics"):
 
         # Performance optimization
         self.cache = ResponseCache(
-            max_size=500, ttl=300
+            max_size=500, default_ttl=300
         )  # 5-minute cache for analytics
 
         # Data storage

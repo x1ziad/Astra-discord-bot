@@ -39,7 +39,7 @@ class PerformanceMetrics:
 
 
 class ResponseCache:
-    """Advanced response caching system"""
+    """Advanced response caching system with improved memory management"""
 
     def __init__(self, max_size: int = 10000, default_ttl: int = 300):
         self.max_size = max_size
@@ -47,7 +47,13 @@ class ResponseCache:
         self._cache: Dict[str, Any] = {}
         self._expiry: Dict[str, float] = {}
         self._access_times: Dict[str, float] = {}
+        self._hit_count = 0
+        self._miss_count = 0
         self._lock = asyncio.Lock()
+
+        # Performance tracking
+        self._memory_usage = 0
+        self._last_cleanup = time.time()
 
     def _generate_key(self, *args, **kwargs) -> str:
         """Generate cache key from arguments"""
@@ -55,18 +61,20 @@ class ResponseCache:
         return hashlib.md5(key_data.encode()).hexdigest()
 
     async def get(self, key: str) -> Optional[Any]:
-        """Get cached value"""
+        """Get cached value with hit/miss tracking"""
         async with self._lock:
             now = time.time()
 
             if key in self._cache:
                 if now < self._expiry.get(key, 0):
                     self._access_times[key] = now
+                    self._hit_count += 1
                     return self._cache[key]
                 else:
                     # Expired
                     self._remove_key(key)
 
+            self._miss_count += 1
             return None
 
     async def set(self, key: str, value: Any, ttl: Optional[int] = None) -> None:
@@ -115,11 +123,20 @@ class ResponseCache:
                 self._remove_key(key)
 
     def get_stats(self) -> Dict[str, Any]:
-        """Get cache statistics"""
+        """Get comprehensive cache statistics"""
+        total_requests = self._hit_count + self._miss_count
+        hit_rate = (self._hit_count / total_requests) if total_requests > 0 else 0
+
         return {
             "size": len(self._cache),
             "max_size": self.max_size,
             "usage_ratio": len(self._cache) / self.max_size if self.max_size > 0 else 0,
+            "hit_count": self._hit_count,
+            "miss_count": self._miss_count,
+            "hit_rate": hit_rate,
+            "efficiency": hit_rate * 100,
+            "memory_usage": self._memory_usage,
+            "last_cleanup": self._last_cleanup,
         }
 
 

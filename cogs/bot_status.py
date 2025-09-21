@@ -32,7 +32,7 @@ class BotStatus(commands.Cog):
 
         # Performance optimization
         self.cache = ResponseCache(
-            max_size=200, ttl=60
+            max_size=200, default_ttl=60
         )  # 1-minute cache for status data
 
         self.performance_data = {

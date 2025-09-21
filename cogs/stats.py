@@ -30,7 +30,9 @@ class Stats(commands.GroupCog, name="stats"):
         self.logger = bot.logger
 
         # Performance optimization
-        self.cache = ResponseCache(max_size=300, ttl=120)  # 2-minute cache for stats
+        self.cache = ResponseCache(
+            max_size=300, default_ttl=120
+        )  # 2-minute cache for stats
 
     @app_commands.command(
         name="uptime", description="Show bot uptime and system information"
