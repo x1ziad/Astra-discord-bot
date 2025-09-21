@@ -18,8 +18,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional, List, Dict, Any, Literal
 import aiohttp
 
-from config.enhanced_config import EnhancedConfigManager
-from config.config_manager import config_manager
+from config.unified_config import unified_config
 from utils.database import db
 from logger.enhanced_logger import log_performance
 
@@ -30,7 +29,7 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
     def __init__(self, bot):
         super().__init__()
         self.bot = bot
-        self.config = EnhancedConfigManager()
+        self.config = unified_config
         self.logger = bot.logger if hasattr(bot, "logger") else None
 
         # Cache system for performance optimization
@@ -703,7 +702,7 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
         # Check OpenRouter
         if service in ["openrouter", "all"]:
             try:
-                from ai.openrouter_client import OpenRouterClient
+                from ai.consolidated_ai_engine import ConsolidatedAIEngine
 
                 openrouter_status = "🟢 ONLINE"
                 openrouter_info = "Text AI operational"

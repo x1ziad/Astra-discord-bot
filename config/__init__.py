@@ -2,4 +2,4 @@
 Configuration package for Astra Bot
 """
 
-from config.config_manager import config_manager
+from config.unified_config import unified_config as config_manager

@@ -34,12 +34,16 @@ except ImportError as e:
     logger.warning(f"❌ Consolidated AI Engine not available: {e}")
 
 try:
-    from ai.optimized_ai_engine import OptimizedAIEngine, get_optimized_engine
+    from ai.consolidated_ai_engine import ConsolidatedAIEngine as OptimizedAIEngine
+
+    def get_optimized_engine():
+        return OptimizedAIEngine()
 
     OPTIMIZED_AI_AVAILABLE = True
-    logger.info("✅ Optimized AI Engine imported successfully")
+    logger.info("✅ Consolidated AI Engine imported successfully")
 except ImportError as e:
-    logger.warning(f"❌ Optimized AI Engine not available: {e}")
+    logger.warning(f"❌ Consolidated AI Engine not available: {e}")
+    OPTIMIZED_AI_AVAILABLE = False
 
 # Import context manager
 try:

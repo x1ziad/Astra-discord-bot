@@ -15,7 +15,7 @@ import threading
 import traceback
 
 # Use the new config_manager import
-from config.config_manager import config_manager
+from config.unified_config import unified_config
 from utils.command_optimizer import optimize_command
 from utils.performance_optimizer import ResponseCache
 
@@ -26,7 +26,7 @@ class Stats(commands.GroupCog, name="stats"):
     def __init__(self, bot):
         super().__init__()
         self.bot = bot
-        self.config = config_manager
+        self.config = unified_config
         self.logger = bot.logger
 
         # Performance optimization

@@ -584,6 +584,31 @@ class SimpleDatabaseManager:
             },
         }
 
+    async def execute(self, query: str, parameters: tuple = ()) -> sqlite3.Cursor:
+        """Execute a SQL query with parameters"""
+        async with self.pool.get_connection() as db:
+            cursor = await db.execute(query, parameters)
+            await db.commit()
+            return cursor
+
+    async def fetch_one(self, query: str, parameters: tuple = ()) -> Optional[tuple]:
+        """Execute a query and fetch one result"""
+        async with self.pool.get_connection() as db:
+            cursor = await db.execute(query, parameters)
+            return await cursor.fetchone()
+
+    async def fetch_all(self, query: str, parameters: tuple = ()) -> List[tuple]:
+        """Execute a query and fetch all results"""
+        async with self.pool.get_connection() as db:
+            cursor = await db.execute(query, parameters)
+            return await cursor.fetchall()
+
+    async def execute_script(self, script: str):
+        """Execute a SQL script"""
+        async with self.pool.get_connection() as db:
+            await db.executescript(script)
+            await db.commit()
+
     async def close(self):
         """Close database connections and cleanup"""
         await self.pool.close_all()

@@ -7,7 +7,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 from utils.bot_invite import generate_bot_invite_url, get_full_permissions, get_minimal_permissions, get_recommended_permissions
-from config.config_manager import config_manager
+from config.unified_config import unified_config
 import json
 from pathlib import Path
 from datetime import datetime, timezone
@@ -30,7 +30,7 @@ class InviteView(discord.ui.View):
         embed = discord.Embed(
             title="🌟 Full Permissions Invitation",
             description="This gives Astra complete access to all features.",
-            color=config_manager.get_color("success")
+            color=unified_config.get_color("success")
         )
         embed.add_field(
             name="✅ Includes:",
@@ -49,7 +49,7 @@ class InviteView(discord.ui.View):
         embed = discord.Embed(
             title="⭐ Recommended Permissions",
             description="Balanced permissions for most servers.",
-            color=config_manager.get_color("info")
+            color=unified_config.get_color("info")
         )
         embed.add_field(
             name="✅ Includes:",
@@ -68,7 +68,7 @@ class InviteView(discord.ui.View):
         embed = discord.Embed(
             title="⚡ Minimal Permissions",
             description="Basic functionality only - perfect for testing.",
-            color=config_manager.get_color("warning")
+            color=unified_config.get_color("warning")
         )
         embed.add_field(
             name="✅ Includes:",
@@ -162,7 +162,7 @@ class BotSetup(commands.Cog):
             embed = discord.Embed(
                 title="🤖 Invite Astra to Your Server!",
                 description="Choose the permission level that works best for your server:",
-                color=config_manager.get_color("info")
+                color=unified_config.get_color("info")
             )
             embed.add_field(
                 name="🌟 Full Permissions",
@@ -208,7 +208,7 @@ class BotSetup(commands.Cog):
             embed = discord.Embed(
                 title=title,
                 description=description,
-                color=config_manager.get_color("success")
+                color=unified_config.get_color("success")
             )
             
             embed.add_field(
@@ -261,7 +261,7 @@ class BotSetup(commands.Cog):
         embed = discord.Embed(
             title="⚙️ Astra Bot Setup Guide",
             description=f"Welcome to {interaction.guild.name}! Here's your complete setup guide.",
-            color=config_manager.get_color("info")
+            color=unified_config.get_color("info")
         )
         
         embed.add_field(
@@ -301,7 +301,7 @@ class BotSetup(commands.Cog):
         )
         
         embed.set_footer(
-            text=f"Astra v{config_manager.get_bot_config().version} • {len(self.bot.guilds)} servers • Ready for exploration!"
+            text=f"Astra v{unified_config.get_bot_config().version} • {len(self.bot.guilds)} servers • Ready for exploration!"
         )
         
         # Add helpful buttons
@@ -317,7 +317,7 @@ class BotSetup(commands.Cog):
         async def test_callback(button_interaction):
             test_embed = discord.Embed(
                 title="🧪 Bot Test Results",
-                color=config_manager.get_color("success")
+                color=unified_config.get_color("success")
             )
             test_embed.add_field(name="✅ Bot Status", value="Online and responsive", inline=True)
             test_embed.add_field(name="✅ Permissions", value="Working correctly", inline=True)
@@ -394,7 +394,7 @@ class BotSetup(commands.Cog):
         embed = discord.Embed(
             title="🔍 Bot Diagnostics Report",
             description=f"Comprehensive health check for {interaction.guild.name}",
-            color=config_manager.get_color("info"),
+            color=unified_config.get_color("info"),
             timestamp=datetime.now(timezone.utc)
         )
         
@@ -452,7 +452,7 @@ class BotSetup(commands.Cog):
             embed = discord.Embed(
                 title="🎉 Thanks for adding Astra!",
                 description="I'm ready to help explore the cosmos with your server!",
-                color=config_manager.get_color("success")
+                color=unified_config.get_color("success")
             )
             embed.add_field(
                 name="🚀 Quick Start:",

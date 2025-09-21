@@ -15,8 +15,8 @@ from pathlib import Path
 import os
 
 # Import shared HTTP client
-from utils.http_client import get_session
-from config.config_manager import config_manager
+from config.unified_config import unified_config
+from utils.http_manager import get_session
 from utils.checks import feature_enabled
 from logger.logger import log_performance
 from ui.ui_components import PaginatedView
@@ -34,10 +34,10 @@ def channel_only(feature_name):
 
         # Get the channel ID for this feature
         guild_id = interaction.guild.id if interaction.guild else None
-        channel_id = config_manager.get_guild_setting(
+        channel_id = unified_config.get_guild_setting(
             guild_id, f"channels.{feature_name}_channel"
         )
-        allowed_channels = config_manager.get_guild_setting(
+        allowed_channels = unified_config.get_guild_setting(
             guild_id, f"channels.allowed_channels.{feature_name}", []
         )
 
@@ -75,7 +75,7 @@ class Space(commands.GroupCog, name="space"):
     def __init__(self, bot):
         super().__init__()
         self.bot = bot
-        self.config = config_manager
+        self.config = unified_config
         self.logger = bot.logger
 
         # Cache directory

@@ -39,10 +39,10 @@ from discord.ext import commands, tasks
 import aiohttp
 
 # Core imports
-from config.config_manager import config_manager, BotConfig
+from config.unified_config import unified_config, BotConfig
 from logger.enhanced_logger import setup_enhanced_logger, log_performance
 from utils.database import db
-from utils.error_handler import ErrorHandler
+from utils.enhanced_error_handler import ErrorHandler
 from utils.permissions import PermissionLevel, has_permission
 
 # Performance optimization imports
@@ -51,8 +51,7 @@ from utils.command_optimizer import auto_optimize_commands
 
 # Railway configuration support
 try:
-    from config.railway_config import get_railway_config, setup_railway_logging
-
+    # Railway config is now handled by unified_config
     RAILWAY_ENABLED = True
 
     # Diagnostic: Check Railway environment variables on startup
@@ -62,7 +61,7 @@ try:
         essential_vars = ["AI_API_KEY", "AI_PROVIDER"]
 
         logger = logging.getLogger("astra.railway_diagnostic")
-        logger.info("� Railway Environment Status:")
+        logger.info("🚀 Railway Environment Status:")
 
         missing_count = 0
         for key in essential_vars:
@@ -149,11 +148,12 @@ class AstraBot(commands.Bot):
 
     def __init__(self):
         # Load configuration
-        self.config: BotConfig = config_manager.get_bot_config()
+        self.config: BotConfig = unified_config.bot_config
 
         # Set up enhanced logging
         self.logger = setup_enhanced_logger(
-            name="Astra", log_level="DEBUG" if self.config.debug else "INFO"
+            name="Astra",
+            log_level="DEBUG" if getattr(self.config, "debug", False) else "INFO",
         )
 
         self.logger.info("=" * 80)
@@ -1236,7 +1236,7 @@ async def main():
 
     # Setup Railway logging if available
     if RAILWAY_ENABLED:
-        setup_railway_logging()
+        # Railway logging is now handled by unified_config
         logger = logging.getLogger("Astra.Main")
         logger.info("🚄 Railway logging configured")
     else:
@@ -1252,12 +1252,11 @@ async def main():
         # Railway configuration
         if RAILWAY_ENABLED:
             try:
-                railway_config = get_railway_config()
+                # Railway config is handled by unified_config
                 logger.info("🚄 Railway configuration loaded")
 
-                # Create config file from Railway environment
-                config_file = railway_config.create_config_file()
-                logger.info(f"📝 Configuration file created: {config_file}")
+                # Configuration is already handled by unified_config
+                logger.info("📝 Configuration managed by unified_config")
             except Exception as e:
                 logger.error(f"❌ Railway configuration failed: {e}")
                 logger.error("This is likely due to missing environment variables.")
@@ -1277,9 +1276,8 @@ async def main():
         # Environment validation - check Railway config first
         token = None
         if RAILWAY_ENABLED:
-            railway_config = get_railway_config()
-            discord_config = railway_config.get_discord_config()
-            token = discord_config.get("token")
+            # Token is handled by unified_config
+            token = unified_config.get_bot_token()
             logger.info("🚄 Using Discord token from Railway environment")
 
         if not token:

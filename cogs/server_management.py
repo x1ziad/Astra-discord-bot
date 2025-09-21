@@ -14,7 +14,7 @@ from pathlib import Path
 import colorsys
 import re
 
-from config.config_manager import config_manager
+from config.unified_config import unified_config
 from utils.permissions import has_permission, PermissionLevel
 
 
@@ -24,7 +24,7 @@ class ServerManagement(commands.GroupCog, name="server"):
     def __init__(self, bot):
         super().__init__()
         self.bot = bot
-        self.config = config_manager
+        self.config = unified_config
         self.logger = bot.logger
 
         # Data directories

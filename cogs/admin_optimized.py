@@ -17,8 +17,7 @@ import json
 import os
 from typing import Optional, List, Literal, Dict, Any
 
-from config.enhanced_config import EnhancedConfigManager
-from config.config_manager import config_manager
+from config.unified_config import unified_config
 from utils.performance_optimizer import ResponseCache
 from utils.command_optimizer import auto_optimize_commands
 
@@ -36,8 +35,8 @@ class OptimizedAdmin(commands.GroupCog, name="admin"):
     def __init__(self, bot):
         super().__init__()
         self.bot = bot
-        self.config = EnhancedConfigManager()
-        self.legacy_config = config_manager
+        self.config = unified_config
+        self.legacy_config = unified_config
         self.logger = bot.logger if hasattr(bot, "logger") else None
         self.owner_id = self.config.get_owner_id()
 

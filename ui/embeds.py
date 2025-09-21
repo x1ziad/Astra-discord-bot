@@ -7,7 +7,7 @@ import discord
 from datetime import datetime
 from typing import Optional, Dict, List, Any, Union
 
-from config.config_manager import config_manager
+from config.unified_config import unified_config as config_manager
 
 
 class EmbedBuilder:

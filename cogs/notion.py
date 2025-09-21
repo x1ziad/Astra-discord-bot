@@ -14,7 +14,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, List, Any, Union
 from pathlib import Path
 
-from config.config_manager import config_manager
+from config.unified_config import unified_config
 
 
 class Notion(commands.GroupCog, name="notion"):
@@ -23,7 +23,7 @@ class Notion(commands.GroupCog, name="notion"):
     def __init__(self, bot):
         super().__init__()
         self.bot = bot
-        self.config = config_manager
+        self.config = unified_config
         self.logger = bot.logger
 
         # API tokens

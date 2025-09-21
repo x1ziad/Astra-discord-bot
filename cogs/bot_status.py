@@ -16,7 +16,7 @@ import gc
 import psutil
 import sys
 
-from config.enhanced_config import EnhancedConfigManager
+from config.unified_config import unified_config
 from utils.command_optimizer import optimize_command
 from utils.performance_optimizer import ResponseCache
 
@@ -26,7 +26,7 @@ class BotStatus(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        self.config = EnhancedConfigManager()
+        self.config = unified_config
         self.start_time = time.time()
         self.command_stats = {}
 

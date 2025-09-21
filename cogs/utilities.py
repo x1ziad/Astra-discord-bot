@@ -26,7 +26,7 @@ logger = logging.getLogger("astra.utilities")
 
 # Fallback for config
 try:
-    from config.enhanced_config import EnhancedConfigManager
+    from config.unified_config import unified_config
 
     CONFIG_AVAILABLE = True
 except ImportError:
@@ -43,7 +43,7 @@ class Utilities(commands.Cog):
 
         if CONFIG_AVAILABLE:
             try:
-                self.config = EnhancedConfigManager()
+                self.config = unified_config
             except Exception as e:
                 self.logger.error(f"Failed to initialize enhanced config: {e}")
                 self.config = None

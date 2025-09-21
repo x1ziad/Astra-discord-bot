@@ -389,3 +389,32 @@ class EnhancedHTTPManager:
 
 # Global HTTP manager instance
 http_manager = EnhancedHTTPManager()
+
+# Backwards compatibility aliases
+HTTPClient = EnhancedHTTPManager
+
+
+async def get_session():
+    """Get the global HTTP session"""
+    if not http_manager._session:
+        await http_manager.initialize()
+    return http_manager._session
+
+
+async def get_json(url: str, **kwargs):
+    """Get JSON from URL"""
+    response = await http_manager.get(url, **kwargs)
+    return await response.json()
+
+
+async def post_json(url: str, data=None, **kwargs):
+    """Post JSON to URL"""
+    if data:
+        kwargs["json"] = data
+    response = await http_manager.post(url, **kwargs)
+    return await response.json()
+
+
+async def cleanup_http():
+    """Cleanup HTTP resources"""
+    await http_manager.close()

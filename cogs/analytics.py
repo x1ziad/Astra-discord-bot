@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from io import BytesIO
 
-from config.config_manager import config_manager
+from config.unified_config import unified_config
 from utils.permissions import has_permission, PermissionLevel
 from utils.command_optimizer import optimize_command
 from utils.performance_optimizer import ResponseCache
@@ -28,7 +28,7 @@ class Analytics(commands.GroupCog, name="analytics"):
     def __init__(self, bot):
         super().__init__()
         self.bot = bot
-        self.config = config_manager
+        self.config = unified_config
         self.logger = bot.logger
 
         # Performance optimization

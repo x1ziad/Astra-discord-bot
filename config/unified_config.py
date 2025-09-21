@@ -233,6 +233,10 @@ class UnifiedConfigManager:
         """Get bot token from environment or config"""
         return getattr(self, "bot_token", os.getenv("DISCORD_TOKEN", ""))
 
+    def get_bot_config(self) -> BotConfig:
+        """Get bot configuration"""
+        return self.bot_config
+
     def get_ai_config(self) -> AIProviderConfig:
         """Get AI configuration"""
         return self.ai_config

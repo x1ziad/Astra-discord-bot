@@ -84,10 +84,9 @@ logger = logging.getLogger("astra.consolidated_ai")
 
 # Import the optimized AI engine
 try:
-    from ai.optimized_ai_engine import OptimizedAIEngine, get_optimized_engine
-
-    OPTIMIZED_ENGINE_AVAILABLE = True
-    logger.info("✅ Optimized AI Engine imported successfully")
+    # This is the consolidated engine, no need for optimized import
+    OPTIMIZED_ENGINE_AVAILABLE = False
+    logger.info("✅ Using consolidated AI engine (optimized engine removed)")
 except ImportError as e:
     OPTIMIZED_ENGINE_AVAILABLE = False
     logger.warning(f"❌ Optimized AI Engine not available: {e}")
@@ -581,11 +580,14 @@ class ConversationFlowEngine:
                 question_count = sum(
                     msg.get("content", "").count("?") for msg in recent_user_messages
                 )
-                caps_ratio = sum(
-                    sum(1 for c in msg.get("content", "") if c.isupper())
-                    / max(1, len(msg.get("content", "")))
-                    for msg in recent_user_messages
-                ) / total_messages
+                caps_ratio = (
+                    sum(
+                        sum(1 for c in msg.get("content", "") if c.isupper())
+                        / max(1, len(msg.get("content", "")))
+                        for msg in recent_user_messages
+                    )
+                    / total_messages
+                )
 
                 # Adjust enthusiasm and questioning based on patterns
                 if exclamation_count / total_messages > 0.5:
@@ -600,7 +602,9 @@ class ConversationFlowEngine:
             # Technical topics might need slightly more detail
             technical_topics = ["programming", "science", "technology", "gaming"]
             if any(topic in technical_topics for topic in context.active_topics):
-                style["detail_level"] = max(0.4, style.get("response_length", 0.5) + 0.1)
+                style["detail_level"] = max(
+                    0.4, style.get("response_length", 0.5) + 0.1
+                )
 
         # User relationship influences (subtle)
         if user_profile.total_interactions > 10:
@@ -982,7 +986,9 @@ class ConsolidatedAIEngine:
                 mood = ConversationMood(mood) if isinstance(mood, str) else mood
 
             # Update emotional context
-            conversation_context.emotional_context.update_mood(mood, intensity, confidence)
+            conversation_context.emotional_context.update_mood(
+                mood, intensity, confidence
+            )
 
             # Extract topics (enhanced if context manager available)
             if message_context and message_context.topics:
@@ -1503,24 +1509,37 @@ Always respond in a way that feels like a natural continuation of the conversati
                 )
                 user_message_count = len(recent_user_messages)
 
-                if user_emoji_count / user_message_count > 0.5:  # Users use emojis frequently
+                if (
+                    user_emoji_count / user_message_count > 0.5
+                ):  # Users use emojis frequently
                     # Add contextually appropriate emoji if response lacks them
                     if not any(ord(c) > 127 for c in response):
                         # Add emoji based on response sentiment
-                        if any(word in response.lower() for word in ["yes", "good", "great", "awesome"]):
+                        if any(
+                            word in response.lower()
+                            for word in ["yes", "good", "great", "awesome"]
+                        ):
                             response += " �"
-                        elif any(word in response.lower() for word in ["thanks", "thank"]):
+                        elif any(
+                            word in response.lower() for word in ["thanks", "thank"]
+                        ):
                             response += " 😊"
                         elif "?" in response:
                             response += " 🤔"
-                        elif any(word in response.lower() for word in ["wow", "amazing", "incredible"]):
+                        elif any(
+                            word in response.lower()
+                            for word in ["wow", "amazing", "incredible"]
+                        ):
                             response += " ✨"
 
                 # Mirror punctuation enthusiasm
                 user_exclamations = sum(
                     msg.get("content", "").count("!") for msg in recent_user_messages
                 )
-                if user_exclamations / user_message_count > 0.3 and not response.endswith("!"):
+                if (
+                    user_exclamations / user_message_count > 0.3
+                    and not response.endswith("!")
+                ):
                     if len(response.split()) < 10:  # Short responses
                         response += "!"
 
@@ -2010,13 +2029,23 @@ def get_engine() -> Optional[ConsolidatedAIEngine]:
 
 
 # Convenience functions for backward compatibility
-async def process_conversation(message: str, user_id: int, guild_id: Optional[int] = None, channel_id: Optional[int] = None, context_data: Dict[str, Any] = None, context: Dict[str, Any] = None, **kwargs) -> str:
+async def process_conversation(
+    message: str,
+    user_id: int,
+    guild_id: Optional[int] = None,
+    channel_id: Optional[int] = None,
+    context_data: Dict[str, Any] = None,
+    context: Dict[str, Any] = None,
+    **kwargs,
+) -> str:
     """Process conversation using global engine"""
     engine = get_engine()
     if engine:
         # Use context_data or context
         final_context = context_data or context
-        return await engine.process_conversation(message, user_id, guild_id, channel_id, context_data=final_context, **kwargs)
+        return await engine.process_conversation(
+            message, user_id, guild_id, channel_id, context_data=final_context, **kwargs
+        )
     else:
         return "AI engine not initialized"
 

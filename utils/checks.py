@@ -9,7 +9,7 @@ from discord.ext import commands
 from typing import Optional, Callable, Union, TypeVar
 import functools
 
-from config.config_manager import config_manager
+from config.unified_config import unified_config as config_manager
 
 T = TypeVar("T")
 

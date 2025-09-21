@@ -5,14 +5,20 @@ Provides database, error handling, permissions, and HTTP utilities
 
 # Import all utility modules to ensure they're available
 from utils.database import db, SimpleDatabaseManager as DatabaseManager
-from utils.error_handler import ErrorHandler, ErrorSeverity, setup_error_handler
+from utils.enhanced_error_handler import ErrorHandler
 from utils.permissions import (
     PermissionLevel,
     PermissionManager,
     has_permission,
     setup_permissions,
 )
-from utils.http_client import HTTPClient, get_session, get_json, post_json, cleanup_http
+from utils.http_manager import (
+    HTTPClient,
+    get_session,
+    get_json,
+    post_json,
+    cleanup_http,
+)
 
 __all__ = [
     "db",
