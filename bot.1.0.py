@@ -86,10 +86,9 @@ try:
     # Import and run AI credentials debug (optional)
     try:
         from debug_ai_credentials import debug_ai_credentials
-
         debug_ai_credentials()
         logging.getLogger("astra.startup").info("✅ AI credentials debug completed")
-    except ImportError:
+    except (ImportError, FileNotFoundError):
         logging.getLogger("astra.startup").info(
             "ℹ️ Debug AI credentials module not found (optional)"
         )
