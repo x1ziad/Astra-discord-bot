@@ -39,6 +39,23 @@ class BotConfig:
     activity_type: str = "watching"
     activity_name: str = "the cosmos"
     owner_id: Optional[int] = None
+    
+    # Command sync settings
+    command_sync_on_ready: bool = True
+    command_sync_on_join: bool = False
+    
+    # Server management settings
+    cleanup_on_leave: bool = True
+    
+    # Bot features
+    features: Dict[str, bool] = field(default_factory=lambda: {
+        "enable_ai": True,
+        "enable_voice": False,
+        "enable_moderation": True,
+        "enable_analytics": True,
+        "enable_auto_responses": True,
+        "enable_slash_commands": True
+    })
 
 
 @dataclass

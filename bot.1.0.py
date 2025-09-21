@@ -392,22 +392,17 @@ class AstraBot(commands.Bot):
             # Core utilities (no dependencies) - Performance optimized loading order
             [
                 "cogs.admin_optimized",  # Optimized consolidated admin system
-                "cogs.performance",  # Performance monitoring (if available)
+                "cogs.performance",  # Performance monitoring 
                 "cogs.bot_status",
                 "cogs.utilities",
                 "cogs.stats",
                 "cogs.bot_setup_enhanced",  # Consolidated setup system
                 "cogs.nexus",  # Advanced diagnostic interface
-                "cogs.context_manager",  # Context understanding management
-                "cogs.advanced_intelligence",  # Phase 3: Advanced Intelligence
             ],
             # AI and enhanced features (depend on core)
             [
                 "cogs.advanced_ai",
                 "cogs.server_management",
-                "cogs.interactive_storytelling",
-                "cogs.collaborative_creativity_hub",
-                "cogs.emotional_soundtrack",
             ],
             # Analytics and specialized features
             ["cogs.analytics", "cogs.roles"],
