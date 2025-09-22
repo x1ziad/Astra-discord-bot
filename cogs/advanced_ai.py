@@ -1988,10 +1988,11 @@ class AdvancedAICog(commands.Cog):
             return {}
 
     @app_commands.command(
-        name="performance", description="Lightning performance optimization controls ⚡"
+        name="lightning_perf",
+        description="Lightning performance optimization controls ⚡",
     )
     @app_commands.describe(action="Action to perform: status, reset, or optimize")
-    async def performance_command(
+    async def lightning_performance_command(
         self, interaction: discord.Interaction, action: str = "status"
     ):
         """Lightning performance optimization and monitoring"""
@@ -2053,7 +2054,7 @@ class AdvancedAICog(commands.Cog):
                             )
 
                 embed.set_footer(
-                    text="💡 Use '/performance optimize' to boost performance further!"
+                    text="💡 Use '/lightning_perf optimize' to boost performance further!"
                 )
 
             elif action == "reset":
