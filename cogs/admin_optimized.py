@@ -374,10 +374,9 @@ class OptimizedAdmin(commands.GroupCog, name="admin"):
         )
 
         # Performance info
-        cache_stats = (
-            f"**Cache Size:** {len(self.cache._cache)}/{self.cache.max_size}\n"
-        )
-        cache_stats += f"**Cache Hit Rate:** {self.cache.hit_rate:.1%}"
+        cache_stats_data = self.cache.get_stats()
+        cache_stats = f"**Cache Size:** {cache_stats_data['size']}/{cache_stats_data['max_size']}\n"
+        cache_stats += f"**Cache Hit Rate:** {cache_stats_data['hit_rate']:.1%}"
 
         embed.add_field(
             name="⚡ Performance",
