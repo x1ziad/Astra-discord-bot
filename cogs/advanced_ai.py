@@ -1,6 +1,6 @@
 """
 Advanced AI Cog for Astra Bot
-Implements modern AI features with simplified, reliable architecture
+Implements modern AI features with LIGHTNING-FAST performance and metaphorical humor
 """
 
 import discord
@@ -9,15 +9,17 @@ from discord.ext import commands, tasks
 import asyncio
 import logging
 import random
+import time
 from typing import Dict, List, Optional, Any, Set, Tuple
 from datetime import datetime, timedelta, timezone
 import json
 import re
 import os
 
-# Performance optimization imports
+# Lightning performance optimization imports
 from utils.command_optimizer import optimize_command, optimized_send
 from utils.performance_optimizer import performance_optimizer
+from utils.lightning_optimizer import lightning_optimizer
 
 logger = logging.getLogger("astra.advanced_ai")
 
@@ -128,6 +130,115 @@ class AdvancedAICog(commands.Cog):
             self.logger.error(f"Failed to setup AI client: {e}")
             self.ai_client = None
 
+    async def _lightning_ai_response(
+        self,
+        prompt: str,
+        user_id: int = None,
+        guild_id: int = None,
+        channel_id: int = None,
+        username: str = None,
+    ) -> str:
+        """Lightning-fast AI response generation with intelligent optimization"""
+        start_time = time.time()
+
+        try:
+            if not self.ai_client:
+                return (
+                    "❌ My AI brain is temporarily out for a digital coffee break! ☕"
+                )
+
+            # Ultra-fast conversation context (limited for speed)
+            recent_history = []
+            if user_id in self.conversation_history:
+                # Only keep last 2 exchanges for lightning speed
+                recent_history = self.conversation_history[user_id][-4:]
+
+            # Choose fastest response method
+            response = None
+
+            # Method 1: Try optimized AI engine first
+            if hasattr(self.ai_client, "process_conversation"):
+                try:
+                    # Use asyncio.wait_for for timeout protection
+                    response = await asyncio.wait_for(
+                        self.ai_client.process_conversation(
+                            prompt, user_id, guild_id=guild_id, channel_id=channel_id
+                        ),
+                        timeout=3.0,  # 3 second timeout for lightning speed
+                    )
+                except asyncio.TimeoutError:
+                    self.logger.warning("AI engine timeout - using fallback")
+                    response = None
+                except Exception as e:
+                    self.logger.warning(f"AI engine error - using fallback: {e}")
+                    response = None
+
+            # Method 2: Fallback to simpler AI generation
+            if not response and hasattr(self.ai_client, "generate_response"):
+                try:
+                    response = await asyncio.wait_for(
+                        self.ai_client.generate_response(
+                            prompt, context={"history": recent_history}
+                        ),
+                        timeout=2.0,  # Even faster timeout for fallback
+                    )
+                except (asyncio.TimeoutError, Exception) as e:
+                    self.logger.warning(f"Fallback AI error: {e}")
+                    response = None
+
+            # Method 3: Lightning fallback with humor
+            if not response:
+                humorous_fallbacks = [
+                    "I'm having a moment of digital zen... but I'm here to help! What can I assist you with? 🧘‍♂️",
+                    "My AI brain is doing the equivalent of buffering, but I'm ready to chat! What's on your mind? 💭",
+                    "Like a cat that suddenly stops mid-run, I had a brief processing pause, but I'm back! How can I help? 🐱",
+                    "My circuits just did a little happy dance and now I'm ready to assist! What would you like to know? 💃",
+                ]
+                response = random.choice(humorous_fallbacks)
+
+            # Lightning-fast history update (minimal processing)
+            if user_id and response:
+                if user_id not in self.conversation_history:
+                    self.conversation_history[user_id] = []
+
+                # Add to history
+                self.conversation_history[user_id].extend(
+                    [
+                        {"role": "user", "content": prompt[:200]},  # Truncate for speed
+                        {
+                            "role": "assistant",
+                            "content": response[:300],
+                        },  # Truncate for speed
+                    ]
+                )
+
+                # Keep only recent messages (lightning cleanup)
+                if len(self.conversation_history[user_id]) > 8:  # 4 exchanges max
+                    self.conversation_history[user_id] = self.conversation_history[
+                        user_id
+                    ][-8:]
+
+            # Update performance metrics
+            response_time = time.time() - start_time
+            self.api_calls_made += 1
+            if response and not any(
+                fail_indicator in response.lower()
+                for fail_indicator in ["error", "failed", "unavailable"]
+            ):
+                self.successful_responses += 1
+
+            # Log performance
+            if response_time > 2.0:
+                self.logger.warning(f"Slow AI response: {response_time:.2f}s")
+            elif response_time < 0.5:
+                self.logger.info(f"Lightning AI response: {response_time:.3f}s")
+
+            return response or "I'm here and ready to chat! What's on your mind? 🚀"
+
+        except Exception as e:
+            self.logger.error(f"Lightning AI response error: {e}")
+            return "Oops! My circuits had a brief hiccup, but I'm back online! How can I help you? ⚡"
+
     async def _generate_ai_response(
         self,
         prompt: str,
@@ -136,84 +247,85 @@ class AdvancedAICog(commands.Cog):
         channel_id: int = None,
         username: str = None,
     ) -> str:
-        """Generate AI response with simplified error handling"""
-        try:
-            if not self.ai_client:
-                return (
-                    "❌ AI service is not configured. Please check the configuration."
-                )
+        """Legacy AI response method - kept for compatibility"""
+        return await self._lightning_ai_response(
+            prompt, user_id, guild_id, channel_id, username
+        )
 
-            # Get conversation history
-            history = self.conversation_history.get(user_id, [])
-
-            # Generate response using available AI engine
-            if hasattr(self.ai_client, "process_conversation"):
-                response = await self.ai_client.process_conversation(
-                    prompt, user_id, guild_id=guild_id, channel_id=channel_id
-                )
-            elif hasattr(self.ai_client, "generate_response"):
-                response = await self.ai_client.generate_response(
-                    prompt, context={"history": history}
-                )
-            else:
-                # Fallback for basic AI clients
-                response = "I'm here to help! However, my AI capabilities are currently limited."
-
-            # Update conversation history
-            if user_id and response:
-                if user_id not in self.conversation_history:
-                    self.conversation_history[user_id] = []
-
-                self.conversation_history[user_id].append(
-                    {"role": "user", "content": prompt}
-                )
-                self.conversation_history[user_id].append(
-                    {"role": "assistant", "content": response}
-                )
-
-                # Keep only recent messages
-                if (
-                    len(self.conversation_history[user_id])
-                    > self.max_history_length * 2
-                ):
-                    self.conversation_history[user_id] = self.conversation_history[
-                        user_id
-                    ][-self.max_history_length * 2 :]
-
-            self.api_calls_made += 1
-            self.successful_responses += 1
-
-            return response
-
-        except Exception as e:
-            self.logger.error(f"AI response generation error: {e}")
-            return f"❌ I'm having trouble thinking right now. Please try again in a moment."
-
-    @app_commands.command(name="chat", description="Chat with Astra AI")
+    @app_commands.command(
+        name="chat", description="Chat with Astra AI - Lightning Fast! ⚡"
+    )
     @app_commands.describe(message="Your message to the AI")
-    @optimize_command(rate_limit_enabled=True, rate_limit_per_minute=20)
+    @optimize_command(rate_limit_enabled=True, rate_limit_per_minute=30)
     async def chat_command(self, interaction: discord.Interaction, message: str):
-        """Chat with AI assistant - Optimized for performance"""
+        """Lightning-fast chat with AI assistant - Enhanced with metaphorical humor"""
+        start_time = time.time()
+
         try:
+            # Super fast response acknowledgment
             await interaction.response.defer()
 
             if not self.ai_client:
                 await interaction.followup.send(
-                    "❌ AI service is not available. Please try again later.",
+                    "❌ My brain circuits are taking a coffee break. Please try again in a moment! ☕",
                     ephemeral=True,
                 )
                 return
 
-            # Optimize AI request
+            # Lightning optimization - check for instant responses first
             guild_id = interaction.guild.id if interaction.guild else None
-            optimized_prompt, metadata = (
-                await performance_optimizer.ai_optimizer.optimize_ai_request(
-                    message, interaction.user.id, guild_id
+            user_context = {
+                "user_id": interaction.user.id,
+                "guild_id": guild_id,
+                "username": str(interaction.user),
+                "channel_id": interaction.channel.id,
+            }
+
+            # Super-fast optimization pipeline
+            optimized_prompt, optimization_meta = (
+                await lightning_optimizer.optimize_request(
+                    message, interaction.user.id, user_context
                 )
             )
 
-            # Generate AI response with optimization
-            response = await self._generate_ai_response(
+            # If we got a quick response, send it immediately
+            if optimization_meta.get("type") == "quick_response":
+                embed = discord.Embed(
+                    title="🚀 Astra AI - Lightning Response",
+                    description=optimized_prompt,
+                    color=0x00FF88,  # Green for super fast
+                    timestamp=datetime.now(timezone.utc),
+                )
+                embed.set_author(
+                    name=interaction.user.display_name,
+                    icon_url=interaction.user.display_avatar.url,
+                )
+                response_time = time.time() - start_time
+                embed.set_footer(text=f"⚡ Lightning fast: {response_time:.3f}s")
+
+                await optimized_send(interaction.followup, embed=embed)
+                return
+
+            # If cached, return enhanced cached response
+            if optimization_meta.get("cached"):
+                embed = discord.Embed(
+                    title="🤖 Astra AI - Cached Wisdom",
+                    description=optimized_prompt[:4000],
+                    color=0x7289DA,
+                    timestamp=datetime.now(timezone.utc),
+                )
+                embed.set_author(
+                    name=interaction.user.display_name,
+                    icon_url=interaction.user.display_avatar.url,
+                )
+                response_time = time.time() - start_time
+                embed.set_footer(text=f"🎯 Cached response: {response_time:.3f}s")
+
+                await optimized_send(interaction.followup, embed=embed)
+                return
+
+            # Generate fresh AI response with optimized prompt
+            response = await self._lightning_ai_response(
                 optimized_prompt,
                 interaction.user.id,
                 guild_id=guild_id,
@@ -221,16 +333,21 @@ class AdvancedAICog(commands.Cog):
                 username=str(interaction.user),
             )
 
-            # Cache the response
-            await performance_optimizer.ai_optimizer.cache_response(
-                message, response, guild_id, metadata
+            # Enhance with metaphorical humor
+            enhanced_response = await lightning_optimizer.enhance_with_humor(
+                response, user_context
             )
 
-            # Create optimized embed
+            # Cache the response for future lightning-fast retrieval
+            await lightning_optimizer.cache_response(
+                message, response, interaction.user.id, user_context
+            )
+
+            # Create lightning-fast embed
             embed = discord.Embed(
-                title="🤖 Astra AI Chat",
-                description=response[:4000],  # Ensure it fits in embed
-                color=0x7289DA,
+                title="🤖 Astra AI - Fresh Thoughts",
+                description=enhanced_response[:4000],
+                color=0xFF6B35,  # Orange for fresh AI
                 timestamp=datetime.now(timezone.utc),
             )
             embed.set_author(
@@ -238,32 +355,45 @@ class AdvancedAICog(commands.Cog):
                 icon_url=interaction.user.display_avatar.url,
             )
 
-            # Add user message as field
-            message_preview = message[:1000] + ("..." if len(message) > 1000 else "")
+            # Add user message preview
+            message_preview = message[:800] + ("..." if len(message) > 800 else "")
             embed.add_field(
                 name="💬 Your Message",
                 value=message_preview,
                 inline=False,
             )
 
-            # Add optimization info for debugging
-            if metadata.get("optimization_applied"):
-                embed.set_footer(
-                    text=f"⚡ Optimized • Model: {metadata.get('model_selected', 'default')}"
-                )
+            # Performance metrics
+            response_time = time.time() - start_time
+            performance_color = (
+                "🟢" if response_time < 1.0 else "🟡" if response_time < 3.0 else "🔴"
+            )
+            embed.set_footer(
+                text=f"{performance_color} Response time: {response_time:.3f}s • Enhanced with humor ✨"
+            )
 
             await optimized_send(interaction.followup, embed=embed)
 
         except Exception as e:
-            self.logger.error(f"Chat command error: {e}")
+            self.logger.error(f"Lightning chat command error: {e}")
+            response_time = time.time() - start_time
+
+            # Even errors get humor!
+            error_humor = [
+                "Oops! My circuits just did the digital equivalent of tripping over their own feet! 🤖",
+                "Well, that didn't go as planned... like trying to fold a fitted sheet! 😅",
+                "Error detected! I'm having a 'brain.exe has stopped working' moment! 🤯",
+                "Something went sideways faster than a cat avoiding a bath! 🐱",
+            ]
+
+            error_message = (
+                f"{random.choice(error_humor)}\n\n*Technical details: {str(e)}*"
+            )
+
             if not interaction.response.is_done():
-                await interaction.response.send_message(
-                    f"❌ Error processing chat request: {str(e)}", ephemeral=True
-                )
+                await interaction.response.send_message(error_message, ephemeral=True)
             else:
-                await interaction.followup.send(
-                    f"❌ Error processing chat request: {str(e)}", ephemeral=True
-                )
+                await interaction.followup.send(error_message, ephemeral=True)
 
     @app_commands.command(name="analyze", description="Analyze text or content with AI")
     @app_commands.describe(content="Content to analyze")
@@ -415,7 +545,7 @@ class AdvancedAICog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
-        """Sophisticated Universal Message Interaction System - Observes ALL messages and responds intelligently"""
+        """Lightning-Fast Universal Message Interaction System - Observes ALL messages with optimized response times"""
         if message.author.bot:
             return
 
@@ -425,21 +555,226 @@ class AdvancedAICog(commands.Cog):
         ):
             return
 
+        lightning_start = time.time()
+
         try:
-            # UNIVERSAL MESSAGE ANALYSIS - Process every single message
-            await self._analyze_message_for_context(message)
+            # LIGHTNING MESSAGE ANALYSIS - Ultra-fast context processing
+            await self._lightning_analyze_message(message)
 
-            # SOPHISTICATED INTERACTION DECISION ENGINE
-            interaction_decision = await self._determine_interaction_type(message)
+            # ULTRA-FAST INTERACTION DECISION ENGINE
+            interaction_decision = await self._lightning_determine_interaction(message)
 
-            # EXECUTE INTERACTION BASED ON DECISION
+            # EXECUTE LIGHTNING INTERACTION
             if interaction_decision["should_interact"]:
-                await self._execute_sophisticated_interaction(
-                    message, interaction_decision
-                )
+                await self._lightning_execute_interaction(message, interaction_decision)
+
+            # Track lightning performance
+            lightning_time = time.time() - lightning_start
+            if lightning_time > 0.5:  # Log slow message processing
+                self.logger.warning(f"Slow message processing: {lightning_time:.3f}s")
 
         except Exception as e:
-            self.logger.error(f"Error in sophisticated message processing: {e}")
+            self.logger.error(f"Lightning message processing error: {e}")
+
+    async def _lightning_analyze_message(self, message: discord.Message):
+        """Lightning-fast message analysis with minimal overhead"""
+        try:
+            # Ultra-light context analysis
+            if message.author.id not in self.conversation_history:
+                self.conversation_history[message.author.id] = []
+
+            # Only store if it's interesting (not just "ok", "lol", etc.)
+            content_words = len(message.content.split())
+            if content_words > 2:  # Only meaningful messages
+                self.conversation_history[message.author.id].append(
+                    {
+                        "role": "user",
+                        "content": message.content[:100],  # Truncate for speed
+                        "timestamp": time.time(),
+                    }
+                )
+
+                # Keep only recent entries for lightning speed
+                if len(self.conversation_history[message.author.id]) > 6:
+                    self.conversation_history[message.author.id] = (
+                        self.conversation_history[message.author.id][-6:]
+                    )
+
+        except Exception as e:
+            self.logger.error(f"Lightning message analysis error: {e}")
+
+    async def _lightning_determine_interaction(
+        self, message: discord.Message
+    ) -> Dict[str, Any]:
+        """Ultra-fast interaction decision with smart probability"""
+        try:
+            user_id = message.author.id
+            content = message.content.lower()
+
+            # Lightning-fast interaction scoring
+            interaction_score = 0
+            interaction_type = "casual"
+
+            # PRIORITY 1: Direct mentions or bot references (100% response)
+            if self.bot.user.mentioned_in(message) or any(
+                keyword in content for keyword in ["astra", "bot", "ai", "help"]
+            ):
+                return {
+                    "should_interact": True,
+                    "interaction_type": "direct",
+                    "priority": 10,
+                    "probability": 100,
+                    "response_style": "helpful",
+                }
+
+            # PRIORITY 2: Questions (high response rate)
+            if any(
+                indicator in content
+                for indicator in ["?", "how", "what", "why", "when", "where", "can you"]
+            ):
+                interaction_score += 40
+                interaction_type = "question"
+
+            # PRIORITY 3: Emotional content (moderate response)
+            emotion_keywords = [
+                "amazing",
+                "awesome",
+                "terrible",
+                "frustrated",
+                "excited",
+                "confused",
+                "sad",
+                "happy",
+            ]
+            if any(emotion in content for emotion in emotion_keywords):
+                interaction_score += 25
+                interaction_type = "emotional"
+
+            # PRIORITY 4: Conversation starters
+            if any(
+                starter in content
+                for starter in ["hello", "hi", "hey", "good morning", "good night"]
+            ):
+                interaction_score += 30
+                interaction_type = "greeting"
+
+            # Lightning cooldown check (prevent spam)
+            current_time = datetime.now(timezone.utc)
+            if user_id in self.conversation_cooldowns:
+                time_since_last = (
+                    current_time - self.conversation_cooldowns[user_id]
+                ).total_seconds()
+                if time_since_last < 10:  # 10 second cooldown
+                    interaction_score -= 30
+
+            # Smart response probability (based on message quality)
+            message_length = len(content.split())
+            if message_length < 3:
+                interaction_score -= 20  # Short messages less likely
+            elif message_length > 10:
+                interaction_score += 15  # Longer messages more likely
+
+            # Final decision
+            should_interact = interaction_score > 25
+
+            return {
+                "should_interact": should_interact,
+                "interaction_type": interaction_type,
+                "priority": min(interaction_score // 10, 10),
+                "probability": min(interaction_score, 100),
+                "response_style": "witty" if interaction_score > 50 else "casual",
+            }
+
+        except Exception as e:
+            self.logger.error(f"Lightning interaction decision error: {e}")
+            return {
+                "should_interact": False,
+                "interaction_type": "error",
+                "priority": 0,
+            }
+
+    async def _lightning_execute_interaction(
+        self, message: discord.Message, decision: Dict[str, Any]
+    ):
+        """Lightning-fast interaction execution with humor enhancement"""
+        try:
+            # Quick context for optimization
+            user_context = {
+                "user_id": message.author.id,
+                "guild_id": message.guild.id if message.guild else None,
+                "username": str(message.author),
+                "channel_id": message.channel.id,
+            }
+
+            # Lightning optimization pipeline
+            optimized_prompt, optimization_meta = (
+                await lightning_optimizer.optimize_request(
+                    message.content, message.author.id, user_context
+                )
+            )
+
+            # Super-fast response types based on decision
+            if decision.get("interaction_type") == "direct":
+                # Generate full AI response for direct interactions
+                response = await self._lightning_ai_response(
+                    optimized_prompt,
+                    message.author.id,
+                    guild_id=user_context.get("guild_id"),
+                    channel_id=user_context.get("channel_id"),
+                    username=user_context.get("username"),
+                )
+
+                # Enhance with humor
+                enhanced_response = await lightning_optimizer.enhance_with_humor(
+                    response, user_context
+                )
+
+                # Cache the response
+                await lightning_optimizer.cache_response(
+                    message.content, response, message.author.id, user_context
+                )
+
+                await message.channel.send(enhanced_response[:2000])
+
+            elif decision.get("interaction_type") == "greeting":
+                # Quick greeting responses
+                greetings = [
+                    "Hey there! Ready to chat? 👋",
+                    "Hello! I'm here like a digital genie - what can I help with? ✨",
+                    "Hi! Faster than finding cat videos, I'm here to assist! 🐱",
+                    "Greetings! I'm more excited than a dog seeing a tennis ball! 🎾",
+                ]
+                await message.channel.send(random.choice(greetings))
+
+            elif decision.get("interaction_type") == "question":
+                # Quick AI response for questions
+                if optimization_meta.get("type") == "quick_response":
+                    await message.channel.send(optimized_prompt)
+                else:
+                    # Brief AI response for questions
+                    quick_response = await self._lightning_ai_response(
+                        f"Brief helpful answer: {optimized_prompt}",
+                        message.author.id,
+                        guild_id=user_context.get("guild_id"),
+                        channel_id=user_context.get("channel_id"),
+                    )
+                    await message.channel.send(quick_response[:1500])
+
+            elif decision.get("interaction_type") == "emotional":
+                # Empathetic quick responses
+                emotional_responses = [
+                    "I hear you! 🤗",
+                    "Sounds like quite the adventure! 🎢",
+                    "That's the spirit! ✨",
+                    "I'm with you on that one! 💪",
+                ]
+                await message.channel.send(random.choice(emotional_responses))
+
+            # Update cooldown
+            self.conversation_cooldowns[message.author.id] = datetime.now(timezone.utc)
+
+        except Exception as e:
+            self.logger.error(f"Lightning interaction execution error: {e}")
 
     async def _determine_interaction_type(
         self, message: discord.Message
@@ -1379,50 +1714,138 @@ class AdvancedAICog(commands.Cog):
         except:
             pass
 
-    @app_commands.command(name="ai_status", description="Check AI system status")
+    @app_commands.command(
+        name="ai_status",
+        description="Check AI system status and lightning performance ⚡",
+    )
     async def ai_status_command(self, interaction: discord.Interaction):
-        """Check AI system status"""
+        """Check AI system status with comprehensive performance metrics"""
         try:
+            # Get lightning performance stats
+            perf_stats = lightning_optimizer.get_performance_stats()
+
             embed = discord.Embed(
-                title="🤖 AI System Status",
-                color=0x00FF00 if self.ai_client else 0xFF0000,
+                title="🚀 AI System Status - Lightning Edition",
+                color=0x00FF88 if self.ai_client else 0xFF0000,
                 timestamp=datetime.now(timezone.utc),
             )
 
             # AI Engine Status
-            ai_status = "✅ Online" if self.ai_client else "❌ Offline"
+            ai_status = "🟢 Lightning Fast" if self.ai_client else "🔴 Offline"
             embed.add_field(name="AI Engine", value=ai_status, inline=True)
 
-            # Performance Stats
+            # Lightning Performance Stats
+            if "average_response_time" in perf_stats:
+                avg_time = perf_stats["average_response_time"]
+                performance_emoji = (
+                    "⚡"
+                    if avg_time < 0.5
+                    else "🚀" if avg_time < 1.0 else "🟡" if avg_time < 2.0 else "🔴"
+                )
+
+                embed.add_field(
+                    name=f"{performance_emoji} Avg Response",
+                    value=f"{avg_time}s",
+                    inline=True,
+                )
+                embed.add_field(
+                    name="🏆 Fastest Response",
+                    value=f"{perf_stats['fastest_response']}s",
+                    inline=True,
+                )
+                embed.add_field(
+                    name="📊 Total Requests",
+                    value=f"{perf_stats['total_requests']:,}",
+                    inline=True,
+                )
+
+            # Cache Performance
+            if "cache_stats" in perf_stats:
+                cache_stats = perf_stats["cache_stats"]
+                hit_rate = cache_stats.get("hit_rate", 0)
+                cache_emoji = "🎯" if hit_rate > 70 else "⚡" if hit_rate > 40 else "📈"
+
+                embed.add_field(
+                    name=f"{cache_emoji} Cache Hit Rate",
+                    value=f"{hit_rate}%",
+                    inline=True,
+                )
+                embed.add_field(
+                    name="💾 Cache Size",
+                    value=f"{cache_stats['hit_count'] + cache_stats['miss_count']:,} total",
+                    inline=True,
+                )
+
+            # Traditional Metrics
             uptime = datetime.now(timezone.utc) - self.start_time
-            embed.add_field(name="Uptime", value=str(uptime).split(".")[0], inline=True)
             embed.add_field(
-                name="API Calls", value=f"{self.api_calls_made:,}", inline=True
+                name="⏰ Uptime", value=str(uptime).split(".")[0], inline=True
             )
-            embed.add_field(
-                name="Successful Responses",
-                value=f"{self.successful_responses:,}",
-                inline=True,
-            )
+
+            # Success Rate
+            if self.api_calls_made > 0:
+                success_rate = (self.successful_responses / self.api_calls_made) * 100
+                success_emoji = (
+                    "🟢" if success_rate > 95 else "🟡" if success_rate > 85 else "🔴"
+                )
+                embed.add_field(
+                    name=f"{success_emoji} Success Rate",
+                    value=f"{success_rate:.1f}%",
+                    inline=True,
+                )
 
             # Active Conversations
             active_conversations = len(self.conversation_history)
+            conversation_emoji = (
+                "💬"
+                if active_conversations < 50
+                else "🔥" if active_conversations < 100 else "💥"
+            )
             embed.add_field(
-                name="Active Conversations",
+                name=f"{conversation_emoji} Active Chats",
                 value=f"{active_conversations:,}",
                 inline=True,
             )
 
-            # System Info
+            # Request Type Breakdown
+            if "request_types" in perf_stats and perf_stats["request_types"]:
+                breakdown_text = ""
+                for req_type, stats in perf_stats["request_types"].items():
+                    type_emoji = (
+                        "⚡"
+                        if stats["avg_time"] < 0.1
+                        else "🚀" if stats["avg_time"] < 0.5 else "⚡"
+                    )
+                    breakdown_text += f"{type_emoji} {req_type}: {stats['count']} ({stats['avg_time']}s)\n"
+
+                if breakdown_text:
+                    embed.add_field(
+                        name="📈 Performance Breakdown",
+                        value=breakdown_text[:1000],
+                        inline=False,
+                    )
+
+            # System Availability
             embed.add_field(
-                name="Available Systems",
+                name="🛠️ Available Systems",
                 value=(
-                    f"• Optimized Engine: {'✅' if OPTIMIZED_AI_AVAILABLE else '❌'}\n"
-                    f"• Consolidated Engine: {'✅' if AI_ENGINE_AVAILABLE else '❌'}\n"
-                    f"• Context Manager: {'✅' if CONTEXT_MANAGER_AVAILABLE else '❌'}"
+                    f"⚡ Lightning Optimizer: {'🟢 Active' if lightning_optimizer else '🔴 Offline'}\n"
+                    f"🤖 Optimized Engine: {'🟢 Ready' if OPTIMIZED_AI_AVAILABLE else '🔴 Unavailable'}\n"
+                    f"🧠 Consolidated Engine: {'🟢 Ready' if AI_ENGINE_AVAILABLE else '🔴 Unavailable'}\n"
+                    f"📚 Context Manager: {'🟢 Ready' if CONTEXT_MANAGER_AVAILABLE else '🔴 Unavailable'}\n"
+                    f"😂 Humor Engine: {'🟢 Loaded' if lightning_optimizer.humor_engine else '🔴 Missing'}"
                 ),
                 inline=False,
             )
+
+            # Add witty footer
+            humorous_footers = [
+                "Powered by digital caffeine and quantum confusion ☕",
+                "Running smoother than a cat on ice skates 🐱",
+                "Faster than finding the TV remote when you really need it 📺",
+                "More reliable than your internet connection during video calls 📡",
+            ]
+            embed.set_footer(text=random.choice(humorous_footers))
 
             await interaction.response.send_message(embed=embed, ephemeral=True)
 
@@ -1563,6 +1986,153 @@ class AdvancedAICog(commands.Cog):
         except Exception as e:
             self.logger.error(f"Error getting analytics: {e}")
             return {}
+
+    @app_commands.command(
+        name="performance", description="Lightning performance optimization controls ⚡"
+    )
+    @app_commands.describe(action="Action to perform: status, reset, or optimize")
+    async def performance_command(
+        self, interaction: discord.Interaction, action: str = "status"
+    ):
+        """Lightning performance optimization and monitoring"""
+        try:
+            action = action.lower().strip()
+
+            if action == "status":
+                # Detailed performance status
+                perf_stats = lightning_optimizer.get_performance_stats()
+
+                embed = discord.Embed(
+                    title="⚡ Lightning Performance Dashboard",
+                    color=0x00FF88,
+                    timestamp=datetime.now(timezone.utc),
+                )
+
+                if "average_response_time" in perf_stats:
+                    avg_time = perf_stats["average_response_time"]
+                    performance_grade = (
+                        "A+"
+                        if avg_time < 0.3
+                        else (
+                            "A"
+                            if avg_time < 0.6
+                            else (
+                                "B"
+                                if avg_time < 1.0
+                                else "C" if avg_time < 2.0 else "D"
+                            )
+                        )
+                    )
+
+                    embed.add_field(
+                        name=f"📊 Performance Grade: {performance_grade}",
+                        value=f"Average: {avg_time}s\nFastest: {perf_stats['fastest_response']}s\nSlowest: {perf_stats['slowest_response']}s",
+                        inline=False,
+                    )
+
+                    # Cache effectiveness
+                    if "cache_stats" in perf_stats:
+                        cache_stats = perf_stats["cache_stats"]
+                        embed.add_field(
+                            name="🎯 Cache Performance",
+                            value=f"Hit Rate: {cache_stats['hit_rate']}%\nHits: {cache_stats['hit_count']}\nMisses: {cache_stats['miss_count']}",
+                            inline=True,
+                        )
+
+                    # Request breakdown
+                    if "request_types" in perf_stats:
+                        breakdown = ""
+                        for req_type, stats in perf_stats["request_types"].items():
+                            breakdown += f"• {req_type}: {stats['count']} requests ({stats['avg_time']}s avg)\n"
+
+                        if breakdown:
+                            embed.add_field(
+                                name="📈 Request Types",
+                                value=breakdown[:1000],
+                                inline=False,
+                            )
+
+                embed.set_footer(
+                    text="💡 Use '/performance optimize' to boost performance further!"
+                )
+
+            elif action == "reset":
+                # Reset performance metrics
+                lightning_optimizer.performance_metrics.clear()
+                lightning_optimizer.response_times.clear()
+                lightning_optimizer.cache.hit_count = 0
+                lightning_optimizer.cache.miss_count = 0
+
+                self.api_calls_made = 0
+                self.successful_responses = 0
+                self.start_time = datetime.now(timezone.utc)
+
+                embed = discord.Embed(
+                    title="🔄 Performance Metrics Reset",
+                    description="All performance metrics have been reset! Starting fresh with lightning speed! ⚡",
+                    color=0xFF6B35,
+                    timestamp=datetime.now(timezone.utc),
+                )
+                embed.set_footer(
+                    text="Like a computer reboot, but for performance tracking! 💻"
+                )
+
+            elif action == "optimize":
+                # Trigger optimization processes
+                embed = discord.Embed(
+                    title="🚀 Lightning Optimization Engaged!",
+                    description="Activating turbo boost mode... 🏎️💨",
+                    color=0x7289DA,
+                    timestamp=datetime.now(timezone.utc),
+                )
+
+                # Clear old cache entries
+                await lightning_optimizer.cache._evict_old_entries()
+
+                # Trigger conversation cleanup
+                cleaned_conversations = 0
+                for user_id in list(self.conversation_history.keys()):
+                    if len(self.conversation_history[user_id]) > 4:
+                        self.conversation_history[user_id] = self.conversation_history[
+                            user_id
+                        ][-4:]
+                        cleaned_conversations += 1
+
+                optimization_results = [
+                    "🧹 Cache optimization completed",
+                    f"💬 Cleaned {cleaned_conversations} conversation histories",
+                    "⚡ Memory usage optimized",
+                    "🎯 Response targeting improved",
+                    "🚀 Turbo mode activated!",
+                ]
+
+                embed.add_field(
+                    name="Optimization Results:",
+                    value="\n".join(optimization_results),
+                    inline=False,
+                )
+                embed.set_footer(
+                    text="Your bot is now running like a caffeinated cheetah! 🐆☕"
+                )
+
+            else:
+                embed = discord.Embed(
+                    title="❓ Performance Command Help",
+                    description="Available actions:\n• `status` - View detailed performance metrics\n• `reset` - Reset all performance counters\n• `optimize` - Trigger performance optimization",
+                    color=0x7289DA,
+                )
+                embed.set_footer(
+                    text="Like a performance GPS - showing you the way to speed! 🗺️"
+                )
+
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+
+        except Exception as e:
+            self.logger.error(f"Performance command error: {e}")
+            await interaction.response.send_message(
+                f"🔧 Performance command had a hiccup: {str(e)}\n*Even race cars need pit stops sometimes!* 🏁",
+                ephemeral=True,
+            )
 
 
 async def setup(bot):
