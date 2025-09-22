@@ -190,7 +190,9 @@ class AdvancedAICog(commands.Cog):
             if not response:
                 try:
                     user_context = {"username": username or "Friend"}
-                    response = await lightning_optimizer.get_fallback_response(user_context)
+                    response = await lightning_optimizer.get_fallback_response(
+                        user_context
+                    )
                 except Exception as e:
                     self.logger.error(f"Even fallback failed: {e}")
                     # Ultimate fallback
