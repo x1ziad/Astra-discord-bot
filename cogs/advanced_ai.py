@@ -164,7 +164,7 @@ class AdvancedAICog(commands.Cog):
                         self.ai_client.process_conversation(
                             prompt, user_id, guild_id=guild_id, channel_id=channel_id
                         ),
-                        timeout=3.0,  # 3 second timeout for lightning speed
+                        timeout=5.0,  # Increased timeout for better reliability
                     )
                 except asyncio.TimeoutError:
                     self.logger.warning("AI engine timeout - using fallback")
@@ -180,21 +180,21 @@ class AdvancedAICog(commands.Cog):
                         self.ai_client.generate_response(
                             prompt, context={"history": recent_history}
                         ),
-                        timeout=2.0,  # Even faster timeout for fallback
+                        timeout=3.0,  # Increased fallback timeout
                     )
                 except (asyncio.TimeoutError, Exception) as e:
                     self.logger.warning(f"Fallback AI error: {e}")
                     response = None
 
-            # Method 3: Lightning fallback with humor
+            # Method 3: Lightning fallback with humor from optimizer
             if not response:
-                humorous_fallbacks = [
-                    "I'm having a moment of digital zen... but I'm here to help! What can I assist you with? 🧘‍♂️",
-                    "My AI brain is doing the equivalent of buffering, but I'm ready to chat! What's on your mind? 💭",
-                    "Like a cat that suddenly stops mid-run, I had a brief processing pause, but I'm back! How can I help? 🐱",
-                    "My circuits just did a little happy dance and now I'm ready to assist! What would you like to know? 💃",
-                ]
-                response = random.choice(humorous_fallbacks)
+                try:
+                    user_context = {"username": username or "Friend"}
+                    response = await lightning_optimizer.get_fallback_response(user_context)
+                except Exception as e:
+                    self.logger.error(f"Even fallback failed: {e}")
+                    # Ultimate fallback
+                    response = "I'm experiencing some cosmic interference, but I'm still here! Like a reliable lighthouse in a digital storm. 🌊"
 
             # Lightning-fast history update (minimal processing)
             if user_id and response:

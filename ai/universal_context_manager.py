@@ -1307,7 +1307,7 @@ class UniversalContextManager:
                 """,
                     (
                         context.user_id,
-                        channel_id,
+                        channel_id or 0,  # Use 0 as default if channel_id is None
                         guild_id,
                         context.content,
                         context.tone.value,

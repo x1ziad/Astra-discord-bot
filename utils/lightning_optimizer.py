@@ -248,6 +248,18 @@ class LightningPerformanceOptimizer:
             "help": "I'm here to help! Think of me as your digital Swiss Army knife - versatile and surprisingly useful! 🔧",
         }
 
+        # Enhanced fallback responses for when AI engines fail
+        self.fallback_responses = [
+            "I'm experiencing some cosmic interference, but I'm still here! Like a reliable lighthouse in a digital storm. 🌊",
+            "My AI engines are taking a coffee break, but my humor subroutines are fully operational! ☕",
+            "Technical difficulties are like traffic jams - annoying but temporary. I'm still ready to chat! 🚗",
+            "I'm like a backup generator - not as fancy as the main power, but reliable when you need me! ⚡",
+            "My main AI is being a bit dramatic right now, but I'm still here with my emergency wit supply! 🎭",
+            "Think of this as my 'low power mode' - like a phone at 10% battery but still taking photos! 📱",
+            "I'm operating on backup systems, but like a good mechanic, I always have spare parts! 🔧",
+            "My AI is having a moment, but I'm like a Swiss watch - I keep ticking no matter what! ⏰"
+        ]
+
         logger.info("⚡ Lightning Performance Optimizer initialized")
 
     async def optimize_request(
@@ -381,6 +393,16 @@ class LightningPerformanceOptimizer:
                 }
 
         return stats
+
+    async def get_fallback_response(self, context: Dict[str, Any] = None) -> str:
+        """Get a witty fallback response when AI engines fail"""
+        response = random.choice(self.fallback_responses)
+        
+        # Add user-specific context if available
+        if context and context.get("username"):
+            response += f"\n\nDon't worry {context['username']}, I'm like a trusty old car - might not be the fastest, but I'll get you where you need to go! 🚙"
+        
+        return response
 
 
 # Global optimizer instance
