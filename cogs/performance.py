@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 # from utils.performance_tester import initialize_performance_tester  # Temporarily disabled
 from utils.performance_optimizer import performance_optimizer
 from utils.command_optimizer import optimize_command, optimized_send
+from utils.discord_data_reporter import get_discord_reporter
 
 logger = logging.getLogger("astra.performance_cog")
 
@@ -180,6 +181,25 @@ class PerformanceCog(commands.Cog, name="Performance"):
             results_embed.set_footer(
                 text=f"Test completed • Guild: {interaction.guild.name if interaction.guild else 'DM'}"
             )
+
+            # Send performance test results to Discord channel
+            discord_reporter = get_discord_reporter()
+            if discord_reporter:
+                try:
+                    performance_data = {
+                        "event": "performance_test",
+                        "requested_by": interaction.user.id,
+                        "guild_id": interaction.guild_id,
+                        "test_config": {"include_ai": include_ai, "detailed": detailed},
+                        "results": test_results,
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                    }
+
+                    await discord_reporter.send_performance_report(performance_data)
+                except Exception as e:
+                    self.logger.error(
+                        f"Failed to send performance test to Discord: {e}"
+                    )
 
             await optimized_send(interaction.followup, embed=results_embed)
 
@@ -429,40 +449,15 @@ class PerformanceCog(commands.Cog, name="Performance"):
                 timestamp=datetime.now(timezone.utc),
             )
 
-            # Save report to file
-            timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-            report_filename = f"performance_report_{timestamp}.json"
+            # Display performance report details (no file saving needed)
+            embed.add_field(
+                name="📊 Report Details",
+                value=f"• Test Duration: {test_results.get('test_metadata', {}).get('duration_seconds', 0):.2f}s\n• Total Commands Analyzed: {test_results.get('command_analysis', {}).get('total_commands', 0)}\n• Recommendations: {len(test_results.get('recommendations', []))}\n• Data sent to Discord channels automatically",
+                inline=False,
+            )
 
-            # Create report content
-            report_content = json.dumps(test_results, indent=2, default=str)
-
-            # Save to file and send as attachment if possible
-            try:
-                import io
-
-                report_file = io.StringIO(report_content)
-                discord_file = discord.File(report_file, filename=report_filename)
-
-                embed.add_field(
-                    name="📊 Report Details",
-                    value=f"• Test Duration: {test_results.get('test_metadata', {}).get('duration_seconds', 0):.2f}s\n• Total Commands Analyzed: {test_results.get('command_analysis', {}).get('total_commands', 0)}\n• Recommendations: {len(test_results.get('recommendations', []))}",
-                    inline=False,
-                )
-
-                await interaction.followup.send(embed=embed, file=discord_file)
-
-            except Exception as file_error:
-                # Fallback: send summary only
-                self.logger.warning(f"Could not send file attachment: {file_error}")
-
-                summary = test_results.get("test_metadata", {})
-                embed.add_field(
-                    name="📊 Report Summary",
-                    value=f"Duration: {summary.get('duration_seconds', 0):.2f}s\nReport generated but could not be attached",
-                    inline=False,
-                )
-
-                await optimized_send(interaction, embed=embed)
+            # Send the performance report embed (no file attachments needed)
+            await optimized_send(interaction.followup, embed=embed)
 
         except Exception as e:
             error_embed = discord.Embed(

@@ -48,6 +48,11 @@ from utils.permissions import PermissionLevel, has_permission
 # Performance optimization imports
 from utils.performance_optimizer import performance_optimizer
 from utils.command_optimizer import auto_optimize_commands
+from utils.discord_data_reporter import (
+    initialize_discord_reporter,
+    get_discord_reporter,
+    cleanup_discord_reporter,
+)
 
 # Railway configuration support
 try:
@@ -247,8 +252,6 @@ class AstraBot(commands.Bot):
             "data",
             "data/quiz",
             "data/space",
-            "data/analytics",
-            "data/analytics/daily_reports",
             "data/guilds",
             "data/database",
             "config",
@@ -516,6 +519,13 @@ class AstraBot(commands.Bot):
 
             # Update bot statistics
             self.stats.update_system_stats()
+
+            # Initialize Discord Data Reporter
+            try:
+                await initialize_discord_reporter(self)
+                self.logger.info("✅ Discord Data Reporter initialized")
+            except Exception as e:
+                self.logger.error(f"❌ Failed to initialize Discord Data Reporter: {e}")
 
             # Log guild information
             self.logger.info("\n📋 Connected Guilds:")
@@ -842,19 +852,34 @@ class AstraBot(commands.Bot):
         await db.set("command_stats", stats_key, current_stats)
 
     async def _log_error_to_database(self, interaction: discord.Interaction, error):
-        """Log error details to database for analysis"""
-        error_data = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "command": interaction.command.name if interaction.command else "unknown",
-            "user_id": interaction.user.id,
-            "guild_id": interaction.guild_id,
-            "error_type": type(error).__name__,
-            "error_message": str(error),
-            "traceback": traceback.format_exc(),
-        }
+        """Log error details to Discord channel and optionally database"""
+        # Send to Discord channel immediately
+        discord_reporter = get_discord_reporter()
+        if discord_reporter:
+            await discord_reporter.send_error_report(
+                error=error,
+                context=f"Command: {interaction.command.name if interaction.command else 'unknown'}",
+                guild_id=interaction.guild_id,
+                user_id=interaction.user.id,
+            )
 
-        error_key = f"{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_{interaction.user.id}"
-        await db.set("error_logs", error_key, error_data)
+        # Also keep minimal error tracking in database for critical errors
+        if isinstance(
+            error, (commands.CommandInvokeError, app_commands.AppCommandError)
+        ):
+            error_data = {
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "command": (
+                    interaction.command.name if interaction.command else "unknown"
+                ),
+                "user_id": interaction.user.id,
+                "guild_id": interaction.guild_id,
+                "error_type": type(error).__name__,
+                "error_message": str(error),
+            }
+
+            error_key = f"{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_{interaction.user.id}"
+            await db.set("error_logs", error_key, error_data)
 
     async def _store_message_context(self, message: discord.Message):
         """Store message context for AI understanding and conversation tracking"""
@@ -1000,23 +1025,8 @@ class AstraBot(commands.Bot):
             self.stats.memory_usage_mb = memory_info.rss / 1024 / 1024
             self.stats.cpu_usage_percent = cpu_percent
 
-            # Log performance metrics efficiently
-            await db.set(
-                "performance_metrics",
-                datetime.now(timezone.utc).strftime("%Y%m%d_%H"),
-                {
-                    "memory_usage_mb": self.stats.memory_usage_mb,
-                    "memory_percent": memory_percent,
-                    "cpu_percent": cpu_percent,
-                    "open_files": len(process.open_files()),
-                    "guild_count": len(self.guilds),
-                    "user_count": len(self.users),
-                    "uptime_hours": (
-                        datetime.now(timezone.utc) - self.start_time
-                    ).total_seconds()
-                    / 3600,
-                },
-            )
+            # Performance metrics are now sent to Discord via update_statistics task
+            # No need for additional database storage here
 
             # Performance warnings
             if memory_percent > 85:
@@ -1032,11 +1042,11 @@ class AstraBot(commands.Bot):
         except Exception as e:
             self.logger.error(f"Resource monitoring error: {e}")
 
-    @tasks.loop(minutes=30)  # Optimized frequency for statistics
+    @tasks.loop(minutes=20)  # Optimized frequency for Discord reporting
     async def update_statistics(self):
-        """Update and save bot statistics with batching"""
+        """Update and send bot statistics to Discord"""
         try:
-            # Batch update statistics
+            # Collect statistics
             stats_data = {
                 "timestamp": datetime.now(timezone.utc).isoformat(),
                 "uptime_seconds": self.stats.uptime_seconds,
@@ -1050,11 +1060,18 @@ class AstraBot(commands.Bot):
                 "extension_health": sum(
                     1 for health in self.extension_health.values() if health
                 ),
+                "total_extensions": len(self.extension_health),
             }
 
-            # Use hourly keys to reduce database entries
-            key = datetime.now(timezone.utc).strftime("%Y%m%d_%H")
-            await db.set("performance_metrics", key, stats_data)
+            # Send to Discord channel
+            discord_reporter = get_discord_reporter()
+            if discord_reporter:
+                await discord_reporter.send_performance_report(stats_data)
+
+            # Keep minimal database storage for critical metrics only
+            if stats_data["errors_handled"] > 0 or stats_data["cpu_usage_percent"] > 80:
+                key = datetime.now(timezone.utc).strftime("%Y%m%d_%H")
+                await db.set("performance_metrics", key, stats_data)
 
         except Exception as e:
             self.logger.error(f"Error updating statistics: {e}")
@@ -1308,6 +1325,13 @@ class AstraBot(commands.Bot):
 
                 # Wait for tasks to complete cancellation
                 await asyncio.gather(*self._tasks, return_exceptions=True)
+
+            # Cleanup Discord Data Reporter
+            try:
+                await cleanup_discord_reporter()
+                self.logger.info("✅ Discord Data Reporter cleaned up")
+            except Exception as e:
+                self.logger.error(f"❌ Error cleaning up Discord reporter: {e}")
 
             # Close HTTP session
             if self.session and not self.session.closed:

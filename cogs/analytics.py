@@ -20,6 +20,7 @@ from config.unified_config import unified_config
 from utils.permissions import has_permission, PermissionLevel
 from utils.command_optimizer import optimize_command
 from utils.performance_optimizer import ResponseCache
+from utils.discord_data_reporter import get_discord_reporter
 
 
 class Analytics(commands.GroupCog, name="analytics"):
@@ -36,118 +37,83 @@ class Analytics(commands.GroupCog, name="analytics"):
             max_size=500, default_ttl=300
         )  # 5-minute cache for analytics
 
-        # Data storage
-        self.data_dir = Path("data/analytics")
-        self.data_dir.mkdir(parents=True, exist_ok=True)
+        # Data storage - now using Discord channels instead of files
+        # No more local file directories needed
 
-        # Activity tracking
-        self.user_activity = self._load_user_activity()
-        self.channel_activity = self._load_channel_activity()
-        self.daily_stats = self._load_daily_stats()
+        # Activity tracking - reduced memory usage, data sent to Discord
+        self.user_activity = {}  # Only keep current session data
+        self.channel_activity = {}  # Only keep current session data
+        self.daily_stats = {}  # Only keep current day data
 
-        # Start background tasks
-        self.save_analytics_data.start()
+        # Discord reporter for sending data
+        self.discord_reporter = None
+
+        # Start background tasks for Discord reporting
+        self.send_analytics_data.start()
         self.generate_daily_report.start()
 
     def cog_unload(self):
         """Clean up when cog is unloaded"""
-        self.save_analytics_data.cancel()
+        self.send_analytics_data.cancel()
         self.generate_daily_report.cancel()
 
+    async def cog_load(self):
+        """Initialize Discord reporter when cog loads"""
+        await asyncio.sleep(2)  # Wait for bot to be ready
+        self.discord_reporter = get_discord_reporter()
+        if self.discord_reporter:
+            self.logger.info("✅ Analytics connected to Discord Data Reporter")
+        else:
+            self.logger.warning("⚠️ Discord Data Reporter not available")
+
     def _load_user_activity(self) -> Dict[str, Any]:
-        """Load user activity data"""
-        file_path = self.data_dir / "user_activity.json"
-        if file_path.exists():
-            with open(file_path, "r") as f:
-                return json.load(f)
+        """Load user activity data - now returns empty dict since we use Discord reporting"""
+        # Legacy file loading removed for performance - data now sent directly to Discord
         return {}
 
     def _load_channel_activity(self) -> Dict[str, Any]:
-        """Load channel activity data"""
-        file_path = self.data_dir / "channel_activity.json"
-        if file_path.exists():
-            with open(file_path, "r") as f:
-                return json.load(f)
+        """Load channel activity data - now returns empty dict since we use Discord reporting"""
+        # Legacy file loading removed for performance - data now sent directly to Discord
         return {}
 
     def _load_daily_stats(self) -> Dict[str, Any]:
-        """Load daily statistics"""
-        file_path = self.data_dir / "daily_stats.json"
-        if file_path.exists():
-            with open(file_path, "r") as f:
-                return json.load(f)
+        """Load daily statistics - now returns empty dict since we use Discord reporting"""
+        # Legacy file loading removed for performance - data now sent directly to Discord
         return {}
 
     @commands.Cog.listener()
     async def on_message(self, message):
-        """Track message activity"""
+        """Track message activity and send to Discord channel"""
         if message.author.bot or not message.guild:
             return
 
+        # Send message activity directly to Discord analytics channel
+        if self.discord_reporter:
+            activity_data = {
+                "event": "message_activity",
+                "guild_id": message.guild.id,
+                "guild_name": message.guild.name,
+                "channel_id": message.channel.id,
+                "channel_name": message.channel.name,
+                "user_id": message.author.id,
+                "username": str(message.author),
+                "message_length": len(message.content),
+                "has_attachments": len(message.attachments) > 0,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+            }
+
+            await self.discord_reporter.send_analytics(activity_data, immediate=False)
+
+        # Keep minimal tracking in memory for current session analytics
         today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         guild_id = str(message.guild.id)
         user_id = str(message.author.id)
         channel_id = str(message.channel.id)
 
-        # Track user activity
-        if guild_id not in self.user_activity:
-            self.user_activity[guild_id] = {}
-
-        if user_id not in self.user_activity[guild_id]:
-            self.user_activity[guild_id][user_id] = {
-                "username": str(message.author),
-                "total_messages": 0,
-                "daily_messages": {},
-                "channels": {},
-                "first_seen": today,
-                "last_seen": today,
-            }
-
-        user_data = self.user_activity[guild_id][user_id]
-        user_data["total_messages"] += 1
-        user_data["last_seen"] = today
-        user_data["username"] = str(message.author)
-
-        # Daily messages
-        if today not in user_data["daily_messages"]:
-            user_data["daily_messages"][today] = 0
-        user_data["daily_messages"][today] += 1
-
-        # Channel activity
-        if channel_id not in user_data["channels"]:
-            user_data["channels"][channel_id] = 0
-        user_data["channels"][channel_id] += 1
-
-        # Track channel activity
-        if guild_id not in self.channel_activity:
-            self.channel_activity[guild_id] = {}
-
-        if channel_id not in self.channel_activity[guild_id]:
-            self.channel_activity[guild_id][channel_id] = {
-                "name": message.channel.name,
-                "total_messages": 0,
-                "daily_messages": {},
-                "users": set(),
-            }
-
-        channel_data = self.channel_activity[guild_id][channel_id]
-        channel_data["total_messages"] += 1
-        channel_data["name"] = message.channel.name
-
-        if today not in channel_data["daily_messages"]:
-            channel_data["daily_messages"][today] = 0
-        channel_data["daily_messages"][today] += 1
-
-        # Convert set to list for JSON serialization
-        if isinstance(channel_data["users"], set):
-            channel_data["users"] = list(channel_data["users"])
-        if user_id not in channel_data["users"]:
-            channel_data["users"].append(user_id)
-
-        # Track daily server stats
+        # Lightweight tracking for real-time analytics
         if guild_id not in self.daily_stats:
             self.daily_stats[guild_id] = {}
-
         if today not in self.daily_stats[guild_id]:
             self.daily_stats[guild_id][today] = {
                 "total_messages": 0,
@@ -157,67 +123,40 @@ class Analytics(commands.GroupCog, name="analytics"):
 
         daily_data = self.daily_stats[guild_id][today]
         daily_data["total_messages"] += 1
-
-        # Convert sets to lists for JSON serialization
-        if isinstance(daily_data["active_users"], set):
-            daily_data["active_users"] = list(daily_data["active_users"])
-        if isinstance(daily_data["active_channels"], set):
-            daily_data["active_channels"] = list(daily_data["active_channels"])
-
-        if user_id not in daily_data["active_users"]:
-            daily_data["active_users"].append(user_id)
-        if channel_id not in daily_data["active_channels"]:
-            daily_data["active_channels"].append(channel_id)
+        daily_data["active_users"].add(user_id)
+        daily_data["active_channels"].add(channel_id)
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
-        """Track voice activity"""
+        """Track voice activity and send to Discord channel"""
         if member.bot or not member.guild:
             return
 
-        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-        guild_id = str(member.guild.id)
-        user_id = str(member.id)
+        # Send voice activity directly to Discord analytics channel
+        if self.discord_reporter:
+            activity_type = None
+            if after.channel and not before.channel:
+                activity_type = "voice_join"
+            elif before.channel and not after.channel:
+                activity_type = "voice_leave"
+            elif before.channel and after.channel and before.channel != after.channel:
+                activity_type = "voice_move"
 
-        # Initialize user data if needed
-        if guild_id not in self.user_activity:
-            self.user_activity[guild_id] = {}
+            if activity_type:
+                voice_data = {
+                    "event": "voice_activity",
+                    "activity_type": activity_type,
+                    "guild_id": member.guild.id,
+                    "guild_name": member.guild.name,
+                    "user_id": member.id,
+                    "username": str(member),
+                    "before_channel": before.channel.name if before.channel else None,
+                    "after_channel": after.channel.name if after.channel else None,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+                }
 
-        if user_id not in self.user_activity[guild_id]:
-            self.user_activity[guild_id][user_id] = {
-                "username": str(member),
-                "total_messages": 0,
-                "daily_messages": {},
-                "channels": {},
-                "voice_time": {},
-                "first_seen": today,
-                "last_seen": today,
-            }
-
-        user_data = self.user_activity[guild_id][user_id]
-
-        # Track voice activity
-        if "voice_time" not in user_data:
-            user_data["voice_time"] = {}
-
-        if today not in user_data["voice_time"]:
-            user_data["voice_time"][today] = 0
-
-        # This is a simplified voice tracking - in production you'd want more sophisticated time tracking
-        if after.channel and not before.channel:
-            # User joined voice
-            user_data["voice_join_time"] = datetime.now(timezone.utc).timestamp()
-        elif before.channel and not after.channel:
-            # User left voice
-            if "voice_join_time" in user_data:
-                session_time = (
-                    datetime.now(timezone.utc).timestamp()
-                    - user_data["voice_join_time"]
-                )
-                user_data["voice_time"][today] += (
-                    session_time / 60
-                )  # Convert to minutes
-                del user_data["voice_join_time"]
+                await self.discord_reporter.send_analytics(voice_data, immediate=False)
 
     @app_commands.command(name="overview", description="Get server analytics overview")
     @app_commands.describe(days="Number of days to analyze (default: 7)")
@@ -496,31 +435,54 @@ class Analytics(commands.GroupCog, name="analytics"):
 
         return user_stats[:limit]
 
-    @tasks.loop(minutes=30)
-    async def save_analytics_data(self):
-        """Periodically save analytics data to files"""
+    @tasks.loop(minutes=15)
+    async def send_analytics_data(self):
+        """Periodically send current analytics summary to Discord"""
         try:
-            # Save user activity
-            with open(self.data_dir / "user_activity.json", "w") as f:
-                json.dump(self.user_activity, f, indent=2)
+            if not self.discord_reporter:
+                return
 
-            # Save channel activity
-            with open(self.data_dir / "channel_activity.json", "w") as f:
-                json.dump(self.channel_activity, f, indent=2)
+            # Send current session summary
+            current_stats = {
+                "event": "analytics_summary",
+                "session_stats": {
+                    "daily_stats": {
+                        guild_id: {
+                            date: {
+                                "total_messages": stats["total_messages"],
+                                "active_users": (
+                                    len(stats["active_users"])
+                                    if isinstance(stats["active_users"], set)
+                                    else len(stats["active_users"])
+                                ),
+                                "active_channels": (
+                                    len(stats["active_channels"])
+                                    if isinstance(stats["active_channels"], set)
+                                    else len(stats["active_channels"])
+                                ),
+                            }
+                            for date, stats in guild_data.items()
+                        }
+                        for guild_id, guild_data in self.daily_stats.items()
+                    }
+                },
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "summary_type": "periodic_update",
+            }
 
-            # Save daily stats
-            with open(self.data_dir / "daily_stats.json", "w") as f:
-                json.dump(self.daily_stats, f, indent=2)
-
-            self.logger.info("Analytics data saved successfully")
+            await self.discord_reporter.send_analytics(current_stats, immediate=False)
+            self.logger.info("Analytics summary sent to Discord")
 
         except Exception as e:
-            self.logger.error(f"Error saving analytics data: {e}")
+            self.logger.error(f"Error sending analytics data: {e}")
 
     @tasks.loop(time=time(0, 0))  # Run at midnight UTC
     async def generate_daily_report(self):
-        """Generate daily analytics reports"""
+        """Generate daily analytics reports and send to Discord"""
         try:
+            if not self.discord_reporter:
+                return
+
             yesterday = (datetime.now(timezone.utc) - timedelta(days=1)).strftime(
                 "%Y-%m-%d"
             )
@@ -532,38 +494,50 @@ class Analytics(commands.GroupCog, name="analytics"):
                     guild_id in self.daily_stats
                     and yesterday in self.daily_stats[guild_id]
                 ):
-                    await self._generate_guild_daily_report(guild, yesterday)
+                    await self._send_guild_daily_report(guild, yesterday)
+
+            # Clear yesterday's data to save memory
+            for guild_id in self.daily_stats:
+                if yesterday in self.daily_stats[guild_id]:
+                    del self.daily_stats[guild_id][yesterday]
 
         except Exception as e:
             self.logger.error(f"Error generating daily reports: {e}")
 
-    async def _generate_guild_daily_report(self, guild: discord.Guild, date: str):
-        """Generate daily report for a specific guild"""
+    async def _send_guild_daily_report(self, guild: discord.Guild, date: str):
+        """Send daily report for a specific guild to Discord"""
         try:
+            if not self.discord_reporter:
+                return
+
             guild_id = str(guild.id)
             day_data = self.daily_stats[guild_id][date]
 
             # Create report
             report = {
+                "event": "daily_report",
                 "date": date,
                 "guild_name": guild.name,
                 "guild_id": guild_id,
                 "total_messages": day_data["total_messages"],
-                "active_users": len(day_data["active_users"]),
-                "active_channels": len(day_data["active_channels"]),
+                "active_users": (
+                    len(day_data["active_users"])
+                    if isinstance(day_data["active_users"], set)
+                    else len(day_data["active_users"])
+                ),
+                "active_channels": (
+                    len(day_data["active_channels"])
+                    if isinstance(day_data["active_channels"], set)
+                    else len(day_data["active_channels"])
+                ),
                 "generated_at": datetime.now(timezone.utc).isoformat(),
             }
 
-            # Save report
-            reports_dir = self.data_dir / "daily_reports"
-            reports_dir.mkdir(exist_ok=True)
-
-            report_file = reports_dir / f"{guild_id}_{date}.json"
-            with open(report_file, "w") as f:
-                json.dump(report, f, indent=2)
+            await self.discord_reporter.send_analytics(report, immediate=True)
+            self.logger.info(f"Daily report sent to Discord for {guild.name}")
 
         except Exception as e:
-            self.logger.error(f"Error generating daily report for {guild.name}: {e}")
+            self.logger.error(f"Error sending daily report for {guild.name}: {e}")
 
 
 async def setup(bot):

@@ -67,9 +67,26 @@ def log_command_usage(command_name: str, user_id: int, guild_id: int = None):
 
 
 def log_error(error: Exception, context: str = ""):
-    """Log error with context"""
+    """Log error with context and optionally send to Discord"""
     context_info = f" ({context})" if context else ""
     logger.error(f"❌ Error{context_info}: {type(error).__name__}: {error}")
+
+    # Also send to Discord if reporter is available
+    try:
+        from utils.discord_data_reporter import get_discord_reporter
+        import asyncio
+
+        discord_reporter = get_discord_reporter()
+        if discord_reporter:
+            try:
+                # Create a task to send to Discord (non-blocking)
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    loop.create_task(discord_reporter.send_error_report(error, context))
+            except Exception:
+                pass  # Don't fail if Discord reporting fails
+    except ImportError:
+        pass  # Discord reporter not available
 
 
 def log_api_request(

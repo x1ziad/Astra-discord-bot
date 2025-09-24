@@ -21,6 +21,7 @@ import aiohttp
 from config.unified_config import unified_config
 from utils.database import db
 from logger.enhanced_logger import log_performance
+from utils.discord_data_reporter import get_discord_reporter
 
 
 class NexusControlSystem(commands.GroupCog, name="nexus"):
@@ -1274,6 +1275,49 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
         )
 
         embed.set_footer(text="NEXUS Diagnostics • Advanced system troubleshooting")
+
+        # Send diagnostics data to Discord channel
+        discord_reporter = get_discord_reporter()
+        if discord_reporter:
+            try:
+                # Collect diagnostic data
+                process = psutil.Process() if "psutil" in sys.modules else None
+                diagnostics_data = {
+                    "event": "nexus_diagnostics",
+                    "requested_by": interaction.user.id,
+                    "guild_id": interaction.guild_id,
+                    "system_info": {
+                        "python_version": sys.version.split()[0],
+                        "discord_py_version": discord.__version__,
+                        "garbage_collected": gc.collect(),
+                        "memory_refs": len(gc.get_objects()),
+                    },
+                    "extensions": {
+                        "loaded_cogs": cog_count,
+                        "cog_list": loaded_cogs,
+                        "critical_systems_ok": "NexusControlSystem" in loaded_cogs,
+                        "ai_engine_ok": any("ai" in cog.lower() for cog in loaded_cogs),
+                        "database_ok": hasattr(self.bot, "db"),
+                    },
+                    "performance": (
+                        {
+                            "connections": len(process.connections()) if process else 0,
+                            "threads": process.num_threads() if process else 0,
+                            "file_descriptors": process.num_fds() if process else 0,
+                        }
+                        if process
+                        else {"status": "psutil_unavailable"}
+                    ),
+                    "ai_services": ai_services,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                }
+
+                await discord_reporter.send_diagnostics(
+                    diagnostics_data, immediate=True
+                )
+            except Exception as e:
+                self.bot.logger.error(f"Failed to send diagnostics to Discord: {e}")
+
         await interaction.followup.send(embed=embed)
 
     @app_commands.command(
@@ -1444,6 +1488,93 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
         )
 
         embed.set_footer(text="NEXUS Token Monitor • Universal AI optimization system")
+        await interaction.followup.send(embed=embed)
+
+    @app_commands.command(
+        name="test_reporting", description="🧪 Test Discord Data Reporting Channels"
+    )
+    @app_commands.default_permissions(administrator=True)
+    async def test_reporting_command(self, interaction: discord.Interaction):
+        """Test Discord data reporting channels"""
+        await interaction.response.defer()
+
+        embed = discord.Embed(
+            title="🧪 TESTING DISCORD DATA REPORTING",
+            description="*Testing all configured reporting channels*",
+            color=0xFF6600,
+            timestamp=datetime.now(timezone.utc),
+        )
+
+        discord_reporter = get_discord_reporter()
+        if not discord_reporter:
+            embed.add_field(
+                name="❌ Status",
+                value="Discord Data Reporter is not initialized",
+                inline=False,
+            )
+            await interaction.followup.send(embed=embed)
+            return
+
+        try:
+            # Test all channels
+            test_results = await discord_reporter.test_channels()
+
+            for channel_name, result in test_results.items():
+                embed.add_field(
+                    name=f"📡 {channel_name} Channel", value=result, inline=True
+                )
+
+            # Send test data to each channel
+            test_data = {
+                "event": "channel_test",
+                "message": f"Test initiated by {interaction.user.mention}",
+                "guild": interaction.guild.name if interaction.guild else "DM",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+
+            # Test analytics
+            await discord_reporter.send_analytics(
+                {
+                    **test_data,
+                    "type": "analytics_test",
+                    "sample_data": {"test_metric": 42, "status": "working"},
+                },
+                immediate=True,
+            )
+
+            # Test diagnostics
+            await discord_reporter.send_diagnostics(
+                {
+                    **test_data,
+                    "type": "diagnostics_test",
+                    "system_check": "all_systems_operational",
+                },
+                immediate=True,
+            )
+
+            # Test logs
+            await discord_reporter.send_logs(
+                {
+                    **test_data,
+                    "type": "log_test",
+                    "log_level": "info",
+                    "message": "Discord reporting test completed successfully",
+                },
+                immediate=True,
+            )
+
+            embed.add_field(
+                name="✅ Test Complete",
+                value="Test messages sent to all channels",
+                inline=False,
+            )
+
+        except Exception as e:
+            embed.add_field(
+                name="❌ Test Failed", value=f"Error: {str(e)}", inline=False
+            )
+
+        embed.set_footer(text="NEXUS Channel Testing • Discord Data Reporter")
         await interaction.followup.send(embed=embed)
 
 
