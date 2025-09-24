@@ -80,6 +80,11 @@ class OptimizedUniversalAIClient:
     def __init__(self, api_key: str = None, model: str = None, **kwargs):
         self.api_key = api_key
         self.model = model or "anthropic/claude-3-haiku"  # Fast model default
+        
+        # Validate and fix invalid model IDs
+        if "xAI:" in self.model or "Grok" in self.model or "deepseek/deepseek-r1:nitro" in self.model or not self.model.strip():
+            logger.warning(f"Invalid model ID '{self.model}', using fallback: anthropic/claude-3-haiku")
+            self.model = "anthropic/claude-3-haiku"
 
         # Performance settings
         self.max_tokens = kwargs.get("max_tokens", 1000)  # Reduced for speed
@@ -169,8 +174,16 @@ class OptimizedUniversalAIClient:
         # Build minimal payload for speed
         messages = self._build_lightweight_messages(message, user_id)
 
+        # Get and validate model
+        model = kwargs.get("model", self.model)
+        
+        # Validate and fix invalid model IDs
+        if "xAI:" in model or "Grok" in model or not model.strip():
+            logger.warning(f"Invalid model ID '{model}', using fallback: anthropic/claude-3-haiku")
+            model = "anthropic/claude-3-haiku"
+
         payload = {
-            "model": kwargs.get("model", self.model),
+            "model": model,
             "messages": messages,
             "max_tokens": kwargs.get("max_tokens", self.max_tokens),
             "temperature": kwargs.get("temperature", self.temperature),

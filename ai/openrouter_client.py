@@ -39,7 +39,7 @@ class OpenRouterClient:
         self.base_url = "https://openrouter.ai/api/v1"
 
         # Default model configuration
-        self.default_model = "deepseek/deepseek-r1:nitro"
+        self.default_model = "anthropic/claude-3-haiku"
         self.max_tokens = 2000
         self.temperature = 0.7
 

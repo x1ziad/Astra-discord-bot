@@ -97,6 +97,11 @@ class UniversalAIClient:
         self.max_tokens = kwargs.get("max_tokens", 2000)
         self.temperature = kwargs.get("temperature", 0.7)
         self.model = kwargs.get("model", self.config[self.provider]["default_model"])
+        
+        # Validate and fix invalid model IDs
+        if "xAI:" in self.model or "Grok" in self.model or "deepseek/deepseek-r1:nitro" in self.model or not self.model.strip():
+            logger.warning(f"Invalid model ID '{self.model}', using fallback: anthropic/claude-3-haiku")
+            self.model = "anthropic/claude-3-haiku"
 
         # Enhanced context settings
         self.max_context_messages = kwargs.get(
@@ -995,9 +1000,17 @@ class UniversalAIClient:
         provider_config = self.config[self.provider]
         url = f"{provider_config['base_url']}/chat/completions"
 
+        # Get and validate model
+        model = kwargs.get("model", self.model)
+        
+        # Validate and fix invalid model IDs
+        if "xAI:" in model or "Grok" in model or not model.strip():
+            logger.warning(f"Invalid model ID '{model}', using fallback: anthropic/claude-3-haiku")
+            model = "anthropic/claude-3-haiku"
+
         # Build payload
         payload = {
-            "model": kwargs.get("model", self.model),
+            "model": model,
             "messages": messages,
             "max_tokens": kwargs.get("max_tokens", self.max_tokens),
             "temperature": kwargs.get("temperature", self.temperature),

@@ -720,10 +720,18 @@ class ConsolidatedAIEngine:
         # Universal AI (primary)
         if UNIVERSAL_AI_AVAILABLE:
             try:
+                # Get model with safe fallback
+                model = self.config.get("ai_model") or os.getenv("AI_MODEL") or "anthropic/claude-3-haiku"
+                
+                # Validate and fix invalid model IDs
+                if "xAI:" in model or "Grok" in model or not model.strip():
+                    logger.warning(f"Invalid model ID '{model}', using fallback: anthropic/claude-3-haiku")
+                    model = "anthropic/claude-3-haiku"
+                
                 universal_client = UniversalAIClient(
                     api_key=self.config.get("ai_api_key") or os.getenv("AI_API_KEY"),
                     base_url=self.config.get("ai_base_url") or os.getenv("AI_BASE_URL"),
-                    model=self.config.get("ai_model") or os.getenv("AI_MODEL"),
+                    model=model,
                 )
                 if universal_client.is_available():
                     self.ai_providers[AIProvider.UNIVERSAL] = universal_client
