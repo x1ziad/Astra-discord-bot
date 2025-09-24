@@ -22,6 +22,33 @@ import aiohttp
 from concurrent.futures import ThreadPoolExecutor
 import threading
 
+# Import model mapping
+try:
+    from ai.model_mapping import normalize_model_id, get_model_display_name
+except ImportError:
+    # Fallback if model_mapping not available
+    def normalize_model_id(model_id: str) -> str:
+        """Fallback model normalization"""
+        if not model_id:
+            return "anthropic/claude-3-haiku"
+        
+        model_id = model_id.strip()
+        
+        # Handle the specific case that's causing issues
+        if model_id == "xAI: Grok Code Fast 1":
+            return "x-ai/grok-code-fast-1"
+        
+        # If it's already in API format, return as-is
+        if "/" in model_id:
+            return model_id
+        
+        return "anthropic/claude-3-haiku"  # Safe fallback
+    
+    def get_model_display_name(model_id: str) -> str:
+        return model_id
+from concurrent.futures import ThreadPoolExecutor
+import threading
+
 # Cache imports with fallbacks
 try:
     import redis.asyncio as redis
@@ -721,18 +748,20 @@ class ConsolidatedAIEngine:
         if UNIVERSAL_AI_AVAILABLE:
             try:
                 # Get model with safe fallback
-                model = (
+                raw_model = (
                     self.config.get("ai_model")
                     or os.getenv("AI_MODEL")
                     or "anthropic/claude-3-haiku"
                 )
 
-                # Validate model IDs (allow user-configured models like "xAI: Grok Code Fast 1")
-                if not model.strip():
-                    logger.warning(
-                        f"Empty model ID, using fallback: anthropic/claude-3-haiku"
-                    )
-                    model = "anthropic/claude-3-haiku"
+                # Normalize model ID using mapping system
+                model = normalize_model_id(raw_model)
+                
+                # Log model conversion if it was changed
+                if raw_model != model:
+                    logger.info(f"Converted model ID '{raw_model}' to '{model}'")
+                
+                logger.info(f"Using normalized model: {model}")
 
                 universal_client = UniversalAIClient(
                     api_key=self.config.get("ai_api_key") or os.getenv("AI_API_KEY"),

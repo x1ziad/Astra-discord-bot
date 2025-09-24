@@ -8,10 +8,36 @@ import logging
 import aiohttp
 import json
 import os
-from typing import Dict, Any, Optional, List, Union
-from dataclasses import dataclass
-from datetime import datetime
+import time
+from typing import Dict, Any, Optional, List, Union, Tuple
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from enum import Enum
+
+# Import model mapping
+try:
+    from ai.model_mapping import normalize_model_id, get_model_display_name
+except ImportError:
+    # Fallback if model_mapping not available
+    def normalize_model_id(model_id: str) -> str:
+        """Fallback model normalization"""
+        if not model_id:
+            return "anthropic/claude-3-haiku"
+        
+        model_id = model_id.strip()
+        
+        # Handle the specific case that's causing issues
+        if model_id == "xAI: Grok Code Fast 1":
+            return "x-ai/grok-code-fast-1"
+        
+        # If it's already in API format, return as-is
+        if "/" in model_id:
+            return model_id
+        
+        return "anthropic/claude-3-haiku"  # Safe fallback
+    
+    def get_model_display_name(model_id: str) -> str:
+        return model_id
 
 logger = logging.getLogger("astra.universal_ai_client")
 
@@ -96,12 +122,16 @@ class UniversalAIClient:
         # Default parameters
         self.max_tokens = kwargs.get("max_tokens", 2000)
         self.temperature = kwargs.get("temperature", 0.7)
-        self.model = kwargs.get("model", self.config[self.provider]["default_model"])
-
-        # Validate model IDs (allow user-configured models like "xAI: Grok Code Fast 1")
-        if not self.model or not self.model.strip():
-            logger.warning(f"Empty model ID, using fallback: anthropic/claude-3-haiku")
-            self.model = "anthropic/claude-3-haiku"
+        raw_model = kwargs.get("model", self.config[self.provider]["default_model"])
+        
+        # Normalize model ID using mapping system
+        self.model = normalize_model_id(raw_model)
+        
+        # Log model conversion if it was changed
+        if raw_model != self.model:
+            logger.info(f"Converted model ID '{raw_model}' to '{self.model}'")
+        
+        logger.info(f"Using model: {self.model}")
 
         # Enhanced context settings
         self.max_context_messages = kwargs.get(

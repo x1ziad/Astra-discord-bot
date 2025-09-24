@@ -12,6 +12,31 @@ from typing import Dict, Any, Optional, List
 from dataclasses import dataclass
 import weakref
 
+# Import model mapping
+try:
+    from ai.model_mapping import normalize_model_id, get_model_display_name
+except ImportError:
+    # Fallback if model_mapping not available
+    def normalize_model_id(model_id: str) -> str:
+        """Fallback model normalization"""
+        if not model_id:
+            return "anthropic/claude-3-haiku"
+        
+        model_id = model_id.strip()
+        
+        # Handle the specific case that's causing issues
+        if model_id == "xAI: Grok Code Fast 1":
+            return "x-ai/grok-code-fast-1"
+        
+        # If it's already in API format, return as-is
+        if "/" in model_id:
+            return model_id
+        
+        return "anthropic/claude-3-haiku"  # Safe fallback
+    
+    def get_model_display_name(model_id: str) -> str:
+        return model_id
+
 logger = logging.getLogger("astra.optimized_ai_client")
 
 # Global session pool for connection reuse
@@ -79,7 +104,11 @@ class OptimizedUniversalAIClient:
 
     def __init__(self, api_key: str = None, model: str = None, **kwargs):
         self.api_key = api_key
-        self.model = model or "anthropic/claude-3-haiku"  # Fast model default
+        self.model = normalize_model_id(model or "anthropic/claude-3-haiku")  # Normalize model
+        
+        # Log model conversion if it was changed
+        if model and model != self.model:
+            logger.info(f"Converted model ID '{model}' to '{self.model}'")
 
         # Validate model IDs (allow user-configured models like "xAI: Grok Code Fast 1")
         if not self.model.strip():
@@ -175,12 +204,12 @@ class OptimizedUniversalAIClient:
         messages = self._build_lightweight_messages(message, user_id)
 
         # Get and validate model
-        model = kwargs.get("model", self.model)
-
-        # Validate model IDs (allow user-configured models like "xAI: Grok Code Fast 1")
-        if not model.strip():
-            logger.warning(f"Empty model ID, using fallback: anthropic/claude-3-haiku")
-            model = "anthropic/claude-3-haiku"
+        raw_model = kwargs.get("model", self.model)
+        model = normalize_model_id(raw_model)
+        
+        # Log model conversion if it was changed
+        if raw_model != model:
+            logger.debug(f"Converted model ID '{raw_model}' to '{model}'")
 
         payload = {
             "model": model,
