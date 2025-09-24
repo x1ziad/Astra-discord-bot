@@ -1006,6 +1006,8 @@ class ConsolidatedAIEngine:
                 logger.warning(f"Advanced intelligence error: {e}")
                 intelligence_insights = None
 
+        # Main processing try block for sentiment analysis and response generation
+        try:
             # Analyze sentiment with caching (fallback if context manager not available)
             cache_key = f"sentiment:{hashlib.md5(message.encode()).hexdigest()}"
             sentiment_result = await self.cache.get(cache_key)
