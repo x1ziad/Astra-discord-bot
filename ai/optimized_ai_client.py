@@ -80,10 +80,10 @@ class OptimizedUniversalAIClient:
     def __init__(self, api_key: str = None, model: str = None, **kwargs):
         self.api_key = api_key
         self.model = model or "anthropic/claude-3-haiku"  # Fast model default
-        
-        # Validate and fix invalid model IDs
-        if "xAI:" in self.model or "Grok" in self.model or "deepseek/deepseek-r1:nitro" in self.model or not self.model.strip():
-            logger.warning(f"Invalid model ID '{self.model}', using fallback: anthropic/claude-3-haiku")
+
+        # Validate model IDs (allow user-configured models like "xAI: Grok Code Fast 1")
+        if not self.model.strip():
+            logger.warning(f"Empty model ID, using fallback: anthropic/claude-3-haiku")
             self.model = "anthropic/claude-3-haiku"
 
         # Performance settings
@@ -176,10 +176,10 @@ class OptimizedUniversalAIClient:
 
         # Get and validate model
         model = kwargs.get("model", self.model)
-        
-        # Validate and fix invalid model IDs
-        if "xAI:" in model or "Grok" in model or not model.strip():
-            logger.warning(f"Invalid model ID '{model}', using fallback: anthropic/claude-3-haiku")
+
+        # Validate model IDs (allow user-configured models like "xAI: Grok Code Fast 1")
+        if not model.strip():
+            logger.warning(f"Empty model ID, using fallback: anthropic/claude-3-haiku")
             model = "anthropic/claude-3-haiku"
 
         payload = {
