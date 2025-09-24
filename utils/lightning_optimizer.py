@@ -244,12 +244,19 @@ class LightningPerformanceOptimizer:
 
         # OPTIMIZED: Context-aware response patterns
         self.context_patterns = {
-            "greeting": ["hello", "hi", "hey", "good morning", "good evening", "what's up"],
+            "greeting": [
+                "hello",
+                "hi",
+                "hey",
+                "good morning",
+                "good evening",
+                "what's up",
+            ],
             "question": ["what", "why", "how", "when", "where", "who", "?"],
             "help": ["help", "assist", "support", "problem", "issue", "stuck"],
             "thanks": ["thank", "appreciate", "grateful", "thanks", "ty"],
             "casual": ["lol", "haha", "cool", "nice", "awesome", "great", "wow"],
-            "farewell": ["bye", "goodbye", "see you", "later", "farewell", "cya"]
+            "farewell": ["bye", "goodbye", "see you", "later", "farewell", "cya"],
         }
 
         # OPTIMIZED: Smart context-aware responses
@@ -257,33 +264,33 @@ class LightningPerformanceOptimizer:
             "greeting": [
                 "Hey there! Ready for some stellar conversations? ✨",
                 "Greetings, space explorer! What adventure awaits? 🚀",
-                "Hello! I'm like a caffeinated AI ready for anything! ☕⚡"
+                "Hello! I'm like a caffeinated AI ready for anything! ☕⚡",
             ],
             "question": [
                 "Great question! Let me channel my inner cosmic librarian 📚✨",
                 "Ah, curious minds unite! Time for some digital detective work 🔍",
-                "Interesting query! Consider me your AI sherpa for this climb 🏔️"
+                "Interesting query! Consider me your AI sherpa for this climb 🏔️",
             ],
             "help": [
                 "Help mode activated! I'm your digital Swiss Army knife 🛠️",
                 "At your service! Ready to tackle this together 💪",
-                "Assistance protocol engaged! Let's solve this puzzle 🧩"
+                "Assistance protocol engaged! Let's solve this puzzle 🧩",
             ],
             "thanks": [
                 "You're welcome! Happy to be your friendly AI companion 🤖",
                 "Anytime! Spreading good vibes across the cosmos ✨",
-                "My pleasure! It's like having superpowers for helpfulness ⚡"
+                "My pleasure! It's like having superpowers for helpfulness ⚡",
             ],
             "casual": [
                 "Right? Life's like debugging code - sometimes confusing but always interesting! 🎲",
                 "Totally! The universe has a great sense of timing 🌟",
-                "For sure! That's the energy I'm here for! 🎉"
+                "For sure! That's the energy I'm here for! 🎉",
             ],
             "farewell": [
                 "Until next time, space traveler! May your code compile and your coffee stay hot! ☕🚀",
                 "Catch you on the flip side! Like a good function, I'll be here when you call 📞",
-                "See you later! I'll be here, ready for more cosmic conversations ✨"
-            ]
+                "See you later! I'll be here, ready for more cosmic conversations ✨",
+            ],
         }
 
         # Pre-computed quick responses for common patterns
@@ -310,7 +317,9 @@ class LightningPerformanceOptimizer:
         self.pattern_matches = defaultdict(int)
         self.context_hit_rate = 0.0
 
-        logger.info("⚡ OPTIMIZED Lightning Performance Optimizer initialized with context intelligence")
+        logger.info(
+            "⚡ OPTIMIZED Lightning Performance Optimizer initialized with context intelligence"
+        )
 
     async def optimize_request(
         self, prompt: str, user_id: int, context: Dict[str, Any]
@@ -327,17 +336,19 @@ class LightningPerformanceOptimizer:
                     "type": "context_pattern",
                     "cached": False,
                     "context_aware": True,
-                    "response_time": time.time() - start_time
+                    "response_time": time.time() - start_time,
                 }
 
             # Level 2 - Check for instant responses (legacy quick responses)
             quick_response = await self._check_quick_responses(prompt)
             if quick_response:
-                await self._track_performance(time.time() - start_time, "quick_response")
+                await self._track_performance(
+                    time.time() - start_time, "quick_response"
+                )
                 return quick_response, {
-                    "type": "quick_response", 
+                    "type": "quick_response",
                     "cached": False,
-                    "response_time": time.time() - start_time
+                    "response_time": time.time() - start_time,
                 }
 
             # Level 3 - Smart caching with context awareness
@@ -354,10 +365,10 @@ class LightningPerformanceOptimizer:
                 await self._track_performance(time.time() - start_time, "cached")
                 self.context_hit_rate = min(1.0, self.context_hit_rate + 0.01)
                 return enhanced_response, {
-                    "type": "enhanced_cache", 
+                    "type": "enhanced_cache",
                     "cached": True,
                     "context_enhanced": True,
-                    "response_time": time.time() - start_time
+                    "response_time": time.time() - start_time,
                 }
 
             # Level 4 - Advanced prompt optimization with context
@@ -369,7 +380,7 @@ class LightningPerformanceOptimizer:
                 "cached": False,
                 "context_enhanced": True,
                 "original_prompt": prompt,
-                "response_time": time.time() - start_time
+                "response_time": time.time() - start_time,
             }
 
         except Exception as e:
@@ -381,31 +392,31 @@ class LightningPerformanceOptimizer:
     ) -> Optional[str]:
         """OPTIMIZED: Ultra-fast context-aware pattern matching"""
         prompt_lower = prompt.lower().strip()
-        
+
         # Detect conversation pattern with enhanced matching
         detected_pattern = None
         max_matches = 0
-        
+
         for pattern, keywords in self.context_patterns.items():
             matches = sum(1 for keyword in keywords if keyword in prompt_lower)
             if matches > max_matches:
                 max_matches = matches
                 detected_pattern = pattern
-        
+
         if detected_pattern and max_matches > 0:
             self.pattern_matches[detected_pattern] += 1
-            
+
             if detected_pattern in self.smart_responses:
                 response = random.choice(self.smart_responses[detected_pattern])
-                
+
                 # OPTIMIZED: Context-aware personalization
                 if context.get("username") and "User" not in str(context["username"]):
                     response = response.replace("there", str(context["username"]))
-                
+
                 # Add guild context for greetings
                 if detected_pattern == "greeting" and context.get("guild_name"):
                     response += f" Welcome to {context['guild_name']}!"
-                
+
                 # Add time-based context
                 current_hour = datetime.now().hour
                 if detected_pattern == "greeting":
@@ -413,9 +424,9 @@ class LightningPerformanceOptimizer:
                         response = response.replace("Hey", "Good morning")
                     elif 17 <= current_hour < 22:
                         response = response.replace("Hey", "Good evening")
-                
+
                 return response
-        
+
         return None
 
     async def _enhance_cached_response(
@@ -423,12 +434,14 @@ class LightningPerformanceOptimizer:
     ) -> str:
         """OPTIMIZED: Enhance cached responses with current context"""
         try:
-            enhanced = await self.humor_engine.enhance_response(cached_response, context)
-            
+            enhanced = await self.humor_engine.enhance_response(
+                cached_response, context
+            )
+
             # Add contextual freshness
             if context.get("is_repeat_user"):
                 enhanced += " (Good to see you again! 👋)"
-            
+
             return enhanced
         except Exception as e:
             logger.debug(f"Response enhancement failed: {e}")

@@ -165,36 +165,41 @@ class AdvancedAICog(commands.Cog):
                             prompt, user_id, guild_id=guild_id, channel_id=channel_id
                         )
                     )
-                    
+
                     # Create fallback task with slight delay to optimize resource usage
                     async def delayed_fallback():
                         await asyncio.sleep(0.3)  # Small delay to prioritize primary
                         if hasattr(self.ai_client, "generate_response"):
                             return await self.ai_client.generate_response(
-                                prompt, context={"history": recent_history, "optimized": True}
+                                prompt,
+                                context={"history": recent_history, "optimized": True},
                             )
                         return None
-                    
+
                     fallback_task = asyncio.create_task(delayed_fallback())
-                    
+
                     # OPTIMIZED: Reduced timeout from 5s to 2s for faster responses
                     response = await asyncio.wait_for(primary_task, timeout=2.0)
-                    
+
                     # Cancel fallback if primary succeeded
                     fallback_task.cancel()
-                    
+
                 except asyncio.TimeoutError:
-                    self.logger.info("Primary AI timeout - switching to fallback (optimized)")
-                    
+                    self.logger.info(
+                        "Primary AI timeout - switching to fallback (optimized)"
+                    )
+
                     try:
                         # OPTIMIZED: Use already-running fallback with reduced timeout
                         response = await asyncio.wait_for(fallback_task, timeout=1.0)
                     except (asyncio.TimeoutError, Exception) as fb_error:
                         self.logger.warning(f"Fallback also timed out: {fb_error}")
                         response = None
-                        
+
                 except Exception as e:
-                    self.logger.warning(f"Primary AI engine error - using fallback: {e}")
+                    self.logger.warning(
+                        f"Primary AI engine error - using fallback: {e}"
+                    )
                     # Try to use fallback task if still running
                     try:
                         response = await asyncio.wait_for(fallback_task, timeout=1.0)
@@ -208,7 +213,7 @@ class AdvancedAICog(commands.Cog):
                         "username": username or "Friend",
                         "guild_name": "Server",  # Simplified to avoid undefined variables
                         "recent_activity": len(recent_history) > 0,
-                        "emergency": True
+                        "emergency": True,
                     }
                     response = await lightning_optimizer.get_fallback_response(
                         enhanced_context

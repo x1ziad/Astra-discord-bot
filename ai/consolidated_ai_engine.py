@@ -621,6 +621,20 @@ class ConsolidatedAIEngine:
         self.config = config or {}
         self.logger = logger
 
+        # Try to use new optimized client first
+        self.fast_engine = None
+        try:
+            from ai.optimized_ai_client import get_fast_engine
+
+            self.fast_engine = get_fast_engine(config)
+            if self.fast_engine.is_available():
+                logger.info("🚀 Using Fast Optimized Engine for maximum performance")
+            else:
+                self.fast_engine = None
+        except Exception as e:
+            logger.warning(f"Fast engine unavailable: {e}")
+            self.fast_engine = None
+
         # Try to use optimized engine first
         self.optimized_engine = None
         if OPTIMIZED_ENGINE_AVAILABLE:
@@ -842,7 +856,20 @@ class ConsolidatedAIEngine:
     ) -> str:
         """OPTIMIZED: Main conversation processing with lightning-fast response times"""
 
-        # Use optimized engine if available
+        # Use fast optimized engine first (highest priority)
+        if self.fast_engine:
+            try:
+                return await self.fast_engine.process_conversation(
+                    message=message,
+                    user_id=user_id,
+                    guild_id=guild_id,
+                    channel_id=channel_id,
+                    context_data=context_data,
+                )
+            except Exception as e:
+                logger.warning(f"Fast engine failed, falling back: {e}")
+
+        # Use optimized engine if available (second priority)
         if self.optimized_engine:
             try:
                 return await self.optimized_engine.process_conversation(
@@ -864,61 +891,66 @@ class ConsolidatedAIEngine:
             context_task = asyncio.create_task(
                 self._get_conversation_context(user_id, guild_id, channel_id)
             )
-            profile_task = asyncio.create_task(
-                self._get_user_profile(user_id)
-            )
-            
+            profile_task = asyncio.create_task(self._get_user_profile(user_id))
+
             # Wait for both with short timeout for speed
             conversation_context, user_profile = await asyncio.gather(
                 asyncio.wait_for(context_task, timeout=0.5),
                 asyncio.wait_for(profile_task, timeout=0.5),
-                return_exceptions=True
+                return_exceptions=True,
             )
-            
+
             # Handle timeouts gracefully
             if isinstance(conversation_context, Exception):
-                conversation_context = await self._create_minimal_context(user_id, guild_id, channel_id)
+                conversation_context = await self._create_minimal_context(
+                    user_id, guild_id, channel_id
+                )
             if isinstance(user_profile, Exception):
                 user_profile = {"user_id": user_id, "engagement_score": 0.5}
-                
+
         except Exception as e:
             logger.debug(f"Context gathering optimization failed, using fallback: {e}")
             # Fallback to minimal context for speed
-            conversation_context = await self._create_minimal_context(user_id, guild_id, channel_id)
+            conversation_context = await self._create_minimal_context(
+                user_id, guild_id, channel_id
+            )
             user_profile = {"user_id": user_id, "engagement_score": 0.5}
 
         # OPTIMIZED: Simplified context analysis for faster responses
         message_context = None
         personality_context = None
         intelligence_insights = None
-        
+
         # Only do advanced processing if response time budget allows
         elapsed = time.time() - start_time
         if elapsed < 0.3:  # 300ms budget for advanced features
             try:
                 # Concurrent advanced processing
                 tasks = []
-                
+
                 # Universal context manager (if available)
                 try:
                     from ai.universal_context_manager import get_context_manager
+
                     context_manager = get_context_manager()
                     if context_manager:
                         tasks.append(
                             asyncio.wait_for(
-                                context_manager.analyze_message(message, user_id, channel_id, guild_id),
-                                timeout=0.2
+                                context_manager.analyze_message(
+                                    message, user_id, channel_id, guild_id
+                                ),
+                                timeout=0.2,
                             )
                         )
                 except ImportError:
                     pass
-                
+
                 # Personality evolution (if available and guild context)
                 if self.personality_engine and guild_id:
                     try:
                         user_name = context_data.get("user_name", f"User{user_id}")
                         guild_name = context_data.get("guild_name", f"Guild{guild_id}")
-                        
+
                         tasks.append(
                             asyncio.wait_for(
                                 self.personality_engine.process_message(
@@ -927,14 +959,14 @@ class ConsolidatedAIEngine:
                                     user_name=user_name,
                                     server_id=guild_id,
                                     server_name=guild_name,
-                                    message_context=None  # Skip for speed
+                                    message_context=None,  # Skip for speed
                                 ),
-                                timeout=0.2
+                                timeout=0.2,
                             )
                         )
                     except Exception:
                         pass
-                
+
                 # Execute advanced tasks if time allows
                 if tasks:
                     results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -945,7 +977,7 @@ class ConsolidatedAIEngine:
                                 message_context = result
                             else:  # Personality result
                                 personality_context = result
-                                
+
             except Exception as e:
                 logger.debug(f"Advanced processing skipped for speed: {e}")
 
@@ -963,9 +995,7 @@ class ConsolidatedAIEngine:
                     },
                     "event_type": "message",
                     "significance_score": 0.5,  # Base significance
-                    "emotional_weight": (
-                        intensity if "intensity" in locals() else 0.0
-                    ),
+                    "emotional_weight": (intensity if "intensity" in locals() else 0.0),
                     "participants": [user_id],
                     "trigger_predictions": True,
                 }
@@ -991,9 +1021,7 @@ class ConsolidatedAIEngine:
                 # Extract insights for response enhancement
                 intelligence_insights = {
                     "predictions": intelligence_result.get("predictions", []),
-                    "wellness_alerts": intelligence_result.get(
-                        "wellness_alerts", []
-                    ),
+                    "wellness_alerts": intelligence_result.get("wellness_alerts", []),
                     "mood_changes": intelligence_result.get("mood_changes", {}),
                     "sage_insights": intelligence_result.get("sage_insights", []),
                 }
@@ -1128,7 +1156,7 @@ class ConsolidatedAIEngine:
             emotional_context={},
             topics=[],
             conversation_stage="ongoing",
-            last_interaction=datetime.now()
+            last_interaction=datetime.now(),
         )
 
     async def _get_conversation_context(
