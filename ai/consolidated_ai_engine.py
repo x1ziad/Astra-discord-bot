@@ -989,7 +989,7 @@ class ConsolidatedAIEngine:
                 # Initialize variables to avoid NameError
                 topics = []
                 intensity = 0.0
-                
+
                 event_data = {
                     "user_id": user_id,
                     "message_data": {
@@ -1043,7 +1043,7 @@ class ConsolidatedAIEngine:
             # Analyze sentiment with caching (fallback if context manager not available)
             if not message:
                 raise ValueError("Message cannot be None or empty")
-            
+
             cache_key = f"sentiment:{hashlib.md5(message.encode('utf-8', errors='ignore')).hexdigest()}"
             sentiment_result = await self.cache.get(cache_key)
 
@@ -1065,14 +1065,20 @@ class ConsolidatedAIEngine:
             )
 
             # Extract topics (enhanced if context manager available)
-            if message_context and hasattr(message_context, 'topics') and message_context.topics:
+            if (
+                message_context
+                and hasattr(message_context, "topics")
+                and message_context.topics
+            ):
                 topics = message_context.topics
             else:
                 topics = await self._extract_topics(message)
 
             # Ensure topics is a list and handle safely
             if topics and isinstance(topics, list):
-                conversation_context.active_topics.update(topics[:3])  # Keep top 3 topics
+                conversation_context.active_topics.update(
+                    topics[:3]
+                )  # Keep top 3 topics
             else:
                 topics = []
 
@@ -1268,8 +1274,10 @@ class ConsolidatedAIEngine:
         """Extract topics from text with caching"""
         if not text:
             return []
-        
-        cache_key = f"topics:{hashlib.md5(text.encode('utf-8', errors='ignore')).hexdigest()}"
+
+        cache_key = (
+            f"topics:{hashlib.md5(text.encode('utf-8', errors='ignore')).hexdigest()}"
+        )
         cached_topics = await self.cache.get(cache_key)
 
         if cached_topics:
