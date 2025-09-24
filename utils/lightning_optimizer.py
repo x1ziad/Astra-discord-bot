@@ -451,6 +451,21 @@ class LightningPerformanceOptimizer:
         self, prompt: str, context: Dict[str, Any]
     ) -> str:
         """OPTIMIZED: Advanced prompt optimization with deep context awareness"""
+        try:
+            # Keep it simple and focused
+            if len(prompt) > 500:
+                # Summarize very long prompts
+                prompt = prompt[:400] + "... [Please provide a concise response]"
+
+            # Add humor instruction for better responses
+            humor_instruction = (
+                "\n\n[Respond with wit and metaphorical humor when appropriate]"
+            )
+
+            return prompt + humor_instruction
+        except Exception as e:
+            logger.error(f"Prompt optimization error: {e}")
+            return prompt
 
     async def cache_response(
         self, prompt: str, response: str, user_id: int, context: Dict[str, Any]

@@ -983,25 +983,29 @@ class ConsolidatedAIEngine:
 
         # OPTIMIZED: Minimal intelligence processing if time budget allows
         elapsed = time.time() - start_time
-        if elapsed < 0.5 and self.advanced_intelligence and guild_id:
+        if elapsed < 0.5 and self.advanced_intelligence and guild_id and message:
             try:
                 # Prepare event data for advanced intelligence processing
+                # Initialize variables to avoid NameError
+                topics = []
+                intensity = 0.0
+                
                 event_data = {
                     "user_id": user_id,
                     "message_data": {
-                        "content": message,
+                        "content": message or "",
                         "timestamp": datetime.now(timezone.utc).isoformat(),
-                        "topics": topics if "topics" in locals() else [],
+                        "topics": topics,
                     },
                     "event_type": "message",
                     "significance_score": 0.5,  # Base significance
-                    "emotional_weight": (intensity if "intensity" in locals() else 0.0),
+                    "emotional_weight": intensity,
                     "participants": [user_id],
                     "trigger_predictions": True,
                 }
 
                 # Enhance significance score based on message content
-                if len(message) > 100:  # Longer messages
+                if message and len(message) > 100:  # Longer messages
                     event_data["significance_score"] += 0.1
                 if any(
                     word in message.lower()
@@ -1037,7 +1041,10 @@ class ConsolidatedAIEngine:
         # Main processing try block for sentiment analysis and response generation
         try:
             # Analyze sentiment with caching (fallback if context manager not available)
-            cache_key = f"sentiment:{hashlib.md5(message.encode()).hexdigest()}"
+            if not message:
+                raise ValueError("Message cannot be None or empty")
+            
+            cache_key = f"sentiment:{hashlib.md5(message.encode('utf-8', errors='ignore')).hexdigest()}"
             sentiment_result = await self.cache.get(cache_key)
 
             if not sentiment_result:
@@ -1058,12 +1065,16 @@ class ConsolidatedAIEngine:
             )
 
             # Extract topics (enhanced if context manager available)
-            if message_context and message_context.topics:
+            if message_context and hasattr(message_context, 'topics') and message_context.topics:
                 topics = message_context.topics
             else:
                 topics = await self._extract_topics(message)
 
-            conversation_context.active_topics.update(topics[:3])  # Keep top 3 topics
+            # Ensure topics is a list and handle safely
+            if topics and isinstance(topics, list):
+                conversation_context.active_topics.update(topics[:3])  # Keep top 3 topics
+            else:
+                topics = []
 
             # Add message to context with enhanced metadata
             message_metadata = {
@@ -1255,7 +1266,10 @@ class ConsolidatedAIEngine:
 
     async def _extract_topics(self, text: str) -> List[str]:
         """Extract topics from text with caching"""
-        cache_key = f"topics:{hashlib.md5(text.encode()).hexdigest()}"
+        if not text:
+            return []
+        
+        cache_key = f"topics:{hashlib.md5(text.encode('utf-8', errors='ignore')).hexdigest()}"
         cached_topics = await self.cache.get(cache_key)
 
         if cached_topics:

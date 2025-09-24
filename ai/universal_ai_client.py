@@ -80,7 +80,7 @@ class UniversalAIClient:
         self.config = {
             AIProvider.OPENROUTER: {
                 "base_url": "https://openrouter.ai/api/v1",
-                "default_model": "deepseek/deepseek-r1:nitro",
+                "default_model": "anthropic/claude-3-haiku",
                 "headers": {
                     "HTTP-Referer": "https://github.com/x1ziad/Astra-discord-bot",
                     "X-Title": "Astra Discord Bot",

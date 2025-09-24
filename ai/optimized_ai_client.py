@@ -155,6 +155,13 @@ class OptimizedUniversalAIClient:
         """Generate AI response with maximum speed optimization"""
 
         start_time = time.time()
+        
+        # Validate input
+        if not message or not isinstance(message, str):
+            raise ValueError("Message must be a non-empty string")
+        
+        if not self.api_key:
+            raise ValueError("API key is required for AI responses")
 
         # Get shared session for connection reuse
         session = await get_shared_session()
@@ -188,7 +195,24 @@ class OptimizedUniversalAIClient:
                     raise Exception(f"API error: {response.status}")
 
                 result = await response.json()
-                content = result["choices"][0]["message"]["content"]
+                
+                # Safely extract content with proper validation
+                if not result or not isinstance(result, dict):
+                    raise Exception("Invalid API response format")
+                
+                choices = result.get("choices", [])
+                if not choices or not isinstance(choices, list) or len(choices) == 0:
+                    raise Exception("No choices in API response")
+                
+                first_choice = choices[0]
+                if not isinstance(first_choice, dict):
+                    raise Exception("Invalid choice format in API response")
+                
+                message_data = first_choice.get("message", {})
+                if not isinstance(message_data, dict):
+                    raise Exception("Invalid message format in API response")
+                
+                content = message_data.get("content", "")
                 usage = result.get("usage", {})
 
                 response_time = (time.time() - start_time) * 1000
