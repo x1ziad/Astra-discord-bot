@@ -18,7 +18,7 @@ import os
 from config.unified_config import unified_config
 from utils.http_manager import get_session
 from utils.checks import feature_enabled
-from logger.logger import log_performance
+from logger.enhanced_logger import log_performance
 from ui.ui_components import PaginatedView
 
 

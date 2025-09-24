@@ -22,21 +22,22 @@ except ImportError:
         """Fallback model normalization"""
         if not model_id:
             return "anthropic/claude-3-haiku"
-        
+
         model_id = model_id.strip()
-        
+
         # Handle the specific case that's causing issues
         if model_id == "xAI: Grok Code Fast 1":
             return "x-ai/grok-code-fast-1"
-        
+
         # If it's already in API format, return as-is
         if "/" in model_id:
             return model_id
-        
+
         return "anthropic/claude-3-haiku"  # Safe fallback
-    
+
     def get_model_display_name(model_id: str) -> str:
         return model_id
+
 
 # Import the enhanced AIResponse from universal client
 try:
@@ -112,11 +113,11 @@ class OpenRouterClient:
         # Prepare request
         raw_model = model or self.default_model
         normalized_model = normalize_model_id(raw_model)
-        
+
         # Log model conversion if it was changed
         if raw_model != normalized_model:
             logger.info(f"Converted model ID '{raw_model}' to '{normalized_model}'")
-        
+
         model = normalized_model
         max_tokens = max_tokens or self.max_tokens
         temperature = temperature or self.temperature

@@ -24,4 +24,40 @@ data/*.db
 # Local testing files
 test_*.py
 *_test.py
-config/config.json
+
+# Backup directories and temporary files
+backup_*/
+backup_*
+*_backup/
+*_backup
+temp/
+tmp/
+
+# Analysis and cleanup reports (temporary)
+*_CLEANUP_REPORT.md
+*_ANALYSIS_REPORT.md
+*_SUCCESS_REPORT.md
+*_ASSESSMENT.md
+*_test_*.json
+comprehensive_test_report.json
+ai_connectivity_test_*.json
+bot_status_report.md
+intensive_analysis_report.md
+setup_api_keys.sh
+
+# Cleanup and migration reports
+COMPREHENSIVE_CLEANUP_REPORT.md
+ENHANCED_CONVERSATION_REPORT.md
+FINAL_CLEANUP_REPORT.md
+FINAL_CONVERSATION_ASSESSMENT.md
+TIMEOUT_PROTECTION_SUCCESS.md
+CONTINUOUS_PERFORMANCE_MONITORING.md
+DEPLOYMENT_COMPLETE.md
+DISCORD_DATA_REPORTER.md
+ENHANCED_MESSAGE_MONITORING.md
+FINAL_SUCCESS_REPORT.md
+FULLY_AUTOMATED_MONITORING.md
+PERFORMANCE_CHANNEL_FIX.md
+PERFORMANCE_MIGRATION_REPORT.md
+PROMPT_OPTIMIZATION.md
+OPTIMIZATION_SUCCESS.md

@@ -31,21 +31,23 @@ except ImportError:
         """Fallback model normalization"""
         if not model_id:
             return "anthropic/claude-3-haiku"
-        
+
         model_id = model_id.strip()
-        
+
         # Handle the specific case that's causing issues
         if model_id == "xAI: Grok Code Fast 1":
             return "x-ai/grok-code-fast-1"
-        
+
         # If it's already in API format, return as-is
         if "/" in model_id:
             return model_id
-        
+
         return "anthropic/claude-3-haiku"  # Safe fallback
-    
+
     def get_model_display_name(model_id: str) -> str:
         return model_id
+
+
 from concurrent.futures import ThreadPoolExecutor
 import threading
 
@@ -756,11 +758,11 @@ class ConsolidatedAIEngine:
 
                 # Normalize model ID using mapping system
                 model = normalize_model_id(raw_model)
-                
+
                 # Log model conversion if it was changed
                 if raw_model != model:
                     logger.info(f"Converted model ID '{raw_model}' to '{model}'")
-                
+
                 logger.info(f"Using normalized model: {model}")
 
                 universal_client = UniversalAIClient(
@@ -795,6 +797,11 @@ class ConsolidatedAIEngine:
         if not self.active_provider:
             logger.warning("No AI providers available - using mock responses")
             self.active_provider = AIProvider.MOCK
+            self.ai_client = None
+        else:
+            # Set ai_client to the active provider for compatibility
+            self.ai_client = self.ai_providers.get(self.active_provider)
+            logger.info(f"✅ AI client set to {self.active_provider.value} provider")
 
     def _initialize_database(self):
         """Initialize optimized database schema"""
@@ -1383,7 +1390,7 @@ class ConsolidatedAIEngine:
 
                     # Use enhanced context for universal and openrouter clients
                     if hasattr(client, "generate_response"):
-                        # Pass enhanced context information to the client
+                        # Pass enhanced context information to the client with timeout protection
                         user_profile_data = {
                             "name": user_profile.display_name or "",
                             "interaction_count": user_profile.total_interactions,
@@ -1391,13 +1398,17 @@ class ConsolidatedAIEngine:
                             "preferred_topics": user_profile.preferred_topics,
                         }
 
-                        response = await client.generate_response(
-                            message=message,
-                            context=messages,
-                            user_id=context.user_id,
-                            guild_id=context.guild_id,
-                            channel_id=context.channel_id,
-                            user_profile=user_profile_data,
+                        # Apply timeout protection to API calls
+                        response = await asyncio.wait_for(
+                            client.generate_response(
+                                message=message,
+                                context=messages,
+                                user_id=context.user_id,
+                                guild_id=context.guild_id,
+                                channel_id=context.channel_id,
+                                user_profile=user_profile_data,
+                            ),
+                            timeout=12.0  # 12 second timeout per provider
                         )
 
                         response_text = (
@@ -1406,16 +1417,22 @@ class ConsolidatedAIEngine:
                             else str(response)
                         )
                     elif hasattr(client, "chat_completion"):
-                        # Legacy client pattern
-                        response = await client.chat_completion(messages)
+                        # Legacy client pattern with timeout
+                        response = await asyncio.wait_for(
+                            client.chat_completion(messages),
+                            timeout=12.0
+                        )
                         response_text = (
                             response.content
                             if hasattr(response, "content")
                             else str(response)
                         )
                     else:
-                        # Basic fallback for other client types
-                        response_text = await client.generate_text(message)
+                        # Basic fallback for other client types with timeout
+                        response_text = await asyncio.wait_for(
+                            client.generate_text(message),
+                            timeout=12.0
+                        )
 
                     # Track provider usage
                     self.performance_metrics["provider_usage"][provider.value] += 1
@@ -1424,6 +1441,9 @@ class ConsolidatedAIEngine:
                         response_text, context, style, message_context
                     )
 
+                except asyncio.TimeoutError:
+                    logger.warning(f"Provider {provider.value} timed out after 12s - trying next provider")
+                    continue
                 except Exception as e:
                     logger.warning(f"Provider {provider.value} failed: {e}")
                     continue
@@ -2066,22 +2086,210 @@ Key principles:
 
     async def generate_response(self, message: str, context: Dict[str, Any]) -> str:
         """
-        Alternative interface for generating responses (backward compatibility)
+        Alternative interface for generating responses with timeout protection
 
         Args:
             message: The user's message
             context: Context dictionary containing user_id, channel_type, etc.
 
         Returns:
-            AI response string
+            AI response string (guaranteed within reasonable time)
         """
-        return await self.process_conversation(
+        return await self._generate_response_with_timeout(
             message=message,
             user_id=context.get("user_id", 0),
             guild_id=context.get("guild_id"),
             channel_id=context.get("channel_id"),
             context_data=context,
         )
+
+    async def _generate_response_with_timeout(
+        self,
+        message: str,
+        user_id: int,
+        guild_id: Optional[int] = None,
+        channel_id: Optional[int] = None,
+        context_data: Dict[str, Any] = None,
+        max_timeout: float = 15.0,  # Maximum 15 seconds
+        fallback_timeout: float = 8.0,  # Switch to fallback after 8 seconds
+    ) -> str:
+        """
+        ADVANCED: Generate response with multi-tier timeout protection
+        
+        Strategy:
+        1. Try fast engine (3 second timeout)
+        2. If slow, return immediate acknowledgment + continue processing
+        3. Try main AI with fallback timeout
+        4. Return intelligent fallback if all else fails
+        """
+        
+        # Tier 1: Ultra-fast response (3 seconds max)
+        try:
+            if self.fast_engine and self.fast_engine.is_available():
+                fast_response = await asyncio.wait_for(
+                    self.fast_engine.process_conversation(
+                        message=message,
+                        user_id=user_id,
+                        guild_id=guild_id,
+                        channel_id=channel_id,
+                        context_data=context_data,
+                    ),
+                    timeout=3.0
+                )
+                return fast_response
+        except asyncio.TimeoutError:
+            logger.warning("Fast engine timeout - switching to fallback strategy")
+        except Exception as e:
+            logger.warning(f"Fast engine failed: {e}")
+        
+        # Tier 2: Immediate acknowledgment for complex queries
+        if len(message) > 200 or any(keyword in message.lower() for keyword in [
+            'explain', 'analyze', 'create', 'write', 'generate', 'complex', 'detailed'
+        ]):
+            # Return immediate acknowledgment, continue processing in background
+            immediate_responses = [
+                "Great question! Let me think about that for a moment... 🤔",
+                "Interesting! I'm processing your request - this might take a moment... ⚡",
+                "That's a thoughtful question! Give me just a second to craft a proper response... 🚀",
+                "I'm working on a detailed response for you... 💭",
+                "Processing your query - I want to give you the best answer possible! 🎯"
+            ]
+            
+            # Start background processing
+            background_task = asyncio.create_task(
+                self._process_complex_query(message, user_id, guild_id, channel_id, context_data)
+            )
+            
+            # Store task for later retrieval (optional enhancement)
+            self._store_background_task(user_id, background_task)
+            
+            return random.choice(immediate_responses)
+        
+        # Tier 3: Standard processing with timeout protection
+        try:
+            response = await asyncio.wait_for(
+                self.process_conversation(
+                    message=message,
+                    user_id=user_id,
+                    guild_id=guild_id,
+                    channel_id=channel_id,
+                    context_data=context_data,
+                ),
+                timeout=fallback_timeout
+            )
+            return response
+        except asyncio.TimeoutError:
+            logger.warning(f"AI response timeout after {fallback_timeout}s - using smart fallback")
+            try:
+                return await asyncio.wait_for(
+                    self._get_smart_timeout_fallback(message, user_id),
+                    timeout=2.0
+                )
+            except asyncio.TimeoutError:
+                logger.warning("Smart fallback timed out - using emergency response")
+                return "I'm here and ready to help! Let me know what you'd like to discuss. ⚡"
+        except Exception as e:
+            logger.error(f"AI response generation failed: {e}")
+            try:
+                return await asyncio.wait_for(
+                    self._get_smart_timeout_fallback(message, user_id),
+                    timeout=2.0
+                )
+            except asyncio.TimeoutError:
+                logger.warning("Smart fallback timed out after error - using emergency response")
+                return "I encountered an issue but I'm back! How can I assist you? 🔧"
+
+    async def _process_complex_query(
+        self,
+        message: str,
+        user_id: int,
+        guild_id: Optional[int] = None,
+        channel_id: Optional[int] = None,
+        context_data: Dict[str, Any] = None,
+    ) -> str:
+        """Process complex queries in background with extended timeout"""
+        try:
+            return await asyncio.wait_for(
+                self.process_conversation(
+                    message=message,
+                    user_id=user_id,
+                    guild_id=guild_id,
+                    channel_id=channel_id,
+                    context_data=context_data,
+                ),
+                timeout=30.0  # Extended timeout for complex processing
+            )
+        except Exception as e:
+            logger.error(f"Background processing failed: {e}")
+            return "I encountered an issue processing your request. Please try rephrasing or ask something else! 🔄"
+
+    def _store_background_task(self, user_id: int, task: asyncio.Task):
+        """Store background task for potential later retrieval"""
+        if not hasattr(self, '_background_tasks'):
+            self._background_tasks = {}
+        self._background_tasks[user_id] = task
+        
+        # Clean up completed tasks
+        self._cleanup_completed_tasks()
+
+    def _cleanup_completed_tasks(self):
+        """Clean up completed background tasks"""
+        if not hasattr(self, '_background_tasks'):
+            return
+        
+        completed_users = [
+            user_id for user_id, task in self._background_tasks.items()
+            if task.done()
+        ]
+        
+        for user_id in completed_users:
+            del self._background_tasks[user_id]
+
+    async def _get_smart_timeout_fallback(self, message: str, user_id: int) -> str:
+        """Generate intelligent fallback response based on message content"""
+        
+        # Analyze message intent for contextual fallback
+        message_lower = message.lower()
+        
+        # Technical questions
+        if any(keyword in message_lower for keyword in [
+            'code', 'programming', 'python', 'javascript', 'algorithm', 'debug', 'error'
+        ]):
+            return ("I'm having trouble processing that technical question right now. "
+                   "Could you try breaking it down into smaller parts? I'm great with step-by-step problems! 💻")
+        
+        # Space/Stellaris related
+        elif any(keyword in message_lower for keyword in [
+            'stellaris', 'space', 'galaxy', 'planet', 'empire', 'cosmic'
+        ]):
+            return ("My galactic database is running a bit slow right now! 🌌 "
+                   "Try asking about a specific aspect of space or Stellaris - I love diving into cosmic details! ⭐")
+        
+        # Creative requests
+        elif any(keyword in message_lower for keyword in [
+            'story', 'create', 'write', 'imagine', 'creative', 'poem'
+        ]):
+            return ("My creative circuits need a moment to reboot! ✨ "
+                   "Try asking for something simpler first, or give me a more specific creative prompt! 🎭")
+        
+        # General questions
+        elif any(keyword in message_lower for keyword in [
+            'what', 'how', 'why', 'when', 'where', 'explain'
+        ]):
+            return ("I'm processing slower than usual right now! 🤔 "
+                   "Try rephrasing your question or asking something more specific - I'm here to help! 💡")
+        
+        # Greeting/casual
+        elif any(keyword in message_lower for keyword in [
+            'hello', 'hi', 'hey', 'sup', 'how are you'
+        ]):
+            return ("Hey there! I'm running a bit slow but I'm still here! 👋 "
+                   "What's on your mind? Let's chat about something fun! 😊")
+        
+        # Default intelligent fallback
+        else:
+            return ("I'm experiencing some processing delays right now, but I'm still here! 🚀 "
+                   "Try asking something simpler, or rephrase your question - I'll do my best to help! ⚡")
 
     async def initialize_server_personality(
         self,
@@ -2196,7 +2404,18 @@ def initialize_engine(config: Dict[str, Any] = None) -> ConsolidatedAIEngine:
 
 
 def get_engine() -> Optional[ConsolidatedAIEngine]:
-    """Get the global AI engine instance"""
+    """Get the global AI engine instance, auto-initialize with config if needed"""
+    global _engine_instance
+    if _engine_instance is None:
+        # Auto-initialize with API configuration for fast engine support
+        import os
+        config = {
+            "openrouter_api_key": os.getenv("OPENROUTER_API_KEY"),
+            "ai_api_key": os.getenv("AI_API_KEY"),
+            "ai_model": os.getenv("AI_MODEL", "x-ai/grok-code-fast-1"),
+            "ai_provider": os.getenv("AI_PROVIDER", "universal"),
+        }
+        _engine_instance = ConsolidatedAIEngine(config)
     return _engine_instance
 
 

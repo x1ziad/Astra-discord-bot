@@ -23,21 +23,22 @@ except ImportError:
         """Fallback model normalization"""
         if not model_id:
             return "anthropic/claude-3-haiku"
-        
+
         model_id = model_id.strip()
-        
+
         # Handle the specific case that's causing issues
         if model_id == "xAI: Grok Code Fast 1":
             return "x-ai/grok-code-fast-1"
-        
+
         # If it's already in API format, return as-is
         if "/" in model_id:
             return model_id
-        
+
         return "anthropic/claude-3-haiku"  # Safe fallback
-    
+
     def get_model_display_name(model_id: str) -> str:
         return model_id
+
 
 logger = logging.getLogger("astra.universal_ai_client")
 
@@ -123,14 +124,14 @@ class UniversalAIClient:
         self.max_tokens = kwargs.get("max_tokens", 2000)
         self.temperature = kwargs.get("temperature", 0.7)
         raw_model = kwargs.get("model", self.config[self.provider]["default_model"])
-        
+
         # Normalize model ID using mapping system
         self.model = normalize_model_id(raw_model)
-        
+
         # Log model conversion if it was changed
         if raw_model != self.model:
             logger.info(f"Converted model ID '{raw_model}' to '{self.model}'")
-        
+
         logger.info(f"Using model: {self.model}")
 
         # Enhanced context settings
