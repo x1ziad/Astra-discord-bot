@@ -27,6 +27,7 @@ class ChannelConfig:
     diagnostics_channel_id: int = 1419516681427882115
     logs_channel_id: int = 1419517784135700561
     analytics_channel_id: int = 1419858425424253039
+    performance_channel_id: int = 1420213631030661130  # New continuous performance monitoring
 
 
 class DiscordDataReporter:
@@ -44,11 +45,13 @@ class DiscordDataReporter:
         self.diagnostics_channel: Optional[discord.TextChannel] = None
         self.logs_channel: Optional[discord.TextChannel] = None
         self.analytics_channel: Optional[discord.TextChannel] = None
+        self.performance_channel: Optional[discord.TextChannel] = None
 
         # Data buffers for batching
         self.analytics_buffer: List[Dict[str, Any]] = []
         self.logs_buffer: List[Dict[str, Any]] = []
         self.diagnostics_buffer: List[Dict[str, Any]] = []
+        self.performance_buffer: List[Dict[str, Any]] = []
 
         # Background tasks
         self.batch_send_task = None
@@ -65,12 +68,16 @@ class DiscordDataReporter:
             self.analytics_channel = self.bot.get_channel(
                 self.config.analytics_channel_id
             )
+            self.performance_channel = self.bot.get_channel(
+                self.config.performance_channel_id
+            )
 
             # Verify channels exist
             channels_status = {
                 "Diagnostics": self.diagnostics_channel is not None,
                 "Logs": self.logs_channel is not None,
                 "Analytics": self.analytics_channel is not None,
+                "Performance": self.performance_channel is not None,
             }
 
             missing_channels = [
@@ -256,6 +263,23 @@ class DiscordDataReporter:
 
         await self.send_analytics(activity_data, immediate=False)
 
+    async def send_continuous_performance(self, detailed_metrics: Dict[str, Any], immediate: bool = False):
+        """Send detailed continuous performance monitoring data to dedicated performance channel"""
+        performance_data = {
+            "event": "continuous_performance_monitoring",
+            "detailed_metrics": detailed_metrics,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+
+        if immediate:
+            await self._send_to_channel(
+                self.performance_channel,
+                performance_data,
+                "⚡ **CONTINUOUS PERFORMANCE MONITORING**"
+            )
+        else:
+            self.performance_buffer.append(performance_data)
+
     async def flush_all_buffers(self):
         """Send all buffered data to respective channels"""
         try:
@@ -283,6 +307,15 @@ class DiscordDataReporter:
                     "🔬 Diagnostics Batch Report",
                 )
                 self.diagnostics_buffer.clear()
+
+            # Send performance buffer
+            if self.performance_buffer:
+                await self._send_batch_to_channel(
+                    self.performance_channel,
+                    self.performance_buffer.copy(),
+                    "⚡ Performance Monitoring Report",
+                )
+                self.performance_buffer.clear()
 
             self.logger.debug("All data buffers flushed to Discord channels")
 
@@ -432,8 +465,9 @@ class DiscordDataReporter:
 
         channels = [
             (self.analytics_channel, "Analytics"),
-            (self.diagnostics_channel, "Diagnostics"),
+            (self.diagnostics_channel, "Diagnostics"), 
             (self.logs_channel, "Logs"),
+            (self.performance_channel, "Performance"),
         ]
 
         results = {}

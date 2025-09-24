@@ -1563,9 +1563,24 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
                 immediate=True,
             )
 
+            # Test continuous performance monitoring
+            await discord_reporter.send_continuous_performance(
+                {
+                    **test_data,
+                    "type": "performance_test",
+                    "test_metrics": {
+                        "cpu_usage": 25.5,
+                        "memory_usage": 512.0,
+                        "network_latency": 45.2,
+                        "status": "testing_performance_channel"
+                    },
+                },
+                immediate=True,
+            )
+
             embed.add_field(
                 name="✅ Test Complete",
-                value="Test messages sent to all channels",
+                value="Test messages sent to all channels including new Performance Monitor",
                 inline=False,
             )
 

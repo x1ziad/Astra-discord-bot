@@ -396,6 +396,7 @@ class AstraBot(commands.Bot):
             [
                 "cogs.admin_optimized",  # Optimized consolidated admin system
                 "cogs.performance",  # Performance monitoring
+                "cogs.continuous_performance",  # Continuous detailed performance monitoring
                 "cogs.bot_status",
                 "cogs.utilities",
                 "cogs.stats",
