@@ -1572,7 +1572,7 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
                         "cpu_usage": 25.5,
                         "memory_usage": 512.0,
                         "network_latency": 45.2,
-                        "status": "testing_performance_channel"
+                        "status": "testing_performance_channel",
                     },
                 },
                 immediate=True,

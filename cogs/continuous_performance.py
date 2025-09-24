@@ -33,29 +33,31 @@ class ContinuousPerformanceMonitor(commands.Cog, name="ContinuousPerformance"):
         self.bot = bot
         self.logger = logger
         self.discord_reporter = None
-        
+
         # Performance data collectors
-        self.performance_history = deque(maxlen=1440)  # 24 hours of minute-by-minute data
+        self.performance_history = deque(
+            maxlen=1440
+        )  # 24 hours of minute-by-minute data
         self.command_performance = defaultdict(list)
         self.network_latency_history = deque(maxlen=60)  # Last 60 network checks
-        self.memory_usage_history = deque(maxlen=120)   # Last 2 hours of memory data
-        self.cpu_usage_history = deque(maxlen=120)      # Last 2 hours of CPU data
-        
+        self.memory_usage_history = deque(maxlen=120)  # Last 2 hours of memory data
+        self.cpu_usage_history = deque(maxlen=120)  # Last 2 hours of CPU data
+
         # Performance thresholds for alerts
         self.thresholds = {
-            "memory_critical": 90,      # 90% memory usage
-            "memory_warning": 75,       # 75% memory usage
-            "cpu_critical": 85,         # 85% CPU usage
-            "cpu_warning": 70,          # 70% CPU usage
-            "response_critical": 5.0,   # 5 second response time
-            "response_warning": 2.0,    # 2 second response time
-            "network_critical": 500,    # 500ms network latency
-            "network_warning": 200,     # 200ms network latency
+            "memory_critical": 90,  # 90% memory usage
+            "memory_warning": 75,  # 75% memory usage
+            "cpu_critical": 85,  # 85% CPU usage
+            "cpu_warning": 70,  # 70% CPU usage
+            "response_critical": 5.0,  # 5 second response time
+            "response_warning": 2.0,  # 2 second response time
+            "network_critical": 500,  # 500ms network latency
+            "network_warning": 200,  # 200ms network latency
         }
-        
+
         # System information
         self.system_info = self._collect_system_info()
-        
+
         # Start monitoring tasks
         self.start_monitoring_tasks()
 
@@ -117,25 +119,27 @@ class ContinuousPerformanceMonitor(commands.Cog, name="ContinuousPerformance"):
         """Send startup notification with system information"""
         if not self.discord_reporter:
             return
-            
+
         startup_data = {
             "event": "continuous_monitor_startup",
             "system_info": self.system_info,
             "monitoring_config": {
                 "history_retention": "24 hours",
                 "memory_samples": "2 hours",
-                "cpu_samples": "2 hours", 
+                "cpu_samples": "2 hours",
                 "network_samples": "60 checks",
                 "detailed_interval": "30 seconds",
                 "network_interval": "60 seconds",
                 "memory_interval": "60 seconds",
-                "health_report_interval": "5 minutes"
+                "health_report_interval": "5 minutes",
             },
             "thresholds": self.thresholds,
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
-        
-        await self.discord_reporter.send_continuous_performance(startup_data, immediate=True)
+
+        await self.discord_reporter.send_continuous_performance(
+            startup_data, immediate=True
+        )
 
     @tasks.loop(seconds=30)  # Detailed monitoring every 30 seconds
     async def detailed_system_monitor(self):
@@ -146,7 +150,7 @@ class ContinuousPerformanceMonitor(commands.Cog, name="ContinuousPerformance"):
 
             # Get process information
             process = psutil.Process()
-            
+
             # Collect comprehensive metrics
             performance_data = {
                 "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -154,19 +158,28 @@ class ContinuousPerformanceMonitor(commands.Cog, name="ContinuousPerformance"):
                     # CPU Information
                     "cpu_percent": psutil.cpu_percent(interval=1),
                     "cpu_count": psutil.cpu_count(),
-                    "cpu_freq": psutil.cpu_freq()._asdict() if psutil.cpu_freq() else None,
-                    "load_average": psutil.getloadavg() if hasattr(psutil, 'getloadavg') else None,
-                    
+                    "cpu_freq": (
+                        psutil.cpu_freq()._asdict() if psutil.cpu_freq() else None
+                    ),
+                    "load_average": (
+                        psutil.getloadavg() if hasattr(psutil, "getloadavg") else None
+                    ),
                     # Memory Information
                     "memory": psutil.virtual_memory()._asdict(),
                     "swap": psutil.swap_memory()._asdict(),
-                    
                     # Disk Information
-                    "disk_usage": psutil.disk_usage('/')._asdict(),
-                    "disk_io": psutil.disk_io_counters()._asdict() if psutil.disk_io_counters() else None,
-                    
+                    "disk_usage": psutil.disk_usage("/")._asdict(),
+                    "disk_io": (
+                        psutil.disk_io_counters()._asdict()
+                        if psutil.disk_io_counters()
+                        else None
+                    ),
                     # Network Information
-                    "network_io": psutil.net_io_counters()._asdict() if psutil.net_io_counters() else None,
+                    "network_io": (
+                        psutil.net_io_counters()._asdict()
+                        if psutil.net_io_counters()
+                        else None
+                    ),
                 },
                 "bot_process_metrics": {
                     # Process-specific metrics
@@ -174,7 +187,9 @@ class ContinuousPerformanceMonitor(commands.Cog, name="ContinuousPerformance"):
                     "memory_percent": process.memory_percent(),
                     "cpu_percent": process.cpu_percent(),
                     "num_threads": process.num_threads(),
-                    "num_fds": process.num_fds() if hasattr(process, 'num_fds') else None,
+                    "num_fds": (
+                        process.num_fds() if hasattr(process, "num_fds") else None
+                    ),
                     "connections": len(process.connections()),
                     "open_files": len(process.open_files()),
                     "create_time": process.create_time(),
@@ -184,9 +199,17 @@ class ContinuousPerformanceMonitor(commands.Cog, name="ContinuousPerformance"):
                     # Discord bot metrics
                     "guild_count": len(self.bot.guilds),
                     "user_count": len(self.bot.users),
-                    "channel_count": sum(len(guild.channels) for guild in self.bot.guilds),
+                    "channel_count": sum(
+                        len(guild.channels) for guild in self.bot.guilds
+                    ),
                     "latency": round(self.bot.latency * 1000, 2),  # Convert to ms
-                    "uptime_seconds": (datetime.now(timezone.utc) - self.bot.start_time).total_seconds() if hasattr(self.bot, 'start_time') else 0,
+                    "uptime_seconds": (
+                        (
+                            datetime.now(timezone.utc) - self.bot.start_time
+                        ).total_seconds()
+                        if hasattr(self.bot, "start_time")
+                        else 0
+                    ),
                     "cog_count": len(self.bot.cogs),
                     "command_count": len(self.bot.commands),
                     "extension_count": len(self.bot.extensions),
@@ -197,20 +220,20 @@ class ContinuousPerformanceMonitor(commands.Cog, name="ContinuousPerformance"):
                     "memory_objects": len(gc.get_objects()),
                     "reference_cycles": len(gc.garbage),
                     "gc_stats": gc.get_stats(),
-                }
+                },
             }
 
             # Store in history
             self.performance_history.append(performance_data)
-            
+
             # Check for performance alerts
             await self._check_performance_alerts(performance_data)
-            
+
             # Send to Discord
-            await self.discord_reporter.send_continuous_performance({
-                "event": "detailed_system_monitoring",
-                "data": performance_data
-            }, immediate=False)
+            await self.discord_reporter.send_continuous_performance(
+                {"event": "detailed_system_monitoring", "data": performance_data},
+                immediate=False,
+            )
 
         except Exception as e:
             self.logger.error(f"Error in detailed system monitor: {e}")
@@ -227,7 +250,9 @@ class ContinuousPerformanceMonitor(commands.Cog, name="ContinuousPerformance"):
             start_time = time.time()
             try:
                 async with aiohttp.ClientSession() as session:
-                    async with session.get('https://discord.com/api/v10/gateway') as response:
+                    async with session.get(
+                        "https://discord.com/api/v10/gateway"
+                    ) as response:
                         discord_api_time = (time.time() - start_time) * 1000
                         discord_api_status = response.status
             except Exception as e:
@@ -238,7 +263,9 @@ class ContinuousPerformanceMonitor(commands.Cog, name="ContinuousPerformance"):
             start_time = time.time()
             try:
                 async with aiohttp.ClientSession() as session:
-                    async with session.get('https://httpbin.org/status/200', timeout=10) as response:
+                    async with session.get(
+                        "https://httpbin.org/status/200", timeout=10
+                    ) as response:
                         internet_time = (time.time() - start_time) * 1000
                         internet_status = response.status
             except Exception as e:
@@ -250,24 +277,26 @@ class ContinuousPerformanceMonitor(commands.Cog, name="ContinuousPerformance"):
                 "discord_api": {
                     "response_time_ms": discord_api_time,
                     "status_code": discord_api_status,
-                    "available": discord_api_status == 200 if discord_api_status else False
+                    "available": (
+                        discord_api_status == 200 if discord_api_status else False
+                    ),
                 },
                 "internet": {
                     "response_time_ms": internet_time,
                     "status_code": internet_status,
-                    "available": internet_status == 200 if internet_status else False
+                    "available": internet_status == 200 if internet_status else False,
                 },
-                "bot_latency_ms": round(self.bot.latency * 1000, 2)
+                "bot_latency_ms": round(self.bot.latency * 1000, 2),
             }
 
             # Store in history
             self.network_latency_history.append(network_data)
-            
+
             # Send to Discord
-            await self.discord_reporter.send_continuous_performance({
-                "event": "network_performance_monitoring",
-                "data": network_data
-            }, immediate=False)
+            await self.discord_reporter.send_continuous_performance(
+                {"event": "network_performance_monitoring", "data": network_data},
+                immediate=False,
+            )
 
         except Exception as e:
             self.logger.error(f"Error in network performance monitor: {e}")
@@ -283,15 +312,15 @@ class ContinuousPerformanceMonitor(commands.Cog, name="ContinuousPerformance"):
             process = psutil.Process()
             memory_info = process.memory_info()
             virtual_memory = psutil.virtual_memory()
-            
+
             memory_data = {
                 "timestamp": datetime.now(timezone.utc).isoformat(),
                 "process_memory": {
                     "rss_mb": memory_info.rss / 1024 / 1024,  # Resident Set Size
                     "vms_mb": memory_info.vms / 1024 / 1024,  # Virtual Memory Size
                     "percent": process.memory_percent(),
-                    "shared_mb": getattr(memory_info, 'shared', 0) / 1024 / 1024,
-                    "data_mb": getattr(memory_info, 'data', 0) / 1024 / 1024,
+                    "shared_mb": getattr(memory_info, "shared", 0) / 1024 / 1024,
+                    "data_mb": getattr(memory_info, "data", 0) / 1024 / 1024,
                 },
                 "system_memory": {
                     "total_mb": virtual_memory.total / 1024 / 1024,
@@ -299,24 +328,24 @@ class ContinuousPerformanceMonitor(commands.Cog, name="ContinuousPerformance"):
                     "used_mb": virtual_memory.used / 1024 / 1024,
                     "free_mb": virtual_memory.free / 1024 / 1024,
                     "percent": virtual_memory.percent,
-                    "cached_mb": getattr(virtual_memory, 'cached', 0) / 1024 / 1024,
-                    "buffers_mb": getattr(virtual_memory, 'buffers', 0) / 1024 / 1024,
+                    "cached_mb": getattr(virtual_memory, "cached", 0) / 1024 / 1024,
+                    "buffers_mb": getattr(virtual_memory, "buffers", 0) / 1024 / 1024,
                 },
                 "garbage_collection": {
                     "objects_count": len(gc.get_objects()),
                     "collections": gc.get_count(),
                     "thresholds": gc.get_threshold(),
-                }
+                },
             }
 
             # Store in history
             self.memory_usage_history.append(memory_data)
-            
+
             # Send to Discord
-            await self.discord_reporter.send_continuous_performance({
-                "event": "memory_performance_monitoring", 
-                "data": memory_data
-            }, immediate=False)
+            await self.discord_reporter.send_continuous_performance(
+                {"event": "memory_performance_monitoring", "data": memory_data},
+                immediate=False,
+            )
 
         except Exception as e:
             self.logger.error(f"Error in memory performance monitor: {e}")
@@ -337,7 +366,9 @@ class ContinuousPerformanceMonitor(commands.Cog, name="ContinuousPerformance"):
                     "cog": command.cog.qualified_name if command.cog else None,
                     "enabled": command.enabled,
                     "hidden": command.hidden,
-                    "aliases": list(command.aliases) if hasattr(command, 'aliases') else [],
+                    "aliases": (
+                        list(command.aliases) if hasattr(command, "aliases") else []
+                    ),
                 }
 
             # Collect cog statistics
@@ -356,20 +387,20 @@ class ContinuousPerformanceMonitor(commands.Cog, name="ContinuousPerformance"):
                     "total_cogs": len(self.bot.cogs),
                     "total_extensions": len(self.bot.extensions),
                     "commands_by_cog": {
-                        cog_name: len(cog.get_commands()) 
+                        cog_name: len(cog.get_commands())
                         for cog_name, cog in self.bot.cogs.items()
-                    }
+                    },
                 },
                 "detailed_command_info": command_stats,
                 "detailed_cog_info": cog_stats,
-                "extension_info": list(self.bot.extensions.keys())
+                "extension_info": list(self.bot.extensions.keys()),
             }
 
             # Send to Discord
-            await self.discord_reporter.send_continuous_performance({
-                "event": "command_performance_analysis",
-                "data": command_data
-            }, immediate=False)
+            await self.discord_reporter.send_continuous_performance(
+                {"event": "command_performance_analysis", "data": command_data},
+                immediate=False,
+            )
 
         except Exception as e:
             self.logger.error(f"Error in command performance analyzer: {e}")
@@ -384,8 +415,8 @@ class ContinuousPerformanceMonitor(commands.Cog, name="ContinuousPerformance"):
 
             # Calculate averages from history
             recent_performance = list(self.performance_history)[-10:]  # Last 10 samples
-            recent_network = list(self.network_latency_history)[-5:]   # Last 5 samples
-            recent_memory = list(self.memory_usage_history)[-5:]       # Last 5 samples
+            recent_network = list(self.network_latency_history)[-5:]  # Last 5 samples
+            recent_memory = list(self.memory_usage_history)[-5:]  # Last 5 samples
 
             # Calculate health scores
             health_scores = await self._calculate_health_scores(
@@ -397,7 +428,14 @@ class ContinuousPerformanceMonitor(commands.Cog, name="ContinuousPerformance"):
                 "overall_health": {
                     "score": health_scores["overall"],
                     "status": self._get_health_status(health_scores["overall"]),
-                    "uptime_hours": (datetime.now(timezone.utc) - self.bot.start_time).total_seconds() / 3600 if hasattr(self.bot, 'start_time') else 0,
+                    "uptime_hours": (
+                        (
+                            datetime.now(timezone.utc) - self.bot.start_time
+                        ).total_seconds()
+                        / 3600
+                        if hasattr(self.bot, "start_time")
+                        else 0
+                    ),
                 },
                 "component_health": {
                     "cpu": {
@@ -419,27 +457,45 @@ class ContinuousPerformanceMonitor(commands.Cog, name="ContinuousPerformance"):
                         "score": health_scores["discord"],
                         "status": self._get_health_status(health_scores["discord"]),
                         "bot_latency": round(self.bot.latency * 1000, 2),
-                    }
+                    },
                 },
                 "performance_trends": {
-                    "memory_trend": self._calculate_trend([m["system_memory"]["percent"] for m in recent_memory]),
-                    "cpu_trend": self._calculate_trend([p["system_metrics"]["cpu_percent"] for p in recent_performance if p.get("system_metrics", {}).get("cpu_percent")]),
-                    "network_trend": self._calculate_trend([n["bot_latency_ms"] for n in recent_network if n.get("bot_latency_ms")]),
+                    "memory_trend": self._calculate_trend(
+                        [m["system_memory"]["percent"] for m in recent_memory]
+                    ),
+                    "cpu_trend": self._calculate_trend(
+                        [
+                            p["system_metrics"]["cpu_percent"]
+                            for p in recent_performance
+                            if p.get("system_metrics", {}).get("cpu_percent")
+                        ]
+                    ),
+                    "network_trend": self._calculate_trend(
+                        [
+                            n["bot_latency_ms"]
+                            for n in recent_network
+                            if n.get("bot_latency_ms")
+                        ]
+                    ),
                 },
-                "recommendations": await self._generate_performance_recommendations(health_scores)
+                "recommendations": await self._generate_performance_recommendations(
+                    health_scores
+                ),
             }
 
             # Send comprehensive report
-            await self.discord_reporter.send_continuous_performance({
-                "event": "comprehensive_health_report",
-                "data": health_report
-            }, immediate=True)
+            await self.discord_reporter.send_continuous_performance(
+                {"event": "comprehensive_health_report", "data": health_report},
+                immediate=True,
+            )
 
         except Exception as e:
             self.logger.error(f"Error in comprehensive health report: {e}")
             await self._send_error_alert("comprehensive_health_report", e)
 
-    async def _calculate_health_scores(self, performance_data, network_data, memory_data) -> Dict[str, float]:
+    async def _calculate_health_scores(
+        self, performance_data, network_data, memory_data
+    ) -> Dict[str, float]:
         """Calculate health scores for different system components"""
         scores = {
             "cpu": 100.0,
@@ -455,33 +511,55 @@ class ContinuousPerformanceMonitor(commands.Cog, name="ContinuousPerformance"):
         try:
             # Calculate CPU health
             if performance_data:
-                cpu_values = [p["system_metrics"]["cpu_percent"] for p in performance_data if p.get("system_metrics", {}).get("cpu_percent")]
+                cpu_values = [
+                    p["system_metrics"]["cpu_percent"]
+                    for p in performance_data
+                    if p.get("system_metrics", {}).get("cpu_percent")
+                ]
                 if cpu_values:
                     avg_cpu = sum(cpu_values) / len(cpu_values)
                     scores["cpu_avg"] = avg_cpu
-                    scores["cpu"] = max(0, 100 - (avg_cpu * 1.2))  # Penalize high CPU usage
+                    scores["cpu"] = max(
+                        0, 100 - (avg_cpu * 1.2)
+                    )  # Penalize high CPU usage
 
             # Calculate Memory health
             if memory_data:
-                memory_values = [m["system_memory"]["percent"] for m in memory_data if m.get("system_memory", {}).get("percent")]
+                memory_values = [
+                    m["system_memory"]["percent"]
+                    for m in memory_data
+                    if m.get("system_memory", {}).get("percent")
+                ]
                 if memory_values:
                     avg_memory = sum(memory_values) / len(memory_values)
                     scores["memory_avg"] = avg_memory
-                    scores["memory"] = max(0, 100 - (avg_memory * 1.1))  # Penalize high memory usage
+                    scores["memory"] = max(
+                        0, 100 - (avg_memory * 1.1)
+                    )  # Penalize high memory usage
 
             # Calculate Network health
             if network_data:
-                latency_values = [n["bot_latency_ms"] for n in network_data if n.get("bot_latency_ms")]
+                latency_values = [
+                    n["bot_latency_ms"] for n in network_data if n.get("bot_latency_ms")
+                ]
                 if latency_values:
                     avg_latency = sum(latency_values) / len(latency_values)
                     scores["network_avg"] = avg_latency
-                    scores["network"] = max(0, 100 - (avg_latency / 10))  # Penalize high latency
+                    scores["network"] = max(
+                        0, 100 - (avg_latency / 10)
+                    )  # Penalize high latency
 
             # Calculate Discord connection health
-            scores["discord"] = 100 if self.bot.latency < 0.5 else max(0, 100 - (self.bot.latency * 100))
+            scores["discord"] = (
+                100
+                if self.bot.latency < 0.5
+                else max(0, 100 - (self.bot.latency * 100))
+            )
 
             # Calculate overall health
-            scores["overall"] = (scores["cpu"] + scores["memory"] + scores["network"] + scores["discord"]) / 4
+            scores["overall"] = (
+                scores["cpu"] + scores["memory"] + scores["network"] + scores["discord"]
+            ) / 4
 
         except Exception as e:
             self.logger.error(f"Error calculating health scores: {e}")
@@ -495,7 +573,7 @@ class ContinuousPerformanceMonitor(commands.Cog, name="ContinuousPerformance"):
         elif score >= 75:
             return "🟡 Good"
         elif score >= 50:
-            return "🟠 Fair" 
+            return "🟠 Fair"
         elif score >= 25:
             return "🔴 Poor"
         else:
@@ -505,36 +583,48 @@ class ContinuousPerformanceMonitor(commands.Cog, name="ContinuousPerformance"):
         """Calculate trend direction from list of values"""
         if len(values) < 2:
             return "📊 Stable"
-        
+
         # Simple linear trend calculation
-        first_half = sum(values[:len(values)//2]) / (len(values)//2)
-        second_half = sum(values[len(values)//2:]) / (len(values) - len(values)//2)
-        
-        diff_percent = ((second_half - first_half) / first_half) * 100 if first_half > 0 else 0
-        
+        first_half = sum(values[: len(values) // 2]) / (len(values) // 2)
+        second_half = sum(values[len(values) // 2 :]) / (len(values) - len(values) // 2)
+
+        diff_percent = (
+            ((second_half - first_half) / first_half) * 100 if first_half > 0 else 0
+        )
+
         if diff_percent > 10:
             return "📈 Increasing"
         elif diff_percent < -10:
-            return "📉 Decreasing" 
+            return "📉 Decreasing"
         else:
             return "📊 Stable"
 
-    async def _generate_performance_recommendations(self, health_scores: Dict[str, float]) -> List[str]:
+    async def _generate_performance_recommendations(
+        self, health_scores: Dict[str, float]
+    ) -> List[str]:
         """Generate performance recommendations based on health scores"""
         recommendations = []
 
         if health_scores["cpu"] < 70:
-            recommendations.append("🔧 High CPU usage detected - consider optimizing background tasks")
-        
+            recommendations.append(
+                "🔧 High CPU usage detected - consider optimizing background tasks"
+            )
+
         if health_scores["memory"] < 70:
-            recommendations.append("🧠 High memory usage detected - run garbage collection or restart bot")
-            
+            recommendations.append(
+                "🧠 High memory usage detected - run garbage collection or restart bot"
+            )
+
         if health_scores["network"] < 70:
-            recommendations.append("🌐 High network latency detected - check internet connection")
-            
+            recommendations.append(
+                "🌐 High network latency detected - check internet connection"
+            )
+
         if health_scores["discord"] < 70:
-            recommendations.append("🔗 Poor Discord connection - check Discord API status")
-            
+            recommendations.append(
+                "🔗 Poor Discord connection - check Discord API status"
+            )
+
         if health_scores["overall"] > 90:
             recommendations.append("✨ System running optimally - all systems green!")
 
@@ -544,7 +634,7 @@ class ContinuousPerformanceMonitor(commands.Cog, name="ContinuousPerformance"):
         """Check performance data against thresholds and send alerts"""
         try:
             alerts = []
-            
+
             # Check memory usage
             memory_percent = performance_data["system_metrics"]["memory"]["percent"]
             if memory_percent > self.thresholds["memory_critical"]:
@@ -553,7 +643,7 @@ class ContinuousPerformanceMonitor(commands.Cog, name="ContinuousPerformance"):
                 alerts.append(f"⚠️ WARNING: Memory usage at {memory_percent:.1f}%")
 
             # Check CPU usage
-            cpu_percent = performance_data["system_metrics"]["cpu_percent"] 
+            cpu_percent = performance_data["system_metrics"]["cpu_percent"]
             if cpu_percent > self.thresholds["cpu_critical"]:
                 alerts.append(f"🚨 CRITICAL: CPU usage at {cpu_percent:.1f}%")
             elif cpu_percent > self.thresholds["cpu_warning"]:
@@ -574,7 +664,9 @@ class ContinuousPerformanceMonitor(commands.Cog, name="ContinuousPerformance"):
                     "performance_snapshot": performance_data,
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                 }
-                await self.discord_reporter.send_continuous_performance(alert_data, immediate=True)
+                await self.discord_reporter.send_continuous_performance(
+                    alert_data, immediate=True
+                )
 
         except Exception as e:
             self.logger.error(f"Error checking performance alerts: {e}")
@@ -583,7 +675,7 @@ class ContinuousPerformanceMonitor(commands.Cog, name="ContinuousPerformance"):
         """Send error alert when monitoring fails"""
         if not self.discord_reporter:
             return
-        
+
         try:
             error_data = {
                 "event": "monitor_error_alert",
@@ -592,7 +684,9 @@ class ContinuousPerformanceMonitor(commands.Cog, name="ContinuousPerformance"):
                 "traceback": traceback.format_exc(),
                 "timestamp": datetime.now(timezone.utc).isoformat(),
             }
-            await self.discord_reporter.send_continuous_performance(error_data, immediate=True)
+            await self.discord_reporter.send_continuous_performance(
+                error_data, immediate=True
+            )
         except Exception as e:
             self.logger.error(f"Failed to send error alert: {e}")
 
@@ -600,9 +694,9 @@ class ContinuousPerformanceMonitor(commands.Cog, name="ContinuousPerformance"):
     async def on_command_completion(self, ctx):
         """Track command performance on completion"""
         try:
-            if hasattr(ctx, 'command_start_time'):
+            if hasattr(ctx, "command_start_time"):
                 execution_time = time.time() - ctx.command_start_time
-                
+
                 command_perf_data = {
                     "event": "command_performance_tracking",
                     "command": ctx.command.qualified_name,
@@ -613,10 +707,12 @@ class ContinuousPerformanceMonitor(commands.Cog, name="ContinuousPerformance"):
                     "success": True,
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                 }
-                
+
                 if self.discord_reporter:
-                    await self.discord_reporter.send_continuous_performance(command_perf_data, immediate=False)
-                    
+                    await self.discord_reporter.send_continuous_performance(
+                        command_perf_data, immediate=False
+                    )
+
         except Exception as e:
             self.logger.error(f"Error tracking command performance: {e}")
 
@@ -624,9 +720,9 @@ class ContinuousPerformanceMonitor(commands.Cog, name="ContinuousPerformance"):
     async def on_command_error(self, ctx, error):
         """Track command errors"""
         try:
-            if hasattr(ctx, 'command_start_time'):
+            if hasattr(ctx, "command_start_time"):
                 execution_time = time.time() - ctx.command_start_time
-                
+
                 error_perf_data = {
                     "event": "command_error_tracking",
                     "command": ctx.command.qualified_name if ctx.command else "unknown",
@@ -639,10 +735,12 @@ class ContinuousPerformanceMonitor(commands.Cog, name="ContinuousPerformance"):
                     "success": False,
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                 }
-                
+
                 if self.discord_reporter:
-                    await self.discord_reporter.send_continuous_performance(error_perf_data, immediate=True)
-                    
+                    await self.discord_reporter.send_continuous_performance(
+                        error_perf_data, immediate=True
+                    )
+
         except Exception as e:
             self.logger.error(f"Error tracking command error: {e}")
 

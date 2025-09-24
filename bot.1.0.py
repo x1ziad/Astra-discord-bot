@@ -525,6 +525,13 @@ class AstraBot(commands.Bot):
             try:
                 await initialize_discord_reporter(self)
                 self.logger.info("✅ Discord Data Reporter initialized")
+
+                # Start continuous automation system
+                reporter = get_discord_reporter()
+                if reporter:
+                    await reporter.start_continuous_automation()
+                    self.logger.info("🚀 Continuous automation system started")
+
             except Exception as e:
                 self.logger.error(f"❌ Failed to initialize Discord Data Reporter: {e}")
 
@@ -550,6 +557,11 @@ class AstraBot(commands.Bot):
             self.logger.info(f"   👥 Members: {guild.member_count:,}")
             self.logger.info(f"   📅 Created: {guild.created_at.strftime('%Y-%m-%d')}")
             self.logger.info(f"   👑 Owner: {guild.owner}")
+
+            # Automatic guild join event capture
+            reporter = get_discord_reporter()
+            if reporter:
+                await reporter.auto_capture_guild_event(guild, "join")
 
             # Initialize guild configuration
             await self._initialize_guild_config(guild)
@@ -614,6 +626,11 @@ class AstraBot(commands.Bot):
 
             self.logger.info(f"👋 Left guild: {guild.name} (ID: {guild.id})")
 
+            # Automatic guild leave event capture
+            reporter = get_discord_reporter()
+            if reporter:
+                await reporter.auto_capture_guild_event(guild, "leave")
+
             # Cleanup guild data if configured
             if self.config.cleanup_on_leave:
                 await self._cleanup_guild_data(guild.id)
@@ -640,6 +657,11 @@ class AstraBot(commands.Bot):
                 # Store message in context for AI understanding even if not responding
                 await self._store_message_context(message)
 
+                # Automatic message event capture
+                reporter = get_discord_reporter()
+                if reporter:
+                    await reporter.auto_capture_message_event(message)
+
                 # Let the AdvancedAICog handle ALL messages with its sophisticated interaction system
                 # The AdvancedAI cog has a much more intelligent decision engine that determines
                 # how to interact with every single message (text, reactions, emojis, etc.)
@@ -662,6 +684,13 @@ class AstraBot(commands.Bot):
                 f"User: {ctx.author} | Guild: {getattr(ctx.guild, 'name', 'DM')}"
             )
 
+            # Automatic command event capture
+            reporter = get_discord_reporter()
+            if reporter:
+                await reporter.auto_capture_command_event(
+                    ctx, ctx.command.qualified_name, success=True
+                )
+
             # Update command statistics
             await self._update_command_stats(ctx)
 
@@ -670,6 +699,67 @@ class AstraBot(commands.Bot):
             """Enhanced command error handling"""
             await self.error_handler.handle_command_error(ctx, error)
             self.stats.errors_handled += 1
+
+            # Automatic error event capture
+            reporter = get_discord_reporter()
+            if reporter:
+                await reporter.auto_capture_command_event(
+                    ctx,
+                    ctx.command.qualified_name if ctx.command else "unknown",
+                    success=False,
+                    error=str(error),
+                )
+                await reporter.auto_capture_error_event(
+                    error,
+                    f"Command error in {ctx.command.qualified_name if ctx.command else 'unknown'}",
+                    immediate=True,
+                )
+
+        # Additional automatic event handlers for comprehensive capture
+        @self.event
+        async def on_member_join(member):
+            """Automatic member join event capture"""
+            reporter = get_discord_reporter()
+            if reporter:
+                await reporter.auto_capture_member_event(member, "join")
+
+        @self.event
+        async def on_member_remove(member):
+            """Automatic member leave event capture"""
+            reporter = get_discord_reporter()
+            if reporter:
+                await reporter.auto_capture_member_event(member, "leave")
+
+        @self.event
+        async def on_voice_state_update(member, before, after):
+            """Automatic voice state update capture"""
+            reporter = get_discord_reporter()
+            if reporter:
+                await reporter.auto_capture_voice_event(member, before, after)
+
+        @self.event
+        async def on_raw_reaction_add(payload):
+            """Automatic reaction add event capture"""
+            reporter = get_discord_reporter()
+            if reporter:
+                await reporter.auto_capture_reaction_event(payload)
+
+        @self.event
+        async def on_raw_reaction_remove(payload):
+            """Automatic reaction remove event capture"""
+            reporter = get_discord_reporter()
+            if reporter:
+                await reporter.auto_capture_reaction_event(payload)
+
+        @self.event
+        async def on_error(event, *args, **kwargs):
+            """Global error event capture"""
+            error = args[0] if args else Exception("Unknown error")
+            reporter = get_discord_reporter()
+            if reporter:
+                await reporter.auto_capture_error_event(
+                    error, f"Global error in event: {event}", immediate=True
+                )
 
     async def _sync_commands(self):
         """Sync application commands with enhanced error handling"""
