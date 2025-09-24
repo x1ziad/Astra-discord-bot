@@ -99,7 +99,7 @@ class UniversalAIClient:
         self.model = kwargs.get("model", self.config[self.provider]["default_model"])
 
         # Validate model IDs (allow user-configured models like "xAI: Grok Code Fast 1")
-        if not self.model.strip():
+        if not self.model or not self.model.strip():
             logger.warning(f"Empty model ID, using fallback: anthropic/claude-3-haiku")
             self.model = "anthropic/claude-3-haiku"
 
