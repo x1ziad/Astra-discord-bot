@@ -81,6 +81,12 @@ class DiscordDataReporter:
             self.performance_channel = self.bot.get_channel(
                 self.config.performance_channel_id
             )
+            
+            # Debug logging for performance channel
+            if self.performance_channel:
+                self.logger.info(f"✅ Performance channel initialized: {self.performance_channel.name} (ID: {self.performance_channel.id})")
+            else:
+                self.logger.error(f"❌ Performance channel not found with ID: {self.config.performance_channel_id}")
 
             # Verify channels exist
             channels_status = {
@@ -400,6 +406,44 @@ class DiscordDataReporter:
                 "automatic_capture": True,
             }
 
+    async def flush_analytics_buffer(self):
+        """Flush analytics buffer to analytics channel"""
+        if self.analytics_buffer:
+            await self._send_batch_to_channel(
+                self.analytics_channel,
+                self.analytics_buffer.copy(),
+                "📊 Analytics Batch Report",
+            )
+            self.analytics_buffer.clear()
+
+    async def flush_logs_buffer(self):
+        """Flush logs buffer to logs channel"""
+        if self.logs_buffer:
+            await self._send_batch_to_channel(
+                self.logs_channel, self.logs_buffer.copy(), "📝 Logs Batch Report"
+            )
+            self.logs_buffer.clear()
+
+    async def flush_diagnostics_buffer(self):
+        """Flush diagnostics buffer to diagnostics channel"""
+        if self.diagnostics_buffer:
+            await self._send_batch_to_channel(
+                self.diagnostics_channel,
+                self.diagnostics_buffer.copy(),
+                "🔬 Diagnostics Batch Report",
+            )
+            self.diagnostics_buffer.clear()
+
+    async def flush_performance_buffer(self):
+        """Flush performance buffer to performance channel"""
+        if self.performance_buffer:
+            await self._send_batch_to_channel(
+                self.performance_channel,
+                self.performance_buffer.copy(),
+                "⚡ Performance Monitoring Batch Report",
+            )
+            self.performance_buffer.clear()
+
     async def flush_all_buffers(self):
         """Manually flush all buffers to their respective channels"""
         await asyncio.gather(
@@ -675,6 +719,11 @@ class DiscordDataReporter:
 
         await self.send_analytics(activity_data, immediate=False)
 
+    async def send_performance(self, data: Dict[str, Any], immediate: bool = False):
+        """Send performance data to performance channel (wrapper for send_continuous_performance)"""
+        self.logger.debug(f"📊 Sending performance data - immediate: {immediate}, channel available: {self.performance_channel is not None}")
+        await self.send_continuous_performance(data, immediate)
+
     async def send_continuous_performance(
         self, detailed_metrics: Dict[str, Any], immediate: bool = False
     ):
@@ -686,61 +735,22 @@ class DiscordDataReporter:
         }
 
         if immediate:
+            self.logger.debug(f"⚡ Sending immediate performance data to channel {self.performance_channel.id if self.performance_channel else 'None'}")
             await self._send_to_channel(
                 self.performance_channel,
                 performance_data,
                 "⚡ **CONTINUOUS PERFORMANCE MONITORING**",
             )
         else:
+            self.logger.debug(f"📊 Adding performance data to buffer (current size: {len(self.performance_buffer)})")
             self.performance_buffer.append(performance_data)
-
-    async def flush_all_buffers(self):
-        """Send all buffered data to respective channels"""
-        try:
-            # Send analytics buffer
-            if self.analytics_buffer:
-                await self._send_batch_to_channel(
-                    self.analytics_channel,
-                    self.analytics_buffer.copy(),
-                    "📊 Analytics Batch Report",
-                )
-                self.analytics_buffer.clear()
-
-            # Send logs buffer
-            if self.logs_buffer:
-                await self._send_batch_to_channel(
-                    self.logs_channel, self.logs_buffer.copy(), "📝 Logs Batch Report"
-                )
-                self.logs_buffer.clear()
-
-            # Send diagnostics buffer
-            if self.diagnostics_buffer:
-                await self._send_batch_to_channel(
-                    self.diagnostics_channel,
-                    self.diagnostics_buffer.copy(),
-                    "🔬 Diagnostics Batch Report",
-                )
-                self.diagnostics_buffer.clear()
-
-            # Send performance buffer
-            if self.performance_buffer:
-                await self._send_batch_to_channel(
-                    self.performance_channel,
-                    self.performance_buffer.copy(),
-                    "⚡ Performance Monitoring Report",
-                )
-                self.performance_buffer.clear()
-
-            self.logger.debug("All data buffers flushed to Discord channels")
-
-        except Exception as e:
-            self.logger.error(f"Error flushing buffers: {e}")
 
     async def _send_to_channel(
         self, channel: Optional[discord.TextChannel], data: Dict[str, Any], title: str
     ):
         """Send individual data entry to a Discord channel"""
         if not channel:
+            self.logger.warning(f"⚠️ Cannot send data - channel is None for: {title}")
             return
 
         try:
@@ -1049,6 +1059,25 @@ class DiscordDataReporter:
 
         except Exception as e:
             self.logger.error(f"Error enforcing zero local storage: {e}")
+
+    async def test_performance_channel(self):
+        """Test the performance channel with a simple message"""
+        try:
+            test_data = {
+                "event": "performance_channel_test",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "message": "Testing performance channel connectivity",
+                "channel_id": self.config.performance_channel_id,
+                "channel_available": self.performance_channel is not None,
+                "test_type": "connectivity_check"
+            }
+            
+            self.logger.info(f"🧪 Testing performance channel - Channel available: {self.performance_channel is not None}")
+            await self.send_performance(test_data, immediate=True)
+            self.logger.info("✅ Performance channel test completed")
+            
+        except Exception as e:
+            self.logger.error(f"❌ Performance channel test failed: {e}")
 
     async def send_daily_summary(self):
         """Send daily summary report to diagnostics channel"""
