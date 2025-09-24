@@ -1,0 +1,53 @@
+{
+  "bot": {
+    "name": "Astra",
+    "version": "2.0.0",
+    "description": "Advanced AI-powered Discord bot",
+    "prefix": "!",
+    "status": "online",
+    "activity_type": "watching",
+    "activity_name": "the cosmos",
+    "command_sync_on_ready": true,
+    "command_sync_on_join": false,
+    "cleanup_on_leave": true,
+    "features": {
+      "enable_ai": true,
+      "enable_voice": false,
+      "enable_moderation": true,
+      "enable_analytics": true,
+      "enable_auto_responses": true,
+      "enable_slash_commands": true
+    }
+  },
+  "ai": {
+    "api_key": "",
+    "base_url": "https://openrouter.ai/api/v1",
+    "model": "anthropic/claude-3.5-sonnet",
+    "max_tokens": 2000,
+    "temperature": 0.7,
+    "provider_name": "openrouter"
+  },
+  "database": {
+    "path": "data/astra.db",
+    "backup_enabled": true,
+    "backup_interval": 3600,
+    "connection_pool_size": 10
+  },
+  "cache": {
+    "enabled": true,
+    "default_ttl": 300,
+    "max_size": 10000,
+    "redis_enabled": false,
+    "redis_url": null
+  },
+  "logging": {
+    "level": "INFO",
+    "file_enabled": true,
+    "file_path": "logs/astra.log",
+    "console_enabled": true,
+    "max_file_size": 10485760,
+    "backup_count": 5
+  },
+  "guilds": {},
+  "updated_at": "2025-09-21T00:00:00Z"
+}
