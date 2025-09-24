@@ -81,12 +81,16 @@ class DiscordDataReporter:
             self.performance_channel = self.bot.get_channel(
                 self.config.performance_channel_id
             )
-            
+
             # Debug logging for performance channel
             if self.performance_channel:
-                self.logger.info(f"✅ Performance channel initialized: {self.performance_channel.name} (ID: {self.performance_channel.id})")
+                self.logger.info(
+                    f"✅ Performance channel initialized: {self.performance_channel.name} (ID: {self.performance_channel.id})"
+                )
             else:
-                self.logger.error(f"❌ Performance channel not found with ID: {self.config.performance_channel_id}")
+                self.logger.error(
+                    f"❌ Performance channel not found with ID: {self.config.performance_channel_id}"
+                )
 
             # Verify channels exist
             channels_status = {
@@ -721,7 +725,9 @@ class DiscordDataReporter:
 
     async def send_performance(self, data: Dict[str, Any], immediate: bool = False):
         """Send performance data to performance channel (wrapper for send_continuous_performance)"""
-        self.logger.debug(f"📊 Sending performance data - immediate: {immediate}, channel available: {self.performance_channel is not None}")
+        self.logger.debug(
+            f"📊 Sending performance data - immediate: {immediate}, channel available: {self.performance_channel is not None}"
+        )
         await self.send_continuous_performance(data, immediate)
 
     async def send_continuous_performance(
@@ -735,14 +741,18 @@ class DiscordDataReporter:
         }
 
         if immediate:
-            self.logger.debug(f"⚡ Sending immediate performance data to channel {self.performance_channel.id if self.performance_channel else 'None'}")
+            self.logger.debug(
+                f"⚡ Sending immediate performance data to channel {self.performance_channel.id if self.performance_channel else 'None'}"
+            )
             await self._send_to_channel(
                 self.performance_channel,
                 performance_data,
                 "⚡ **CONTINUOUS PERFORMANCE MONITORING**",
             )
         else:
-            self.logger.debug(f"📊 Adding performance data to buffer (current size: {len(self.performance_buffer)})")
+            self.logger.debug(
+                f"📊 Adding performance data to buffer (current size: {len(self.performance_buffer)})"
+            )
             self.performance_buffer.append(performance_data)
 
     async def _send_to_channel(
@@ -1069,13 +1079,15 @@ class DiscordDataReporter:
                 "message": "Testing performance channel connectivity",
                 "channel_id": self.config.performance_channel_id,
                 "channel_available": self.performance_channel is not None,
-                "test_type": "connectivity_check"
+                "test_type": "connectivity_check",
             }
-            
-            self.logger.info(f"🧪 Testing performance channel - Channel available: {self.performance_channel is not None}")
+
+            self.logger.info(
+                f"🧪 Testing performance channel - Channel available: {self.performance_channel is not None}"
+            )
             await self.send_performance(test_data, immediate=True)
             self.logger.info("✅ Performance channel test completed")
-            
+
         except Exception as e:
             self.logger.error(f"❌ Performance channel test failed: {e}")
 

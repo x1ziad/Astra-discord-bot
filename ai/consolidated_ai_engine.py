@@ -840,7 +840,7 @@ class ConsolidatedAIEngine:
         context_data: Dict[str, Any] = None,
         context: Dict[str, Any] = None,
     ) -> str:
-        """Main conversation processing with full optimization and enhanced context understanding"""
+        """OPTIMIZED: Main conversation processing with lightning-fast response times"""
 
         # Use optimized engine if available
         if self.optimized_engine:
@@ -855,119 +855,156 @@ class ConsolidatedAIEngine:
             except Exception as e:
                 logger.warning(f"Optimized engine failed, falling back to legacy: {e}")
 
-        # Enhanced processing with context understanding
+        # OPTIMIZED: Lightning-fast processing with parallel context gathering
         start_time = time.time()
 
-        # Get or create conversation context and user profile
-        conversation_context = await self._get_conversation_context(
-            user_id, guild_id, channel_id
-        )
-
+        # Parallel context gathering for maximum speed
         try:
-            user_profile = await self._get_user_profile(user_id)
+            # Create concurrent tasks for context gathering
+            context_task = asyncio.create_task(
+                self._get_conversation_context(user_id, guild_id, channel_id)
+            )
+            profile_task = asyncio.create_task(
+                self._get_user_profile(user_id)
+            )
+            
+            # Wait for both with short timeout for speed
+            conversation_context, user_profile = await asyncio.gather(
+                asyncio.wait_for(context_task, timeout=0.5),
+                asyncio.wait_for(profile_task, timeout=0.5),
+                return_exceptions=True
+            )
+            
+            # Handle timeouts gracefully
+            if isinstance(conversation_context, Exception):
+                conversation_context = await self._create_minimal_context(user_id, guild_id, channel_id)
+            if isinstance(user_profile, Exception):
+                user_profile = {"user_id": user_id, "engagement_score": 0.5}
+                
+        except Exception as e:
+            logger.debug(f"Context gathering optimization failed, using fallback: {e}")
+            # Fallback to minimal context for speed
+            conversation_context = await self._create_minimal_context(user_id, guild_id, channel_id)
+            user_profile = {"user_id": user_id, "engagement_score": 0.5}
 
-            # Enhanced context analysis using universal context manager if available
-            message_context = None
+        # OPTIMIZED: Simplified context analysis for faster responses
+        message_context = None
+        personality_context = None
+        intelligence_insights = None
+        
+        # Only do advanced processing if response time budget allows
+        elapsed = time.time() - start_time
+        if elapsed < 0.3:  # 300ms budget for advanced features
             try:
-                from ai.universal_context_manager import get_context_manager
+                # Concurrent advanced processing
+                tasks = []
+                
+                # Universal context manager (if available)
+                try:
+                    from ai.universal_context_manager import get_context_manager
+                    context_manager = get_context_manager()
+                    if context_manager:
+                        tasks.append(
+                            asyncio.wait_for(
+                                context_manager.analyze_message(message, user_id, channel_id, guild_id),
+                                timeout=0.2
+                            )
+                        )
+                except ImportError:
+                    pass
+                
+                # Personality evolution (if available and guild context)
+                if self.personality_engine and guild_id:
+                    try:
+                        user_name = context_data.get("user_name", f"User{user_id}")
+                        guild_name = context_data.get("guild_name", f"Guild{guild_id}")
+                        
+                        tasks.append(
+                            asyncio.wait_for(
+                                self.personality_engine.process_message(
+                                    message_content=message,
+                                    user_id=user_id,
+                                    user_name=user_name,
+                                    server_id=guild_id,
+                                    server_name=guild_name,
+                                    message_context=None  # Skip for speed
+                                ),
+                                timeout=0.2
+                            )
+                        )
+                    except Exception:
+                        pass
+                
+                # Execute advanced tasks if time allows
+                if tasks:
+                    results = await asyncio.gather(*tasks, return_exceptions=True)
+                    # Process results but don't let failures slow us down
+                    for result in results:
+                        if not isinstance(result, Exception):
+                            if "topics" in str(result):  # Context manager result
+                                message_context = result
+                            else:  # Personality result
+                                personality_context = result
+                                
+            except Exception as e:
+                logger.debug(f"Advanced processing skipped for speed: {e}")
 
-                context_manager = get_context_manager()
-                if context_manager:
-                    message_context = await context_manager.analyze_message(
-                        message, user_id, channel_id, guild_id
+        # OPTIMIZED: Minimal intelligence processing if time budget allows
+        elapsed = time.time() - start_time
+        if elapsed < 0.5 and self.advanced_intelligence and guild_id:
+            try:
+                # Prepare event data for advanced intelligence processing
+                event_data = {
+                    "user_id": user_id,
+                    "message_data": {
+                        "content": message,
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                        "topics": topics if "topics" in locals() else [],
+                    },
+                    "event_type": "message",
+                    "significance_score": 0.5,  # Base significance
+                    "emotional_weight": (
+                        intensity if "intensity" in locals() else 0.0
+                    ),
+                    "participants": [user_id],
+                    "trigger_predictions": True,
+                }
+
+                # Enhance significance score based on message content
+                if len(message) > 100:  # Longer messages
+                    event_data["significance_score"] += 0.1
+                if any(
+                    word in message.lower()
+                    for word in ["help", "problem", "celebration", "achievement"]
+                ):
+                    event_data["significance_score"] += 0.2
+                if "?" in message:  # Questions
+                    event_data["significance_score"] += 0.1
+
+                # Process through advanced intelligence
+                intelligence_result = (
+                    await self.advanced_intelligence.process_community_event(
+                        server_id=guild_id, event_data=event_data
                     )
-            except ImportError:
-                logger.debug(
-                    "Universal context manager not available, using legacy analysis"
                 )
 
-            # Process personality evolution if available
-            personality_context = None
-            if self.personality_engine and guild_id:
-                try:
-                    # Get user display name for personality tracking
-                    user_name = context_data.get("user_name", f"User{user_id}")
-                    guild_name = context_data.get("guild_name", f"Guild{guild_id}")
+                # Extract insights for response enhancement
+                intelligence_insights = {
+                    "predictions": intelligence_result.get("predictions", []),
+                    "wellness_alerts": intelligence_result.get(
+                        "wellness_alerts", []
+                    ),
+                    "mood_changes": intelligence_result.get("mood_changes", {}),
+                    "sage_insights": intelligence_result.get("sage_insights", []),
+                }
 
-                    # Process message for personality evolution
-                    evolution_result = await self.personality_engine.process_message(
-                        message_content=message,
-                        user_id=user_id,
-                        user_name=user_name,
-                        server_id=guild_id,
-                        server_name=guild_name,
-                        message_context=message_context,
-                    )
+                logger.debug(
+                    f"Advanced intelligence processed: {intelligence_insights}"
+                )
 
-                    # Get personality context for response generation
-                    personality_context = (
-                        await self.personality_engine.get_personality_context(
-                            server_id=guild_id, user_id=user_id
-                        )
-                    )
-
-                    logger.debug(f"Personality evolution processed: {evolution_result}")
-
-                except Exception as e:
-                    logger.warning(f"Personality evolution error: {e}")
-                    personality_context = None
-
-            # Process advanced intelligence features if available (Phase 3)
-            intelligence_insights = None
-            if self.advanced_intelligence and guild_id:
-                try:
-                    # Prepare event data for advanced intelligence processing
-                    event_data = {
-                        "user_id": user_id,
-                        "message_data": {
-                            "content": message,
-                            "timestamp": datetime.now(timezone.utc).isoformat(),
-                            "topics": topics if "topics" in locals() else [],
-                        },
-                        "event_type": "message",
-                        "significance_score": 0.5,  # Base significance
-                        "emotional_weight": (
-                            intensity if "intensity" in locals() else 0.0
-                        ),
-                        "participants": [user_id],
-                        "trigger_predictions": True,
-                    }
-
-                    # Enhance significance score based on message content
-                    if len(message) > 100:  # Longer messages
-                        event_data["significance_score"] += 0.1
-                    if any(
-                        word in message.lower()
-                        for word in ["help", "problem", "celebration", "achievement"]
-                    ):
-                        event_data["significance_score"] += 0.2
-                    if "?" in message:  # Questions
-                        event_data["significance_score"] += 0.1
-
-                    # Process through advanced intelligence
-                    intelligence_result = (
-                        await self.advanced_intelligence.process_community_event(
-                            server_id=guild_id, event_data=event_data
-                        )
-                    )
-
-                    # Extract insights for response enhancement
-                    intelligence_insights = {
-                        "predictions": intelligence_result.get("predictions", []),
-                        "wellness_alerts": intelligence_result.get(
-                            "wellness_alerts", []
-                        ),
-                        "mood_changes": intelligence_result.get("mood_changes", {}),
-                        "sage_insights": intelligence_result.get("sage_insights", []),
-                    }
-
-                    logger.debug(
-                        f"Advanced intelligence processed: {intelligence_insights}"
-                    )
-
-                except Exception as e:
-                    logger.warning(f"Advanced intelligence error: {e}")
-                    intelligence_insights = None
+            except Exception as e:
+                logger.warning(f"Advanced intelligence error: {e}")
+                intelligence_insights = None
 
             # Analyze sentiment with caching (fallback if context manager not available)
             cache_key = f"sentiment:{hashlib.md5(message.encode()).hexdigest()}"
@@ -1073,8 +1110,24 @@ class ConsolidatedAIEngine:
             return response
 
         except Exception as e:
-            self.logger.error(f"Conversation processing error: {e}")
+            logger.error(f"Conversation processing error: {e}")
             return self._get_fallback_response(message, user_id)
+
+    async def _create_minimal_context(
+        self, user_id: int, guild_id: Optional[int], channel_id: Optional[int]
+    ) -> ConversationContext:
+        """Create minimal conversation context for fast fallback"""
+        return ConversationContext(
+            user_id=user_id,
+            guild_id=guild_id,
+            channel_id=channel_id,
+            message_history=[],
+            user_profile={},
+            emotional_context={},
+            topics=[],
+            conversation_stage="ongoing",
+            last_interaction=datetime.now()
+        )
 
     async def _get_conversation_context(
         self, user_id: int, guild_id: Optional[int], channel_id: Optional[int]

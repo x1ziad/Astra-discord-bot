@@ -147,51 +147,71 @@ class AdvancedAICog(commands.Cog):
                     "❌ My AI brain is temporarily out for a digital coffee break! ☕"
                 )
 
-            # Ultra-fast conversation context (limited for speed)
+            # OPTIMIZED: Enhanced conversation context for better understanding
             recent_history = []
             if user_id in self.conversation_history:
-                # Only keep last 2 exchanges for lightning speed
-                recent_history = self.conversation_history[user_id][-4:]
+                # Expanded context window for better comprehension
+                recent_history = self.conversation_history[user_id][-8:]  # More context
 
-            # Choose fastest response method
+            # OPTIMIZED: Parallel AI processing for lightning-fast responses
             response = None
 
-            # Method 1: Try optimized AI engine first
+            # Method 1: Parallel AI processing with optimized timeouts
             if hasattr(self.ai_client, "process_conversation"):
                 try:
-                    # Use asyncio.wait_for for timeout protection
-                    response = await asyncio.wait_for(
+                    # Create primary AI task
+                    primary_task = asyncio.create_task(
                         self.ai_client.process_conversation(
                             prompt, user_id, guild_id=guild_id, channel_id=channel_id
-                        ),
-                        timeout=5.0,  # Increased timeout for better reliability
+                        )
                     )
+                    
+                    # Create fallback task with slight delay to optimize resource usage
+                    async def delayed_fallback():
+                        await asyncio.sleep(0.3)  # Small delay to prioritize primary
+                        if hasattr(self.ai_client, "generate_response"):
+                            return await self.ai_client.generate_response(
+                                prompt, context={"history": recent_history, "optimized": True}
+                            )
+                        return None
+                    
+                    fallback_task = asyncio.create_task(delayed_fallback())
+                    
+                    # OPTIMIZED: Reduced timeout from 5s to 2s for faster responses
+                    response = await asyncio.wait_for(primary_task, timeout=2.0)
+                    
+                    # Cancel fallback if primary succeeded
+                    fallback_task.cancel()
+                    
                 except asyncio.TimeoutError:
-                    self.logger.warning("AI engine timeout - using fallback")
-                    response = None
+                    self.logger.info("Primary AI timeout - switching to fallback (optimized)")
+                    
+                    try:
+                        # OPTIMIZED: Use already-running fallback with reduced timeout
+                        response = await asyncio.wait_for(fallback_task, timeout=1.0)
+                    except (asyncio.TimeoutError, Exception) as fb_error:
+                        self.logger.warning(f"Fallback also timed out: {fb_error}")
+                        response = None
+                        
                 except Exception as e:
-                    self.logger.warning(f"AI engine error - using fallback: {e}")
-                    response = None
+                    self.logger.warning(f"Primary AI engine error - using fallback: {e}")
+                    # Try to use fallback task if still running
+                    try:
+                        response = await asyncio.wait_for(fallback_task, timeout=1.0)
+                    except:
+                        response = None
 
-            # Method 2: Fallback to simpler AI generation
-            if not response and hasattr(self.ai_client, "generate_response"):
-                try:
-                    response = await asyncio.wait_for(
-                        self.ai_client.generate_response(
-                            prompt, context={"history": recent_history}
-                        ),
-                        timeout=3.0,  # Increased fallback timeout
-                    )
-                except (asyncio.TimeoutError, Exception) as e:
-                    self.logger.warning(f"Fallback AI error: {e}")
-                    response = None
-
-            # Method 3: Lightning fallback with humor from optimizer
+            # Method 2: Lightning emergency fallback with enhanced context
             if not response:
                 try:
-                    user_context = {"username": username or "Friend"}
+                    enhanced_context = {
+                        "username": username or "Friend",
+                        "guild_name": "Server",  # Simplified to avoid undefined variables
+                        "recent_activity": len(recent_history) > 0,
+                        "emergency": True
+                    }
                     response = await lightning_optimizer.get_fallback_response(
-                        user_context
+                        enhanced_context
                     )
                 except Exception as e:
                     self.logger.error(f"Even fallback failed: {e}")
