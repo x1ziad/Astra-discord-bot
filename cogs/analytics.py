@@ -19,7 +19,7 @@ from io import BytesIO
 from config.unified_config import unified_config
 from utils.permissions import has_permission, PermissionLevel
 from utils.command_optimizer import optimize_command
-from utils.performance_optimizer import ResponseCache
+from utils.command_optimizer import ResponseCache
 from utils.discord_data_reporter import get_discord_reporter
 
 

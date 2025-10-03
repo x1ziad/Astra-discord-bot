@@ -18,7 +18,7 @@ import os
 from typing import Optional, List, Literal, Dict, Any
 
 from config.unified_config import unified_config
-from utils.performance_optimizer import ResponseCache
+from utils.command_optimizer import ResponseCache
 from utils.command_optimizer import auto_optimize_commands
 
 try:

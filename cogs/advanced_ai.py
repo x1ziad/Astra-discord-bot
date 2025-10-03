@@ -18,7 +18,6 @@ import os
 
 # Lightning performance optimization imports
 from utils.command_optimizer import optimize_command, optimized_send
-from utils.performance_optimizer import performance_optimizer
 from utils.lightning_optimizer import lightning_optimizer
 
 logger = logging.getLogger("astra.advanced_ai")

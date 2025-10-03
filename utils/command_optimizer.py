@@ -12,9 +12,99 @@ from datetime import datetime, timezone
 import discord
 from discord.ext import commands
 
-from utils.performance_optimizer import performance_optimizer, cacheable, rate_limit
-
 logger = logging.getLogger("astra.command_wrapper")
+
+# Simple in-memory cache and rate limiter
+class SimpleCache:
+    def __init__(self):
+        self._cache = {}
+        self._timestamps = {}
+    
+    async def get(self, key: str):
+        if key in self._cache:
+            timestamp, ttl, value = self._cache[key]
+            if time.time() - timestamp < ttl:
+                return value
+            else:
+                del self._cache[key]
+                if key in self._timestamps:
+                    del self._timestamps[key]
+        return None
+    
+    async def set(self, key: str, value, ttl: int = 300):
+        self._cache[key] = (time.time(), ttl, value)
+
+class SimpleRateLimiter:
+    def __init__(self):
+        self._limits = {}
+    
+    def check_limit(self, key: str, calls_per_minute: int = 30) -> bool:
+        now = time.time()
+        if key not in self._limits:
+            self._limits[key] = []
+        
+        # Remove old entries
+        self._limits[key] = [t for t in self._limits[key] if now - t < 60]
+        
+        # Check limit
+        if len(self._limits[key]) >= calls_per_minute:
+            return False
+        
+        self._limits[key].append(now)
+        return True
+
+# Global instances
+_command_cache = SimpleCache()
+_rate_limiter = SimpleRateLimiter()
+
+# Response Cache for compatibility with existing cogs
+class ResponseCache:
+    """Simple response cache for backwards compatibility"""
+    
+    def __init__(self, max_size: int = 1000, default_ttl: int = 300):
+        self.max_size = max_size
+        self.default_ttl = default_ttl
+        self._cache = {}
+        self._timestamps = {}
+    
+    async def get(self, key: str):
+        """Get cached response"""
+        if key in self._cache:
+            timestamp, ttl, value = self._cache[key]
+            if time.time() - timestamp < ttl:
+                return value
+            else:
+                await self.delete(key)
+        return None
+    
+    async def set(self, key: str, value, ttl: int = None):
+        """Set cached response"""
+        if ttl is None:
+            ttl = self.default_ttl
+        
+        # Simple cache size management
+        if len(self._cache) >= self.max_size:
+            # Remove oldest entry
+            oldest_key = min(self._cache.keys(), key=lambda k: self._cache[k][0])
+            await self.delete(oldest_key)
+        
+        self._cache[key] = (time.time(), ttl, value)
+    
+    async def delete(self, key: str):
+        """Delete cached response"""
+        if key in self._cache:
+            del self._cache[key]
+        if key in self._timestamps:
+            del self._timestamps[key]
+    
+    async def clear(self):
+        """Clear all cached responses"""
+        self._cache.clear()
+        self._timestamps.clear()
+    
+    def size(self) -> int:
+        """Get cache size"""
+        return len(self._cache)
 
 
 class OptimizedCommand:
@@ -69,22 +159,16 @@ class OptimizedCommand:
         ttl = self.config.get("cache_ttl", 300)
 
         # Check cache
-        cached_result = await performance_optimizer.command_optimizer.command_cache.get(
-            cache_key
-        )
+        cached_result = await _command_cache.get(cache_key)
         if cached_result is not None:
-            performance_optimizer.metrics.cache_hits += 1
             logger.debug(f"Cache hit for command {self.name}")
             return cached_result
 
         # Execute and cache
         result = await self.original_func(*args, **kwargs)
-        performance_optimizer.metrics.cache_misses += 1
 
         if result is not None:
-            await performance_optimizer.command_optimizer.command_cache.set(
-                cache_key, result, ttl
-            )
+            await _command_cache.set(cache_key, result, ttl)
 
         return result
 
@@ -102,24 +186,12 @@ class OptimizedCommand:
 
         if user_id:
             key = f"{self.name}:{user_id}"
-            now = time.time()
-
-            if key not in performance_optimizer.command_optimizer.rate_limiter:
-                performance_optimizer.command_optimizer.rate_limiter[key] = []
-
-            rate_list = performance_optimizer.command_optimizer.rate_limiter[key]
-
-            # Remove old entries
-            rate_list[:] = [t for t in rate_list if now - t < 60]
-
-            # Check limit
-            if len(rate_list) >= calls_per_minute:
+            
+            if not _rate_limiter.check_limit(key, calls_per_minute):
                 raise commands.CommandOnCooldown(
                     commands.BucketType.user,
-                    60 - (now - rate_list[0]) if rate_list else 60,
+                    60,  # Retry after 60 seconds
                 )
-
-            rate_list.append(now)
 
     def _generate_cache_key(self, *args, **kwargs) -> str:
         """Generate cache key for command"""
@@ -146,14 +218,12 @@ class OptimizedCommand:
         """Update performance statistics"""
         self.call_count += 1
         self.total_time += execution_time
-
-        # Update global metrics
-        performance_optimizer.command_optimizer._update_command_stats(
-            self.name, execution_time
-        )
-
+        
+        # Log performance metrics
+        logger.debug(f"Command {self.name}: {execution_time:.3f}s ({'success' if success else 'failed'})")
+        
         if not success:
-            performance_optimizer.metrics.optimization_applied["failed_commands"] += 1
+            logger.warning(f"Command {self.name} failed after {execution_time:.3f}s")
 
 
 class CommandOptimizerDecorator:
@@ -339,6 +409,20 @@ class ResponseOptimizer:
 
         return await ctx.send(content=content, embed=embed, **kwargs)
 
+
+# Simple standalone decorators for compatibility
+def cacheable(func):
+    """Simple cache decorator"""
+    return CommandOptimizerDecorator.optimize(cacheable=True, cache_ttl=300)(func)
+
+def rate_limit(calls_per_minute: int = 30):
+    """Simple rate limit decorator"""
+    def decorator(func):
+        return CommandOptimizerDecorator.optimize(
+            rate_limit_enabled=True, 
+            rate_limit_per_minute=calls_per_minute
+        )(func)
+    return decorator
 
 # Export optimization decorators
 optimize_command = CommandOptimizerDecorator.optimize

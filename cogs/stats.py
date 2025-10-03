@@ -17,7 +17,7 @@ import traceback
 # Use the new config_manager import
 from config.unified_config import unified_config
 from utils.command_optimizer import optimize_command
-from utils.performance_optimizer import ResponseCache
+from utils.command_optimizer import ResponseCache
 
 
 class Stats(commands.GroupCog, name="stats"):
