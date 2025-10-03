@@ -1,22 +1,21 @@
 """
-🚀 ASTRABOT - ULTIMATE OPTIMIZED EDITION
-=========================================
-High-performance Discord bot with AI, interactive features, and smart moderation
-Combines streamlined core system with maximum optimization
+Astra Discord Bot - Enhanced Main Application
+A comprehensive AI-powered Discord bot with adaptive personality and natural conversation
 
 Author: x1ziad
-Version: 3.0.0 - ULTIMATE EDITION
-Release Date: 2025-09-24
+Version: 2.0.0
+Release Date: 2025-08-02 10:53:48 UTC
 License: MIT
 
-⚡ PERFORMANCE FEATURES:
-- Streamlined core system (76% code reduction)
-- Interactive emoji-based role selection
-- Smart auto-moderation with progressive warnings
-- AI conversations with timeout protection
-- Optimized event handling and memory usage
-- Zero performance monitoring overhead
-- Single consolidated main file
+Features:
+- Advanced AI capabilities with multi-provider integration
+- Adaptive personality that shifts based on conversation topics
+- Natural conversation flow and context understanding
+- Comprehensive server management and analytics
+- Real-time monitoring and health checks
+- Graceful error handling and recovery
+- Hot-reloadable configuration system
+- Production-ready logging and metrics
 """
 
 import asyncio
