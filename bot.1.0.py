@@ -38,6 +38,7 @@ from functools import lru_cache
 # 🚀 PERFORMANCE BOOST: Try uvloop for faster async operations
 try:
     import uvloop
+
     uvloop.install()
     print("⚡ uvloop enabled - 40% async performance boost!")
 except ImportError:
@@ -46,10 +47,12 @@ except ImportError:
 # 🚀 PERFORMANCE BOOST: Fast JSON if available
 try:
     import orjson as json_fast
+
     print("⚡ orjson enabled - 2x faster JSON processing!")
     USE_FAST_JSON = True
 except ImportError:
     import json as json_fast
+
     USE_FAST_JSON = False
 
 import discord
@@ -179,14 +182,14 @@ class AstraBot(commands.Bot):
         # 🚀 OPTIMIZED intents for performance (only what's needed)
         intents = discord.Intents.default()
         intents.message_content = True  # Required for message processing
-        intents.members = True          # Required for welcome system
+        intents.members = True  # Required for welcome system
         intents.guild_reactions = True  # Required for role selection
         # 🚀 Performance: Disable heavy intents
-        intents.presences = False       # Heavy on large servers
-        intents.voice_states = False    # Not needed unless voice features
-        intents.guild_typing = False    # Not needed for most bots
-        intents.dm_reactions = False    # Rarely needed
-        intents.dm_typing = False       # Not needed
+        intents.presences = False  # Heavy on large servers
+        intents.voice_states = False  # Not needed unless voice features
+        intents.guild_typing = False  # Not needed for most bots
+        intents.dm_reactions = False  # Rarely needed
+        intents.dm_typing = False  # Not needed
 
         # 🚀 OPTIMIZED bot initialization for performance
         super().__init__(
@@ -203,11 +206,11 @@ class AstraBot(commands.Bot):
             help_command=None,  # Custom help system
             case_insensitive=True,
             strip_after_prefix=True,
-            owner_id=getattr(self.config, 'owner_id', None),
+            owner_id=getattr(self.config, "owner_id", None),
             # 🚀 Performance: Optimize message cache and member cache
             max_messages=1000,  # Limit message cache size
             chunk_guilds_at_startup=False,  # Don't chunk all guilds on startup
-            member_cache_flags=discord.MemberCacheFlags.none()  # Minimal member cache
+            member_cache_flags=discord.MemberCacheFlags.none(),  # Minimal member cache
         )
 
         # Bot state and tracking
@@ -218,7 +221,7 @@ class AstraBot(commands.Bot):
         self._tasks: Set[asyncio.Task] = set()
         self._bot_ready = False
         self._shutdown_initiated = False
-        
+
         # 🚀 PERFORMANCE: Enhanced metrics tracking
         self._performance_start = time.perf_counter()
         self._message_count = 0
@@ -343,14 +346,14 @@ class AstraBot(commands.Bot):
             keepalive_timeout=30,  # Reduced keepalive for better resource management
             enable_cleanup_closed=True,
             force_close=False,  # Keep connections alive
-            ssl=False  # Disable SSL verification for performance (Discord handles HTTPS)
+            ssl=False,  # Disable SSL verification for performance (Discord handles HTTPS)
         )
 
         # 🚀 Optimized timeout settings
         timeout = aiohttp.ClientTimeout(
-            total=25,      # Reduced total timeout
-            connect=5,     # Faster connection timeout
-            sock_read=8    # Faster read timeout
+            total=25,  # Reduced total timeout
+            connect=5,  # Faster connection timeout
+            sock_read=8,  # Faster read timeout
         )
 
         # 🚀 Optimized headers
@@ -358,7 +361,7 @@ class AstraBot(commands.Bot):
             "User-Agent": f"{self.config.name}/{self.config.version}-Performance",
             "Accept": "application/json",
             "Accept-Encoding": "gzip, deflate, br",  # Added brotli
-            "Connection": "keep-alive"
+            "Connection": "keep-alive",
         }
 
         self.session = aiohttp.ClientSession(
@@ -367,7 +370,7 @@ class AstraBot(commands.Bot):
             headers=headers,
             raise_for_status=False,
             # 🚀 Performance: Use faster JSON decoder if available
-            json_serialize=json_fast.dumps if USE_FAST_JSON else None
+            json_serialize=json_fast.dumps if USE_FAST_JSON else None,
         )
 
         self.logger.info("🚀 High-performance HTTP session initialized")
@@ -502,53 +505,57 @@ class AstraBot(commands.Bot):
 
         if not self.cleanup_old_data.is_running():
             self.cleanup_old_data.start()
-            
+
         # 🚀 NEW: Start performance monitoring
-        if not hasattr(self, '_performance_monitor_started'):
+        if not hasattr(self, "_performance_monitor_started"):
             self._start_performance_monitoring()
             self._performance_monitor_started = True
 
         # Continue for other background tasks...
-        
+
     def _start_performance_monitoring(self):
         """🚀 Start lightweight performance monitoring"""
-        
+
         @tasks.loop(minutes=10)  # Every 10 minutes
         async def performance_monitor():
             """Monitor and optimize performance"""
             try:
                 current_time = time.time()
                 process = psutil.Process()
-                
+
                 # Get performance metrics
                 cpu_percent = process.cpu_percent()
                 memory_mb = process.memory_info().rss / 1024 / 1024
-                
+
                 # 🚀 Auto garbage collection if memory is high
-                if memory_mb > 400 and (current_time - self._last_gc_time) > 300:  # 5 min cooldown
+                if (
+                    memory_mb > 400 and (current_time - self._last_gc_time) > 300
+                ):  # 5 min cooldown
                     collected = gc.collect()
                     self._last_gc_time = current_time
-                    self.logger.info(f"🧹 GC: Collected {collected} objects (Memory: {memory_mb:.1f}MB)")
-                
+                    self.logger.info(
+                        f"🧹 GC: Collected {collected} objects (Memory: {memory_mb:.1f}MB)"
+                    )
+
                 # 🚀 Log performance metrics every hour
-                if hasattr(self, '_last_perf_log'):
+                if hasattr(self, "_last_perf_log"):
                     if current_time - self._last_perf_log > 3600:  # 1 hour
                         self._log_performance_stats(cpu_percent, memory_mb)
                         self._last_perf_log = current_time
                 else:
                     self._last_perf_log = current_time
-                    
+
             except Exception as e:
                 self.logger.warning(f"Performance monitoring error: {e}")
-                
+
         performance_monitor.start()
         self.logger.info("🚀 Performance monitoring started")
-        
+
     def _log_performance_stats(self, cpu_percent: float, memory_mb: float):
         """Log comprehensive performance statistics"""
         uptime = time.perf_counter() - self._performance_start
         uptime_hours = uptime / 3600
-        
+
         self.logger.info("📊 PERFORMANCE REPORT:")
         self.logger.info(f"   ⏱️  Uptime: {uptime_hours:.2f} hours")
         self.logger.info(f"   🖥️  CPU: {cpu_percent:.1f}%")
@@ -556,7 +563,7 @@ class AstraBot(commands.Bot):
         self.logger.info(f"   📬 Messages: {self._message_count}")
         self.logger.info(f"   ⚡ Commands: {self._command_count}")
         self.logger.info(f"   🚨 Errors: {self._error_count}")
-        
+
         # Reset counters
         self._message_count = 0
         self._command_count = 0
@@ -905,12 +912,16 @@ class AstraBot(commands.Bot):
                     "❌ You don't have permission to use this command.", ephemeral=True
                 )
             elif isinstance(error, app_commands.CheckFailure):
-                await send_func("❌ You cannot use this command right now.", ephemeral=True)
+                await send_func(
+                    "❌ You cannot use this command right now.", ephemeral=True
+                )
             else:
                 # 🚀 Performance: Increment error counter
                 self._error_count += 1
                 # Log unexpected errors
-                self.logger.error(f"Unexpected app command error: {traceback.format_exc()}")
+                self.logger.error(
+                    f"Unexpected app command error: {traceback.format_exc()}"
+                )
                 await send_func(
                     "❌ An unexpected error occurred. The issue has been logged.",
                     ephemeral=True,
@@ -1599,7 +1610,7 @@ async def main():
         logger.info(f"📅 Build: 2025-09-24 Performance Edition")
         logger.info(f"🐍 Python: {platform.python_version()}")
         logger.info(f"📦 Discord.py: {discord.__version__}")
-        if 'uvloop' in sys.modules:
+        if "uvloop" in sys.modules:
             logger.info("⚡ uvloop: ENABLED (+40% async performance)")
         if USE_FAST_JSON:
             logger.info("⚡ orjson: ENABLED (+2x JSON performance)")
@@ -1699,7 +1710,7 @@ if __name__ == "__main__":
     try:
         # 🚀 PERFORMANCE: Optimize garbage collection
         gc.set_threshold(700, 10, 10)
-        
+
         # 🚀 Run the optimized bot
         exit_code = asyncio.run(main())
         sys.exit(exit_code or 0)

@@ -149,23 +149,41 @@ class AdvancedAICog(commands.Cog):
             # ENHANCED: Better conversation context for improved understanding
             recent_history = []
             conversation_context = {}
-            
+
             if user_id in self.conversation_history:
                 user_history = self.conversation_history[user_id]
                 # Get more relevant recent history
                 recent_history = user_history[-6:]  # Last 3 exchanges
-                
+
                 # Build conversation context
                 if len(user_history) > 0:
-                    recent_messages = [msg for msg in user_history if time.time() - msg.get("timestamp", 0) < 300]  # 5 minutes
-                    message_types = [msg.get("message_type", "casual") for msg in recent_messages]
-                    
+                    recent_messages = [
+                        msg
+                        for msg in user_history
+                        if time.time() - msg.get("timestamp", 0) < 300
+                    ]  # 5 minutes
+                    message_types = [
+                        msg.get("message_type", "casual") for msg in recent_messages
+                    ]
+
                     conversation_context = {
                         "active_conversation": len(recent_messages) > 0,
-                        "conversation_tone": max(set(message_types), key=message_types.count) if message_types else "casual",
+                        "conversation_tone": (
+                            max(set(message_types), key=message_types.count)
+                            if message_types
+                            else "casual"
+                        ),
                         "user_engagement": len(recent_messages),
-                        "last_interaction": user_history[-1].get("message_type", "casual") if user_history else "new",
-                        "in_dm": user_history[-1].get("is_dm", False) if user_history else False
+                        "last_interaction": (
+                            user_history[-1].get("message_type", "casual")
+                            if user_history
+                            else "new"
+                        ),
+                        "in_dm": (
+                            user_history[-1].get("is_dm", False)
+                            if user_history
+                            else False
+                        ),
                     }
 
             # ENHANCED: Context-aware prompt enhancement
@@ -173,16 +191,22 @@ class AdvancedAICog(commands.Cog):
             if conversation_context.get("active_conversation"):
                 tone = conversation_context.get("conversation_tone", "casual")
                 if tone == "question":
-                    enhanced_prompt = f"Continue our Q&A conversation naturally: {prompt}"
+                    enhanced_prompt = (
+                        f"Continue our Q&A conversation naturally: {prompt}"
+                    )
                 elif tone == "technical":
                     enhanced_prompt = f"Continue our technical discussion: {prompt}"
                 elif tone == "emotional":
-                    enhanced_prompt = f"Respond empathetically, continuing our conversation: {prompt}"
+                    enhanced_prompt = (
+                        f"Respond empathetically, continuing our conversation: {prompt}"
+                    )
                 elif tone == "sharing":
-                    enhanced_prompt = f"Respond to their story/sharing conversationally: {prompt}"
+                    enhanced_prompt = (
+                        f"Respond to their story/sharing conversationally: {prompt}"
+                    )
                 else:
                     enhanced_prompt = f"Continue our friendly conversation: {prompt}"
-            
+
             # Add personality context
             personality_context = "You are Astra, a friendly and witty AI bot with a love for space, gaming (especially Stellaris), and helping users. Be conversational, helpful, and occasionally use space/sci-fi metaphors. Keep responses natural and engaging."
             full_prompt = f"{personality_context}\n\nUser context: {conversation_context}\n\nUser message: {enhanced_prompt}"
@@ -196,8 +220,14 @@ class AdvancedAICog(commands.Cog):
                     # Create primary AI task with enhanced context
                     primary_task = asyncio.create_task(
                         self.ai_client.process_conversation(
-                            full_prompt, user_id, guild_id=guild_id, channel_id=channel_id,
-                            context={"history": recent_history, "conversation_meta": conversation_context}
+                            full_prompt,
+                            user_id,
+                            guild_id=guild_id,
+                            channel_id=channel_id,
+                            context={
+                                "history": recent_history,
+                                "conversation_meta": conversation_context,
+                            },
                         )
                     )
 
@@ -208,10 +238,10 @@ class AdvancedAICog(commands.Cog):
                             return await self.ai_client.generate_response(
                                 full_prompt,
                                 context={
-                                    "history": recent_history, 
+                                    "history": recent_history,
                                     "optimized": True,
                                     "conversation_meta": conversation_context,
-                                    "personality": "friendly_witty_space_themed"
+                                    "personality": "friendly_witty_space_themed",
                                 },
                             )
                         return None
@@ -219,7 +249,9 @@ class AdvancedAICog(commands.Cog):
                     fallback_task = asyncio.create_task(context_aware_fallback())
 
                     # OPTIMIZED: Smart timeout based on conversation complexity
-                    timeout = 3.0 if conversation_context.get("active_conversation") else 2.0
+                    timeout = (
+                        3.0 if conversation_context.get("active_conversation") else 2.0
+                    )
                     response = await asyncio.wait_for(primary_task, timeout=timeout)
 
                     # Cancel fallback if primary succeeded
@@ -233,7 +265,9 @@ class AdvancedAICog(commands.Cog):
                     try:
                         response = await asyncio.wait_for(fallback_task, timeout=1.5)
                     except (asyncio.TimeoutError, Exception) as fb_error:
-                        self.logger.warning(f"Context-aware fallback timeout: {fb_error}")
+                        self.logger.warning(
+                            f"Context-aware fallback timeout: {fb_error}"
+                        )
                         response = None
 
                 except Exception as e:
@@ -252,26 +286,32 @@ class AdvancedAICog(commands.Cog):
                         "username": username or "Friend",
                         "guild_name": "Server",
                         "recent_activity": len(recent_history) > 0,
-                        "conversation_active": conversation_context.get("active_conversation", False),
-                        "conversation_tone": conversation_context.get("conversation_tone", "casual"),
+                        "conversation_active": conversation_context.get(
+                            "active_conversation", False
+                        ),
+                        "conversation_tone": conversation_context.get(
+                            "conversation_tone", "casual"
+                        ),
                         "emergency": True,
                     }
                     response = await lightning_optimizer.get_fallback_response(
                         enhanced_context
                     )
-                    
+
                     # If optimizer fallback fails, use smart contextual responses
                     if not response:
                         tone = conversation_context.get("conversation_tone", "casual")
                         if tone == "question":
-                            response = "That's a great question! Let me think about that... 🤔"
+                            response = (
+                                "That's a great question! Let me think about that... 🤔"
+                            )
                         elif tone == "technical":
                             response = "Interesting technical point! I'd love to dive deeper into this! 🚀"
                         elif tone == "emotional":
                             response = "I hear you on that! Thanks for sharing. 💙"
                         else:
                             response = "I'm here and ready to continue our conversation! What's on your mind? ✨"
-                            
+
                 except Exception as e:
                     self.logger.error(f"Enhanced fallback failed: {e}")
                     # Ultimate contextual fallback
@@ -286,25 +326,31 @@ class AdvancedAICog(commands.Cog):
                     self.conversation_history[user_id] = []
 
                 # Add enhanced history entry
-                self.conversation_history[user_id].extend([
-                    {
-                        "role": "user", 
-                        "content": prompt[:200],
-                        "timestamp": time.time(),
-                        "message_type": self._classify_message_type(prompt)
-                    },
-                    {
-                        "role": "assistant",
-                        "content": response[:300],
-                        "timestamp": time.time(),
-                        "context_used": bool(conversation_context.get("active_conversation"))
-                    }
-                ])
+                self.conversation_history[user_id].extend(
+                    [
+                        {
+                            "role": "user",
+                            "content": prompt[:200],
+                            "timestamp": time.time(),
+                            "message_type": self._classify_message_type(prompt),
+                        },
+                        {
+                            "role": "assistant",
+                            "content": response[:300],
+                            "timestamp": time.time(),
+                            "context_used": bool(
+                                conversation_context.get("active_conversation")
+                            ),
+                        },
+                    ]
+                )
 
                 # Smart history management
                 max_history = 10 if conversation_context.get("in_dm") else 8
                 if len(self.conversation_history[user_id]) > max_history:
-                    self.conversation_history[user_id] = self.conversation_history[user_id][-max_history:]
+                    self.conversation_history[user_id] = self.conversation_history[
+                        user_id
+                    ][-max_history:]
 
             # Update performance metrics
             response_time = time.time() - start_time
@@ -317,7 +363,9 @@ class AdvancedAICog(commands.Cog):
 
             # Enhanced performance logging
             if response_time > 2.0:
-                self.logger.warning(f"Slow AI response: {response_time:.2f}s (Context: {len(recent_history)} msgs)")
+                self.logger.warning(
+                    f"Slow AI response: {response_time:.2f}s (Context: {len(recent_history)} msgs)"
+                )
             elif response_time < 0.5:
                 self.logger.info(f"Lightning AI response: {response_time:.3f}s")
 
@@ -674,31 +722,46 @@ class AdvancedAICog(commands.Cog):
             # Enhanced message filtering - store more types of meaningful content
             content_words = len(message.content.split())
             content_lower = message.content.lower().strip()
-            
+
             # Don't store purely reactive messages unless they're part of ongoing conversation
-            skip_words = {"ok", "k", "lol", "lmao", "haha", "xd", "brb", "gtg", "ty", "thx", "np"}
+            skip_words = {
+                "ok",
+                "k",
+                "lol",
+                "lmao",
+                "haha",
+                "xd",
+                "brb",
+                "gtg",
+                "ty",
+                "thx",
+                "np",
+            }
             is_reactive = content_lower in skip_words
-            
+
             # Store if it's substantial OR if user is in active conversation
             should_store = (
-                content_words > 2 or  # Substantial messages
-                not is_reactive or  # Non-reactive short messages
-                len(self.conversation_history[message.author.id]) > 0  # Active conversation
+                content_words > 2  # Substantial messages
+                or not is_reactive  # Non-reactive short messages
+                or len(self.conversation_history[message.author.id])
+                > 0  # Active conversation
             )
-            
+
             if should_store:
                 # Enhanced message context
                 message_data = {
                     "role": "user",
-                    "content": message.content[:200],  # Increased from 100 for better context
+                    "content": message.content[
+                        :200
+                    ],  # Increased from 100 for better context
                     "timestamp": time.time(),
                     "channel_id": message.channel.id,
                     "message_type": self._classify_message_type(message.content),
                     "word_count": content_words,
                     "has_mention": self.bot.user.mentioned_in(message),
-                    "is_dm": isinstance(message.channel, discord.DMChannel)
+                    "is_dm": isinstance(message.channel, discord.DMChannel),
                 }
-                
+
                 self.conversation_history[message.author.id].append(message_data)
 
                 # Enhanced history management - keep more recent entries
@@ -714,17 +777,45 @@ class AdvancedAICog(commands.Cog):
     def _classify_message_type(self, content: str) -> str:
         """Quick message type classification for better context"""
         content_lower = content.lower().strip()
-        
+
         if "?" in content:
             return "question"
-        elif any(greeting in content_lower for greeting in ["hello", "hi", "hey", "good morning", "good evening"]):
-            return "greeting"  
-        elif any(emotion in content_lower for emotion in ["amazing", "awesome", "terrible", "frustrated", "excited", "sad", "happy"]):
+        elif any(
+            greeting in content_lower
+            for greeting in ["hello", "hi", "hey", "good morning", "good evening"]
+        ):
+            return "greeting"
+        elif any(
+            emotion in content_lower
+            for emotion in [
+                "amazing",
+                "awesome",
+                "terrible",
+                "frustrated",
+                "excited",
+                "sad",
+                "happy",
+            ]
+        ):
             return "emotional"
-        elif any(share in content_lower for share in ["just", "today", "yesterday", "happened", "did", "went", "saw"]):
+        elif any(
+            share in content_lower
+            for share in [
+                "just",
+                "today",
+                "yesterday",
+                "happened",
+                "did",
+                "went",
+                "saw",
+            ]
+        ):
             return "sharing"
-        elif any(tech in content_lower for tech in ["stellaris", "game", "code", "tech", "computer"]):
-            return "technical" 
+        elif any(
+            tech in content_lower
+            for tech in ["stellaris", "game", "code", "tech", "computer"]
+        ):
+            return "technical"
         elif len(content.split()) > 10:
             return "detailed"
         else:
@@ -756,17 +847,58 @@ class AdvancedAICog(commands.Cog):
                 }
 
             # PRIORITY 2: Questions (high response rate)
-            question_indicators = ["?", "how", "what", "why", "when", "where", "can you", "should i", "do you", "is it", "are you", "could", "would", "will"]
+            question_indicators = [
+                "?",
+                "how",
+                "what",
+                "why",
+                "when",
+                "where",
+                "can you",
+                "should i",
+                "do you",
+                "is it",
+                "are you",
+                "could",
+                "would",
+                "will",
+            ]
             if any(indicator in content for indicator in question_indicators):
                 interaction_score += 50
                 interaction_type = "question"
 
             # PRIORITY 3: Enhanced emotional content detection
             emotion_keywords = [
-                "amazing", "awesome", "terrible", "frustrated", "excited", "confused", "sad", "happy",
-                "love", "hate", "wonderful", "awful", "brilliant", "stupid", "perfect", "horrible",
-                "thrilled", "disappointed", "grateful", "angry", "worried", "nervous", "proud",
-                "embarrassed", "surprised", "shocked", "curious", "bored", "tired", "energetic"
+                "amazing",
+                "awesome",
+                "terrible",
+                "frustrated",
+                "excited",
+                "confused",
+                "sad",
+                "happy",
+                "love",
+                "hate",
+                "wonderful",
+                "awful",
+                "brilliant",
+                "stupid",
+                "perfect",
+                "horrible",
+                "thrilled",
+                "disappointed",
+                "grateful",
+                "angry",
+                "worried",
+                "nervous",
+                "proud",
+                "embarrassed",
+                "surprised",
+                "shocked",
+                "curious",
+                "bored",
+                "tired",
+                "energetic",
             ]
             if any(emotion in content for emotion in emotion_keywords):
                 interaction_score += 35
@@ -774,27 +906,78 @@ class AdvancedAICog(commands.Cog):
 
             # PRIORITY 4: Enhanced conversation starters
             greeting_patterns = [
-                "hello", "hi", "hey", "good morning", "good afternoon", "good evening", "good night",
-                "sup", "yo", "greetings", "howdy", "what's up", "how are you", "how's it going"
+                "hello",
+                "hi",
+                "hey",
+                "good morning",
+                "good afternoon",
+                "good evening",
+                "good night",
+                "sup",
+                "yo",
+                "greetings",
+                "howdy",
+                "what's up",
+                "how are you",
+                "how's it going",
             ]
             if any(starter in content for starter in greeting_patterns):
                 interaction_score += 40
                 interaction_type = "greeting"
 
             # PRIORITY 5: Sharing/storytelling (new)
-            sharing_keywords = ["just", "today", "yesterday", "happened", "did", "went", "saw", "found", "discovered", "learned", "realized"]
-            if any(keyword in content for keyword in sharing_keywords) and len(content_words) > 4:
+            sharing_keywords = [
+                "just",
+                "today",
+                "yesterday",
+                "happened",
+                "did",
+                "went",
+                "saw",
+                "found",
+                "discovered",
+                "learned",
+                "realized",
+            ]
+            if (
+                any(keyword in content for keyword in sharing_keywords)
+                and len(content_words) > 4
+            ):
                 interaction_score += 30
                 interaction_type = "story"
 
             # PRIORITY 6: Technical/gaming discussions (Stellaris focus)
-            tech_gaming_keywords = ["stellaris", "game", "gaming", "tech", "code", "programming", "computer", "science", "space", "galaxy", "empire", "strategy"]
+            tech_gaming_keywords = [
+                "stellaris",
+                "game",
+                "gaming",
+                "tech",
+                "code",
+                "programming",
+                "computer",
+                "science",
+                "space",
+                "galaxy",
+                "empire",
+                "strategy",
+            ]
             if any(keyword in content for keyword in tech_gaming_keywords):
                 interaction_score += 35
                 interaction_type = "technical"
 
             # PRIORITY 7: Opinion requests/discussions
-            opinion_keywords = ["think", "opinion", "thoughts", "believe", "agree", "disagree", "prefer", "better", "worse", "choose"]
+            opinion_keywords = [
+                "think",
+                "opinion",
+                "thoughts",
+                "believe",
+                "agree",
+                "disagree",
+                "prefer",
+                "better",
+                "worse",
+                "choose",
+            ]
             if any(keyword in content for keyword in opinion_keywords):
                 interaction_score += 30
                 interaction_type = "opinion"
@@ -803,19 +986,30 @@ class AdvancedAICog(commands.Cog):
             user_history = self.conversation_history.get(user_id, [])
             if len(user_history) > 0:
                 # User has been chatting recently - more likely to continue conversation
-                recent_messages = [msg for msg in user_history if time.time() - msg.get("timestamp", 0) < 300]  # 5 minutes
+                recent_messages = [
+                    msg
+                    for msg in user_history
+                    if time.time() - msg.get("timestamp", 0) < 300
+                ]  # 5 minutes
                 if len(recent_messages) > 0:
                     interaction_score += 20
-                    
+
                 # If user has been asking questions or sharing, they're in conversation mode
-                recent_content = " ".join([msg.get("content", "") for msg in recent_messages[-3:]])
-                if any(indicator in recent_content.lower() for indicator in question_indicators):
+                recent_content = " ".join(
+                    [msg.get("content", "") for msg in recent_messages[-3:]]
+                )
+                if any(
+                    indicator in recent_content.lower()
+                    for indicator in question_indicators
+                ):
                     interaction_score += 15
 
             # ENHANCED: Smart cooldown with conversation awareness
             current_time = datetime.now(timezone.utc)
             if user_id in self.conversation_cooldowns:
-                time_since_last = (current_time - self.conversation_cooldowns[user_id]).total_seconds()
+                time_since_last = (
+                    current_time - self.conversation_cooldowns[user_id]
+                ).total_seconds()
                 if time_since_last < 5:  # Reduced to 5 seconds for more natural flow
                     interaction_score -= 25
                 elif time_since_last < 15:  # Slight penalty for recent activity
@@ -825,7 +1019,18 @@ class AdvancedAICog(commands.Cog):
             message_length = len(content_words)
             if message_length == 1:
                 # Single word messages - contextual response
-                single_word_responses = ["ok", "yeah", "yes", "no", "lol", "haha", "nice", "cool", "wow", "omg"]
+                single_word_responses = [
+                    "ok",
+                    "yeah",
+                    "yes",
+                    "no",
+                    "lol",
+                    "haha",
+                    "nice",
+                    "cool",
+                    "wow",
+                    "omg",
+                ]
                 if content.strip() in single_word_responses:
                     interaction_score -= 10  # Less likely but not impossible
                 else:
@@ -854,9 +1059,17 @@ class AdvancedAICog(commands.Cog):
                 "interaction_type": interaction_type,
                 "priority": min(interaction_score // 10, 10),
                 "probability": min(interaction_score, 100),
-                "response_style": "witty" if interaction_score > 60 else "helpful" if interaction_score > 40 else "casual",
+                "response_style": (
+                    "witty"
+                    if interaction_score > 60
+                    else "helpful" if interaction_score > 40 else "casual"
+                ),
                 "conversation_context": len(user_history) > 0,
-                "message_quality": "high" if message_length > 10 else "medium" if message_length > 3 else "low"
+                "message_quality": (
+                    "high"
+                    if message_length > 10
+                    else "medium" if message_length > 3 else "low"
+                ),
             }
 
         except Exception as e:
@@ -879,7 +1092,7 @@ class AdvancedAICog(commands.Cog):
                 "username": str(message.author),
                 "channel_id": message.channel.id,
                 "conversation_active": decision.get("conversation_context", False),
-                "message_quality": decision.get("message_quality", "medium")
+                "message_quality": decision.get("message_quality", "medium"),
             }
 
             # Lightning optimization pipeline
@@ -924,7 +1137,7 @@ class AdvancedAICog(commands.Cog):
                     "Greetings! I'm more excited than a dog seeing a tennis ball! 🎾",
                     "Oh hey! What's happening in your corner of the galaxy? 🌌",
                     "Hello there! Ready to explore some cosmic conversations? 🚀",
-                    "Hi! I'm here and more ready than a Stellaris player on patch day! ⭐"
+                    "Hi! I'm here and more ready than a Stellaris player on patch day! ⭐",
                 ]
                 await message.channel.send(random.choice(greetings))
 
@@ -934,10 +1147,12 @@ class AdvancedAICog(commands.Cog):
                     await message.channel.send(optimized_prompt)
                 else:
                     # Context-aware AI response for questions
-                    context_prompt = f"Answer helpfully and conversationally: {optimized_prompt}"
+                    context_prompt = (
+                        f"Answer helpfully and conversationally: {optimized_prompt}"
+                    )
                     if decision.get("conversation_context"):
                         context_prompt = f"Continue our conversation by answering: {optimized_prompt}"
-                    
+
                     response = await self._lightning_ai_response(
                         context_prompt,
                         message.author.id,
@@ -948,48 +1163,84 @@ class AdvancedAICog(commands.Cog):
 
             elif interaction_type == "emotional":
                 # Enhanced empathetic responses with variety
-                positive_emotions = ["amazing", "awesome", "excited", "happy", "wonderful", "brilliant", "perfect", "thrilled", "proud", "grateful", "love"]
-                negative_emotions = ["terrible", "frustrated", "sad", "awful", "horrible", "disappointed", "angry", "worried", "hate"]
-                
+                positive_emotions = [
+                    "amazing",
+                    "awesome",
+                    "excited",
+                    "happy",
+                    "wonderful",
+                    "brilliant",
+                    "perfect",
+                    "thrilled",
+                    "proud",
+                    "grateful",
+                    "love",
+                ]
+                negative_emotions = [
+                    "terrible",
+                    "frustrated",
+                    "sad",
+                    "awful",
+                    "horrible",
+                    "disappointed",
+                    "angry",
+                    "worried",
+                    "hate",
+                ]
+
                 content_lower = message.content.lower()
-                
+
                 if any(emotion in content_lower for emotion in positive_emotions):
                     responses = [
-                        "That's fantastic! 🌟", "I love that energy! ✨", "Awesome stuff! 🎉",
-                        "You're radiating positive vibes! 😊", "That's the spirit! 💪",
-                        "Brilliant! Keep that momentum going! 🚀"
+                        "That's fantastic! 🌟",
+                        "I love that energy! ✨",
+                        "Awesome stuff! 🎉",
+                        "You're radiating positive vibes! 😊",
+                        "That's the spirit! 💪",
+                        "Brilliant! Keep that momentum going! 🚀",
                     ]
                 elif any(emotion in content_lower for emotion in negative_emotions):
                     responses = [
-                        "I hear you, that sounds tough 🤗", "Hang in there! 💙",
-                        "That's frustrating, but you've got this! 💪", "Rough times don't last, but resilient people do! ✨",
-                        "I'm here if you need to talk it out 💬", "Tomorrow's a fresh start! 🌅"
+                        "I hear you, that sounds tough 🤗",
+                        "Hang in there! 💙",
+                        "That's frustrating, but you've got this! 💪",
+                        "Rough times don't last, but resilient people do! ✨",
+                        "I'm here if you need to talk it out 💬",
+                        "Tomorrow's a fresh start! 🌅",
                     ]
                 else:
                     responses = [
-                        "I hear you! 🤗", "Sounds like quite the adventure! 🎢",
-                        "That's quite a feeling! ✨", "I'm with you on that one! 💪"
+                        "I hear you! 🤗",
+                        "Sounds like quite the adventure! 🎢",
+                        "That's quite a feeling! ✨",
+                        "I'm with you on that one! 💪",
                     ]
-                
+
                 await message.channel.send(random.choice(responses))
 
             elif interaction_type == "story":
                 # New: Responses to people sharing experiences
                 story_responses = [
-                    "Ooh, tell me more! 👀", "That sounds interesting! What happened next? 🤔",
-                    "I'm listening! 👂", "Sounds like quite the experience! ✨",
-                    "That's fascinating! How did that go? 🌟", "I'm curious about this story! 📖"
+                    "Ooh, tell me more! 👀",
+                    "That sounds interesting! What happened next? 🤔",
+                    "I'm listening! 👂",
+                    "Sounds like quite the experience! ✨",
+                    "That's fascinating! How did that go? 🌟",
+                    "I'm curious about this story! 📖",
                 ]
                 await message.channel.send(random.choice(story_responses))
 
             elif interaction_type == "technical":
                 # New: Technical/gaming focused responses
                 tech_responses = [
-                    "Now we're talking my language! 🤖", "Ah, a fellow tech enthusiast! 💻",
-                    "Stellaris? You've got excellent taste! ⭐", "Gaming wisdom incoming! 🎮",
-                    "Tech talk is the best talk! 🔧", "Ready to dive deep into this! 🚀"
+                    "Now we're talking my language! 🤖",
+                    "Ah, a fellow tech enthusiast! 💻",
+                    "Stellaris? You've got excellent taste! ⭐",
+                    "Gaming wisdom incoming! 🎮",
+                    "Tech talk is the best talk! 🔧",
+                    "Ready to dive deep into this! 🚀",
                 ]
-                
+
                 # For deeper technical discussions, use AI
                 if len(message.content.split()) > 8:
                     response = await self._lightning_ai_response(
@@ -1004,11 +1255,14 @@ class AdvancedAICog(commands.Cog):
             elif interaction_type == "opinion":
                 # New: Opinion and discussion responses
                 opinion_responses = [
-                    "That's an interesting perspective! 🤔", "I'd love to hear your thoughts on this! 💭",
-                    "Ooh, philosophical territory! What do you think? 🧠", "Debates are the spice of conversation! 🌶️",
-                    "That's worth pondering! ⭐", "Good question! What's your take? �"
+                    "That's an interesting perspective! 🤔",
+                    "I'd love to hear your thoughts on this! 💭",
+                    "Ooh, philosophical territory! What do you think? 🧠",
+                    "Debates are the spice of conversation! 🌶️",
+                    "That's worth pondering! ⭐",
+                    "Good question! What's your take? �",
                 ]
-                
+
                 # For complex opinions, engage with AI
                 if "?" in message.content or len(message.content.split()) > 6:
                     response = await self._lightning_ai_response(
@@ -1023,25 +1277,34 @@ class AdvancedAICog(commands.Cog):
             else:
                 # Enhanced casual interactions - more context-aware and substantial
                 casual_responses = [
-                    "Interesting! 🤔", "I see what you mean! 👀", "That's cool! ✨",
-                    "Nice! 😊", "Gotcha! 👍", "Fair point! 💡", "I hear you! 👂",
-                    "Makes sense! 🧠", "Right on! 🎯", "Totally! ⭐"
+                    "Interesting! 🤔",
+                    "I see what you mean! 👀",
+                    "That's cool! ✨",
+                    "Nice! 😊",
+                    "Gotcha! 👍",
+                    "Fair point! 💡",
+                    "I hear you! 👂",
+                    "Makes sense! 🧠",
+                    "Right on! 🎯",
+                    "Totally! ⭐",
                 ]
-                
+
                 # IMPROVED: More intelligent decision for AI responses
                 should_use_ai = (
-                    decision.get("message_quality") == "high" or  # Quality messages
-                    decision.get("conversation_context") or  # Active conversation
-                    len(message.content.split()) > 8 or  # Substantial messages
-                    random.random() > 0.5  # 50% chance for better engagement
+                    decision.get("message_quality") == "high"  # Quality messages
+                    or decision.get("conversation_context")  # Active conversation
+                    or len(message.content.split()) > 8  # Substantial messages
+                    or random.random() > 0.5  # 50% chance for better engagement
                 )
-                
+
                 if should_use_ai:
                     # Enhanced prompt for better context awareness
-                    context_prompt = f"Respond naturally and conversationally to: {optimized_prompt}"
+                    context_prompt = (
+                        f"Respond naturally and conversationally to: {optimized_prompt}"
+                    )
                     if decision.get("conversation_context"):
                         context_prompt = f"Continue our conversation by responding to: {optimized_prompt}"
-                    
+
                     response = await self._lightning_ai_response(
                         context_prompt,
                         message.author.id,
@@ -1059,8 +1322,9 @@ class AdvancedAICog(commands.Cog):
 
             # Graceful fallback
             fallback_responses = [
-                "Hmm, something went sideways there! 🤖", "My circuits got a bit tangled! Try again? ⚡",
-                "Oops! Even AI has hiccups sometimes! 😅"
+                "Hmm, something went sideways there! 🤖",
+                "My circuits got a bit tangled! Try again? ⚡",
+                "Oops! Even AI has hiccups sometimes! 😅",
             ]
             try:
                 await message.channel.send(random.choice(fallback_responses))
