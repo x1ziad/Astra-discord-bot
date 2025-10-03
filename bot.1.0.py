@@ -1,1141 +1,368 @@
-"""""""""
+"""
+Astra Discord Bot - Enhanced Main Application
+A comprehensive AI-powered Discord bot with adaptive personality and natural conversation
 
-AstraBot 1.0 - FINAL OPTIMIZED EDITION
+Author: x1ziad
+Version: 2.0.0
+Release Date: 2025-08-02 10:53:48 UTC
+License: MIT
 
-The ultimate Discord bot combining streamlined core system with full cog compatibility🚀 AstraBot 1.0 - FINAL OPTIMIZED EDITIONAstra Discord Bot - Enhanced Main Application
+Features:
+- Advanced AI capabilities with multi-provider integration
+- Adaptive personality that shifts based on conversation topics
+- Natural conversation flow and context understanding
+- Comprehensive server management and analytics
+- Real-time monitoring and health checks
+- Graceful error handling and recovery
+- Hot-reloadable configuration system
+- Production-ready logging and metrics
+"""
 
-Maximum performance, zero conflicts, complete functionality
-
-"""The ultimate Discord bot combining streamlined core system with full cog compatibilityA comprehensive AI-powered Discord bot with adaptive personality and natural conversation
-
-
-
-import asyncioMaximum performance, zero conflicts, complete functionality
-
+import asyncio
 import logging
-
-import os"""Author: x1ziad
-
+import os
+import platform
+import signal
 import sys
+import traceback
+import psutil
+import gc
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from typing import Dict, List, Optional, Set, Union, Any, Callable
+from dataclasses import dataclass, field
+from contextlib import asynccontextmanager
+import time
+from functools import lru_cache
 
-import timeVersion: 2.0.0
-
-from typing import Optional, Dict, Any, List
-
-import discordimport asyncioRelease Date: 2025-08-02 10:53:48 UTC
-
-from discord.ext import commands, tasks
-
-import aiohttpimport loggingLicense: MIT
-
-import sqlite3
-
-from pathlib import Pathimport os
-
-
-
-# Load environment variablesimport sysFeatures:
-
+# 🚀 PERFORMANCE BOOST: Try uvloop for faster async operations
 try:
-
-    from dotenv import load_dotenvimport time- Advanced AI capabilities with multi-provider integration
-
-    load_dotenv()
-
-    print("Environment variables loaded from .env")from typing import Optional, Dict, Any, List- Adaptive personality that shifts based on conversation topics
-
+    import uvloop
+    uvloop.install()
+    print("⚡ uvloop enabled - 40% async performance boost!")
 except ImportError:
+    print("⚠️  uvloop not available - using standard asyncio")
 
-    print("python-dotenv not installed, using system environment only")import discord- Natural conversation flow and context understanding
+# 🚀 PERFORMANCE BOOST: Fast JSON if available
+try:
+    import orjson as json_fast
+    print("⚡ orjson enabled - 2x faster JSON processing!")
+    USE_FAST_JSON = True
+except ImportError:
+    import json as json_fast
+    USE_FAST_JSON = False
 
+import discord
+from discord import app_commands
+from discord.ext import commands, tasks
+import aiohttp
 
+# Core imports
+from config.unified_config import unified_config, BotConfig
+from logger.enhanced_logger import setup_enhanced_logger, log_performance
+from utils.database import db
+from utils.enhanced_error_handler import ErrorHandler
+from utils.permissions import PermissionLevel, has_permission
 
-# Import our streamlined core systemfrom discord.ext import commands, tasks- Comprehensive server management and analytics
-
-from core import startup_core
-
-import aiohttp- Real-time monitoring and health checks
-
-# Setup optimized logging
-
-logging.basicConfig(import sqlite3- Graceful error handling and recovery
-
-    level=logging.INFO,
-
-    format='%(asctime)s | %(name)s | %(levelname)s | %(message)s',from pathlib import Path- Hot-reloadable configuration system
-
-    handlers=[
-
-        logging.FileHandler('logs/astra.log', encoding='utf-8'),- Production-ready logging and metrics
-
-        logging.StreamHandler(sys.stdout)
-
-    ]# Load environment variables"""
-
+# Performance optimization imports
+from utils.command_optimizer import auto_optimize_commands
+from utils.discord_data_reporter import (
+    initialize_discord_reporter,
+    get_discord_reporter,
+    cleanup_discord_reporter,
 )
 
+# Railway configuration support
 try:
+    # Railway config is now handled by unified_config
+    RAILWAY_ENABLED = True
 
-logger = logging.getLogger("astra.main")
+    # Diagnostic: Check Railway environment variables on startup
+    def log_railway_env_diagnostic():
+        """Optimized Railway environment diagnostic"""
+        # Only check essential environment variables for faster startup
+        essential_vars = ["AI_API_KEY", "AI_PROVIDER"]
 
-    from dotenv import load_dotenvimport asyncio
+        logger = logging.getLogger("astra.railway_diagnostic")
+        logger.info("🚀 Railway Environment Status:")
 
+        missing_count = 0
+        for key in essential_vars:
+            value = os.getenv(key)
+            if value:
+                if "KEY" in key:
+                    masked_value = f"***SET*** ({len(value)} chars)"
+                    logger.info(f"   ✅ {key}: {masked_value}")
+                else:
+                    logger.info(f"   ✅ {key}: {value}")
+            else:
+                logger.warning(f"   ⚠️ {key}: NOT SET")
+                missing_count += 1
+
+        if missing_count == 0:
+            logger.info("🎯 All essential environment variables configured")
+        else:
+            logger.warning(f"⚠️ {missing_count} environment variables need attention")
+
+    log_railway_env_diagnostic()
+
+    # AI credentials validation is handled by unified_config
+
+except ImportError:
+    RAILWAY_ENABLED = False
+
+# Try to load optional dependencies
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv()
+    HAS_DOTENV = True
+except ImportError:
+    HAS_DOTENV = False
+
+try:
+    import colorlog
+
+    HAS_COLORLOG = True
+except ImportError:
+    HAS_COLORLOG = False
+
+
+@dataclass
+class BotStats:
+    """Bot runtime statistics"""
+
+    start_time: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    commands_executed: int = 0
+    messages_processed: int = 0
+    errors_handled: int = 0
+    guilds_joined: int = 0
+    guilds_left: int = 0
+    uptime_seconds: int = 0
+    memory_usage_mb: float = 0.0
+    cpu_usage_percent: float = 0.0
+
+    def get_uptime(self) -> timedelta:
+        """Get current uptime"""
+        return datetime.now(timezone.utc) - self.start_time
+
+    def update_system_stats(self):
+        """Update system resource usage"""
+        process = psutil.Process()
+        self.memory_usage_mb = process.memory_info().rss / 1024 / 1024
+        self.cpu_usage_percent = process.cpu_percent()
+        self.uptime_seconds = self.get_uptime().total_seconds()
+
+
+@auto_optimize_commands
 class AstraBot(commands.Bot):
+    """Enhanced Astra Discord Bot with comprehensive features and monitoring"""
 
-    """Optimized AstraBot with core system integration and full cog support"""    load_dotenv()import logging
+    def __init__(self):
+        # Load configuration
+        self.config: BotConfig = unified_config.bot_config
 
-    
+        # Set up enhanced logging
+        self.logger = setup_enhanced_logger(
+            name="Astra",
+            log_level="DEBUG" if getattr(self.config, "debug", False) else "INFO",
+        )
 
-    def __init__(self):    print("✅ Environment variables loaded from .env")import os
+        self.logger.info("=" * 80)
+        self.logger.info(f"🚀 Initializing {self.config.name} v{self.config.version}")
+        self.logger.info(f"📅 Build Date: 2025-08-02 10:53:48 UTC")
+        self.logger.info(f"👤 Started by: {self._get_current_user()}")
+        self.logger.info(f"🐍 Python: {platform.python_version()}")
+        self.logger.info(f"💻 Platform: {platform.system()} {platform.release()}")
+        self.logger.info("=" * 80)
 
-        # Optimized Discord.py settings
+        # 🚀 OPTIMIZED intents for performance (only what's needed)
+        intents = discord.Intents.default()
+        intents.message_content = True  # Required for message processing
+        intents.members = True          # Required for welcome system
+        intents.guild_reactions = True  # Required for role selection
+        # 🚀 Performance: Disable heavy intents
+        intents.presences = False       # Heavy on large servers
+        intents.voice_states = False    # Not needed unless voice features
+        intents.guild_typing = False    # Not needed for most bots
+        intents.dm_reactions = False    # Rarely needed
+        intents.dm_typing = False       # Not needed
 
-        intents = discord.Intents.default()except ImportError:import platform
-
-        intents.message_content = True
-
-        intents.reactions = True    print("⚠️  python-dotenv not installed, using system environment only")import signal
-
-        intents.members = True
-
-        intents.guilds = Trueimport sys
-
-        intents.presences = False  # Optimize: disable presence tracking
-
-        intents.typing = False     # Optimize: disable typing indicators# Import our streamlined core systemimport traceback
-
-        
-
-        super().__init__(from core import startup_coreimport psutil
-
-            command_prefix=self.get_prefix,
-
-            intents=intents,import gc
-
-            help_command=None,
-
-            case_insensitive=True,# Setup optimized loggingfrom datetime import datetime, timedelta, timezone
-
+        # 🚀 OPTIMIZED bot initialization for performance
+        super().__init__(
+            command_prefix=self._get_dynamic_prefix,
+            intents=intents,
+            activity=discord.Activity(
+                type=discord.ActivityType.listening, name="optimized conversations"
+            ),
+            status=discord.Status.online,
+            # 🚀 Performance: Reduced mention processing
+            allowed_mentions=discord.AllowedMentions(
+                everyone=False, roles=False, users=True, replied_user=False
+            ),
+            help_command=None,  # Custom help system
+            case_insensitive=True,
             strip_after_prefix=True,
-
-            max_messages=1000,  # Optimize: limit message cachelogging.basicConfig(from pathlib import Path
-
-            chunk_guilds_at_startup=False,  # Optimize: lazy load guilds
-
-            member_cache_flags=discord.MemberCacheFlags.none()  # Optimize: minimal member cache    level=logging.INFO,from typing import Dict, List, Optional, Set, Union, Any, Callable
-
+            owner_id=getattr(self.config, 'owner_id', None),
+            # 🚀 Performance: Optimize message cache and member cache
+            max_messages=1000,  # Limit message cache size
+            chunk_guilds_at_startup=False,  # Don't chunk all guilds on startup
+            member_cache_flags=discord.MemberCacheFlags.none()  # Minimal member cache
         )
 
-      format='%(asctime)s | %(name)s | %(levelname)s | %(message)s',from dataclasses import dataclass, field
-
-        # Core system integration
-
-        self.core_system = None    handlers=[from contextlib import asynccontextmanager
-
+        # Bot state and tracking
+        self.stats = BotStats()
+        self.stats.start_time = datetime.now(timezone.utc)  # Ensure timezone-aware
+        self.start_time = self.stats.start_time  # Keep both in sync
+        self.session: Optional[aiohttp.ClientSession] = None
+        self._tasks: Set[asyncio.Task] = set()
+        self._bot_ready = False
+        self._shutdown_initiated = False
         
+        # 🚀 PERFORMANCE: Enhanced metrics tracking
+        self._performance_start = time.perf_counter()
+        self._message_count = 0
+        self._command_count = 0
+        self._error_count = 0
+        self._last_gc_time = time.time()
 
-        # Performance tracking        logging.FileHandler('logs/astra.log', encoding='utf-8'),import time
+        # Feature tracking
+        self.loaded_extensions: Dict[str, datetime] = {}
+        self.failed_extensions: Dict[str, str] = {}
+        self.extension_health: Dict[str, bool] = {}
 
-        self.start_time = time.time()
+        # Cache and performance
+        self._command_cache: Dict[str, Any] = {}
+        self._guild_configs: Dict[int, Dict[str, Any]] = {}
 
-        self.command_count = 0        logging.StreamHandler(sys.stdout)from functools import lru_cache
+        # Error handling
+        self.error_handler = ErrorHandler(self)
 
-        self.message_count = 0
+        # Create essential directories
+        self._ensure_directories()
 
-            ]
+        self.logger.info("✅ Bot initialization completed")
 
-        # Optimized HTTP session
-
-        self.http_session: Optional[aiohttp.ClientSession] = None)# 🚀 PERFORMANCE BOOST: Try uvloop for faster async operations
-
-        
-
-        # Database optimizationtry:
-
-        self.db_pool = {}
-
-        logger = logging.getLogger("astra.main")    import uvloop
-
-        # Cog management
-
-        self.essential_cogs = [    uvloop.install()
-
-            'cogs.help',           # Essential - help system
-
-            'cogs.utilities',      # Essential - basic utilities  class AstraBot(commands.Bot):    print("⚡ uvloop enabled - 40% async performance boost!")
-
-            'cogs.stats',         # Essential - statistics
-
-            'cogs.roles',         # Useful - role management    """Optimized AstraBot with core system integration and full cog support"""except ImportError:
-
-            'cogs.server_management',  # Useful - server tools
-
-            'cogs.analytics',     # Useful - analytics        print("⚠️  uvloop not available - using standard asyncio")
-
-            'cogs.bot_status',    # Useful - status monitoring
-
-        ]    def __init__(self):
-
-        
-
-        # Optional cogs (load if available, skip if error)        # Optimized Discord.py settings# 🚀 PERFORMANCE BOOST: Fast JSON if available
-
-        self.optional_cogs = [
-
-            'cogs.space',         # Space-related features        intents = discord.Intents.default()try:
-
-            'cogs.quiz',          # Quiz functionality
-
-            'cogs.notion',        # Notion integration        intents.message_content = True    import orjson as json_fast
-
-            'cogs.nexus',         # Advanced features (heavy!)
-
-            'cogs.performance',   # Performance monitoring        intents.reactions = True    print("⚡ orjson enabled - 2x faster JSON processing!")
-
-            'cogs.admin_optimized',  # Admin commands
-
-            'cogs.bot_setup_enhanced',  # Setup utilities        intents.members = True    USE_FAST_JSON = True
-
+    def _get_current_user(self) -> str:
+        """Get current user with enhanced detection"""
+        methods = [
+            lambda: os.environ.get("USER"),
+            lambda: os.environ.get("USERNAME"),
+            lambda: os.environ.get("LOGNAME"),
+            lambda: os.getlogin(),
+            lambda: "docker-container" if os.path.exists("/.dockerenv") else None,
+            lambda: "container-user",
         ]
 
-                intents.guilds = Trueexcept ImportError:
+        for method in methods:
+            try:
+                result = method()
+                if result:
+                    return result
+            except (OSError, AttributeError):
+                continue
 
-        # Skip these cogs (problematic or redundant)
+        return "unknown-user"
 
-        self.skip_cogs = [        intents.presences = False  # Optimize: disable presence tracking    import json as json_fast
-
-            'cogs.advanced_ai',   # Skip - replaced by core system (2432 lines!)
-
-            'cogs.continuous_performance',  # Skip - redundant        intents.typing = False     # Optimize: disable typing indicators    USE_FAST_JSON = False
-
+    def _ensure_directories(self):
+        """Create all necessary directories"""
+        directories = [
+            "logs",
+            "temp",
+            "data",
+            "data/quiz",
+            "data/space",
+            "data/guilds",
+            "data/database",
+            "config",
         ]
 
-                
+        for directory in directories:
+            Path(directory).mkdir(parents=True, exist_ok=True)
 
-    async def get_prefix(self, message):
+        self.logger.debug(f"📁 Created {len(directories)} essential directories")
 
-        """Optimized dynamic prefix"""        super().__init__(import discord
-
-        if not message.guild:
-
-            return ['!', 'astra ', 'hey astra ']  # DM prefixes            command_prefix=self.get_prefix,from discord import app_commands
-
-            
-
-        # Fast prefix lookup (could be cached from database)            intents=intents,from discord.ext import commands, tasks
-
-        prefixes = ['!', 'astra ', 'hey astra ', f'<@{self.user.id}> ', f'<@!{self.user.id}> ']
-
-        return commands.when_mentioned_or(*prefixes)(self, message)            help_command=None,import aiohttp
-
-        
-
-    async def setup_hook(self):            case_insensitive=True,
-
-        """Optimized initialization with error handling"""
-
-        logger.info("Setting up AstraBot optimized systems...")            strip_after_prefix=True,# Core imports
-
-        
-
-        try:            max_messages=1000,  # Optimize: limit message cachefrom config.unified_config import unified_config, BotConfig
-
-            # 1. Initialize HTTP session
-
-            connector = aiohttp.TCPConnector(            chunk_guilds_at_startup=False,  # Optimize: lazy load guildsfrom logger.enhanced_logger import setup_enhanced_logger, log_performance
-
-                limit=100,
-
-                limit_per_host=30,            member_cache_flags=discord.MemberCacheFlags.none()  # Optimize: minimal member cachefrom utils.database import db
-
-                ttl_dns_cache=300,
-
-                use_dns_cache=True,        )from utils.enhanced_error_handler import ErrorHandler
-
-            )
-
-            self.http_session = aiohttp.ClientSession(        from utils.permissions import PermissionLevel, has_permission
-
-                connector=connector,
-
-                timeout=aiohttp.ClientTimeout(total=30)        # Core system integration
-
-            )
-
-            logger.info("HTTP session initialized")        self.core_system = None# Performance optimization imports
-
-            
-
-            # 2. Initialize core system (AI, interactive menus, moderation, welcome)        from utils.performance_optimizer import performance_optimizer
-
-            self.core_system = await startup_core(self)
-
-            logger.info("Core system initialized")        # Performance trackingfrom utils.command_optimizer import auto_optimize_commands
-
-            
-
-            # 3. Load essential cogs (must succeed)        self.start_time = time.time()from utils.discord_data_reporter import (
-
-            for cog in self.essential_cogs:
-
-                try:        self.command_count = 0    initialize_discord_reporter,
-
-                    await self.load_extension(cog)
-
-                    logger.info(f"Loaded essential cog: {cog}")        self.message_count = 0    get_discord_reporter,
-
-                except Exception as e:
-
-                    logger.error(f"CRITICAL: Failed to load essential cog {cog}: {e}")            cleanup_discord_reporter,
-
-                    # Continue anyway - don't crash the bot
-
-                            # Optimized HTTP session)
-
-            # 4. Load optional cogs (allowed to fail)
-
-            for cog in self.optional_cogs:        self.http_session: Optional[aiohttp.ClientSession] = None
-
-                try:
-
-                    await self.load_extension(cog)        # Railway configuration support
-
-                    logger.info(f"Loaded optional cog: {cog}")
-
-                except Exception as e:        # Database optimizationtry:
-
-                    logger.warning(f"Skipped optional cog {cog}: {e}")
-
-                            self.db_pool = {}    # Railway config is now handled by unified_config
-
-            # 5. Log skipped cogs
-
-            for cog in self.skip_cogs:            RAILWAY_ENABLED = True
-
-                logger.info(f"Skipped cog: {cog} (replaced by core system or redundant)")
-
-                        # Cog management
-
-            # 6. Start background tasks
-
-            self.status_task.start()        self.essential_cogs = [    # Diagnostic: Check Railway environment variables on startup
-
-            
-
-            logger.info("AstraBot setup complete!")            'cogs.help',           # Essential - help system    def log_railway_env_diagnostic():
-
-            
-
-        except Exception as e:            'cogs.utilities',      # Essential - basic utilities          """Optimized Railway environment diagnostic"""
-
-            logger.error(f"Setup failed: {e}")
-
-            import traceback            'cogs.stats',         # Essential - statistics        # Only check essential environment variables for faster startup
-
-            traceback.print_exc()
-
-            # Don't crash - try to continue with basic functionality            'cogs.roles',         # Useful - role management        essential_vars = ["AI_API_KEY", "AI_PROVIDER"]
-
-            
-
-    @tasks.loop(minutes=30)            'cogs.server_management',  # Useful - server tools
-
-    async def status_task(self):
-
-        """Update bot status periodically"""            'cogs.analytics',     # Useful - analytics        logger = logging.getLogger("astra.railway_diagnostic")
-
-        try:
-
-            statuses = [            'cogs.bot_status',    # Useful - status monitoring        logger.info("🚀 Railway Environment Status:")
-
-                "your conversations | Mention me!",
-
-                f"{len(self.guilds)} servers | AI-powered",        ]
-
-                f"{len(self.users):,} users | Always learning",
-
-                "Ready to help | Ask me anything!",                missing_count = 0
-
-            ]
-
-                    # Optional cogs (load if available, skip if error)        for key in essential_vars:
-
-            import random
-
-            status = random.choice(statuses)        self.optional_cogs = [            value = os.getenv(key)
-
-            activity = discord.Activity(
-
-                type=discord.ActivityType.listening,            'cogs.space',         # Space-related features            if value:
-
-                name=status
-
-            )            'cogs.quiz',          # Quiz functionality                if "KEY" in key:
-
-            await self.change_presence(activity=activity, status=discord.Status.online)
-
-                        'cogs.notion',        # Notion integration                    masked_value = f"***SET*** ({len(value)} chars)"
-
-        except Exception as e:
-
-            logger.error(f"Status update error: {e}")            'cogs.nexus',         # Advanced features (heavy!)                    logger.info(f"   ✅ {key}: {masked_value}")
-
-            
-
-    @status_task.before_loop            'cogs.performance',   # Performance monitoring                else:
-
-    async def before_status_task(self):
-
-        """Wait until bot is ready before starting status task"""            'cogs.admin_optimized',  # Admin commands                    logger.info(f"   ✅ {key}: {value}")
-
-        await self.wait_until_ready()
-
-                    'cogs.bot_setup_enhanced',  # Setup utilities            else:
-
-    async def on_ready(self):
-
-        """Optimized ready event"""        ]                logger.warning(f"   ⚠️ {key}: NOT SET")
-
-        uptime = time.time() - self.start_time
-
-                                missing_count += 1
-
-        logger.info(f"AstraBot 1.0 Online! (Ready in {uptime:.2f}s)")
-
-        logger.info(f"Serving {len(self.guilds)} guilds with {len(self.users):,} users")        # Skip these cogs (problematic or redundant)
-
-        logger.info(f"Loaded {len(self.extensions)} extensions")
-
-                self.skip_cogs = [        if missing_count == 0:
-
-        # Set initial status
-
-        activity = discord.Activity(            'cogs.advanced_ai',   # Skip - replaced by core system (2432 lines!)            logger.info("🎯 All essential environment variables configured")
-
-            type=discord.ActivityType.listening,
-
-            name="your conversations | Mention me to chat!"            'cogs.continuous_performance',  # Skip - redundant        else:
-
-        )
-
-        await self.change_presence(activity=activity, status=discord.Status.online)        ]            logger.warning(f"⚠️ {missing_count} environment variables need attention")
-
-        
-
-    async def on_message(self, message):        
-
-        """Optimized message processing with core system integration"""
-
-        if message.author.bot:    async def get_prefix(self, message):    log_railway_env_diagnostic()
-
-            return
-
-                    """Optimized dynamic prefix"""
-
-        self.message_count += 1
-
-                if not message.guild:    # Import and run AI credentials debug (optional)
-
-        # Let core system handle the message first (AI, moderation, etc.)
-
-        if self.core_system:            return ['!', 'astra ', 'hey astra ']  # DM prefixes    try:
-
-            # Core system handles AI responses, moderation, etc.
-
-            # If it returns True, it processed the message                    from debug_ai_credentials import debug_ai_credentials
-
-            pass
-
-                    # Fast prefix lookup (could be cached from database)
-
-        # Process commands
-
-        await self.process_commands(message)        prefixes = ['!', 'astra ', 'hey astra ', f'<@{self.user.id}> ', f'<@!{self.user.id}> ']        debug_ai_credentials()
-
-        
-
-    async def on_command(self, ctx):        return commands.when_mentioned_or(*prefixes)(self, message)        logging.getLogger("astra.startup").info("✅ AI credentials debug completed")
-
-        """Track command usage"""
-
-        self.command_count += 1            except (ImportError, FileNotFoundError):
-
-        logger.debug(f"Command used: {ctx.command.name} by {ctx.author}")
-
-            async def setup_hook(self):        logging.getLogger("astra.startup").info(
-
-    async def on_command_error(self, ctx, error):
-
-        """Optimized error handling"""        """Optimized initialization with error handling"""            "ℹ️ Debug AI credentials module not found (optional)"
-
-        if isinstance(error, commands.CommandNotFound):
-
-            return  # Ignore unknown commands        logger.info("🔧 Setting up AstraBot optimized systems...")        )
-
-            
-
-        elif isinstance(error, commands.MissingPermissions):            except Exception as e:
-
-            embed = discord.Embed(
-
-                title="Missing Permissions",        try:        logging.getLogger("astra.startup").error(f"AI debug failed: {e}")
-
-                description="You don't have permission to use this command.",
-
-                color=0xff0000            # 1. Initialize HTTP session
-
-            )
-
-            try:            connector = aiohttp.TCPConnector(except ImportError:
-
-                await ctx.send(embed=embed, delete_after=10)
-
-            except:                limit=100,    RAILWAY_ENABLED = False
-
-                pass
-
-                                limit_per_host=30,
-
-        elif isinstance(error, commands.CommandOnCooldown):
-
-            embed = discord.Embed(                ttl_dns_cache=300,# Try to load optional dependencies
-
-                title="Command on Cooldown",
-
-                description=f"Try again in {error.retry_after:.1f} seconds.",                use_dns_cache=True,try:
-
-                color=0xff9900
-
-            )            )    from dotenv import load_dotenv
-
-            try:
-
-                await ctx.send(embed=embed, delete_after=5)            self.http_session = aiohttp.ClientSession(
-
-            except:
-
-                pass                connector=connector,    load_dotenv()
-
-                
-
-        else:                timeout=aiohttp.ClientTimeout(total=30)    HAS_DOTENV = True
-
-            logger.error(f"Command error in {ctx.command}: {error}")
-
-            embed = discord.Embed(            )except ImportError:
-
-                title="Command Error",
-
-                description="An error occurred while processing your command.",            logger.info("✅ HTTP session initialized")    HAS_DOTENV = False
-
-                color=0xff0000
-
-            )            
-
-            try:
-
-                await ctx.send(embed=embed, delete_after=10)            # 2. Initialize core system (AI, interactive menus, moderation, welcome)try:
-
-            except:
-
-                pass            self.core_system = await startup_core(self)    import colorlog
-
-                
-
-    async def close(self):            logger.info("🚀 Core system initialized")
-
-        """Optimized graceful shutdown"""
-
-        logger.info("Shutting down AstraBot...")                HAS_COLORLOG = True
-
-        
-
-        # Stop background tasks            # 3. Load essential cogs (must succeed)except ImportError:
-
-        if hasattr(self, 'status_task') and not self.status_task.cancelled():
-
-            self.status_task.cancel()            for cog in self.essential_cogs:    HAS_COLORLOG = False
-
-            
-
-        # Shutdown core system                try:
-
-        if self.core_system:
-
-            await self.core_system.shutdown()                    await self.load_extension(cog)
-
-            
-
-        # Close HTTP session                    logger.info(f"✅ Loaded essential cog: {cog}")@dataclass
-
-        if self.http_session and not self.http_session.closed:
-
-            await self.http_session.close()                except Exception as e:class BotStats:
-
-            
-
-        # Close database connections                    logger.error(f"💥 CRITICAL: Failed to load essential cog {cog}: {e}")    """Bot runtime statistics"""
-
-        for db in self.db_pool.values():
-
-            if hasattr(db, 'close'):                    # Continue anyway - don't crash the bot
-
-                db.close()
-
-                                        start_time: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-
-        await super().close()
-
-                    # 4. Load optional cogs (allowed to fail)    commands_executed: int = 0
-
-        uptime = time.time() - self.start_time
-
-        logger.info(f"AstraBot shutdown complete (ran for {uptime:.1f}s)")            for cog in self.optional_cogs:    messages_processed: int = 0
-
-        logger.info(f"Final stats: {self.message_count} messages, {self.command_count} commands")
-
-                try:    errors_handled: int = 0
-
-async def main():
-
-    """Optimized main function with comprehensive error handling"""                    await self.load_extension(cog)    guilds_joined: int = 0
-
-    # Load token from environment (.env file) or config
-
-    token = os.getenv('DISCORD_TOKEN')                    logger.info(f"✅ Loaded optional cog: {cog}")    guilds_left: int = 0
-
-    
-
-    if not token:                except Exception as e:    uptime_seconds: int = 0
-
-        try:
-
-            with open('config.json', 'r') as f:                    logger.warning(f"⚠️  Skipped optional cog {cog}: {e}")    memory_usage_mb: float = 0.0
-
-                import json
-
-                config = json.load(f)                        cpu_usage_percent: float = 0.0
-
-                token = config.get('discord', {}).get('token')
-
-        except FileNotFoundError:            # 5. Log skipped cogs
-
-            logger.error("No config.json found and DISCORD_TOKEN not set")
-
-            return False            for cog in self.skip_cogs:    def get_uptime(self) -> timedelta:
-
-            
-
-    if not token or token == "YOUR_DISCORD_BOT_TOKEN_HERE":                logger.info(f"⏭️  Skipped cog: {cog} (replaced by core system or redundant)")        """Get current uptime"""
-
-        logger.error("Discord token not found or is placeholder!")
-
-        logger.error("Please set DISCORD_TOKEN in .env file or config.json")                        return datetime.now(timezone.utc) - self.start_time
-
-        return False
-
-                    # 6. Start background tasks
-
-    logger.info("Discord token loaded successfully!")
-
-                self.status_task.start()    def update_system_stats(self):
-
-    # Create and run bot
-
-    bot = AstraBot()                    """Update system resource usage"""
-
-    
-
-    try:            logger.info("🎉 AstraBot setup complete!")        process = psutil.Process()
-
-        logger.info("Starting AstraBot 1.0 Optimized...")
-
-        await bot.start(token)                    self.memory_usage_mb = process.memory_info().rss / 1024 / 1024
-
-        return True
-
-                except Exception as e:        self.cpu_usage_percent = process.cpu_percent()
-
-    except discord.LoginFailure:
-
-        logger.error("Invalid Discord token!")            logger.error(f"💥 Setup failed: {e}")        self.uptime_seconds = self.get_uptime().total_seconds()
-
-        return False
-
-                    import traceback
-
-    except discord.HTTPException as e:
-
-        logger.error(f"Discord HTTP error: {e}")            traceback.print_exc()
-
-        return False
-
-                    # Don't crash - try to continue with basic functionality@auto_optimize_commands
-
-    except KeyboardInterrupt:
-
-        logger.info("Received shutdown signal")            class AstraBot(commands.Bot):
-
-        return True
-
-            @tasks.loop(minutes=30)    """Enhanced Astra Discord Bot with comprehensive features and monitoring"""
-
-    except Exception as e:
-
-        logger.error(f"Bot crashed: {e}")    async def status_task(self):
-
-        import traceback
-
-        traceback.print_exc()        """Update bot status periodically"""    def __init__(self):
-
-        return False
-
-                try:        # Load configuration
-
-    finally:
-
-        if not bot.is_closed():            statuses = [        self.config: BotConfig = unified_config.bot_config
-
-            await bot.close()
-
-                "your conversations | Mention me!",
-
-if __name__ == "__main__":
-
-    # Optimize event loop for better performance                f"{len(self.guilds)} servers | AI-powered",        # Set up enhanced logging
-
-    try:
-
-        import uvloop                f"{len(self.users):,} users | Always learning",        self.logger = setup_enhanced_logger(
-
-        uvloop.install()
-
-        logger.info("uvloop installed for better performance")                "Ready to help | Ask me anything!",            name="Astra",
-
-    except ImportError:
-
-        logger.info("Using default asyncio event loop")            ]            log_level="DEBUG" if getattr(self.config, "debug", False) else "INFO",
-
-        
-
-    # Run the bot                    )
-
-    try:
-
-        success = asyncio.run(main())            import random
-
-        if not success:
-
-            sys.exit(1)            status = random.choice(statuses)        self.logger.info("=" * 80)
-
-    except KeyboardInterrupt:
-
-        logger.info("Goodbye!")            activity = discord.Activity(        self.logger.info(f"🚀 Initializing {self.config.name} v{self.config.version}")
-
-    except Exception as e:
-
-        logger.error(f"Fatal error: {e}")                type=discord.ActivityType.listening,        self.logger.info(f"📅 Build Date: 2025-08-02 10:53:48 UTC")
-
-        sys.exit(1)
-
-    finally:                name=status        self.logger.info(f"👤 Started by: {self._get_current_user()}")
-
-        # Cleanup
-
-        try:            )        self.logger.info(f"🐍 Python: {platform.python_version()}")
-
-            # Cancel any remaining tasks
-
-            pending = asyncio.all_tasks()            await self.change_presence(activity=activity, status=discord.Status.online)        self.logger.info(f"💻 Platform: {platform.system()} {platform.release()}")
-
-            for task in pending:
-
-                task.cancel()                    self.logger.info("=" * 80)
-
-            logger.info("Cleanup complete")
-
-        except:        except Exception as e:
-
-            pass
-            logger.error(f"Status update error: {e}")        # 🚀 OPTIMIZED intents for performance (only what's needed)
-
-                    intents = discord.Intents.default()
-
-    @status_task.before_loop        intents.message_content = True  # Required for message processing
-
-    async def before_status_task(self):        intents.members = True          # Required for welcome system
-
-        """Wait until bot is ready before starting status task"""        intents.guild_reactions = True  # Required for role selection
-
-        await self.wait_until_ready()        # 🚀 Performance: Disable heavy intents
-
-                intents.presences = False       # Heavy on large servers
-
-    async def on_ready(self):        intents.voice_states = False    # Not needed unless voice features
-
-        """Optimized ready event"""        intents.guild_typing = False    # Not needed for most bots
-
-        uptime = time.time() - self.start_time        intents.dm_reactions = False    # Rarely needed
-
-                intents.dm_typing = False       # Not needed
-
-        logger.info(f"🤖 AstraBot 1.0 Online! (Ready in {uptime:.2f}s)")
-
-        logger.info(f"📊 Serving {len(self.guilds)} guilds with {len(self.users):,} users")        # 🚀 OPTIMIZED bot initialization for performance
-
-        logger.info(f"🔧 Loaded {len(self.extensions)} extensions")        super().__init__(
-
-                    command_prefix=self._get_dynamic_prefix,
-
-        # Set initial status            intents=intents,
-
-        activity = discord.Activity(            activity=discord.Activity(
-
-            type=discord.ActivityType.listening,                type=discord.ActivityType.listening, name="optimized conversations"
-
-            name="your conversations | Mention me to chat!"            ),
-
-        )            status=discord.Status.online,
-
-        await self.change_presence(activity=activity, status=discord.Status.online)            # 🚀 Performance: Reduced mention processing
-
-                    allowed_mentions=discord.AllowedMentions(
-
-    async def on_message(self, message):                everyone=False, roles=False, users=True, replied_user=False
-
-        """Optimized message processing with core system integration"""            ),
-
-        if message.author.bot:            help_command=None,  # Custom help system
-
-            return            case_insensitive=True,
-
-                        strip_after_prefix=True,
-
-        self.message_count += 1            owner_id=getattr(self.config, 'owner_id', None),
-
-                    # 🚀 Performance: Optimize message cache and member cache
-
-        # Let core system handle the message first (AI, moderation, etc.)            max_messages=1000,  # Limit message cache size
-
-        if self.core_system:            chunk_guilds_at_startup=False,  # Don't chunk all guilds on startup
-
-            # Core system handles AI responses, moderation, etc.            member_cache_flags=discord.MemberCacheFlags.none()  # Minimal member cache
-
-            # If it returns True, it processed the message        )
-
-            pass
-
-                    # Bot state and tracking
-
-        # Process commands        self.stats = BotStats()
-
-        await self.process_commands(message)        self.stats.start_time = datetime.now(timezone.utc)  # Ensure timezone-aware
-
-                self.start_time = self.stats.start_time  # Keep both in sync
-
-    async def on_command(self, ctx):        self.session: Optional[aiohttp.ClientSession] = None
-
-        """Track command usage"""        self._tasks: Set[asyncio.Task] = set()
-
-        self.command_count += 1        self._bot_ready = False
-
-        logger.debug(f"Command used: {ctx.command.name} by {ctx.author}")        self._shutdown_initiated = False
-
-                
-
-    async def on_command_error(self, ctx, error):        # 🚀 PERFORMANCE: Enhanced metrics tracking
-
-        """Optimized error handling"""        self._performance_start = time.perf_counter()
-
-        if isinstance(error, commands.CommandNotFound):        self._message_count = 0
-
-            return  # Ignore unknown commands        self._command_count = 0
-
-                    self._error_count = 0
-
-        elif isinstance(error, commands.MissingPermissions):        self._last_gc_time = time.time()
-
-            embed = discord.Embed(
-
-                title="❌ Missing Permissions",        # Feature tracking
-
-                description="You don't have permission to use this command.",        self.loaded_extensions: Dict[str, datetime] = {}
-
-                color=0xff0000        self.failed_extensions: Dict[str, str] = {}
-
-            )        self.extension_health: Dict[str, bool] = {}
-
-            try:
-
-                await ctx.send(embed=embed, delete_after=10)        # Cache and performance
-
-            except:        self._command_cache: Dict[str, Any] = {}
-
-                pass        self._guild_configs: Dict[int, Dict[str, Any]] = {}
-
-                
-
-        elif isinstance(error, commands.CommandOnCooldown):        # Error handling
-
-            embed = discord.Embed(        self.error_handler = ErrorHandler(self)
-
-                title="⏰ Command on Cooldown",
-
-                description=f"Try again in {error.retry_after:.1f} seconds.",        # Create essential directories
-
-                color=0xff9900        self._ensure_directories()
-
-            )
-
-            try:        self.logger.info("✅ Bot initialization completed")
-
-                await ctx.send(embed=embed, delete_after=5)
-
-            except:    def _get_current_user(self) -> str:
-
-                pass        """Get current user with enhanced detection"""
-
-                        methods = [
-
-        else:            lambda: os.environ.get("USER"),
-
-            logger.error(f"Command error in {ctx.command}: {error}")            lambda: os.environ.get("USERNAME"),
-
-            embed = discord.Embed(            lambda: os.environ.get("LOGNAME"),
-
-                title="💥 Command Error",            lambda: os.getlogin(),
-
-                description="An error occurred while processing your command.",            lambda: "docker-container" if os.path.exists("/.dockerenv") else None,
-
-                color=0xff0000            lambda: "container-user",
-
-            )        ]
-
-            try:
-
-                await ctx.send(embed=embed, delete_after=10)        for method in methods:
-
-            except:            try:
-
-                pass                result = method()
-
-                                if result:
-
-    async def close(self):                    return result
-
-        """Optimized graceful shutdown"""            except (OSError, AttributeError):
-
-        logger.info("🔄 Shutting down AstraBot...")                continue
-
-        
-
-        # Stop background tasks        return "unknown-user"
-
-        if hasattr(self, 'status_task') and not self.status_task.cancelled():
-
-            self.status_task.cancel()    def _ensure_directories(self):
-
-                    """Create all necessary directories"""
-
-        # Shutdown core system        directories = [
-
-        if self.core_system:            "logs",
-
-            await self.core_system.shutdown()            "temp",
-
-                        "data",
-
-        # Close HTTP session            "data/quiz",
-
-        if self.http_session and not self.http_session.closed:            "data/space",
-
-            await self.http_session.close()            "data/guilds",
-
-                        "data/database",
-
-        # Close database connections            "config",
-
-        for db in self.db_pool.values():        ]
-
-            if hasattr(db, 'close'):
-
-                db.close()        for directory in directories:
-
-                            Path(directory).mkdir(parents=True, exist_ok=True)
-
-        await super().close()
-
-                self.logger.debug(f"📁 Created {len(directories)} essential directories")
-
-        uptime = time.time() - self.start_time
-
-        logger.info(f"✅ AstraBot shutdown complete (ran for {uptime:.1f}s)")    async def _get_dynamic_prefix(self, bot, message) -> List[str]:
-
-        logger.info(f"📊 Final stats: {self.message_count} messages, {self.command_count} commands")        """Dynamic prefix system with guild-specific support"""
-
+    async def _get_dynamic_prefix(self, bot, message) -> List[str]:
+        """Dynamic prefix system with guild-specific support"""
         prefixes = []
 
-async def main():
+        # Always respond to mentions
+        prefixes.extend([f"<@{self.user.id}> ", f"<@!{self.user.id}> "])
 
-    """Optimized main function with comprehensive error handling"""        # Always respond to mentions
+        # Guild-specific prefixes
+        if hasattr(message, "guild") and message.guild:
+            try:
+                guild_config = await db.get("guild_configs", str(message.guild.id), {})
+                guild_prefix = guild_config.get("prefix")
+                if guild_prefix:
+                    prefixes.append(guild_prefix)
+                else:
+                    prefixes.append(self.config.prefix)
+            except Exception:
+                prefixes.append(self.config.prefix)
+        else:
+            prefixes.append(self.config.prefix)
 
-    # Load token from environment (.env file) or config        prefixes.extend([f"<@{self.user.id}> ", f"<@!{self.user.id}> "])
+        return prefixes
 
-    token = os.getenv('DISCORD_TOKEN')
+    async def setup_hook(self):
+        """Enhanced setup hook with comprehensive initialization"""
+        self.logger.info("🔧 Running enhanced setup hook...")
 
-            # Guild-specific prefixes
+        # Initialize HTTP session with advanced configuration
+        await self._setup_http_session()
 
-    if not token:        if hasattr(message, "guild") and message.guild:
+        # Initialize database connections
+        await self._initialize_database()
 
-        try:            try:
+        # Load extensions with dependency management
+        await self._load_extensions_with_dependencies()
 
-            with open('config.json', 'r') as f:                guild_config = await db.get("guild_configs", str(message.guild.id), {})
+        # Start background tasks
+        self._start_background_tasks()
 
-                import json                guild_prefix = guild_config.get("prefix")
+        # Register event handlers
+        self._register_event_handlers()
 
-                config = json.load(f)                if guild_prefix:
+        # Setup command tree error handling
+        self.tree.error(self._handle_app_command_error)
 
-                token = config.get('discord', {}).get('token')                    prefixes.append(guild_prefix)
+        # Initialize AI engine and context manager
+        await self._initialize_ai_systems()
 
-        except FileNotFoundError:                else:
+        self.logger.info("✅ Enhanced setup hook completed successfully")
 
-            logger.error("❌ No config.json found and DISCORD_TOKEN not set")                    prefixes.append(self.config.prefix)
-
-            return False            except Exception:
-
-                            prefixes.append(self.config.prefix)
-
-    if not token or token == "YOUR_DISCORD_BOT_TOKEN_HERE":        else:
-
-        logger.error("❌ Discord token not found or is placeholder!")            prefixes.append(self.config.prefix)
-
-        logger.error("   Please set DISCORD_TOKEN in .env file or config.json")
-
-        return False        return prefixes
-
-        
-
-    logger.info("🔑 Discord token loaded successfully!")    async def setup_hook(self):
-
-            """Enhanced setup hook with comprehensive initialization"""
-
-    # Create and run bot        self.logger.info("🔧 Running enhanced setup hook...")
-
-    bot = AstraBot()
-
-            # Initialize HTTP session with advanced configuration
-
-    try:        await self._setup_http_session()
-
-        logger.info("🚀 Starting AstraBot 1.0 Optimized...")
-
-        await bot.start(token)        # Initialize database connections
-
-        return True        await self._initialize_database()
-
-        
-
-    except discord.LoginFailure:        # Load extensions with dependency management
-
-        logger.error("❌ Invalid Discord token!")        await self._load_extensions_with_dependencies()
-
-        return False
-
-                # Start background tasks
-
-    except discord.HTTPException as e:        self._start_background_tasks()
-
-        logger.error(f"❌ Discord HTTP error: {e}")
-
-        return False        # Register event handlers
-
-                self._register_event_handlers()
-
-    except KeyboardInterrupt:
-
-        logger.info("👋 Received shutdown signal")        # Setup command tree error handling
-
-        return True        self.tree.error(self._handle_app_command_error)
-
-        
-
-    except Exception as e:        # Initialize AI engine and context manager
-
-        logger.error(f"💥 Bot crashed: {e}")        await self._initialize_ai_systems()
-
-        import traceback
-
-        traceback.print_exc()        # Start performance monitoring
-
-        return False        performance_optimizer.start_monitoring()
-
-        
-
-    finally:        self.logger.info("✅ Enhanced setup hook completed successfully")
-
-        if not bot.is_closed():
-
-            await bot.close()    async def _setup_http_session(self):
-
+    async def _setup_http_session(self):
         """🚀 OPTIMIZED HTTP session with performance tuning"""
+        # 🚀 High-performance connector settings
+        connector = aiohttp.TCPConnector(
+            limit=150,  # Increased pool size
+            limit_per_host=50,  # More connections per host
+            ttl_dns_cache=600,  # Longer DNS cache (10 minutes)
+            use_dns_cache=True,
+            keepalive_timeout=30,  # Reduced keepalive for better resource management
+            enable_cleanup_closed=True,
+            force_close=False,  # Keep connections alive
+            ssl=False  # Disable SSL verification for performance (Discord handles HTTPS)
+        )
 
-if __name__ == "__main__":        # 🚀 High-performance connector settings
+        # 🚀 Optimized timeout settings
+        timeout = aiohttp.ClientTimeout(
+            total=25,      # Reduced total timeout
+            connect=5,     # Faster connection timeout
+            sock_read=8    # Faster read timeout
+        )
 
-    # Optimize event loop for better performance        connector = aiohttp.TCPConnector(
+        # 🚀 Optimized headers
+        headers = {
+            "User-Agent": f"{self.config.name}/{self.config.version}-Performance",
+            "Accept": "application/json",
+            "Accept-Encoding": "gzip, deflate, br",  # Added brotli
+            "Connection": "keep-alive"
+        }
 
-    try:            limit=150,  # Increased pool size
-
-        import uvloop            limit_per_host=50,  # More connections per host
-
-        uvloop.install()            ttl_dns_cache=600,  # Longer DNS cache (10 minutes)
-
-        logger.info("⚡ uvloop installed for better performance")            use_dns_cache=True,
-
-    except ImportError:            keepalive_timeout=30,  # Reduced keepalive for better resource management
-
-        logger.info("📊 Using default asyncio event loop")            enable_cleanup_closed=True,
-
-                    force_close=False,  # Keep connections alive
-
-    # Run the bot            ssl=False  # Disable SSL verification for performance (Discord handles HTTPS)
-
-    try:        )
-
-        success = asyncio.run(main())
-
-        if not success:        # 🚀 Optimized timeout settings
-
-            sys.exit(1)        timeout = aiohttp.ClientTimeout(
-
-    except KeyboardInterrupt:            total=25,      # Reduced total timeout
-
-        logger.info("👋 Goodbye!")            connect=5,     # Faster connection timeout
-
-    except Exception as e:            sock_read=8    # Faster read timeout
-
-        logger.error(f"💥 Fatal error: {e}")        )
-
-        sys.exit(1)
-
-    finally:        # 🚀 Optimized headers
-
-        # Cleanup        headers = {
-
-        try:            "User-Agent": f"{self.config.name}/{self.config.version}-Performance",
-
-            # Cancel any remaining tasks            "Accept": "application/json",
-
-            pending = asyncio.all_tasks()            "Accept-Encoding": "gzip, deflate, br",  # Added brotli
-
-            for task in pending:            "Connection": "keep-alive"
-
-                task.cancel()        }
-
-            logger.info("🧹 Cleanup complete")
-
-        except:        self.session = aiohttp.ClientSession(
-
-            pass            connector=connector,
+        self.session = aiohttp.ClientSession(
+            connector=connector,
             timeout=timeout,
             headers=headers,
             raise_for_status=False,
@@ -1197,8 +424,6 @@ if __name__ == "__main__":        # 🚀 High-performance connector settings
             # Core utilities (no dependencies) - Performance optimized loading order
             [
                 "cogs.admin_optimized",  # Optimized consolidated admin system
-                "cogs.performance",  # Performance monitoring
-                "cogs.continuous_performance",  # Continuous detailed performance monitoring
                 "cogs.bot_status",
                 "cogs.utilities",
                 "cogs.stats",
@@ -2320,9 +1545,6 @@ if __name__ == "__main__":        # 🚀 High-performance connector settings
             self.logger.error(f"❌ Error during shutdown: {e}")
 
         finally:
-            # Stop performance monitoring
-            performance_optimizer.stop_monitoring()
-
             # Call parent close
             await super().close()
             self.logger.info("👋 Astra bot shutdown completed")
