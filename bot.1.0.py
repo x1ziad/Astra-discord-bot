@@ -1468,14 +1468,12 @@ async def main():
                         # Windows doesn't support signal handlers in asyncio
                         signal.signal(sig, signal_handler)
 
-            # 🚀 OPTIMIZED: Start the bot with reasonable timeout
-            logger.info("🎯 Starting optimized bot connection...")
+            # 🚀 Start the bot without timeout (let Discord handle connection issues)
+            logger.info("🎯 Starting bot connection...")
             try:
-                # Increase timeout for complex bot initialization
-                await asyncio.wait_for(bot.start(token), timeout=60.0)
-            except asyncio.TimeoutError:
-                logger.error("❌ Bot startup timed out after 60 seconds")
-                logger.error("This may indicate network issues or Discord API problems")
+                await bot.start(token)
+            except Exception as start_error:
+                logger.error(f"❌ Bot startup failed: {start_error}")
                 return 1
 
     except KeyboardInterrupt:

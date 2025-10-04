@@ -361,13 +361,13 @@ class AdvancedAICog(commands.Cog):
             ):
                 self.successful_responses += 1
 
-            # Enhanced performance logging
-            if response_time > 2.0:
+            # Performance logging (only log very slow responses)
+            if response_time > 5.0:  # Only warn for very slow responses
                 self.logger.warning(
-                    f"Slow AI response: {response_time:.2f}s (Context: {len(recent_history)} msgs)"
+                    f"Very slow AI response: {response_time:.2f}s (Context: {len(recent_history)} msgs)"
                 )
             elif response_time < 0.5:
-                self.logger.info(f"Lightning AI response: {response_time:.3f}s")
+                self.logger.debug(f"Fast AI response: {response_time:.3f}s")
 
             return response or "I'm here and ready to chat! What's on your mind? 🚀"
 
@@ -704,10 +704,10 @@ class AdvancedAICog(commands.Cog):
             if interaction_decision["should_interact"]:
                 await self._lightning_execute_interaction(message, interaction_decision)
 
-            # Track lightning performance
+            # Track lightning performance (only log very slow processing)
             lightning_time = time.time() - lightning_start
-            if lightning_time > 0.5:  # Log slow message processing
-                self.logger.warning(f"Slow message processing: {lightning_time:.3f}s")
+            if lightning_time > 2.0:  # Only warn for very slow processing
+                self.logger.warning(f"Very slow message processing: {lightning_time:.3f}s")
 
         except Exception as e:
             self.logger.error(f"Lightning message processing error: {e}")
