@@ -739,20 +739,20 @@ class AstraBot(commands.Bot):
                 self._command_count += 1
                 return
 
-            # Universal message tracking for context understanding
+            # Optimized message tracking - only for important messages
             try:
-                # Store message in context for AI understanding even if not responding
-                await self._store_message_context(message)
+                # Only store context for messages that might need AI processing
+                if (len(message.content) > 10 and 
+                    (self.user.mentioned_in(message) or 
+                     any(word in message.content.lower() for word in ['astra', 'help', '?']) or
+                     message.reference is not None)):
+                    await self._store_message_context(message)
 
-                # Automatic message event capture
+                # Automatic message event capture (lightweight)
                 reporter = get_discord_reporter()
                 if reporter:
-                    await reporter.auto_capture_message_event(message)
-
-                # Let the AdvancedAICog handle ALL messages with its sophisticated interaction system
-                # The AdvancedAI cog has a much more intelligent decision engine that determines
-                # how to interact with every single message (text, reactions, emojis, etc.)
-                # No filtering needed here - let the sophisticated system handle everything
+                    # Run in background to avoid blocking
+                    asyncio.create_task(reporter.auto_capture_message_event(message))
 
             except Exception as e:
                 self.logger.error(f"Error processing message context: {e}")

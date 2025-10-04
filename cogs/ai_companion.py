@@ -329,7 +329,7 @@ Context:
 - Current mood: {mood.current_mood}
 - Positive interactions: {mood.positive_interactions}
 - Stress indicators: {mood.stress_indicators}
-- Days since last check-in: {(time.time() - mood.last_check_in) / 86400:.0f if mood.last_check_in else 0}
+- Days since last check-in: {int((time.time() - mood.last_check_in) / 86400) if mood.last_check_in else 0}
 
 Create a caring check-in with:
 {{

@@ -166,11 +166,24 @@ class Analytics(commands.GroupCog, name="analytics"):
         self, interaction: discord.Interaction, days: Optional[int] = 7
     ):
         """Display server analytics overview"""
-        if not has_permission(interaction.user, PermissionLevel.MODERATOR):
-            await interaction.response.send_message(
-                "❌ You need moderator permissions for this command.", ephemeral=True
-            )
-            return
+        # Check permissions
+        try:
+            from utils.permissions import permission_manager, PermissionLevel
+            if permission_manager and not await permission_manager.check_permission(
+                interaction.user, PermissionLevel.MODERATOR, interaction.guild
+            ):
+                await interaction.response.send_message(
+                    "❌ You need moderator permissions for this command.", ephemeral=True
+                )
+                return
+        except Exception as e:
+            # Fallback permission check
+            if not (interaction.user.guild_permissions.manage_guild or 
+                   interaction.user.guild_permissions.administrator):
+                await interaction.response.send_message(
+                    "❌ You need moderator permissions for this command.", ephemeral=True
+                )
+                return
 
         await interaction.response.defer(thinking=True)
 

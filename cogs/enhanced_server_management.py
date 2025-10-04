@@ -17,7 +17,7 @@ import colorsys
 import re
 
 from config.unified_config import unified_config
-from utils.permissions import has_permission, PermissionLevel
+from utils.permissions import has_permission, PermissionLevel, check_user_permission
 
 try:
     from ai.consolidated_ai_engine import get_engine, process_conversation
@@ -87,7 +87,7 @@ class EnhancedServerManagement(commands.GroupCog, name="server"):
     @app_commands.default_permissions(administrator=True)
     async def interactive_setup(self, interaction: discord.Interaction):
         """Interactive server setup with AI-powered recommendations"""
-        if not has_permission(interaction.user, PermissionLevel.ADMIN):
+        if not await check_user_permission(interaction.user, PermissionLevel.ADMIN, interaction.guild):
             await interaction.response.send_message(
                 "❌ You need administrator permissions for this command.",
                 ephemeral=True,
@@ -259,7 +259,7 @@ Keep each section under 150 characters. Be encouraging and specific."""
         auto_role: Optional[discord.Role] = None,
     ):
         """Setup intelligent welcome system with AI-generated messages"""
-        if not has_permission(interaction.user, PermissionLevel.MODERATOR):
+        if not await check_user_permission(interaction.user, PermissionLevel.MODERATOR, interaction.guild):
             await interaction.response.send_message(
                 "❌ You need moderator permissions for this command.", ephemeral=True
             )
@@ -377,7 +377,7 @@ Requirements:
         self, interaction: discord.Interaction, action: str = "health"
     ):
         """Advanced community analysis with AI insights"""
-        if not has_permission(interaction.user, PermissionLevel.MODERATOR):
+        if not await check_user_permission(interaction.user, PermissionLevel.MODERATOR, interaction.guild):
             await interaction.response.send_message(
                 "❌ You need moderator permissions for this command.", ephemeral=True
             )
@@ -511,7 +511,7 @@ Provide 3 bullet points with actionable recommendations (under 200 chars total).
         color: Optional[str] = None,
     ):
         """Advanced role management with AI optimization"""
-        if not has_permission(interaction.user, PermissionLevel.MODERATOR):
+        if not await check_user_permission(interaction.user, PermissionLevel.MODERATOR, interaction.guild):
             await interaction.response.send_message(
                 "❌ You need moderator permissions for this command.", ephemeral=True
             )

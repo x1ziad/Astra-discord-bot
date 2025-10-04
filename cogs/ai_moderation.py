@@ -17,7 +17,7 @@ from discord import app_commands
 from discord.ext import commands, tasks
 
 from config.unified_config import unified_config
-from utils.permissions import has_permission, PermissionLevel
+from utils.permissions import has_permission, PermissionLevel, check_user_permission
 
 try:
     from ai.consolidated_ai_engine import get_engine, process_conversation
@@ -647,7 +647,7 @@ Create a warm, appreciative message (under 100 words) with appropriate emojis.""
     @app_commands.default_permissions(manage_messages=True)
     async def mod_stats(self, interaction: discord.Interaction):
         """View comprehensive moderation statistics"""
-        if not has_permission(interaction.user, PermissionLevel.MODERATOR):
+        if not await check_user_permission(interaction.user, PermissionLevel.MODERATOR, interaction.guild):
             await interaction.response.send_message(
                 "❌ You need moderator permissions for this command.", ephemeral=True
             )
@@ -703,7 +703,7 @@ Create a warm, appreciative message (under 100 words) with appropriate emojis.""
         self, interaction: discord.Interaction, user: discord.Member
     ):
         """View detailed user moderation profile"""
-        if not has_permission(interaction.user, PermissionLevel.MODERATOR):
+        if not await check_user_permission(interaction.user, PermissionLevel.MODERATOR, interaction.guild):
             await interaction.response.send_message(
                 "❌ You need moderator permissions for this command.", ephemeral=True
             )

@@ -222,15 +222,33 @@ def has_permission(level: PermissionLevel):
     if hasattr(commands, "check"):
         return commands.check(predicate)
     else:
-        # For app commands
-        async def app_predicate(interaction):
-            if permission_manager is None:
-                return True
-            return await permission_manager.check_permission(
-                interaction.user, level, interaction.guild
-            )
+        return predicate
 
-        return discord.app_commands.check(app_predicate)
+
+async def check_user_permission(user: Union[discord.Member, discord.User], level: PermissionLevel, guild: Optional[discord.Guild] = None) -> bool:
+    """Direct function to check user permissions (not a decorator)"""
+    global permission_manager
+    
+    try:
+        if permission_manager:
+            return await permission_manager.check_permission(user, level, guild)
+    except Exception:
+        pass
+    
+    # Fallback permission check based on Discord permissions
+    if not isinstance(user, discord.Member) or not guild:
+        return False
+        
+    if level == PermissionLevel.EVERYONE:
+        return True
+    elif level == PermissionLevel.MODERATOR:
+        return user.guild_permissions.manage_messages or user.guild_permissions.manage_guild
+    elif level == PermissionLevel.ADMINISTRATOR:
+        return user.guild_permissions.administrator
+    elif level == PermissionLevel.OWNER:
+        return user.id == guild.owner_id
+        
+    return False
 
 
 def setup_permissions(bot):
