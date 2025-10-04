@@ -660,14 +660,18 @@ class ConsolidatedAIEngine:
                 logger.info("🚀 Using Fast Optimized Engine for maximum performance")
             else:
                 self.fast_engine = None
+        except ImportError:
+            # Module doesn't exist - this is expected and normal
+            self.fast_engine = None
         except Exception as e:
-            logger.warning(f"Fast engine unavailable: {e}")
+            logger.debug(f"Fast engine unavailable: {e}")
             self.fast_engine = None
 
         # Try to use optimized engine first
         self.optimized_engine = None
         if OPTIMIZED_ENGINE_AVAILABLE:
             try:
+                from ai.optimized_ai_client import get_optimized_engine
                 self.optimized_engine = get_optimized_engine()
                 logger.info("✅ Using Optimized AI Engine for enhanced performance")
             except Exception as e:

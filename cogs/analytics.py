@@ -64,7 +64,7 @@ class Analytics(commands.GroupCog, name="analytics"):
         if self.discord_reporter:
             self.logger.info("✅ Analytics connected to Discord Data Reporter")
         else:
-            self.logger.warning("⚠️ Discord Data Reporter not available")
+            self.logger.debug("⚠️ Discord Data Reporter not available - analytics will use fallback methods")
 
     def _load_user_activity(self) -> Dict[str, Any]:
         """Load user activity data - now returns empty dict since we use Discord reporting"""
