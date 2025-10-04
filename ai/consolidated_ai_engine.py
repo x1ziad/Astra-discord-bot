@@ -672,6 +672,7 @@ class ConsolidatedAIEngine:
         if OPTIMIZED_ENGINE_AVAILABLE:
             try:
                 from ai.optimized_ai_client import get_optimized_engine
+
                 self.optimized_engine = get_optimized_engine()
                 logger.info("✅ Using Optimized AI Engine for enhanced performance")
             except Exception as e:

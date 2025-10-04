@@ -11,15 +11,15 @@ logger = logging.getLogger("astra.optimized_ai_client")
 
 class OptimizedAIEngine:
     """Placeholder for optimized AI engine"""
-    
+
     def __init__(self, config: Dict[str, Any]):
         self.config = config
         self.available = False
-        
+
     def is_available(self) -> bool:
         """Check if the optimized engine is available"""
         return self.available
-        
+
     async def generate_response(self, prompt: str, **kwargs) -> str:
         """Placeholder response generation"""
         return "Optimized engine not implemented yet"

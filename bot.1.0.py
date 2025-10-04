@@ -384,19 +384,19 @@ class AstraBot(commands.Bot):
             openai_key = os.getenv("OPENAI_API_KEY")
             ai_key = os.getenv("AI_API_KEY")
             openrouter_key = os.getenv("OPENROUTER_API_KEY")
-            
+
             # Configure AI with available keys
             ai_config = {
                 "ai_api_key": ai_key or openai_key,
                 "openai_api_key": openai_key,
                 "openrouter_api_key": openrouter_key,
                 "ai_model": "gpt-3.5-turbo",
-                "ai_provider": "openai" if openai_key else "mock"
+                "ai_provider": "openai" if openai_key else "mock",
             }
 
             # Initialize AI engine
             ai_engine = initialize_engine(ai_config)
-            
+
             if ai_config["ai_api_key"] or openai_key or openrouter_key:
                 self.logger.info("✅ AI Engine initialized with API access")
                 if openai_key:
@@ -405,8 +405,10 @@ class AstraBot(commands.Bot):
                     self.logger.info("🌐 OpenRouter API configured")
             else:
                 self.logger.info("🤖 AI Engine running in mock mode (no API keys)")
-                self.logger.info("📝 To enable AI: Set OPENAI_API_KEY or OPENROUTER_API_KEY")
-            
+                self.logger.info(
+                    "📝 To enable AI: Set OPENAI_API_KEY or OPENROUTER_API_KEY"
+                )
+
             # Test AI functionality
             engine = get_engine()
             if engine:
