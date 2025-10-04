@@ -83,17 +83,23 @@ def check_system_status():
                 config = json.load(f)
 
             config_str = json.dumps(config)
-            
+
             # Check if config uses environment variables (secure) or has placeholders
             if "${" in config_str:
                 # Environment variable based config - check if env vars are set
-                required_env_vars = ["DISCORD_TOKEN", "OPENAI_API_KEY", "OPENROUTER_API_KEY"]
+                required_env_vars = [
+                    "DISCORD_TOKEN",
+                    "OPENAI_API_KEY",
+                    "OPENROUTER_API_KEY",
+                ]
                 missing_vars = [var for var in required_env_vars if not os.getenv(var)]
-                
+
                 if not missing_vars:
                     print("  ✅ API keys configured")
                 else:
-                    print(f"  ⚠️  Missing environment variables: {', '.join(missing_vars)}")
+                    print(
+                        f"  ⚠️  Missing environment variables: {', '.join(missing_vars)}"
+                    )
             elif "YOUR_" not in config_str and "_HERE" not in config_str:
                 print("  ✅ API keys configured")
             else:

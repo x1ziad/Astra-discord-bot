@@ -12,28 +12,28 @@ from pathlib import Path
 
 def secure_env_file():
     """Secure the .env file by backing up real keys and using placeholders"""
-    
-    env_file = Path('.env')
-    backup_dir = Path('secure_backup')
-    
+
+    env_file = Path(".env")
+    backup_dir = Path("secure_backup")
+
     if not env_file.exists():
         print("❌ .env file not found")
         return
-    
+
     # Create secure backup directory (this should be kept private)
     backup_dir.mkdir(exist_ok=True)
-    
+
     # Create timestamped backup
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    backup_file = backup_dir / f'.env.backup.{timestamp}'
-    
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    backup_file = backup_dir / f".env.backup.{timestamp}"
+
     # Copy real .env to secure backup
     shutil.copy2(env_file, backup_file)
     print(f"✅ Real API keys backed up to: {backup_file}")
     print("🔒 Keep this backup file SECURE and PRIVATE!")
-    
+
     # Replace .env with template
-    template_file = Path('.env.template')
+    template_file = Path(".env.template")
     if template_file.exists():
         shutil.copy2(template_file, env_file)
         print("✅ .env file secured with placeholders")
@@ -66,30 +66,30 @@ LOG_LEVEL=INFO
 """
         env_file.write_text(secure_content)
         print("✅ .env file secured with placeholders")
-    
+
     # Update .gitignore to ensure security
-    gitignore = Path('.gitignore')
+    gitignore = Path(".gitignore")
     secure_patterns = [
-        '.env',
-        '.env.*',
-        '*.env',
-        'secure_backup/',
-        '**/.env',
-        '**/secure_backup/',
+        ".env",
+        ".env.*",
+        "*.env",
+        "secure_backup/",
+        "**/.env",
+        "**/secure_backup/",
     ]
-    
+
     if gitignore.exists():
         content = gitignore.read_text()
         new_patterns = []
         for pattern in secure_patterns:
             if pattern not in content:
                 new_patterns.append(pattern)
-        
+
         if new_patterns:
-            content += '\n# Secure environment files\n' + '\n'.join(new_patterns) + '\n'
+            content += "\n# Secure environment files\n" + "\n".join(new_patterns) + "\n"
             gitignore.write_text(content)
             print(f"✅ Added {len(new_patterns)} security patterns to .gitignore")
-    
+
     print("\n🔒 SECURITY STATUS:")
     print("✅ Real API keys safely backed up")
     print("✅ Public .env file secured with placeholders")
@@ -103,35 +103,35 @@ LOG_LEVEL=INFO
 
 def restore_env_file(backup_timestamp=None):
     """Restore .env from backup (for local development)"""
-    
-    backup_dir = Path('secure_backup')
+
+    backup_dir = Path("secure_backup")
     if not backup_dir.exists():
         print("❌ No secure backup directory found")
         return
-    
-    backups = list(backup_dir.glob('.env.backup.*'))
+
+    backups = list(backup_dir.glob(".env.backup.*"))
     if not backups:
         print("❌ No backup files found")
         return
-    
+
     if backup_timestamp:
-        backup_file = backup_dir / f'.env.backup.{backup_timestamp}'
+        backup_file = backup_dir / f".env.backup.{backup_timestamp}"
         if not backup_file.exists():
             print(f"❌ Backup file not found: {backup_file}")
             return
     else:
         # Use most recent backup
         backup_file = max(backups, key=lambda p: p.stat().st_mtime)
-    
-    shutil.copy2(backup_file, '.env')
+
+    shutil.copy2(backup_file, ".env")
     print(f"✅ Restored .env from: {backup_file}")
     print("⚠️  Remember: This contains real API keys - keep secure!")
 
 
 if __name__ == "__main__":
     import sys
-    
-    if len(sys.argv) > 1 and sys.argv[1] == 'restore':
+
+    if len(sys.argv) > 1 and sys.argv[1] == "restore":
         timestamp = sys.argv[2] if len(sys.argv) > 2 else None
         restore_env_file(timestamp)
     else:
