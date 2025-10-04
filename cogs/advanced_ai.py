@@ -707,7 +707,9 @@ class AdvancedAICog(commands.Cog):
             # Track lightning performance (only log very slow processing)
             lightning_time = time.time() - lightning_start
             if lightning_time > 2.0:  # Only warn for very slow processing
-                self.logger.warning(f"Very slow message processing: {lightning_time:.3f}s")
+                self.logger.warning(
+                    f"Very slow message processing: {lightning_time:.3f}s"
+                )
 
         except Exception as e:
             self.logger.error(f"Lightning message processing error: {e}")

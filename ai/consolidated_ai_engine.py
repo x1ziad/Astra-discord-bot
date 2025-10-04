@@ -2402,7 +2402,7 @@ Key principles:
         try:
             status = {
                 "status": "healthy",
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "available_providers": [],
                 "active_provider": None,
                 "cache_stats": self.cache.get_stats(),
@@ -2437,7 +2437,7 @@ Key principles:
             return {
                 "status": "error",
                 "message": str(e),
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
 
 

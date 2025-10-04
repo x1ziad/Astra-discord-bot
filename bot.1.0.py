@@ -449,7 +449,9 @@ class AstraBot(commands.Bot):
             # AI and enhanced features (depend on core)
             [
                 "cogs.advanced_ai",
-                "cogs.server_management",
+                "cogs.ai_moderation",  # AI-powered moderation with personalized responses
+                "cogs.enhanced_server_management",  # Enhanced server management with AI companion
+                "cogs.ai_companion",  # Sophisticated AI buddy and companion features
             ],
             # Analytics and specialized features
             ["cogs.analytics", "cogs.roles"],
