@@ -56,6 +56,7 @@ Astra is an **intelligent, multifunctional Discord bot** that brings advanced AI
 
 ## ⚡ Installation & Setup
 
+### 1. Clone & Install
 ```bash
 # Clone the repository
 git clone https://github.com/x1ziad/Astra-discord-bot.git
@@ -63,5 +64,36 @@ cd Astra-discord-bot
 
 # Install dependencies
 pip install -r requirements.txt
+```
 
+### 2. Configure Environment Variables
+```bash
+# Copy the example environment file
+cp .env.example .env
+
+# Edit .env with your API keys
+nano .env
+```
+
+### 3. Required API Keys
+- **Discord Bot Token**: Create a bot at [Discord Developer Portal](https://discord.com/developers/applications)
+- **OpenAI API Key**: Get from [OpenAI Platform](https://platform.openai.com/api-keys)
+- **OpenRouter API Key**: Get from [OpenRouter](https://openrouter.ai/keys)
+
+### 4. Security Features
+- ✅ **Environment Variables**: All API keys are stored securely in `.env` files
+- ✅ **Configuration Validation**: Automatic security checks prevent exposed secrets
+- ✅ **Git Protection**: `.gitignore` prevents accidental key commits
+- ✅ **Production Ready**: Secure deployment configuration
+
+### 5. Run the Bot
+```bash
+# Start the bot
+python bot.1.0.py
+
+# Check system status
+python quick_status.py
+
+# Validate security
+python secure_config_validator.py
 ```

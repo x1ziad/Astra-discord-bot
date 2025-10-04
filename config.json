@@ -42,7 +42,7 @@
     }
   },
   "discord": {
-    "token": "3edf2948f50e417abb13a22def4dcc03ec7eac394563a5d8a5da6c6be97de28c",
+    "token": "${DISCORD_TOKEN}",
     "prefix": "!",
     "intents": {
       "messages": true,
@@ -58,26 +58,26 @@
     "enable_wal_mode": true
   },
   "openai": {
-    "api_key": "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",
+    "api_key": "${OPENAI_API_KEY}",
     "model": "gpt-4",
     "max_tokens": 1000,
     "temperature": 0.7
   },
   "ai": {
     "openai": {
-      "api_key": "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",
+      "api_key": "${OPENAI_API_KEY}",
       "model": "gpt-4",
       "max_tokens": 1000,
       "temperature": 0.7
     },
     "azure": {
-      "endpoint": "",
-      "api_key": "",
-      "speech_key": "",
+      "endpoint": "${AZURE_ENDPOINT}",
+      "api_key": "${AZURE_API_KEY}",
+      "speech_key": "${AZURE_SPEECH_KEY}",
       "speech_region": "westus"
     },
     "openrouter": {
-      "api_key": "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",
+      "api_key": "${OPENROUTER_API_KEY}",
       "model": "x-ai/grok-beta"
     }
   },
