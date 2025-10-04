@@ -374,6 +374,76 @@ class UnifiedConfigManager:
 
         return False
 
+    # ------------------------------------------------------------------
+    # Feature flag helpers
+    # ------------------------------------------------------------------
+
+    def _normalize_feature_key(self, feature_name: str) -> str:
+        """Normalize feature keys for consistent lookups."""
+        feature_name = feature_name or ""
+        feature_name = feature_name.strip()
+
+        # Allow callers to omit common prefixes like ``enable_``
+        lowered = feature_name.lower()
+        if lowered.startswith("enable_"):
+            lowered = lowered[len("enable_") :]
+
+        return lowered
+
+    def is_feature_enabled(
+        self, feature_name: str, default: bool = False, guild_id: Optional[int] = None
+    ) -> bool:
+        """Return whether a feature flag is enabled.
+
+        Feature flags can be stored either globally on the bot configuration
+        (``bot.features``) or inside a guild-specific configuration under the
+        ``features`` key. This helper normalizes the feature key to support
+        lookups like ``notion_integration`` or ``enable_notion_integration``
+        transparently and falls back to the provided default when the flag is
+        not explicitly set.
+        """
+
+        normalized_key = self._normalize_feature_key(feature_name)
+
+        # 1) Guild-specific overrides take precedence
+        if guild_id is not None:
+            guild_config = self.guild_configs.get(guild_id, {})
+            guild_features = guild_config.get("features", {}) or {}
+            for key, value in guild_features.items():
+                if self._normalize_feature_key(str(key)) == normalized_key:
+                    return bool(value)
+
+        # 2) Global bot features
+        bot_features = getattr(self.bot_config, "features", {}) or {}
+        for key, value in bot_features.items():
+            if self._normalize_feature_key(str(key)) == normalized_key:
+                return bool(value)
+
+        return bool(default)
+
+    def set_feature_flag(
+        self,
+        feature_name: str,
+        enabled: bool,
+        guild_id: Optional[int] = None,
+        persist: bool = True,
+    ):
+        """Set a feature flag on the bot or for a specific guild."""
+
+        normalized_key = self._normalize_feature_key(feature_name)
+
+        if guild_id is not None:
+            guild_config = self.guild_configs.setdefault(guild_id, {})
+            guild_features = guild_config.setdefault("features", {})
+            guild_features[normalized_key] = bool(enabled)
+        else:
+            bot_features = getattr(self.bot_config, "features", {})
+            bot_features[normalized_key] = bool(enabled)
+            self.bot_config.features = bot_features
+
+        if persist:
+            self.save_config()
+
 
 # Global unified config manager instance
 unified_config = UnifiedConfigManager()
