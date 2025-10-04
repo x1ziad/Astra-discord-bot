@@ -378,34 +378,22 @@ class AstraBot(commands.Bot):
     async def _initialize_ai_systems(self):
         """Initialize AI engine and context manager for enhanced conversation"""
         try:
-            # Initialize AI engine
+            # Simple AI initialization
             from ai.consolidated_ai_engine import initialize_engine
-
-            # Create config for AI engine
+            
             ai_config = {
-                "ai_api_key": os.getenv("AI_API_KEY"),
-                "ai_base_url": os.getenv("AI_BASE_URL"),
-                "ai_model": os.getenv("AI_MODEL"),
-                "openrouter_api_key": os.getenv("OPENROUTER_API_KEY"),
-                "openai_api_key": os.getenv("OPENAI_API_KEY"),
-                "redis_url": os.getenv("REDIS_URL"),
-                "cache_ttl_short": 300,
-                "cache_ttl_medium": 1800,
-                "cache_ttl_long": 3600,
+                "ai_api_key": os.getenv("AI_API_KEY") or os.getenv("OPENAI_API_KEY"),
+                "ai_model": "gpt-3.5-turbo",  # Simple default
             }
-
-            ai_engine = initialize_engine(ai_config)
-            self.logger.info("✅ AI Engine initialized")
-
-            # Initialize context manager
-            from ai.universal_context_manager import initialize_context_manager
-
-            context_manager = initialize_context_manager(self)
-            self.logger.info("✅ Universal Context Manager initialized")
+            
+            if ai_config["ai_api_key"]:
+                ai_engine = initialize_engine(ai_config)
+                self.logger.info("✅ AI Engine ready")
+            else:
+                self.logger.info("⚠️ No AI API key - running without AI")
 
         except Exception as e:
-            self.logger.error(f"❌ AI systems initialization failed: {e}")
-            self.logger.warning("Bot will continue with limited AI functionality")
+            self.logger.warning(f"AI init failed: {e} - continuing without AI")
 
     async def _initialize_database(self):
         """Initialize database connections and create tables"""
@@ -492,26 +480,12 @@ class AstraBot(commands.Bot):
         self.logger.info("=" * 60)
 
     def _start_background_tasks(self):
-        """Start all background monitoring and maintenance tasks"""
-        # ❌ OLD (BROKEN):
-        # task = self.create_task(task_func.start())
-
-        # ✅ NEW (FIXED):
+        """Start minimal background tasks"""
+        # Only start essential tasks to prevent crashes
         if not self.monitor_system_health.is_running():
             self.monitor_system_health.start()
-
-        if not self.update_statistics.is_running():
-            self.update_statistics.start()
-
-        if not self.cleanup_old_data.is_running():
-            self.cleanup_old_data.start()
-
-        # 🚀 NEW: Start performance monitoring
-        if not hasattr(self, "_performance_monitor_started"):
-            self._start_performance_monitoring()
-            self._performance_monitor_started = True
-
-        # Continue for other background tasks...
+            
+        self.logger.info("⚡ Minimal background tasks started")
 
     def _start_performance_monitoring(self):
         """🚀 Start lightweight performance monitoring"""
@@ -612,19 +586,8 @@ class AstraBot(commands.Bot):
             # Update bot statistics
             self.stats.update_system_stats()
 
-            # Initialize Discord Data Reporter
-            try:
-                await initialize_discord_reporter(self)
-                self.logger.info("✅ Discord Data Reporter initialized")
-
-                # Start continuous automation system
-                reporter = get_discord_reporter()
-                if reporter:
-                    await reporter.start_continuous_automation()
-                    self.logger.info("🚀 Continuous automation system started")
-
-            except Exception as e:
-                self.logger.error(f"❌ Failed to initialize Discord Data Reporter: {e}")
+            # Skip Discord Data Reporter for better performance
+            self.logger.info("⚡ Skipping Discord Data Reporter for performance")
 
             # Log guild information
             self.logger.info("\n📋 Connected Guilds:")
@@ -1200,242 +1163,46 @@ class AstraBot(commands.Bot):
 
     # Optimized Background Tasks with Resource Management
 
-    @tasks.loop(hours=2)  # Reduced from frequent calls
+    @tasks.loop(hours=6)  # Much less frequent
     async def monitor_system_health(self):
-        """Enhanced resource monitoring with performance optimization"""
+        """Basic system monitoring"""
         try:
-            # Memory management (imports already at top level)
+            import psutil
             process = psutil.Process()
-            memory_info = process.memory_info()
-            memory_percent = process.memory_percent()
-
-            # Force garbage collection if memory usage is high
-            if memory_percent > 75:
-                collected = gc.collect()
-                self.logger.warning(
-                    f"High memory usage ({memory_percent:.1f}%), collected {collected} objects"
-                )
-
-            # CPU monitoring
-            cpu_percent = process.cpu_percent(interval=1)
-
-            # Update stats efficiently
-            self.stats.memory_usage_mb = memory_info.rss / 1024 / 1024
-            self.stats.cpu_usage_percent = cpu_percent
-
-            # Performance metrics are now sent to Discord via update_statistics task
-            # No need for additional database storage here
-
-            # Performance warnings
-            if memory_percent > 85:
-                self.logger.error(f"Critical memory usage: {memory_percent:.1f}%")
-            elif memory_percent > 70:
-                self.logger.warning(f"High memory usage: {memory_percent:.1f}%")
-
-            if cpu_percent > 80:
-                self.logger.warning(f"High CPU usage: {cpu_percent:.1f}%")
-
-        except ImportError:
-            self.logger.warning("psutil not available for resource monitoring")
+            memory_mb = process.memory_info().rss / 1024 / 1024
+            
+            self.stats.memory_usage_mb = memory_mb
+            
+            # Only log if memory is very high
+            if memory_mb > 500:  # 500MB threshold
+                self.logger.warning(f"High memory: {memory_mb:.1f}MB")
+                
         except Exception as e:
-            self.logger.error(f"Resource monitoring error: {e}")
+            pass  # Silent fail
 
-    @tasks.loop(minutes=20)  # Optimized frequency for Discord reporting
+    @tasks.loop(hours=12)  # Very infrequent
     async def update_statistics(self):
-        """Update and send bot statistics to Discord"""
+        """Minimal stats update"""
         try:
-            # Collect statistics
-            stats_data = {
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-                "uptime_seconds": self.stats.uptime_seconds,
-                "commands_executed": self.stats.commands_executed,
-                "messages_processed": self.stats.messages_processed,
-                "errors_handled": self.stats.errors_handled,
-                "guilds_count": len(self.guilds),
-                "memory_usage_mb": self.stats.memory_usage_mb,
-                "cpu_usage_percent": self.stats.cpu_usage_percent,
-                "latency_ms": round(self.latency * 1000, 2),
-                "extension_health": sum(
-                    1 for health in self.extension_health.values() if health
-                ),
-                "total_extensions": len(self.extension_health),
-            }
+            self.stats.update_system_stats()
+            self.logger.debug("Stats updated")
+        except Exception:
+            pass
 
-            # Send to Discord channel
-            discord_reporter = get_discord_reporter()
-            if discord_reporter:
-                await discord_reporter.send_performance_report(stats_data)
-
-            # Keep minimal database storage for critical metrics only
-            if stats_data["errors_handled"] > 0 or stats_data["cpu_usage_percent"] > 80:
-                key = datetime.now(timezone.utc).strftime("%Y%m%d_%H")
-                await db.set("performance_metrics", key, stats_data)
-
-        except Exception as e:
-            self.logger.error(f"Error updating statistics: {e}")
-
-    @tasks.loop(hours=6)  # Reduced frequency for cleanup
+    @tasks.loop(hours=24)  # Daily cleanup only
     async def cleanup_old_data(self):
-        """Enhanced cleanup with automatic optimization"""
+        """Minimal cleanup"""
         try:
-            # Database cleanup with connection pooling
-            if hasattr(db, "cleanup_old_data"):
-                await db.cleanup_old_data(days=30)
-
-            # Clean old performance metrics (keep last 7 days)
-            cutoff_date = datetime.now(timezone.utc) - timedelta(days=7)
-            old_keys = []
-
-            # This would be implemented with proper key iteration
-            # For now, log cleanup action
-            self.logger.info("🧹 Enhanced cleanup task executed - removed old metrics")
-
-            # Force garbage collection after cleanup
-            # Use already imported gc module
+            import gc
             collected = gc.collect()
-            self.logger.debug(f"🗑️ Post-cleanup garbage collection: {collected} objects")
+            if collected > 100:
+                self.logger.debug(f"GC: {collected} objects")
+        except Exception:
+            pass
 
-        except Exception as e:
-            self.logger.error(f"Error in data cleanup: {e}")
+    # Removed heavy guild sync task for performance
 
-    @tasks.loop(hours=1)  # Balanced frequency for guild sync
-    async def sync_guild_configs(self):
-        """Optimized guild configuration synchronization"""
-        try:
-            guild_updates = []
-
-            for guild in self.guilds:
-                try:
-                    guild_config = await db.get("guild_configs", str(guild.id))
-                    needs_update = False
-
-                    if guild_config:
-                        # Batch check for changes
-                        if guild_config.get("guild_name") != guild.name:
-                            guild_config["guild_name"] = guild.name
-                            needs_update = True
-
-                        if guild_config.get("member_count") != guild.member_count:
-                            guild_config["member_count"] = guild.member_count
-                            needs_update = True
-
-                        if needs_update:
-                            guild_updates.append((guild.id, guild_config))
-                    else:
-                        # Initialize config for new guilds
-                        await self._initialize_guild_config(guild)
-
-                    # Optimized rate limiting for large servers (reduced delay)
-                    if len(self.guilds) > 200:  # Only for very large deployments
-                        await asyncio.sleep(0.01)
-                ## Vim discable and error handiling, except and error try and fix the thing for auto complation, { getter/ setter}
-                except Exception as e:
-                    self.logger.error(f"Error syncing guild {guild.id}: {e}")
-
-            # Batch update configurations
-            for guild_id, config in guild_updates:
-                await db.set("guild_configs", str(guild_id), config)
-
-            if guild_updates:
-                self.logger.debug(
-                    f"🔄 Updated {len(guild_updates)} guild configurations"
-                )
-
-        except Exception as e:
-            self.logger.error(f"Error syncing guild configs: {e}")
-
-    @tasks.loop(minutes=45)  # Reduced frequency for extension monitoring
-    async def monitor_extensions(self):
-        """Enhanced extension health monitoring with recovery"""
-        try:
-            unhealthy_extensions = []
-
-            for extension_name in list(self.loaded_extensions.keys()):
-                try:
-                    # Check extension health efficiently
-                    cog_name = extension_name.split(".")[-1].title().replace("_", "")
-                    ext = self.get_cog(cog_name)
-
-                    if ext is None:
-                        self.extension_health[extension_name] = False
-                        unhealthy_extensions.append(extension_name)
-                    else:
-                        # Additional health checks
-                        if hasattr(ext, "health_check"):
-                            try:
-                                health = await ext.health_check()
-                                self.extension_health[extension_name] = health
-                            except:
-                                self.extension_health[extension_name] = (
-                                    True  # Default healthy
-                                )
-                        else:
-                            self.extension_health[extension_name] = True
-
-                except Exception as e:
-                    self.extension_health[extension_name] = False
-                    unhealthy_extensions.append(extension_name)
-                    self.logger.error(
-                        f"❌ Extension {extension_name} health check failed: {e}"
-                    )
-
-            # Attempt recovery for unhealthy extensions
-            if unhealthy_extensions:
-                self.logger.warning(
-                    f"⚠️ Unhealthy extensions detected: {', '.join(unhealthy_extensions)}"
-                )
-
-                # Optional: Attempt automatic recovery
-                for ext_name in unhealthy_extensions[:2]:  # Limit recovery attempts
-                    try:
-                        success = await self.reload_extension_safe(ext_name)
-                        if success:
-                            self.logger.info(f"🔄 Successfully recovered {ext_name}")
-                    except Exception as e:
-                        self.logger.error(f"Failed to recover {ext_name}: {e}")
-
-        except Exception as e:
-            self.logger.error(f"Error monitoring extensions: {e}")
-
-    @tasks.loop(hours=24)  # Daily performance optimization
-    async def optimize_performance(self):
-        """Daily performance optimization routine"""
-        try:
-            # Database optimization
-            if hasattr(db, "pool"):
-                # Optimize database connections
-                stats = await db.get_performance_stats()
-                self.logger.info(
-                    f"📊 DB Stats: {stats['connection_pool']['hit_ratio']:.2%} hit ratio"
-                )
-
-            # Memory optimization (using already imported gc)
-            collected = gc.collect()
-
-            # Extension health summary
-            healthy_count = sum(
-                1 for health in self.extension_health.values() if health
-            )
-            total_count = len(self.extension_health)
-
-            optimization_data = {
-                "database_optimized": True,
-                "garbage_collected": collected,
-                "extensions_healthy": f"{healthy_count}/{total_count}",
-                "optimization_time": datetime.now(timezone.utc).isoformat(),
-            }
-
-            await db.set(
-                "performance_metrics",
-                f"optimization_{datetime.now(timezone.utc).strftime('%Y%m%d')}",
-                optimization_data,
-            )
-            self.logger.info(
-                f"🚀 Daily optimization completed - collected {collected} objects"
-            )
-
-        except Exception as e:
-            self.logger.error(f"Performance optimization error: {e}")
+    # Removed heavy monitoring tasks for performance
 
     # Enhanced utility methods
     async def get_guild_config(self, guild_id: int) -> Dict[str, Any]:
