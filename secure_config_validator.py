@@ -14,7 +14,7 @@ from typing import Dict, Any
 class ConfigValidator:
     """Validates and secures configuration files"""
 
-    def __init__(self, config_path: str = "config.json"):
+    def __init__(self, config_path: str = "config/config.json"):
         self.config_path = Path(config_path)
         self.sensitive_patterns = [
             r"sk-[a-zA-Z0-9-_]{40,}",  # OpenAI API keys

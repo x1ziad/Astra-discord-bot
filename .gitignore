@@ -1,4 +1,4 @@
-# Environment variables and secrets
+# Environment variables and secrets - CRITICAL SECURITY
 .env
 .env.*
 .ENV
@@ -6,6 +6,11 @@
 .env.local
 .env.production
 .env.development
+.env.backup.*
+secure_backup/
+**/secure_backup/
+**/.env
+**/*.env
 
 __pycache__/
 *.pyc

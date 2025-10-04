@@ -1,5 +1,7 @@
 {
   "bot": {
+    "token": "${DISCORD_TOKEN}",
+    "client_id": "${DISCORD_CLIENT_ID}",
     "name": "Astra",
     "version": "2.0.0",
     "description": "Advanced AI-powered Discord bot",
@@ -20,12 +22,12 @@
     }
   },
   "ai": {
-    "api_key": "",
-    "base_url": "https://openrouter.ai/api/v1",
-    "model": "anthropic/claude-3.5-sonnet",
-    "max_tokens": 2000,
+    "api_key": "${AI_API_KEY}",
+    "base_url": "${AI_BASE_URL}",
+    "model": "${AI_MODEL}",
+    "max_tokens": "${AI_MAX_TOKENS}",
     "temperature": 0.7,
-    "provider_name": "openrouter"
+    "provider_name": "${AI_PROVIDER}"
   },
   "database": {
     "path": "data/astra.db",
@@ -39,6 +41,16 @@
     "max_size": 10000,
     "redis_enabled": false,
     "redis_url": null
+  },
+  "api_keys": {
+    "openai": "${OPENAI_API_KEY}",
+    "openrouter": "${OPENROUTER_API_KEY}",
+    "nasa": "${NASA_API_KEY}",
+    "notion": "${NOTION_TOKEN}",
+    "magichour": "${MAGICHOUR_API_KEY}"
+  },
+  "channels": {
+    "space_channel_id": "${SPACE_CHANNEL_ID}"
   },
   "logging": {
     "level": "INFO",

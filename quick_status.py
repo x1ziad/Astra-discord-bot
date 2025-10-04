@@ -69,7 +69,7 @@ def check_system_status():
 
     # Check configuration
     print("\n⚙️  Configuration Status:")
-    config_file = Path("config.json")
+    config_file = Path("config/config.json")
     if config_file.exists():
         status["config"] = True
         print("  ✅ Configuration file exists")
@@ -77,17 +77,29 @@ def check_system_status():
         # Check for API keys
         try:
             import json
+            import os
 
             with open(config_file) as f:
                 config = json.load(f)
 
             config_str = json.dumps(config)
-            if "YOUR_" not in config_str or "_HERE" not in config_str:
+            
+            # Check if config uses environment variables (secure) or has placeholders
+            if "${" in config_str:
+                # Environment variable based config - check if env vars are set
+                required_env_vars = ["DISCORD_TOKEN", "OPENAI_API_KEY", "OPENROUTER_API_KEY"]
+                missing_vars = [var for var in required_env_vars if not os.getenv(var)]
+                
+                if not missing_vars:
+                    print("  ✅ API keys configured")
+                else:
+                    print(f"  ⚠️  Missing environment variables: {', '.join(missing_vars)}")
+            elif "YOUR_" not in config_str and "_HERE" not in config_str:
                 print("  ✅ API keys configured")
             else:
                 print("  ⚠️  Some API keys still need configuration")
-        except:
-            print("  ⚠️  Configuration file format issues")
+        except Exception as e:
+            print(f"  ⚠️  Configuration file format issues: {e}")
     else:
         print("  ❌ Configuration file missing")
 
