@@ -378,22 +378,45 @@ class AstraBot(commands.Bot):
     async def _initialize_ai_systems(self):
         """Initialize AI engine and context manager for enhanced conversation"""
         try:
-            # Simple AI initialization
-            from ai.consolidated_ai_engine import initialize_engine
+            from ai.consolidated_ai_engine import initialize_engine, get_engine
+
+            # Check for API keys
+            openai_key = os.getenv("OPENAI_API_KEY")
+            ai_key = os.getenv("AI_API_KEY")
+            openrouter_key = os.getenv("OPENROUTER_API_KEY")
             
+            # Configure AI with available keys
             ai_config = {
-                "ai_api_key": os.getenv("AI_API_KEY") or os.getenv("OPENAI_API_KEY"),
-                "ai_model": "gpt-3.5-turbo",  # Simple default
+                "ai_api_key": ai_key or openai_key,
+                "openai_api_key": openai_key,
+                "openrouter_api_key": openrouter_key,
+                "ai_model": "gpt-3.5-turbo",
+                "ai_provider": "openai" if openai_key else "mock"
             }
+
+            # Initialize AI engine
+            ai_engine = initialize_engine(ai_config)
             
-            if ai_config["ai_api_key"]:
-                ai_engine = initialize_engine(ai_config)
-                self.logger.info("✅ AI Engine ready")
+            if ai_config["ai_api_key"] or openai_key or openrouter_key:
+                self.logger.info("✅ AI Engine initialized with API access")
+                if openai_key:
+                    self.logger.info("🤖 OpenAI API configured")
+                if openrouter_key:
+                    self.logger.info("🌐 OpenRouter API configured")
             else:
-                self.logger.info("⚠️ No AI API key - running without AI")
+                self.logger.info("🤖 AI Engine running in mock mode (no API keys)")
+                self.logger.info("📝 To enable AI: Set OPENAI_API_KEY or OPENROUTER_API_KEY")
+            
+            # Test AI functionality
+            engine = get_engine()
+            if engine:
+                self.logger.info("✅ AI systems ready for conversations")
+            else:
+                self.logger.warning("⚠️ AI engine initialization failed")
 
         except Exception as e:
-            self.logger.warning(f"AI init failed: {e} - continuing without AI")
+            self.logger.error(f"❌ AI initialization error: {e}")
+            self.logger.info("🔄 Bot will continue with basic functionality")
 
     async def _initialize_database(self):
         """Initialize database connections and create tables"""
@@ -484,7 +507,7 @@ class AstraBot(commands.Bot):
         # Only start essential tasks to prevent crashes
         if not self.monitor_system_health.is_running():
             self.monitor_system_health.start()
-            
+
         self.logger.info("⚡ Minimal background tasks started")
 
     def _start_performance_monitoring(self):
@@ -1168,15 +1191,16 @@ class AstraBot(commands.Bot):
         """Basic system monitoring"""
         try:
             import psutil
+
             process = psutil.Process()
             memory_mb = process.memory_info().rss / 1024 / 1024
-            
+
             self.stats.memory_usage_mb = memory_mb
-            
+
             # Only log if memory is very high
             if memory_mb > 500:  # 500MB threshold
                 self.logger.warning(f"High memory: {memory_mb:.1f}MB")
-                
+
         except Exception as e:
             pass  # Silent fail
 
@@ -1194,6 +1218,7 @@ class AstraBot(commands.Bot):
         """Minimal cleanup"""
         try:
             import gc
+
             collected = gc.collect()
             if collected > 100:
                 self.logger.debug(f"GC: {collected} objects")
@@ -1268,9 +1293,6 @@ class AstraBot(commands.Bot):
                 self.monitor_system_health,
                 self.update_statistics,
                 self.cleanup_old_data,
-                self.sync_guild_configs,
-                self.monitor_extensions,
-                self.optimize_performance,
             ]
 
             for task in tasks_to_stop:
