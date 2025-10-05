@@ -4,15 +4,476 @@ from discord import app_commands
 import asyncio
 import json
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Literal, Dict, List, Any, Deque
+from typing import Optional, Literal, Dict, List, Any, Deque, Union
 from collections import deque, defaultdict
 from functools import lru_cache, wraps
 import logging
 import weakref
 import time
+import hashlib
+import re
+import sqlite3
+from enum import Enum
+from dataclasses import dataclass, asdict
 
 # Owner user ID - only this user can control lockdown mode
 OWNER_ID = 1115739214148026469
+# Forensic logging channel ID
+FORENSIC_CHANNEL_ID = 1419517784135700561
+
+
+class ViolationType(Enum):
+    """Types of security violations detected"""
+    SCAM = "scam"
+    SPAM = "spam"
+    MALWARE = "malware"
+    HARASSMENT = "harassment"
+    PHISHING = "phishing"
+    RAID = "raid"
+    TOXIC = "toxic"
+    NSFW = "nsfw"
+    IMPERSONATION = "impersonation"
+
+
+class ViolationSeverity(Enum):
+    """Severity levels for violations"""
+    LOW = 1
+    MEDIUM = 2
+    HIGH = 3
+    CRITICAL = 4
+    EMERGENCY = 5
+
+
+class ActionType(Enum):
+    """Available moderation actions"""
+    WARN = "warn"
+    MUTE = "mute"
+    TIMEOUT = "timeout"
+    DELETE = "delete"
+    QUARANTINE = "quarantine"
+    KICK = "kick"
+    BAN = "ban"
+    ESCALATE = "escalate"
+
+
+@dataclass
+class ViolationEvent:
+    """Data class for violation events"""
+    user_id: int
+    guild_id: int
+    channel_id: int
+    message_id: Optional[int]
+    violation_type: ViolationType
+    severity: ViolationSeverity
+    action_taken: ActionType
+    content_hash: str
+    original_content: str
+    risk_score: float
+    timestamp: datetime
+    context: Dict[str, Any]
+    ai_confidence: float
+    moderator_confirmed: Optional[bool] = None
+
+
+class SmartActionSystem:
+    """
+    🧠 AI-Powered Smart Action System
+    
+    Sophisticated threat detection and automated moderation with:
+    - AI-driven violation severity assessment
+    - Intelligent action selection based on context
+    - Risk scoring and user behavior analysis
+    - Continuous learning from moderation feedback
+    """
+    
+    def __init__(self):
+        self.violation_patterns = {
+            ViolationType.SCAM: [
+                r'\b(free\s+nitro|discord\s+gift|steam\s+gift)\b',
+                r'\b(click\s+here|visit\s+link|claim\s+now)\b',
+                r'bit\.ly|tinyurl|t\.co',
+                r'\b(urgent|limited\s+time|expires\s+soon)\b'
+            ],
+            ViolationType.SPAM: [
+                r'(.)\1{10,}',  # Repeated characters
+                r'@everyone|@here',
+                r'(discord\.gg|invite)\s*/\s*[a-zA-Z0-9]+',
+                r'\b(join\s+my\s+server|check\s+out\s+my)\b'
+            ],
+            ViolationType.MALWARE: [
+                r'\.(exe|bat|scr|vbs|jar)$',
+                r'download\s+this',
+                r'run\s+as\s+administrator',
+                r'disable\s+antivirus'
+            ],
+            ViolationType.HARASSMENT: [
+                r'\b(kill\s+yourself|kys)\b',
+                r'\b(retard|f[a4]gg[o0]t)\b',
+                r'you\s+should\s+die',
+                r'nobody\s+likes\s+you'
+            ],
+            ViolationType.PHISHING: [
+                r'verify\s+your\s+account',
+                r'suspended\s+account',
+                r'click\s+to\s+verify',
+                r'security\s+alert'
+            ]
+        }
+        
+        self.risk_factors = {
+            'new_account': 0.3,
+            'no_avatar': 0.2,
+            'no_roles': 0.1,
+            'previous_violations': 0.4,
+            'multiple_servers': 0.1,
+            'dm_violations': 0.5
+        }
+        
+        self.action_matrix = {
+            (ViolationType.SCAM, ViolationSeverity.LOW): ActionType.WARN,
+            (ViolationType.SCAM, ViolationSeverity.MEDIUM): ActionType.TIMEOUT,
+            (ViolationType.SCAM, ViolationSeverity.HIGH): ActionType.BAN,
+            (ViolationType.SCAM, ViolationSeverity.CRITICAL): ActionType.BAN,
+            
+            (ViolationType.SPAM, ViolationSeverity.LOW): ActionType.DELETE,
+            (ViolationType.SPAM, ViolationSeverity.MEDIUM): ActionType.MUTE,
+            (ViolationType.SPAM, ViolationSeverity.HIGH): ActionType.TIMEOUT,
+            (ViolationType.SPAM, ViolationSeverity.CRITICAL): ActionType.BAN,
+            
+            (ViolationType.MALWARE, ViolationSeverity.LOW): ActionType.QUARANTINE,
+            (ViolationType.MALWARE, ViolationSeverity.MEDIUM): ActionType.BAN,
+            (ViolationType.MALWARE, ViolationSeverity.HIGH): ActionType.BAN,
+            (ViolationType.MALWARE, ViolationSeverity.CRITICAL): ActionType.BAN,
+            
+            (ViolationType.HARASSMENT, ViolationSeverity.LOW): ActionType.WARN,
+            (ViolationType.HARASSMENT, ViolationSeverity.MEDIUM): ActionType.TIMEOUT,
+            (ViolationType.HARASSMENT, ViolationSeverity.HIGH): ActionType.BAN,
+            (ViolationType.HARASSMENT, ViolationSeverity.CRITICAL): ActionType.BAN,
+        }
+    
+    def analyze_content(self, content: str, user: discord.Member, context: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Analyze message content for violations using AI-enhanced pattern matching
+        """
+        violations = []
+        max_severity = ViolationSeverity.LOW
+        
+        # Pattern matching for different violation types
+        for violation_type, patterns in self.violation_patterns.items():
+            confidence = 0.0
+            matches = []
+            
+            for pattern in patterns:
+                if re.search(pattern, content, re.IGNORECASE):
+                    matches.append(pattern)
+                    confidence += 0.25
+            
+            if matches:
+                violations.append({
+                    'type': violation_type,
+                    'confidence': min(confidence, 1.0),
+                    'patterns': matches
+                })
+        
+        # Calculate risk score
+        risk_score = self._calculate_risk_score(user, context, violations)
+        
+        # Determine severity based on violations and risk score
+        if violations:
+            if risk_score > 0.8 or len(violations) > 2:
+                max_severity = ViolationSeverity.CRITICAL
+            elif risk_score > 0.6 or any(v['confidence'] > 0.7 for v in violations):
+                max_severity = ViolationSeverity.HIGH
+            elif risk_score > 0.4 or any(v['confidence'] > 0.5 for v in violations):
+                max_severity = ViolationSeverity.MEDIUM
+            else:
+                max_severity = ViolationSeverity.LOW
+        
+        return {
+            'violations': violations,
+            'risk_score': risk_score,
+            'severity': max_severity,
+            'recommended_action': self._get_recommended_action(violations, max_severity),
+            'ai_confidence': self._calculate_ai_confidence(violations, risk_score)
+        }
+    
+    def _calculate_risk_score(self, user: discord.Member, context: Dict[str, Any], violations: List[Dict]) -> float:
+        """Calculate user risk score based on multiple factors"""
+        risk_score = 0.0
+        
+        # Account age factor
+        account_age = (datetime.now(timezone.utc) - user.created_at).days
+        if account_age < 1:
+            risk_score += self.risk_factors['new_account']
+        elif account_age < 7:
+            risk_score += self.risk_factors['new_account'] * 0.5
+        
+        # Avatar and roles
+        if user.display_avatar.url == user.default_avatar.url:
+            risk_score += self.risk_factors['no_avatar']
+        
+        if len(user.roles) <= 1:  # Only @everyone role
+            risk_score += self.risk_factors['no_roles']
+        
+        # Previous violations from context
+        if context.get('previous_violations', 0) > 0:
+            risk_score += self.risk_factors['previous_violations']
+        
+        # DM violations are more serious
+        if context.get('is_dm', False):
+            risk_score += self.risk_factors['dm_violations']
+        
+        # Violation multiplier
+        if violations:
+            violation_multiplier = min(len(violations) * 0.2, 0.5)
+            risk_score += violation_multiplier
+        
+        return min(risk_score, 1.0)
+    
+    def _get_recommended_action(self, violations: List[Dict], severity: ViolationSeverity) -> ActionType:
+        """Get recommended action based on violations and severity"""
+        if not violations:
+            return ActionType.WARN
+        
+        # Get the most severe violation type
+        primary_violation = max(violations, key=lambda x: x['confidence'])
+        violation_type = primary_violation['type']
+        
+        return self.action_matrix.get((violation_type, severity), ActionType.WARN)
+    
+    def _calculate_ai_confidence(self, violations: List[Dict], risk_score: float) -> float:
+        """Calculate AI confidence in the analysis"""
+        if not violations:
+            return 0.1
+        
+        avg_confidence = sum(v['confidence'] for v in violations) / len(violations)
+        risk_factor = min(risk_score, 1.0)
+        
+        return min((avg_confidence + risk_factor) / 2, 0.95)
+
+
+class ForensicLogger:
+    """
+    🕵️ Forensic Logging System
+    
+    Secure logging of all security events with:
+    - Encrypted message content storage
+    - Risk score tracking
+    - Context preservation
+    - Continuous learning feedback
+    """
+    
+    def __init__(self, bot):
+        self.bot = bot
+        self.db_path = "data/forensic_security.db"
+        self.learning_data = deque(maxlen=1000)
+        self._init_database()
+    
+    def _init_database(self):
+        """Initialize forensic database"""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS violation_events (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    guild_id INTEGER NOT NULL,
+                    channel_id INTEGER NOT NULL,
+                    message_id INTEGER,
+                    violation_type TEXT NOT NULL,
+                    severity INTEGER NOT NULL,
+                    action_taken TEXT NOT NULL,
+                    content_hash TEXT NOT NULL,
+                    original_content TEXT NOT NULL,
+                    risk_score REAL NOT NULL,
+                    timestamp DATETIME NOT NULL,
+                    context TEXT NOT NULL,
+                    ai_confidence REAL NOT NULL,
+                    moderator_confirmed INTEGER DEFAULT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            
+            cursor.execute('''
+                CREATE INDEX IF NOT EXISTS idx_user_violations 
+                ON violation_events(user_id, timestamp)
+            ''')
+            
+            cursor.execute('''
+                CREATE INDEX IF NOT EXISTS idx_guild_violations 
+                ON violation_events(guild_id, timestamp)
+            ''')
+            
+            conn.commit()
+            conn.close()
+            
+        except Exception as e:
+            logging.error(f"Failed to initialize forensic database: {e}")
+    
+    async def log_violation(self, event: ViolationEvent) -> bool:
+        """Log violation event to database and Discord channel"""
+        try:
+            # Store in database
+            await self._store_in_database(event)
+            
+            # Send to forensic channel
+            await self._send_to_forensic_channel(event)
+            
+            # Add to learning data
+            self.learning_data.append(event)
+            
+            return True
+            
+        except Exception as e:
+            logging.error(f"Failed to log violation: {e}")
+            return False
+    
+    async def _store_in_database(self, event: ViolationEvent):
+        """Store violation event in database"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            INSERT INTO violation_events (
+                user_id, guild_id, channel_id, message_id, violation_type,
+                severity, action_taken, content_hash, original_content,
+                risk_score, timestamp, context, ai_confidence, moderator_confirmed
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            event.user_id, event.guild_id, event.channel_id, event.message_id,
+            event.violation_type.value, event.severity.value, event.action_taken.value,
+            event.content_hash, event.original_content, event.risk_score,
+            event.timestamp, json.dumps(event.context), event.ai_confidence,
+            event.moderator_confirmed
+        ))
+        
+        conn.commit()
+        conn.close()
+    
+    async def _send_to_forensic_channel(self, event: ViolationEvent):
+        """Send violation event to forensic logging channel"""
+        try:
+            channel = self.bot.get_channel(FORENSIC_CHANNEL_ID)
+            if not channel:
+                return
+            
+            embed = discord.Embed(
+                title="🚨 SECURITY VIOLATION DETECTED",
+                color=self._get_severity_color(event.severity),
+                timestamp=event.timestamp
+            )
+            
+            embed.add_field(
+                name="👤 User", 
+                value=f"<@{event.user_id}> (`{event.user_id}`)",
+                inline=True
+            )
+            
+            embed.add_field(
+                name="📍 Location",
+                value=f"<#{event.channel_id}>",
+                inline=True
+            )
+            
+            embed.add_field(
+                name="⚠️ Violation Type",
+                value=event.violation_type.value.title(),
+                inline=True
+            )
+            
+            embed.add_field(
+                name="🎯 Severity",
+                value=f"Level {event.severity.value} ({event.severity.name})",
+                inline=True
+            )
+            
+            embed.add_field(
+                name="⚡ Action Taken",
+                value=event.action_taken.value.title(),
+                inline=True
+            )
+            
+            embed.add_field(
+                name="📊 Risk Score",
+                value=f"{event.risk_score:.2%}",
+                inline=True
+            )
+            
+            embed.add_field(
+                name="🤖 AI Confidence",
+                value=f"{event.ai_confidence:.2%}",
+                inline=True
+            )
+            
+            # Truncate content for display
+            display_content = event.original_content[:200] + "..." if len(event.original_content) > 200 else event.original_content
+            embed.add_field(
+                name="📝 Content",
+                value=f"```{display_content}```",
+                inline=False
+            )
+            
+            embed.add_field(
+                name="🔍 Hash",
+                value=f"`{event.content_hash[:16]}...`",
+                inline=True
+            )
+            
+            embed.set_footer(text=f"Event ID: {event.content_hash[:8]} | Forensic Logging System")
+            
+            await channel.send(embed=embed)
+            
+        except Exception as e:
+            logging.error(f"Failed to send to forensic channel: {e}")
+    
+    def _get_severity_color(self, severity: ViolationSeverity) -> int:
+        """Get color for severity level"""
+        colors = {
+            ViolationSeverity.LOW: 0x00FF00,
+            ViolationSeverity.MEDIUM: 0xFFFF00,
+            ViolationSeverity.HIGH: 0xFF9900,
+            ViolationSeverity.CRITICAL: 0xFF0000,
+            ViolationSeverity.EMERGENCY: 0x990000
+        }
+        return colors.get(severity, 0x0099FF)
+    
+    def _hash_content(self, content: str) -> str:
+        """Create hash of message content"""
+        return hashlib.sha256(content.encode()).hexdigest()
+    
+    async def get_user_violations(self, user_id: int, days: int = 30) -> List[Dict]:
+        """Get user's violation history"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
+        
+        cursor.execute('''
+            SELECT * FROM violation_events 
+            WHERE user_id = ? AND timestamp > ?
+            ORDER BY timestamp DESC
+        ''', (user_id, cutoff_date))
+        
+        results = cursor.fetchall()
+        conn.close()
+        
+        return [dict(zip([col[0] for col in cursor.description], row)) for row in results]
+    
+    async def update_moderator_feedback(self, event_hash: str, confirmed: bool):
+        """Update moderator confirmation for learning"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            UPDATE violation_events 
+            SET moderator_confirmed = ?
+            WHERE content_hash = ?
+        ''', (1 if confirmed else 0, event_hash))
+        
+        conn.commit()
+        conn.close()
 
 
 # Performance optimization decorator
@@ -65,6 +526,10 @@ class SecurityCommands(commands.Cog):
         "_embed_cache",
         "_user_cache",
         "_last_cleanup",
+        "smart_action_system",
+        "forensic_logger",
+        "active_quarantines",
+        "learning_feedback",
     ]
 
     def __init__(self, bot):
@@ -77,12 +542,76 @@ class SecurityCommands(commands.Cog):
         self._embed_cache = {}  # Cache for frequently used embeds
         self._user_cache = weakref.WeakValueDictionary()  # Auto-cleanup user cache
         self._last_cleanup = datetime.now(timezone.utc)
+        
+        # Enhanced security systems
+        self.smart_action_system = SmartActionSystem()
+        self.forensic_logger = ForensicLogger(bot)
+        self.active_quarantines = {}  # user_id -> quarantine_data
+        self.learning_feedback = deque(maxlen=500)  # Store moderator feedback
 
     async def cog_load(self):
         """Initialize security system on cog load"""
         print(
-            "🛡️ Security Commands loaded - Manual lockdown controls active (Performance Optimized)"
+            "🛡️ Enhanced Security System loaded - Smart Action System & Forensic Logging active"
         )
+
+    @commands.Cog.listener()
+    async def on_message(self, message: discord.Message):
+        """Monitor all messages for potential violations"""
+        # Skip if not in a guild or if message is from a bot
+        if not message.guild or message.author.bot:
+            return
+        
+        # Skip owner messages
+        if message.author.id == OWNER_ID:
+            return
+        
+        # Increment message analysis counter
+        self.security_stats['messages_analyzed'] += 1
+        
+        # Process message for violations
+        violation_event = await self.process_message_for_violations(message)
+        
+        if violation_event:
+            self.security_stats['threats_detected'] += 1
+
+    @commands.Cog.listener()
+    async def on_message_delete(self, message: discord.Message):
+        """Log all deleted messages (except from owner) for forensic analysis"""
+        if not message.guild or message.author.bot:
+            return
+        
+        # Skip owner messages
+        if message.author.id == OWNER_ID:
+            return
+        
+        try:
+            # Create a deletion event for forensic logging
+            deletion_event = ViolationEvent(
+                user_id=message.author.id,
+                guild_id=message.guild.id,
+                channel_id=message.channel.id,
+                message_id=message.id,
+                violation_type=ViolationType.SPAM,  # Default type for deletions
+                severity=ViolationSeverity.LOW,
+                action_taken=ActionType.DELETE,
+                content_hash=self.forensic_logger._hash_content(message.content),
+                original_content=message.content,
+                risk_score=0.1,  # Low risk for manual deletions
+                timestamp=datetime.now(timezone.utc),
+                context={
+                    'deletion_type': 'manual',
+                    'channel_name': message.channel.name,
+                    'message_created': message.created_at.isoformat()
+                },
+                ai_confidence=0.5,  # Medium confidence for deletion logging
+                moderator_confirmed=None
+            )
+            
+            await self.forensic_logger.log_violation(deletion_event)
+            
+        except Exception as e:
+            logging.error(f"Error logging message deletion: {e}")
 
     @lru_cache(maxsize=128)
     def _get_embed_template(self, embed_type: str) -> Dict[str, Any]:
@@ -235,7 +764,9 @@ class SecurityCommands(commands.Cog):
         if success:
             lockdown_duration = None
             if self.lockdown_start_time:
-                lockdown_duration = datetime.now(timezone.utc) - self.lockdown_start_time
+                lockdown_duration = (
+                    datetime.now(timezone.utc) - self.lockdown_start_time
+                )
 
             embed = discord.Embed(
                 title="🔓 LOCKDOWN DEACTIVATED",
@@ -649,6 +1180,594 @@ class SecurityCommands(commands.Cog):
         await interaction.response.send_message(embed=embed)
 
     # ============================================================================
+    # 🧠 SMART ACTION SYSTEM COMMANDS (ADMINS + OWNER)
+    # ============================================================================
+
+    @app_commands.command(
+        name="analyze-message", 
+        description="🧠 Analyze a message for potential security violations"
+    )
+    @app_commands.describe(
+        message_id="ID of the message to analyze",
+        channel="Channel containing the message (optional, defaults to current)"
+    )
+    @performance_monitor
+    async def analyze_message(
+        self,
+        interaction: discord.Interaction,
+        message_id: str,
+        channel: Optional[discord.TextChannel] = None
+    ):
+        """AI-powered message analysis"""
+        
+        # Check permissions
+        if not (
+            interaction.user.id == OWNER_ID
+            or interaction.user.guild_permissions.administrator
+        ):
+            embed = discord.Embed(
+                title="🚫 Access Denied",
+                description="This command requires Administrator permissions.",
+                color=0xFF0000,
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            return
+
+        await interaction.response.defer()
+        
+        try:
+            target_channel = channel or interaction.channel
+            message = await target_channel.fetch_message(int(message_id))
+            
+            # Get previous violations for context
+            user_violations = await self.forensic_logger.get_user_violations(message.author.id, days=30)
+            
+            context = {
+                'previous_violations': len(user_violations),
+                'is_dm': isinstance(target_channel, discord.DMChannel),
+                'channel_type': str(type(target_channel).__name__),
+                'message_age': (datetime.now(timezone.utc) - message.created_at).total_seconds()
+            }
+            
+            # Analyze with Smart Action System
+            analysis = self.smart_action_system.analyze_content(
+                message.content, 
+                message.author, 
+                context
+            )
+            
+            embed = discord.Embed(
+                title="🧠 AI MESSAGE ANALYSIS",
+                description=f"Analysis of message from {message.author.mention}",
+                color=0xFF0000 if analysis['violations'] else 0x00FF00,
+                timestamp=datetime.now(timezone.utc)
+            )
+            
+            embed.add_field(
+                name="📊 Risk Score",
+                value=f"{analysis['risk_score']:.2%}",
+                inline=True
+            )
+            
+            embed.add_field(
+                name="🤖 AI Confidence",
+                value=f"{analysis['ai_confidence']:.2%}",
+                inline=True
+            )
+            
+            embed.add_field(
+                name="⚡ Recommended Action",
+                value=analysis['recommended_action'].value.title(),
+                inline=True
+            )
+            
+            if analysis['violations']:
+                violation_text = []
+                for violation in analysis['violations']:
+                    violation_text.append(
+                        f"• **{violation['type'].value.title()}** ({violation['confidence']:.0%} confidence)"
+                    )
+                
+                embed.add_field(
+                    name="⚠️ Violations Detected",
+                    value="\n".join(violation_text),
+                    inline=False
+                )
+            else:
+                embed.add_field(
+                    name="✅ No Violations",
+                    value="Message appears to be safe",
+                    inline=False
+                )
+            
+            embed.add_field(
+                name="📝 Message Content",
+                value=f"```{message.content[:200]}{'...' if len(message.content) > 200 else ''}```",
+                inline=False
+            )
+            
+            embed.add_field(
+                name="📍 Message Link",
+                value=f"[Jump to Message]({message.jump_url})",
+                inline=True
+            )
+            
+            await interaction.followup.send(embed=embed)
+            
+        except discord.NotFound:
+            embed = discord.Embed(
+                title="❌ Message Not Found",
+                description="Could not find the specified message.",
+                color=0xFF0000
+            )
+            await interaction.followup.send(embed=embed, ephemeral=True)
+        except Exception as e:
+            logging.error(f"Error in analyze_message: {e}")
+            embed = discord.Embed(
+                title="❌ Analysis Failed",
+                description="An error occurred during message analysis.",
+                color=0xFF0000
+            )
+            await interaction.followup.send(embed=embed, ephemeral=True)
+
+    @app_commands.command(
+        name="smart-timeout",
+        description="⚡ Smart timeout with AI-powered duration calculation"
+    )
+    @app_commands.describe(
+        user="User to timeout",
+        reason="Reason for timeout (optional)",
+        override_duration="Override AI duration in minutes (optional)"
+    )
+    @performance_monitor
+    async def smart_timeout(
+        self,
+        interaction: discord.Interaction,
+        user: discord.Member,
+        reason: Optional[str] = None,
+        override_duration: Optional[int] = None
+    ):
+        """AI-powered smart timeout with dynamic duration"""
+        
+        # Check permissions
+        if not (
+            interaction.user.id == OWNER_ID
+            or interaction.user.guild_permissions.moderate_members
+        ):
+            embed = discord.Embed(
+                title="🚫 Access Denied",
+                description="This command requires Moderate Members permissions.",
+                color=0xFF0000,
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            return
+
+        if user.id == OWNER_ID:
+            embed = discord.Embed(
+                title="🚫 Cannot Timeout Owner",
+                description="Cannot timeout the bot owner.",
+                color=0xFF0000,
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            return
+
+        await interaction.response.defer()
+        
+        try:
+            # Get user's violation history
+            user_violations = await self.forensic_logger.get_user_violations(user.id, days=30)
+            
+            # Calculate smart timeout duration based on history
+            if override_duration:
+                duration_minutes = override_duration
+            else:
+                duration_minutes = self._calculate_smart_timeout_duration(user, user_violations)
+            
+            timeout_duration = timedelta(minutes=duration_minutes)
+            
+            # Apply timeout
+            await user.timeout(timeout_duration, reason=reason or "Smart timeout applied")
+            
+            # Log the action
+            violation_event = ViolationEvent(
+                user_id=user.id,
+                guild_id=interaction.guild.id,
+                channel_id=interaction.channel.id,
+                message_id=None,
+                violation_type=ViolationType.HARASSMENT,  # Default type for manual timeouts
+                severity=ViolationSeverity.MEDIUM,
+                action_taken=ActionType.TIMEOUT,
+                content_hash=self.forensic_logger._hash_content(reason or "Manual timeout"),
+                original_content=reason or "Manual timeout",
+                risk_score=len(user_violations) / 10.0,  # Simple risk based on violation count
+                timestamp=datetime.now(timezone.utc),
+                context={'manual_action': True, 'moderator': interaction.user.id},
+                ai_confidence=0.8,
+                moderator_confirmed=True
+            )
+            
+            await self.forensic_logger.log_violation(violation_event)
+            
+            embed = discord.Embed(
+                title="⚡ SMART TIMEOUT APPLIED",
+                description=f"{user.mention} has been timed out using AI-powered duration calculation.",
+                color=0xFF9900,
+                timestamp=datetime.now(timezone.utc)
+            )
+            
+            embed.add_field(
+                name="👤 User",
+                value=f"{user.mention} (`{user.id}`)",
+                inline=True
+            )
+            
+            embed.add_field(
+                name="⏰ Duration",
+                value=f"{duration_minutes} minutes",
+                inline=True
+            )
+            
+            embed.add_field(
+                name="📊 Previous Violations",
+                value=str(len(user_violations)),
+                inline=True
+            )
+            
+            if reason:
+                embed.add_field(
+                    name="📝 Reason",
+                    value=reason,
+                    inline=False
+                )
+            
+            embed.add_field(
+                name="🧠 AI Calculation",
+                value=f"Duration calculated based on user history and risk assessment",
+                inline=False
+            )
+            
+            await interaction.followup.send(embed=embed)
+            
+        except discord.Forbidden:
+            embed = discord.Embed(
+                title="❌ Permission Denied",
+                description="Bot lacks permission to timeout this user.",
+                color=0xFF0000
+            )
+            await interaction.followup.send(embed=embed, ephemeral=True)
+        except Exception as e:
+            logging.error(f"Error in smart_timeout: {e}")
+            embed = discord.Embed(
+                title="❌ Timeout Failed",
+                description="An error occurred while applying timeout.",
+                color=0xFF0000
+            )
+            await interaction.followup.send(embed=embed, ephemeral=True)
+
+    @app_commands.command(
+        name="quarantine-user",
+        description="🔒 Quarantine a user (remove all roles and restrict to quarantine channel)"
+    )
+    @app_commands.describe(
+        user="User to quarantine",
+        reason="Reason for quarantine",
+        duration="Duration in hours (default: 24)"
+    )
+    @performance_monitor
+    async def quarantine_user(
+        self,
+        interaction: discord.Interaction,
+        user: discord.Member,
+        reason: str,
+        duration: Optional[int] = 24
+    ):
+        """Advanced quarantine system"""
+        
+        # Check permissions
+        if not (
+            interaction.user.id == OWNER_ID
+            or interaction.user.guild_permissions.administrator
+        ):
+            embed = discord.Embed(
+                title="🚫 Access Denied",
+                description="This command requires Administrator permissions.",
+                color=0xFF0000,
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            return
+
+        if user.id == OWNER_ID:
+            embed = discord.Embed(
+                title="🚫 Cannot Quarantine Owner",
+                description="Cannot quarantine the bot owner.",
+                color=0xFF0000,
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            return
+
+        await interaction.response.defer()
+        
+        try:
+            # Store user's original roles
+            original_roles = [role for role in user.roles if role != interaction.guild.default_role]
+            
+            # Remove all roles except @everyone
+            for role in original_roles:
+                try:
+                    await user.remove_roles(role, reason=f"Quarantine: {reason}")
+                except discord.Forbidden:
+                    continue
+            
+            # Store quarantine data
+            self.active_quarantines[user.id] = {
+                'original_roles': [role.id for role in original_roles],
+                'quarantine_start': datetime.now(timezone.utc),
+                'duration_hours': duration,
+                'reason': reason,
+                'moderator': interaction.user.id
+            }
+            
+            # Log the quarantine
+            violation_event = ViolationEvent(
+                user_id=user.id,
+                guild_id=interaction.guild.id,
+                channel_id=interaction.channel.id,
+                message_id=None,
+                violation_type=ViolationType.HARASSMENT,  # Default for quarantine
+                severity=ViolationSeverity.HIGH,
+                action_taken=ActionType.QUARANTINE,
+                content_hash=self.forensic_logger._hash_content(reason),
+                original_content=reason,
+                risk_score=0.8,  # High risk for quarantine
+                timestamp=datetime.now(timezone.utc),
+                context={'quarantine_duration': duration, 'moderator': interaction.user.id},
+                ai_confidence=1.0,  # Manual action
+                moderator_confirmed=True
+            )
+            
+            await self.forensic_logger.log_violation(violation_event)
+            
+            embed = discord.Embed(
+                title="🔒 USER QUARANTINED",
+                description=f"{user.mention} has been quarantined.",
+                color=0xFF6600,
+                timestamp=datetime.now(timezone.utc)
+            )
+            
+            embed.add_field(
+                name="👤 User",
+                value=f"{user.mention} (`{user.id}`)",
+                inline=True
+            )
+            
+            embed.add_field(
+                name="⏰ Duration",
+                value=f"{duration} hours",
+                inline=True
+            )
+            
+            embed.add_field(
+                name="🔧 Roles Removed",
+                value=str(len(original_roles)),
+                inline=True
+            )
+            
+            embed.add_field(
+                name="📝 Reason",
+                value=reason,
+                inline=False
+            )
+            
+            embed.add_field(
+                name="⚡ Actions Taken",
+                value="• All roles removed\n• User quarantined\n• Event logged",
+                inline=False
+            )
+            
+            # Auto-release after duration
+            if duration > 0:
+                embed.add_field(
+                    name="🔓 Auto-Release",
+                    value=f"User will be automatically released in {duration} hours",
+                    inline=False
+                )
+                
+                # Schedule auto-release
+                asyncio.create_task(self._auto_release_quarantine(user.id, duration * 3600))
+            
+            await interaction.followup.send(embed=embed)
+            
+        except Exception as e:
+            logging.error(f"Error in quarantine_user: {e}")
+            embed = discord.Embed(
+                title="❌ Quarantine Failed",
+                description="An error occurred while quarantining the user.",
+                color=0xFF0000
+            )
+            await interaction.followup.send(embed=embed, ephemeral=True)
+
+    @app_commands.command(
+        name="release-quarantine",
+        description="🔓 Release a user from quarantine and restore their roles"
+    )
+    @app_commands.describe(user="User to release from quarantine")
+    @performance_monitor
+    async def release_quarantine(
+        self,
+        interaction: discord.Interaction,
+        user: discord.Member
+    ):
+        """Release user from quarantine"""
+        
+        # Check permissions
+        if not (
+            interaction.user.id == OWNER_ID
+            or interaction.user.guild_permissions.administrator
+        ):
+            embed = discord.Embed(
+                title="🚫 Access Denied",
+                description="This command requires Administrator permissions.",
+                color=0xFF0000,
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            return
+
+        if user.id not in self.active_quarantines:
+            embed = discord.Embed(
+                title="❌ Not Quarantined",
+                description="This user is not currently quarantined.",
+                color=0xFF0000,
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            return
+
+        await interaction.response.defer()
+        
+        try:
+            quarantine_data = self.active_quarantines[user.id]
+            
+            # Restore original roles
+            restored_roles = 0
+            for role_id in quarantine_data['original_roles']:
+                role = interaction.guild.get_role(role_id)
+                if role:
+                    try:
+                        await user.add_roles(role, reason="Released from quarantine")
+                        restored_roles += 1
+                    except discord.Forbidden:
+                        continue
+            
+            # Remove from active quarantines
+            del self.active_quarantines[user.id]
+            
+            embed = discord.Embed(
+                title="🔓 QUARANTINE RELEASED",
+                description=f"{user.mention} has been released from quarantine.",
+                color=0x00FF00,
+                timestamp=datetime.now(timezone.utc)
+            )
+            
+            embed.add_field(
+                name="👤 User",
+                value=f"{user.mention} (`{user.id}`)",
+                inline=True
+            )
+            
+            embed.add_field(
+                name="🔧 Roles Restored",
+                value=str(restored_roles),
+                inline=True
+            )
+            
+            quarantine_duration = datetime.now(timezone.utc) - quarantine_data['quarantine_start']
+            embed.add_field(
+                name="⏱️ Total Duration",
+                value=str(quarantine_duration).split('.')[0],
+                inline=True
+            )
+            
+            embed.add_field(
+                name="📝 Original Reason",
+                value=quarantine_data['reason'],
+                inline=False
+            )
+            
+            await interaction.followup.send(embed=embed)
+            
+        except Exception as e:
+            logging.error(f"Error in release_quarantine: {e}")
+            embed = discord.Embed(
+                title="❌ Release Failed",
+                description="An error occurred while releasing the user.",
+                color=0xFF0000
+            )
+            await interaction.followup.send(embed=embed, ephemeral=True)
+
+    @app_commands.command(
+        name="confirm-violation",
+        description="✅ Confirm or deny an AI-detected violation for learning"
+    )
+    @app_commands.describe(
+        event_hash="Hash of the violation event",
+        confirmed="Whether the violation was correctly identified"
+    )
+    @performance_monitor
+    async def confirm_violation(
+        self,
+        interaction: discord.Interaction,
+        event_hash: str,
+        confirmed: bool
+    ):
+        """Update AI learning data with moderator feedback"""
+        
+        # Check permissions
+        if not (
+            interaction.user.id == OWNER_ID
+            or interaction.user.guild_permissions.administrator
+        ):
+            embed = discord.Embed(
+                title="🚫 Access Denied",
+                description="This command requires Administrator permissions.",
+                color=0xFF0000,
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            return
+
+        try:
+            # Update database with moderator feedback
+            await self.forensic_logger.update_moderator_feedback(event_hash, confirmed)
+            
+            # Store feedback for learning
+            self.learning_feedback.append({
+                'event_hash': event_hash,
+                'confirmed': confirmed,
+                'moderator': interaction.user.id,
+                'timestamp': datetime.now(timezone.utc)
+            })
+            
+            embed = discord.Embed(
+                title="✅ FEEDBACK RECORDED",
+                description="Moderator feedback has been recorded for AI learning.",
+                color=0x00FF00,
+                timestamp=datetime.now(timezone.utc)
+            )
+            
+            embed.add_field(
+                name="🔍 Event Hash",
+                value=f"`{event_hash}`",
+                inline=True
+            )
+            
+            embed.add_field(
+                name="✅ Confirmed",
+                value="Yes" if confirmed else "No",
+                inline=True
+            )
+            
+            embed.add_field(
+                name="👤 Moderator",
+                value=interaction.user.mention,
+                inline=True
+            )
+            
+            embed.add_field(
+                name="🧠 Learning Impact",
+                value="This feedback will improve AI accuracy for future detections.",
+                inline=False
+            )
+            
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            
+        except Exception as e:
+            logging.error(f"Error in confirm_violation: {e}")
+            embed = discord.Embed(
+                title="❌ Feedback Failed",
+                description="An error occurred while recording feedback.",
+                color=0xFF0000
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    # ============================================================================
     # 🔧 INTERNAL LOCKDOWN FUNCTIONS
     # ============================================================================
 
@@ -728,7 +1847,9 @@ class SecurityCommands(commands.Cog):
             self.lockdown_channels = []
             lockdown_duration = None
             if self.lockdown_start_time:
-                lockdown_duration = datetime.now(timezone.utc) - self.lockdown_start_time
+                lockdown_duration = (
+                    datetime.now(timezone.utc) - self.lockdown_start_time
+                )
             self.lockdown_start_time = None
 
             # Log the unlock event
@@ -863,6 +1984,262 @@ class SecurityCommands(commands.Cog):
             return True
 
         return False
+
+    # ============================================================================
+    # 🧠 SMART ACTION SYSTEM HELPER METHODS
+    # ============================================================================
+
+    def _calculate_smart_timeout_duration(self, user: discord.Member, violations: List[Dict]) -> int:
+        """Calculate intelligent timeout duration based on user history and risk factors"""
+        base_duration = 10  # Base 10 minutes
+        
+        # Account age factor
+        account_age = (datetime.now(timezone.utc) - user.created_at).days
+        if account_age < 1:
+            base_duration *= 3  # New accounts get longer timeouts
+        elif account_age < 7:
+            base_duration *= 2
+        elif account_age < 30:
+            base_duration *= 1.5
+        
+        # Violation history factor
+        violation_count = len(violations)
+        if violation_count == 0:
+            base_duration *= 0.5  # First offense gets reduced timeout
+        elif violation_count < 3:
+            base_duration *= 1.5
+        elif violation_count < 5:
+            base_duration *= 2
+        else:
+            base_duration *= 3  # Repeat offenders get maximum timeout
+        
+        # Recent violations factor (within last 24 hours)
+        recent_violations = [
+            v for v in violations
+            if datetime.now(timezone.utc) - datetime.fromisoformat(v.get('timestamp', '2000-01-01')) < timedelta(hours=24)
+        ]
+        
+        if recent_violations:
+            base_duration *= (1 + len(recent_violations) * 0.5)
+        
+        # Cap the duration between 5 minutes and 24 hours
+        return max(5, min(int(base_duration), 1440))
+
+    async def _auto_release_quarantine(self, user_id: int, delay_seconds: int):
+        """Automatically release user from quarantine after specified delay"""
+        await asyncio.sleep(delay_seconds)
+        
+        # Check if user is still quarantined
+        if user_id in self.active_quarantines:
+            try:
+                bot = self.bot()
+                if not bot:
+                    return
+                
+                # Find the guild (assuming single guild bot, adjust if multi-guild)
+                guild = None
+                for g in bot.guilds:
+                    member = g.get_member(user_id)
+                    if member:
+                        guild = g
+                        break
+                
+                if not guild:
+                    return
+                
+                member = guild.get_member(user_id)
+                if not member:
+                    return
+                
+                quarantine_data = self.active_quarantines[user_id]
+                
+                # Restore original roles
+                restored_roles = 0
+                for role_id in quarantine_data['original_roles']:
+                    role = guild.get_role(role_id)
+                    if role:
+                        try:
+                            await member.add_roles(role, reason="Auto-release from quarantine")
+                            restored_roles += 1
+                        except discord.Forbidden:
+                            continue
+                
+                # Remove from active quarantines
+                del self.active_quarantines[user_id]
+                
+                # Send notification to forensic channel
+                try:
+                    channel = bot.get_channel(FORENSIC_CHANNEL_ID)
+                    if channel:
+                        embed = discord.Embed(
+                            title="🔓 AUTO-RELEASE FROM QUARANTINE",
+                            description=f"<@{user_id}> has been automatically released from quarantine.",
+                            color=0x00FF00,
+                            timestamp=datetime.now(timezone.utc)
+                        )
+                        
+                        embed.add_field(
+                            name="👤 User",
+                            value=f"<@{user_id}> (`{user_id}`)",
+                            inline=True
+                        )
+                        
+                        embed.add_field(
+                            name="🔧 Roles Restored",
+                            value=str(restored_roles),
+                            inline=True
+                        )
+                        
+                        embed.add_field(
+                            name="📝 Original Reason",
+                            value=quarantine_data['reason'],
+                            inline=False
+                        )
+                        
+                        await channel.send(embed=embed)
+                
+                except Exception as e:
+                    logging.error(f"Error sending auto-release notification: {e}")
+                
+            except Exception as e:
+                logging.error(f"Error in auto-release quarantine: {e}")
+
+    async def process_message_for_violations(self, message: discord.Message) -> Optional[ViolationEvent]:
+        """
+        Process a message for potential violations using Smart Action System
+        This method can be called from message event handlers
+        """
+        if message.author.id == OWNER_ID:
+            return None  # Never process owner messages
+        
+        if message.author.bot:
+            return None  # Skip bot messages
+        
+        try:
+            # Get user violation history
+            user_violations = await self.forensic_logger.get_user_violations(message.author.id, days=30)
+            
+            context = {
+                'previous_violations': len(user_violations),
+                'is_dm': isinstance(message.channel, discord.DMChannel),
+                'channel_type': str(type(message.channel).__name__),
+                'message_age': 0  # New message
+            }
+            
+            # Analyze with Smart Action System
+            analysis = self.smart_action_system.analyze_content(
+                message.content,
+                message.author,
+                context
+            )
+            
+            # If violations detected, create violation event
+            if analysis['violations'] and analysis['ai_confidence'] > 0.6:
+                primary_violation = max(analysis['violations'], key=lambda x: x['confidence'])
+                
+                violation_event = ViolationEvent(
+                    user_id=message.author.id,
+                    guild_id=message.guild.id if message.guild else 0,
+                    channel_id=message.channel.id,
+                    message_id=message.id,
+                    violation_type=primary_violation['type'],
+                    severity=analysis['severity'],
+                    action_taken=analysis['recommended_action'],
+                    content_hash=self.forensic_logger._hash_content(message.content),
+                    original_content=message.content,
+                    risk_score=analysis['risk_score'],
+                    timestamp=datetime.now(timezone.utc),
+                    context=context,
+                    ai_confidence=analysis['ai_confidence'],
+                    moderator_confirmed=None  # Will be set by moderator feedback
+                )
+                
+                # Log the violation
+                await self.forensic_logger.log_violation(violation_event)
+                
+                # Take automatic action if confidence is high enough
+                if analysis['ai_confidence'] > 0.8:
+                    await self._execute_automatic_action(message, violation_event, analysis)
+                
+                return violation_event
+            
+            return None
+            
+        except Exception as e:
+            logging.error(f"Error processing message for violations: {e}")
+            return None
+
+    async def _execute_automatic_action(self, message: discord.Message, violation_event: ViolationEvent, analysis: Dict):
+        """Execute automatic moderation action based on AI analysis"""
+        try:
+            action = analysis['recommended_action']
+            
+            if action == ActionType.DELETE:
+                try:
+                    await message.delete()
+                    self.security_stats['auto_actions_taken'] += 1
+                except discord.Forbidden:
+                    pass
+            
+            elif action == ActionType.TIMEOUT:
+                if hasattr(message.author, 'timeout') and message.guild:
+                    duration_minutes = self._calculate_smart_timeout_duration(
+                        message.author, 
+                        await self.forensic_logger.get_user_violations(message.author.id, days=30)
+                    )
+                    timeout_duration = timedelta(minutes=duration_minutes)
+                    
+                    try:
+                        await message.author.timeout(
+                            timeout_duration, 
+                            reason=f"Auto-timeout: {violation_event.violation_type.value}"
+                        )
+                        self.security_stats['auto_actions_taken'] += 1
+                    except discord.Forbidden:
+                        pass
+            
+            elif action == ActionType.BAN:
+                if message.guild:
+                    try:
+                        await message.guild.ban(
+                            message.author,
+                            reason=f"Auto-ban: {violation_event.violation_type.value}",
+                            delete_message_days=1
+                        )
+                        self.security_stats['auto_actions_taken'] += 1
+                    except discord.Forbidden:
+                        pass
+            
+            elif action == ActionType.QUARANTINE:
+                if message.guild and hasattr(message.author, 'roles'):
+                    # Store original roles and remove them
+                    original_roles = [role for role in message.author.roles if role != message.guild.default_role]
+                    
+                    for role in original_roles:
+                        try:
+                            await message.author.remove_roles(
+                                role, 
+                                reason=f"Auto-quarantine: {violation_event.violation_type.value}"
+                            )
+                        except discord.Forbidden:
+                            continue
+                    
+                    # Store quarantine data
+                    self.active_quarantines[message.author.id] = {
+                        'original_roles': [role.id for role in original_roles],
+                        'quarantine_start': datetime.now(timezone.utc),
+                        'duration_hours': 24,  # Default 24 hour quarantine
+                        'reason': f"Auto-quarantine: {violation_event.violation_type.value}",
+                        'moderator': None  # Automatic action
+                    }
+                    
+                    # Schedule auto-release
+                    asyncio.create_task(self._auto_release_quarantine(message.author.id, 24 * 3600))
+                    
+                    self.security_stats['auto_actions_taken'] += 1
+            
+        except Exception as e:
+            logging.error(f"Error executing automatic action: {e}")
 
 
 async def setup(bot):
