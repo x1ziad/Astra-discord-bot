@@ -164,7 +164,7 @@ class SecurityCommands(commands.Cog):
                 title="🚨 MANUAL LOCKDOWN ACTIVATED",
                 description=f"Server lockdown has been manually activated by the owner.",
                 color=0xFF0000,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(timezone.utc),
             )
             embed.add_field(name="📝 Reason", value=reason, inline=False)
             embed.add_field(
@@ -235,13 +235,13 @@ class SecurityCommands(commands.Cog):
         if success:
             lockdown_duration = None
             if self.lockdown_start_time:
-                lockdown_duration = datetime.utcnow() - self.lockdown_start_time
+                lockdown_duration = datetime.now(timezone.utc) - self.lockdown_start_time
 
             embed = discord.Embed(
                 title="🔓 LOCKDOWN DEACTIVATED",
                 description="Server lockdown has been manually deactivated by the owner.",
                 color=0x00FF00,
-                timestamp=datetime.utcnow(),
+                timestamp=datetime.now(timezone.utc),
             )
             embed.add_field(name="📝 Reason", value=reason, inline=False)
             embed.add_field(
@@ -295,14 +295,14 @@ class SecurityCommands(commands.Cog):
             title="🛡️ SECURITY SYSTEM STATUS",
             description="Current status of autonomous security protection",
             color=0x00FF00 if not self.lockdown_active else 0xFF0000,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
         )
 
         # Lockdown status
         lockdown_status = "🚨 ACTIVE" if self.lockdown_active else "🔓 Inactive"
         lockdown_duration = ""
         if self.lockdown_active and self.lockdown_start_time:
-            duration = datetime.utcnow() - self.lockdown_start_time
+            duration = datetime.now(timezone.utc) - self.lockdown_start_time
             lockdown_duration = f" ({str(duration).split('.')[0]})"
 
         embed.add_field(
@@ -343,7 +343,7 @@ class SecurityCommands(commands.Cog):
             [
                 t
                 for t in self.threat_log
-                if datetime.utcnow() - t.get("timestamp", datetime.min)
+                if datetime.now(timezone.utc) - t.get("timestamp", datetime.min)
                 < timedelta(hours=24)
             ]
         )
@@ -393,7 +393,7 @@ class SecurityCommands(commands.Cog):
             title="🔍 ACTIVE THREAT SCAN",
             description="Scanning for potential security threats...",
             color=0xFFAA00,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
         )
 
         scan_scope = []
@@ -409,7 +409,7 @@ class SecurityCommands(commands.Cog):
         threats_found = []
 
         # Check recent threat log
-        cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+        cutoff_time = datetime.now(timezone.utc) - timedelta(hours=hours)
         recent_threats = [
             t for t in self.threat_log if t.get("timestamp", datetime.min) > cutoff_time
         ]
@@ -491,7 +491,7 @@ class SecurityCommands(commands.Cog):
             title=f"🕵️ USER INVESTIGATION: {user.display_name}",
             description=f"Deep analysis of user activity and potential risks",
             color=0x0099FF,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
         )
 
         embed.set_thumbnail(url=user.display_avatar.url)
@@ -508,7 +508,7 @@ class SecurityCommands(commands.Cog):
         )
 
         # Account age
-        account_age = datetime.utcnow() - user.created_at
+        account_age = datetime.now(timezone.utc) - user.created_at
         embed.add_field(
             name="⏰ Account Age", value=f"{account_age.days} days", inline=True
         )
@@ -586,11 +586,11 @@ class SecurityCommands(commands.Cog):
             title="📋 SECURITY EVENT LOGS",
             description=f"Security events from the last {hours} hour(s)",
             color=0x0099FF,
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
         )
 
         # Filter recent events
-        cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+        cutoff_time = datetime.now(timezone.utc) - timedelta(hours=hours)
         recent_events = [
             t for t in self.threat_log if t.get("timestamp", datetime.min) > cutoff_time
         ]
@@ -601,7 +601,7 @@ class SecurityCommands(commands.Cog):
         if recent_events:
             event_list = []
             for event in recent_events[:10]:  # Show last 10 events
-                timestamp = event.get("timestamp", datetime.utcnow())
+                timestamp = event.get("timestamp", datetime.now(timezone.utc))
                 time_str = timestamp.strftime("%H:%M:%S")
                 level_emoji = {1: "🟢", 2: "🟡", 3: "🟠", 4: "🔴", 5: "🚨"}.get(
                     event.get("level", 1), "⚪"
@@ -658,7 +658,7 @@ class SecurityCommands(commands.Cog):
         """Internal function to activate lockdown mode"""
         try:
             self.lockdown_active = True
-            self.lockdown_start_time = datetime.utcnow()
+            self.lockdown_start_time = datetime.now(timezone.utc)
             self.lockdown_channels = []
 
             # Lock down all text channels
@@ -684,7 +684,7 @@ class SecurityCommands(commands.Cog):
             # Log the lockdown event
             self.threat_log.append(
                 {
-                    "timestamp": datetime.utcnow(),
+                    "timestamp": datetime.now(timezone.utc),
                     "type": "Manual Lockdown" if manual else "Auto Lockdown",
                     "level": 5,
                     "reason": reason,
@@ -728,13 +728,13 @@ class SecurityCommands(commands.Cog):
             self.lockdown_channels = []
             lockdown_duration = None
             if self.lockdown_start_time:
-                lockdown_duration = datetime.utcnow() - self.lockdown_start_time
+                lockdown_duration = datetime.now(timezone.utc) - self.lockdown_start_time
             self.lockdown_start_time = None
 
             # Log the unlock event
             self.threat_log.append(
                 {
-                    "timestamp": datetime.utcnow(),
+                    "timestamp": datetime.now(timezone.utc),
                     "type": "Manual Unlock",
                     "level": 1,
                     "reason": reason,
@@ -851,7 +851,7 @@ class SecurityCommands(commands.Cog):
                 t
                 for t in self.threat_log
                 if t.get("level", 0) >= 4
-                and datetime.utcnow() - t.get("timestamp", datetime.min)
+                and datetime.now(timezone.utc) - t.get("timestamp", datetime.min)
                 < timedelta(minutes=1)
             ]
         )
