@@ -724,6 +724,7 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
                 magichour_key = os.getenv("MAGICHOUR_API_KEY")
                 if magichour_key:
                     magichour_status = "🟢 ONLINE"
+                    magichour_info = "API key configured"
                 else:
                     magichour_status = "🔴 OFFLINE"
                     magichour_info = "API key not configured"

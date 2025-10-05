@@ -17,6 +17,7 @@ from enum import Enum
 # Import error handler
 try:
     from ai.error_handler import ai_error_handler, AIErrorType
+
     ERROR_HANDLER_AVAILABLE = True
 except ImportError:
     ERROR_HANDLER_AVAILABLE = False
@@ -1062,7 +1063,7 @@ class UniversalAIClient:
         max_attempts = 3
         current_provider = self.provider.value
         attempted_providers = []
-        
+
         for attempt in range(max_attempts):
             try:
                 async with self.session.post(
@@ -1077,55 +1078,68 @@ class UniversalAIClient:
                         logger.error(
                             f"{current_provider} API error {response.status}: {error_text}"
                         )
-                        
+
                         # Handle error with fallback system
                         if ERROR_HANDLER_AVAILABLE:
                             error_result = ai_error_handler.handle_error(
                                 current_provider, error_text, response.status
                             )
-                            
+
                             if error_result["action"] == "fallback":
                                 attempted_providers.append(current_provider)
-                                next_provider = ai_error_handler.get_next_provider(attempted_providers)
-                                
+                                next_provider = ai_error_handler.get_next_provider(
+                                    attempted_providers
+                                )
+
                                 if next_provider:
-                                    logger.info(f"🔄 Falling back from {current_provider} to {next_provider}")
-                                    
+                                    logger.info(
+                                        f"🔄 Falling back from {current_provider} to {next_provider}"
+                                    )
+
                                     # Update configuration for fallback provider
                                     current_provider = next_provider
-                                    fallback_config = ai_error_handler.provider_states[next_provider]["config"]
-                                    
+                                    fallback_config = ai_error_handler.provider_states[
+                                        next_provider
+                                    ]["config"]
+
                                     # Update URL and headers for new provider
                                     url = f"{fallback_config['base_url']}/chat/completions"
                                     headers = {
                                         "Authorization": f"Bearer {fallback_config['api_key']}",
-                                        "Content-Type": "application/json"
+                                        "Content-Type": "application/json",
                                     }
-                                    
+
                                     # Update model if needed
-                                    if payload["model"] not in fallback_config["models"]:
+                                    if (
+                                        payload["model"]
+                                        not in fallback_config["models"]
+                                    ):
                                         payload["model"] = fallback_config["models"][0]
-                                        logger.info(f"🔄 Changed model to {payload['model']} for {next_provider}")
-                                    
+                                        logger.info(
+                                            f"🔄 Changed model to {payload['model']} for {next_provider}"
+                                        )
+
                                     continue  # Retry with new provider
                                 else:
-                                    logger.error("🚫 No more fallback providers available")
-                            
+                                    logger.error(
+                                        "🚫 No more fallback providers available"
+                                    )
+
                             elif error_result["action"] == "retry":
                                 await asyncio.sleep(error_result.get("delay", 1.0))
                                 continue  # Retry with same provider
-                        
+
                         # If no error handler or fallback failed, raise original error
                         raise Exception(
                             f"{current_provider} API error: {response.status} - {error_text}"
                         )
 
                     result = await response.json()
-                    
+
                     # Record success for error handler
                     if ERROR_HANDLER_AVAILABLE:
                         ai_error_handler.record_success(current_provider)
-                    
+
                     break  # Success, exit retry loop
 
                 # Extract response content
@@ -1191,50 +1205,72 @@ class UniversalAIClient:
                     context_used=conversation_context,
                     confidence_score=confidence_score,
                 )
-            
+
             except asyncio.TimeoutError as e:
-                logger.error(f"🔄 {current_provider} API request timed out (attempt {attempt + 1}/{max_attempts})")
+                logger.error(
+                    f"🔄 {current_provider} API request timed out (attempt {attempt + 1}/{max_attempts})"
+                )
                 if ERROR_HANDLER_AVAILABLE and attempt < max_attempts - 1:
                     # Try fallback on timeout
                     attempted_providers.append(current_provider)
-                    next_provider = ai_error_handler.get_next_provider(attempted_providers)
+                    next_provider = ai_error_handler.get_next_provider(
+                        attempted_providers
+                    )
                     if next_provider:
-                        logger.info(f"⏰ Timeout fallback: {current_provider} → {next_provider}")
+                        logger.info(
+                            f"⏰ Timeout fallback: {current_provider} → {next_provider}"
+                        )
                         current_provider = next_provider
-                        fallback_config = ai_error_handler.provider_states[next_provider]["config"]
+                        fallback_config = ai_error_handler.provider_states[
+                            next_provider
+                        ]["config"]
                         url = f"{fallback_config['base_url']}/chat/completions"
                         headers = {
                             "Authorization": f"Bearer {fallback_config['api_key']}",
-                            "Content-Type": "application/json"
+                            "Content-Type": "application/json",
                         }
                         if payload["model"] not in fallback_config["models"]:
                             payload["model"] = fallback_config["models"][0]
                         continue
                 if attempt == max_attempts - 1:
-                    raise Exception(f"{current_provider} API request timed out after {max_attempts} attempts")
-                    
+                    raise Exception(
+                        f"{current_provider} API request timed out after {max_attempts} attempts"
+                    )
+
             except Exception as e:
-                logger.error(f"🔄 {current_provider} API error (attempt {attempt + 1}/{max_attempts}): {e}")
+                logger.error(
+                    f"🔄 {current_provider} API error (attempt {attempt + 1}/{max_attempts}): {e}"
+                )
                 if ERROR_HANDLER_AVAILABLE and attempt < max_attempts - 1:
-                    error_result = ai_error_handler.handle_error(current_provider, str(e))
+                    error_result = ai_error_handler.handle_error(
+                        current_provider, str(e)
+                    )
                     if error_result["action"] == "fallback":
                         attempted_providers.append(current_provider)
-                        next_provider = ai_error_handler.get_next_provider(attempted_providers)
+                        next_provider = ai_error_handler.get_next_provider(
+                            attempted_providers
+                        )
                         if next_provider:
-                            logger.info(f"🚨 Error fallback: {current_provider} → {next_provider}")
+                            logger.info(
+                                f"🚨 Error fallback: {current_provider} → {next_provider}"
+                            )
                             current_provider = next_provider
-                            fallback_config = ai_error_handler.provider_states[next_provider]["config"]
+                            fallback_config = ai_error_handler.provider_states[
+                                next_provider
+                            ]["config"]
                             url = f"{fallback_config['base_url']}/chat/completions"
                             headers = {
                                 "Authorization": f"Bearer {fallback_config['api_key']}",
-                                "Content-Type": "application/json"
+                                "Content-Type": "application/json",
                             }
                             if payload["model"] not in fallback_config["models"]:
                                 payload["model"] = fallback_config["models"][0]
                             continue
                 if attempt == max_attempts - 1:
-                    raise Exception(f"All AI providers failed after {max_attempts} attempts: {e}")
-        
+                    raise Exception(
+                        f"All AI providers failed after {max_attempts} attempts: {e}"
+                    )
+
         # If we exit the loop without returning, all attempts failed
         raise Exception("Failed to get AI response from any available provider")
 

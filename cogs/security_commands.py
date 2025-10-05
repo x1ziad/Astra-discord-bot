@@ -19,18 +19,24 @@ from dataclasses import dataclass, asdict
 # Import rate limiter for Discord API protection
 try:
     from utils.rate_limiter import discord_rate_limiter, rate_limited
+
     RATE_LIMITER_AVAILABLE = True
 except ImportError:
     RATE_LIMITER_AVAILABLE = False
-    logging.warning("Rate limiter not available - Discord rate limiting protection disabled")
+    logging.warning(
+        "Rate limiter not available - Discord rate limiting protection disabled"
+    )
 
 # Import AI error handler
 try:
     from ai.error_handler import ai_error_handler
+
     ERROR_HANDLER_AVAILABLE = True
 except ImportError:
     ERROR_HANDLER_AVAILABLE = False
-    logging.warning("AI error handler not available - AI fallback functionality limited")
+    logging.warning(
+        "AI error handler not available - AI fallback functionality limited"
+    )
 
 # Owner user ID - only this user can control lockdown mode
 OWNER_ID = 1115739214148026469
@@ -432,7 +438,7 @@ class ForensicLogger:
             # Apply rate limiting to prevent Discord API limits
             if RATE_LIMITER_AVAILABLE:
                 await discord_rate_limiter.acquire("messages", str(FORENSIC_CHANNEL_ID))
-            
+
             channel = self.bot.get_channel(FORENSIC_CHANNEL_ID)
             if not channel:
                 return
@@ -1066,15 +1072,18 @@ class SecurityCommands(commands.Cog):
         if ERROR_HANDLER_AVAILABLE:
             try:
                 from ai.error_handler import ai_error_handler
+
                 provider_status = ai_error_handler.get_provider_status()
-                healthy_providers = [p for p, s in provider_status.items() if s["available"]]
+                healthy_providers = [
+                    p for p, s in provider_status.items() if s["available"]
+                ]
                 if healthy_providers:
                     ai_status = f"🟢 {len(healthy_providers)} PROVIDERS"
                 else:
                     ai_status = "🟡 DEGRADED"
             except:
                 ai_status = "🟡 LIMITED"
-        
+
         embed.add_field(name="🤖 AI Status", value=ai_status, inline=True)
 
         # Rate Limiter Status
@@ -1082,6 +1091,7 @@ class SecurityCommands(commands.Cog):
         if RATE_LIMITER_AVAILABLE:
             try:
                 from utils.rate_limiter import discord_rate_limiter
+
                 stats = discord_rate_limiter.get_stats()
                 if stats["active_backoffs"] > 0:
                     rate_limit_status = f"🟡 {stats['active_backoffs']} BACKOFFS"
@@ -1089,20 +1099,20 @@ class SecurityCommands(commands.Cog):
                     rate_limit_status = "🟢 PROTECTED"
             except:
                 rate_limit_status = "🟡 LIMITED"
-        
+
         embed.add_field(name="⏱️ Rate Protection", value=rate_limit_status, inline=True)
 
         # Enhanced Security Features
         embed.add_field(
-            name="🎯 Progressive Punishment", 
-            value=f"✅ {len(self.user_warnings)} users tracked", 
-            inline=True
+            name="🎯 Progressive Punishment",
+            value=f"✅ {len(self.user_warnings)} users tracked",
+            inline=True,
         )
-        
+
         embed.add_field(
-            name="🧠 Auto-Learning", 
-            value=f"✅ {len(self.learning_feedback)} patterns", 
-            inline=True
+            name="🧠 Auto-Learning",
+            value=f"✅ {len(self.learning_feedback)} patterns",
+            inline=True,
         )
 
         embed.add_field(name="⚡ Response Time", value="<0.001s average", inline=True)
@@ -2789,14 +2799,18 @@ class SecurityCommands(commands.Cog):
                 ):
                     # Apply rate limiting for moderation channel
                     if RATE_LIMITER_AVAILABLE:
-                        await discord_rate_limiter.acquire("messages", str(mod_channel.id))
+                        await discord_rate_limiter.acquire(
+                            "messages", str(mod_channel.id)
+                        )
                     await mod_channel.send(embed=embed)
                 else:
                     # Fallback to original channel if accessible
                     if message.channel.permissions_for(message.guild.me).send_messages:
                         # Apply rate limiting for original channel
                         if RATE_LIMITER_AVAILABLE:
-                            await discord_rate_limiter.acquire("messages", str(message.channel.id))
+                            await discord_rate_limiter.acquire(
+                                "messages", str(message.channel.id)
+                            )
                         await message.channel.send(embed=embed, delete_after=30)
 
             except discord.Forbidden:
