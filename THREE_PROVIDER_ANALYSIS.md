@@ -12,8 +12,8 @@
 ### 1. Google Gemini (Currently Active)
 ```bash
 # Already configured in .env
-GOOGLE_API_KEY=AIzaSyCzV-yg1oKsljyRUm-jKjKiscBVUOWB5bY
-GEMINI_API_KEY=AIzaSyCzV-yg1oKsljyRUm-jKjKiscBVUOWB5bY
+GOOGLE_API_KEY=your_google_api_key_here
+GEMINI_API_KEY=your_google_api_key_here
 ```
 - **Status**: ✅ Working perfectly
 - **Get Key**: https://makersuite.google.com/app/apikey

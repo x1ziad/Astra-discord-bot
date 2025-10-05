@@ -46,8 +46,8 @@ AI_MODEL=models/gemini-2.5-flash
 AI_BASE_URL=https://generativelanguage.googleapis.com/v1beta
 
 # Google API Keys (SECURE - NEVER COMMIT)
-GOOGLE_API_KEY=AIzaSyCzV-yg1oKsljyRUm-jKjKiscBVUOWB5bY
-GEMINI_API_KEY=AIzaSyCzV-yg1oKsljyRUm-jKjKiscBVUOWB5bY
+GOOGLE_API_KEY=your_google_api_key_here
+GEMINI_API_KEY=your_google_api_key_here
 ```
 
 ---
@@ -121,8 +121,8 @@ AI_MODEL=models/gemini-2.5-flash
 AI_BASE_URL=https://generativelanguage.googleapis.com/v1beta
 
 # Google API Key (REPLACE WITH YOUR ACTUAL KEY)
-GOOGLE_API_KEY=AIzaSyCzV-yg1oKsljyRUm-jKjKiscBVUOWB5bY
-GEMINI_API_KEY=AIzaSyCzV-yg1oKsljyRUm-jKjKiscBVUOWB5bY
+GOOGLE_API_KEY=your_google_api_key_here
+GEMINI_API_KEY=your_google_api_key_here
 
 # Token Limits
 AI_MAX_TOKENS=8192
