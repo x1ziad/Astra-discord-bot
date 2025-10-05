@@ -412,8 +412,7 @@ class AstraBot(commands.Bot):
         # Initialize AI-enhanced security
         self.ai_security = await initialize_ai_enhanced_security(self)
         
-        # Load the enhanced moderation cog
-        await self.load_extension('cogs.enhanced_autonomous_moderation')
+        # Enhanced moderation is now integrated into security_commands.py
     
     async def on_message(self, message):
         if message.author.bot:

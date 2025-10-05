@@ -1322,11 +1322,19 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
         await interaction.followup.send(embed=embed)
 
     @app_commands.command(
-        name="tokens", description="🎯 Universal AI Token Usage Monitor & Optimizer"
+        name="tokens", description="🎯 [OWNER ONLY] Universal AI Token Usage Monitor & Optimizer"
     )
     @app_commands.checks.cooldown(1, 30)
     async def tokens_command(self, interaction: discord.Interaction):
-        """Universal AI token usage monitoring and optimization analytics"""
+        """Universal AI token usage monitoring and optimization analytics - OWNER ONLY"""
+        # Owner-only check
+        if interaction.user.id != self.bot.owner_id:
+            await interaction.response.send_message(
+                "🚫 **ACCESS DENIED** - This command is restricted to the bot owner only.", 
+                ephemeral=True
+            )
+            return
+            
         await interaction.response.defer()
 
         embed = discord.Embed(
@@ -1492,11 +1500,19 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
         await interaction.followup.send(embed=embed)
 
     @app_commands.command(
-        name="test_reporting", description="🧪 Test Discord Data Reporting Channels"
+        name="test_reporting", description="🧪 [OWNER ONLY] Test Discord Data Reporting Channels"
     )
     @app_commands.default_permissions(administrator=True)
     async def test_reporting_command(self, interaction: discord.Interaction):
-        """Test Discord data reporting channels"""
+        """Test Discord data reporting channels - OWNER ONLY"""
+        # Owner-only check
+        if interaction.user.id != self.bot.owner_id:
+            await interaction.response.send_message(
+                "🚫 **ACCESS DENIED** - This command is restricted to the bot owner only.", 
+                ephemeral=True
+            )
+            return
+            
         await interaction.response.defer()
 
         embed = discord.Embed(

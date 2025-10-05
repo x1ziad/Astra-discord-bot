@@ -643,58 +643,7 @@ Create a warm, appreciative message (under 100 words) with appropriate emojis.""
             profile.preferred_moderator_style = "mentor"
 
     # Admin commands for moderation management
-    @app_commands.command(name="modstats", description="📊 View moderation statistics")
-    @app_commands.default_permissions(manage_messages=True)
-    async def mod_stats(self, interaction: discord.Interaction):
-        """View comprehensive moderation statistics"""
-        if not await check_user_permission(
-            interaction.user, PermissionLevel.MODERATOR, interaction.guild
-        ):
-            await interaction.response.send_message(
-                "❌ You need moderator permissions for this command.", ephemeral=True
-            )
-            return
 
-        # Calculate statistics
-        total_warnings = sum(len(warnings) for warnings in self.user_warnings.values())
-        total_users_tracked = len(self.user_profiles)
-        positive_interactions = sum(
-            profile.positive_interactions for profile in self.user_profiles.values()
-        )
-
-        embed = discord.Embed(
-            title="📊 AI Moderation Statistics",
-            color=0x00BFFF,
-            timestamp=datetime.now(timezone.utc),
-        )
-
-        embed.add_field(
-            name="📈 Overview",
-            value=f"**Active Warnings:** {total_warnings}\n"
-            f"**Users Tracked:** {total_users_tracked}\n"
-            f"**Positive Interactions:** {positive_interactions}\n"
-            f"**AI Status:** {'✅ Active' if AI_AVAILABLE else '❌ Offline'}",
-            inline=False,
-        )
-
-        # Violation type breakdown
-        violation_counts = defaultdict(int)
-        for profile in self.user_profiles.values():
-            for violation_type, count in profile.violation_patterns.items():
-                violation_counts[violation_type] += count
-
-        if violation_counts:
-            violation_text = "\n".join(
-                [
-                    f"**{vtype.replace('_', ' ').title()}:** {count}"
-                    for vtype, count in sorted(
-                        violation_counts.items(), key=lambda x: x[1], reverse=True
-                    )[:5]
-                ]
-            )
-            embed.add_field(name="🚨 Top Violations", value=violation_text, inline=True)
-
-        await interaction.response.send_message(embed=embed)
 
     @app_commands.command(
         name="userprofile", description="👤 View user moderation profile"
