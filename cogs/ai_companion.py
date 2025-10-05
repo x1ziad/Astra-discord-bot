@@ -191,16 +191,16 @@ class AICompanion(commands.Cog):
             return
 
         # Set flag to prevent other AI cogs from responding
-        if not hasattr(self.bot, '_ai_response_handled'):
+        if not hasattr(self.bot, "_ai_response_handled"):
             self.bot._ai_response_handled = {}
-        
+
         # Check if another AI cog already handled this message
         if message.id in self.bot._ai_response_handled:
             return
-            
+
         # Mark this message as being handled
-        self.bot._ai_response_handled[message.id] = 'companion'
-        
+        self.bot._ai_response_handled[message.id] = "companion"
+
         try:
             user_mood = await self.get_user_mood(message.author.id)
 
@@ -210,7 +210,7 @@ class AICompanion(commands.Cog):
             if response:
                 # Send unified response without embed for more natural conversation
                 await message.reply(response, mention_author=False)
-                
+
                 # Clean up the response tracking after a delay
                 asyncio.create_task(self._cleanup_response_tracking(message.id))
 
@@ -225,34 +225,44 @@ class AICompanion(commands.Cog):
         try:
             # Get conversation history for better context
             conversation_history = []
-            if hasattr(self, 'conversation_contexts') and message.author.id in self.conversation_contexts:
-                conversation_history = self.conversation_contexts[message.author.id][-3:]  # Last 3 messages
-            
+            if (
+                hasattr(self, "conversation_contexts")
+                and message.author.id in self.conversation_contexts
+            ):
+                conversation_history = self.conversation_contexts[message.author.id][
+                    -3:
+                ]  # Last 3 messages
+
             # Build rich context for AI
             context_parts = [
                 f"You are Astra, {message.author.display_name}'s AI companion and friend.",
                 f"Current conversation in #{message.channel.name}",
                 f"User mood: {user_mood.current_mood}",
             ]
-            
+
             if conversation_history:
                 context_parts.append("Recent conversation context:")
                 for msg in conversation_history:
                     context_parts.append(f"- {msg}")
-            
-            context_parts.extend([
-                f"User's message: \"{message.content}\"",
-                "",
-                "Guidelines:",
-                "- Be warm, helpful, and genuinely caring",
-                "- Provide thoughtful, contextual responses", 
-                "- Use appropriate emojis naturally",
-                "- Keep responses conversational (under 200 words)",
-                "- Remember previous conversation context",
-                "- Be knowledgeable but personable",
-                "",
-                "Respond as their AI companion:"
-            ])
+
+            context_parts.extend(
+                [
+                    f'User\'s message: "{message.content}"',
+                    "",
+                    "Response Guidelines:",
+                    "- Be warm, helpful, and genuinely caring like a close friend",
+                    "- Use natural, conversational language (NO FORMAL STRUCTURE)",
+                    "- Include appropriate emojis naturally throughout your response",
+                    "- Add gentle humor when appropriate and fitting",
+                    "- Keep responses conversational and engaging (under 200 words)",
+                    "- Remember and reference previous conversation context",
+                    "- Be knowledgeable but approachable and fun",
+                    "- Respond as a normal chat message - NO EMBED FORMATTING",
+                    "- Use casual, friendly tone with personality",
+                    "",
+                    "Respond naturally as their AI friend:",
+                ]
+            )
 
             full_context = "\n".join(context_parts)
 
@@ -262,19 +272,23 @@ class AICompanion(commands.Cog):
                 guild_id=message.guild.id if message.guild else None,
                 channel_id=message.channel.id,
             )
-            
+
             # Store in conversation context for future reference
-            if not hasattr(self, 'conversation_contexts'):
+            if not hasattr(self, "conversation_contexts"):
                 self.conversation_contexts = {}
             if message.author.id not in self.conversation_contexts:
                 self.conversation_contexts[message.author.id] = []
-                
-            self.conversation_contexts[message.author.id].append(f"User: {message.content}")
+
+            self.conversation_contexts[message.author.id].append(
+                f"User: {message.content}"
+            )
             self.conversation_contexts[message.author.id].append(f"Astra: {response}")
-            
+
             # Keep only recent context (last 10 exchanges)
             if len(self.conversation_contexts[message.author.id]) > 10:
-                self.conversation_contexts[message.author.id] = self.conversation_contexts[message.author.id][-10:]
+                self.conversation_contexts[message.author.id] = (
+                    self.conversation_contexts[message.author.id][-10:]
+                )
 
             return response.strip()
 
@@ -285,7 +299,10 @@ class AICompanion(commands.Cog):
     async def _cleanup_response_tracking(self, message_id: int):
         """Clean up response tracking after a delay to prevent memory leaks"""
         await asyncio.sleep(300)  # 5 minutes
-        if hasattr(self.bot, '_ai_response_handled') and message_id in self.bot._ai_response_handled:
+        if (
+            hasattr(self.bot, "_ai_response_handled")
+            and message_id in self.bot._ai_response_handled
+        ):
             del self.bot._ai_response_handled[message_id]
 
     @app_commands.command(
@@ -309,46 +326,45 @@ class AICompanion(commands.Cog):
                     interaction.user.display_name
                 )
 
-            embed = discord.Embed(
-                title="💙 Personal Wellness Check-In",
-                description=checkin_response.get(
-                    "greeting",
-                    f"Hi {interaction.user.display_name}! How are you doing today?",
-                ),
-                color=0x87CEEB,
-                timestamp=datetime.now(timezone.utc),
-            )
+            # Build natural wellness message without embeds
+            wellness_parts = [
+                f"💚 **Hey {interaction.user.display_name}!** 🌟",
+                "",
+                checkin_response.get("message", "How are you feeling today? I'm here to support you! 😊"),
+                ""
+            ]
 
             if checkin_response.get("reflection_questions"):
-                embed.add_field(
-                    name="🤔 Reflection Questions",
-                    value=checkin_response["reflection_questions"],
-                    inline=False,
-                )
+                wellness_parts.extend([
+                    "🤔 **Reflection Questions:**",
+                    checkin_response["reflection_questions"],
+                    ""
+                ])
 
             if checkin_response.get("wellness_tips"):
-                embed.add_field(
-                    name="✨ Wellness Tips",
-                    value=checkin_response["wellness_tips"],
-                    inline=False,
-                )
+                wellness_parts.extend([
+                    "✨ **Wellness Tips:**",
+                    checkin_response["wellness_tips"],
+                    ""
+                ])
 
-            embed.add_field(
-                name="🌟 Remember",
-                value=checkin_response.get(
+            wellness_parts.extend([
+                "🌟 **Remember:**",
+                checkin_response.get(
                     "encouragement",
                     "You're doing great, and I'm here if you need support! 💙",
                 ),
-                inline=False,
-            )
+                "",
+                "_Your AI companion is always here for you!_ 🤗"
+            ])
 
-            embed.set_footer(text="Your AI companion is always here for you! 🤗")
+            wellness_message = "\n".join(wellness_parts)
 
             # Update check-in tracking
             user_mood.last_check_in = time.time()
             self.daily_check_ins[interaction.user.id] = datetime.now().date()
 
-            await interaction.followup.send(embed=embed, ephemeral=True)
+            await interaction.followup.send(wellness_message, ephemeral=True)
 
         except Exception as e:
             self.logger.error(f"Wellness check-in error: {e}")
@@ -432,36 +448,38 @@ Be warm, genuine, and supportive. Each section under 100 words."""
             else:
                 response = self._generate_fallback_mood_response(mood)
 
-            embed = discord.Embed(
-                title="🎭 Mood Tracker",
-                description=f"Thanks for sharing, {interaction.user.display_name}! I've noted that you're feeling **{mood}** today.",
-                color=self._get_mood_color(mood),
-                timestamp=datetime.now(timezone.utc),
-            )
-
-            embed.add_field(name="💭 Reflection", value=response, inline=False)
+            # Build natural mood tracking message
+            mood_message_parts = [
+                f"🎭 **Mood Tracker**",
+                "",
+                f"Thanks for sharing, {interaction.user.display_name}! I've noted that you're feeling **{mood}** today. 😊",
+                "",
+                f"💭 **Reflection:**",
+                response
+            ]
+            mood_message = "\n".join(mood_message_parts)
 
         else:
-            # Show current mood and recent history
-            embed = discord.Embed(
-                title="🎭 Your Mood Journey",
-                description=f"Current mood: **{user_mood.current_mood.title()}**",
-                color=self._get_mood_color(user_mood.current_mood),
-                timestamp=datetime.now(timezone.utc),
-            )
+            # Show current mood and recent history naturally
+            mood_message_parts = [
+                f"🎭 **Your Mood Journey**",
+                "",
+                f"Current mood: **{user_mood.current_mood.title()}**"
+            ]
 
             # Show recent mood history
             if user_mood.mood_history:
                 recent_moods = user_mood.mood_history[-5:]  # Last 5 entries
-                mood_text = "\n".join(
-                    [
-                        f"• {entry['mood'].title()} - {entry['date']}"
-                        for entry in recent_moods
-                    ]
-                )
-                embed.add_field(name="📊 Recent Moods", value=mood_text, inline=False)
+                mood_message_parts.extend([
+                    "",
+                    "📊 **Recent Moods:**"
+                ])
+                for entry in recent_moods:
+                    mood_message_parts.append(f"• {entry['mood'].title()} - {entry['date']}")
+            
+            mood_message = "\n".join(mood_message_parts)
 
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        await interaction.response.send_message(mood_message, ephemeral=True)
 
     async def _generate_mood_response(self, user: discord.Member, mood: str) -> str:
         """Generate AI response to mood update"""
@@ -534,33 +552,34 @@ Keep it under 100 words and use appropriate emojis."""
             else:
                 celebration = self._generate_fallback_celebration(achievement)
 
-            embed = discord.Embed(
-                title="🎉 CELEBRATION TIME! 🎉",
-                description=celebration.get(
-                    "message", f"Congratulations on {achievement}! 🌟"
-                ),
-                color=0xFFD700,
-                timestamp=datetime.now(timezone.utc),
-            )
+            # Build natural celebration message
+            celebration_parts = [
+                "🎉 **CELEBRATION TIME!** 🎉",
+                "",
+                celebration.get("message", f"Congratulations on {achievement}! 🌟")
+            ]
 
             if celebration.get("achievements"):
-                embed.add_field(
-                    name="🏆 Achievement Unlocked",
-                    value=celebration["achievements"],
-                    inline=False,
-                )
+                celebration_parts.extend([
+                    "",
+                    "🏆 **Achievement Unlocked:**",
+                    celebration["achievements"]
+                ])
 
             if celebration.get("encouragement"):
-                embed.add_field(
-                    name="✨ Keep Going!",
-                    value=celebration["encouragement"],
-                    inline=False,
-                )
+                celebration_parts.extend([
+                    "",
+                    "✨ **Keep Going!**",
+                    celebration["encouragement"]
+                ])
 
-            embed.set_footer(text="So proud of you! 💙 - Your AI Companion")
+            celebration_parts.extend([
+                "",
+                "_So proud of you! 💙 - Your AI Companion_"
+            ])
 
-            # Add celebration reactions
-            await interaction.followup.send(embed=embed)
+            celebration_message = "\n".join(celebration_parts)
+            await interaction.followup.send(celebration_message)
 
             # Add some celebration reactions
             try:
@@ -672,23 +691,22 @@ Be genuinely excited and supportive. Each section under 80 words."""
             if not user:
                 return
 
-            embed = discord.Embed(
-                title="💙 Gentle Wellness Reminder",
-                description=f"Hi {user.display_name}! Just checking in to see how you're doing today. 🌟",
-                color=0x87CEEB,
-            )
-
-            embed.add_field(
-                name="🤗 Quick Check",
-                value="• How are you feeling today?\n• Have you taken care of yourself?\n• Any wins to celebrate?",
-                inline=False,
-            )
-
-            embed.set_footer(
-                text="Use /checkin anytime for a personal wellness check! 💙"
-            )
-
-            await user.send(embed=embed)
+            # Send natural wellness reminder
+            wellness_reminder_parts = [
+                "💙 **Gentle Wellness Reminder**",
+                "",
+                f"Hi {user.display_name}! Just checking in to see how you're doing today. 🌟",
+                "",
+                "🤗 **Quick Check:**",
+                "• How are you feeling today?",
+                "• Have you taken care of yourself?",
+                "• Any wins to celebrate?",
+                "",
+                "_Use /checkin anytime for a personal wellness check!_ 💙"
+            ]
+            
+            wellness_reminder = "\n".join(wellness_reminder_parts)
+            await user.send(wellness_reminder)
             self.daily_check_ins[user_id] = datetime.now().date()
 
         except Exception as e:
@@ -722,10 +740,9 @@ Create a warm, caring message (under 100 words) that:
                 message=prompt, user_id=user_id, guild_id=0, channel_id=0
             )
 
-            embed = discord.Embed(description=response.strip(), color=0x87CEEB)
-            embed.set_author(name="Your AI Companion 💙")
-
-            await user.send(embed=embed)
+            # Send natural message without embed formatting
+            natural_message = f"💙 {response.strip()}"
+            await user.send(natural_message)
 
         except Exception as e:
             self.logger.error(f"Proactive message error for user {user_id}: {e}")
@@ -737,25 +754,24 @@ Create a warm, caring message (under 100 words) that:
             if not user:
                 return
 
-            embed = discord.Embed(
-                title="💚 Stress Support Check-In",
-                description=f"Hi {user.display_name}, I've noticed some signs that you might be feeling stressed lately. I'm here to support you! 🫂",
-                color=0x98FB98,
-            )
-
-            embed.add_field(
-                name="🌱 Stress Relief Tips",
-                value="• Take 5 deep breaths\n• Step away for a short break\n• Listen to calming music\n• Talk to someone you trust",
-                inline=False,
-            )
-
-            embed.add_field(
-                name="💙 Remember",
-                value="It's okay to feel overwhelmed sometimes. You're doing your best, and that's enough. I believe in you!",
-                inline=False,
-            )
-
-            await user.send(embed=embed)
+            # Send natural stress support message
+            stress_parts = [
+                "💚 **Stress Support Check-In**",
+                "",
+                f"Hi {user.display_name}, I've noticed some signs that you might be feeling stressed lately. I'm here to support you! 🫂",
+                "",
+                "🌱 **Stress Relief Tips:**",
+                "• Take 5 deep breaths",
+                "• Step away for a short break", 
+                "• Listen to calming music",
+                "• Talk to someone you trust",
+                "",
+                "💙 **Remember:**",
+                "It's okay to feel overwhelmed sometimes. You're doing your best, and that's enough. I believe in you!"
+            ]
+            
+            stress_message = "\n".join(stress_parts)
+            await user.send(stress_message)
 
         except Exception as e:
             self.logger.error(f"Stress support error for user {user_id}: {e}")
