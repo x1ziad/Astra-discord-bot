@@ -647,7 +647,9 @@ Create a warm, appreciative message (under 100 words) with appropriate emojis.""
     @app_commands.default_permissions(manage_messages=True)
     async def mod_stats(self, interaction: discord.Interaction):
         """View comprehensive moderation statistics"""
-        if not await check_user_permission(interaction.user, PermissionLevel.MODERATOR, interaction.guild):
+        if not await check_user_permission(
+            interaction.user, PermissionLevel.MODERATOR, interaction.guild
+        ):
             await interaction.response.send_message(
                 "❌ You need moderator permissions for this command.", ephemeral=True
             )
@@ -703,7 +705,9 @@ Create a warm, appreciative message (under 100 words) with appropriate emojis.""
         self, interaction: discord.Interaction, user: discord.Member
     ):
         """View detailed user moderation profile"""
-        if not await check_user_permission(interaction.user, PermissionLevel.MODERATOR, interaction.guild):
+        if not await check_user_permission(
+            interaction.user, PermissionLevel.MODERATOR, interaction.guild
+        ):
             await interaction.response.send_message(
                 "❌ You need moderator permissions for this command.", ephemeral=True
             )

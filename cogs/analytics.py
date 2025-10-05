@@ -169,19 +169,24 @@ class Analytics(commands.GroupCog, name="analytics"):
         # Check permissions
         try:
             from utils.permissions import permission_manager, PermissionLevel
+
             if permission_manager and not await permission_manager.check_permission(
                 interaction.user, PermissionLevel.MODERATOR, interaction.guild
             ):
                 await interaction.response.send_message(
-                    "❌ You need moderator permissions for this command.", ephemeral=True
+                    "❌ You need moderator permissions for this command.",
+                    ephemeral=True,
                 )
                 return
         except Exception as e:
             # Fallback permission check
-            if not (interaction.user.guild_permissions.manage_guild or 
-                   interaction.user.guild_permissions.administrator):
+            if not (
+                interaction.user.guild_permissions.manage_guild
+                or interaction.user.guild_permissions.administrator
+            ):
                 await interaction.response.send_message(
-                    "❌ You need moderator permissions for this command.", ephemeral=True
+                    "❌ You need moderator permissions for this command.",
+                    ephemeral=True,
                 )
                 return
 

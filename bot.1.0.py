@@ -742,10 +742,14 @@ class AstraBot(commands.Bot):
             # Optimized message tracking - only for important messages
             try:
                 # Only store context for messages that might need AI processing
-                if (len(message.content) > 10 and 
-                    (self.user.mentioned_in(message) or 
-                     any(word in message.content.lower() for word in ['astra', 'help', '?']) or
-                     message.reference is not None)):
+                if len(message.content) > 10 and (
+                    self.user.mentioned_in(message)
+                    or any(
+                        word in message.content.lower()
+                        for word in ["astra", "help", "?"]
+                    )
+                    or message.reference is not None
+                ):
                     await self._store_message_context(message)
 
                 # Automatic message event capture (lightweight)

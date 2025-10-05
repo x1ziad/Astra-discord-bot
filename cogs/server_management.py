@@ -37,7 +37,9 @@ class ServerManagement(commands.GroupCog, name="server"):
     @app_commands.default_permissions(manage_guild=True)
     async def optimize_server(self, interaction: discord.Interaction):
         """Analyze server and provide optimization recommendations"""
-        if not await check_user_permission(interaction.user, PermissionLevel.MODERATOR, interaction.guild):
+        if not await check_user_permission(
+            interaction.user, PermissionLevel.MODERATOR, interaction.guild
+        ):
             await interaction.response.send_message(
                 "❌ You need moderator permissions for this command.", ephemeral=True
             )
@@ -210,7 +212,9 @@ class ServerManagement(commands.GroupCog, name="server"):
         color: Optional[str] = None,
     ):
         """Advanced role management"""
-        if not await check_user_permission(interaction.user, PermissionLevel.MODERATOR, interaction.guild):
+        if not await check_user_permission(
+            interaction.user, PermissionLevel.MODERATOR, interaction.guild
+        ):
             await interaction.response.send_message(
                 "❌ You need moderator permissions for this command.", ephemeral=True
             )
@@ -369,7 +373,9 @@ class ServerManagement(commands.GroupCog, name="server"):
         reason: Optional[str] = "Moderator action",
     ):
         """Force move users to a specific voice channel"""
-        if not await check_user_permission(interaction.user, PermissionLevel.MODERATOR, interaction.guild):
+        if not await check_user_permission(
+            interaction.user, PermissionLevel.MODERATOR, interaction.guild
+        ):
             await interaction.response.send_message(
                 "❌ You need moderator permissions for this command.", ephemeral=True
             )
