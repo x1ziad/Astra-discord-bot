@@ -9,6 +9,7 @@ openai>=1.30.0  # Keep for backward compatibility
 azure-ai-inference>=1.0.0b4  # GitHub Models support
 google-genai>=0.8.0  # Google Gemini AI for image generation
 google-generativeai>=0.3.0  # Google Generative AI for text/image
+mistralai>=1.0.0  # Mistral AI direct integration
 
 # Optional AI services (commented for basic deployment)
 # azure-cognitiveservices-speech>=1.30.0

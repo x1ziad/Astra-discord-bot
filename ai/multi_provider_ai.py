@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Multi-Provider AI Management System
-Manages 2 AI providers (Google Gemini, Groq) with intelligent fallback
+Manages 3 AI providers (Google Gemini, Groq, Mistral) with intelligent fallback
 """
 import asyncio
 import os
@@ -20,6 +20,7 @@ class AIProvider(Enum):
 
     GOOGLE = "google"
     GROQ = "groq"
+    MISTRAL = "mistral"
 
 
 @dataclass
@@ -57,6 +58,7 @@ class MultiProviderAIManager:
         self.providers = {
             AIProvider.GOOGLE: ProviderStatus(AIProvider.GOOGLE),
             AIProvider.GROQ: ProviderStatus(AIProvider.GROQ),
+            AIProvider.MISTRAL: ProviderStatus(AIProvider.MISTRAL),
         }
 
         # Load configuration
@@ -66,41 +68,40 @@ class MultiProviderAIManager:
         )
 
         # Initialize provider clients
+        self.clients = {}
         self._initialize_clients()
 
     def _get_fallback_order(self) -> List[AIProvider]:
-        """Get provider fallback order from environment"""
-        fallback_str = os.getenv("FALLBACK_PROVIDERS", "google,groq")
-        provider_names = [p.strip().lower() for p in fallback_str.split(",")]
+        """Get fallback order from environment or use default"""
+        fallback_str = os.getenv("FALLBACK_PROVIDERS", "groq,google,mistral")
+        provider_names = [name.strip() for name in fallback_str.split(",")]
 
         fallback_order = []
         for name in provider_names:
             try:
                 fallback_order.append(AIProvider(name))
             except ValueError:
-                logger.warning(f"Unknown provider in fallback order: {name}")
+                logger.warning(f"Invalid provider in fallback order: {name}")
 
         return fallback_order
 
     def _initialize_clients(self):
-        """Initialize all provider clients"""
-        self.clients = {}
-
+        """Initialize all AI provider clients"""
         # Google Gemini
         try:
-            from ai.google_gemini_client import GoogleGeminiClient
+            from .google_gemini_client import GoogleGeminiClient
 
             self.clients[AIProvider.GOOGLE] = GoogleGeminiClient()
             google_available = self.clients[AIProvider.GOOGLE].available
             self.providers[AIProvider.GOOGLE].available = google_available
-            logger.info(
-                f"Google Gemini client: {'Available' if google_available else 'Not Available'}"
-            )
+
+            if google_available:
+                logger.info("Google Gemini client: Available")
+            else:
+                logger.info("Google Gemini client: Not Available")
         except Exception as e:
             logger.error(f"Failed to initialize Google client: {e}")
             self.providers[AIProvider.GOOGLE].available = False
-
-
 
         # Groq
         try:
@@ -116,6 +117,23 @@ class MultiProviderAIManager:
         except Exception as e:
             logger.error(f"Failed to initialize Groq client: {e}")
             self.providers[AIProvider.GROQ].available = False
+
+        # Mistral Direct API
+        try:
+            mistral_key = os.getenv("MISTRAL_API_KEY")
+            if mistral_key:
+                # Initialize Mistral client directly
+                self.clients[AIProvider.MISTRAL] = self._create_mistral_client(
+                    mistral_key
+                )
+                self.providers[AIProvider.MISTRAL].available = True
+                logger.info("Mistral client: Available")
+            else:
+                self.providers[AIProvider.MISTRAL].available = False
+                logger.info("Mistral client: Not Available (no API key)")
+        except Exception as e:
+            logger.error(f"Failed to initialize Mistral client: {e}")
+            self.providers[AIProvider.MISTRAL].available = False
 
     def _create_groq_client(self, api_key: str):
         """Create Groq client wrapper"""
@@ -152,53 +170,139 @@ class MultiProviderAIManager:
                             data = await response.json()
                             return {
                                 "content": data["choices"][0]["message"]["content"],
-                                "model": data["model"],
+                                "model": data.get("model", "llama-3.1-8b-instant"),
                                 "usage": data.get("usage", {}),
-                                "metadata": {
-                                    "finish_reason": data["choices"][0].get(
-                                        "finish_reason", "stop"
-                                    ),
-                                    "created_at": datetime.now().isoformat(),
-                                },
+                                "provider": "groq",
                             }
                         else:
                             error_text = await response.text()
-                            raise Exception(
-                                f"Groq API error {response.status}: {error_text}"
-                            )
+                            raise Exception(f"HTTP {response.status}: {error_text}")
 
         return GroqClient(api_key)
 
-    def _is_provider_healthy(self, provider: AIProvider) -> bool:
-        """Check if provider is healthy and available"""
-        status = self.providers[provider]
+    def _create_mistral_client(self, api_key: str):
+        """Create Mistral client using direct API"""
 
-        # Check if provider is available
-        if not status.available:
-            return False
+        class MistralClient:
+            def __init__(self, api_key):
+                self.api_key = api_key
+                from mistralai import Mistral
+
+                self.client = Mistral(api_key=api_key)
+
+            async def generate_response(self, prompt: str, **kwargs):
+                """Generate response using direct Mistral API"""
+                import asyncio
+
+                def sync_generate():
+                    try:
+                        response = self.client.chat.complete(
+                            model=kwargs.get("model", "mistral-large-latest"),
+                            messages=[{"role": "user", "content": prompt}],
+                            max_tokens=kwargs.get("max_tokens", 1000),
+                            temperature=kwargs.get("temperature", 0.7),
+                        )
+
+                        choice = response.choices[0]
+                        content = choice.message.content
+
+                        return {
+                            "content": content,
+                            "model": kwargs.get("model", "mistral-large-latest"),
+                            "usage": {
+                                "prompt_tokens": response.usage.prompt_tokens,
+                                "completion_tokens": response.usage.completion_tokens,
+                                "total_tokens": response.usage.total_tokens,
+                            },
+                            "provider": "mistral",
+                        }
+                    except Exception as e:
+                        raise Exception(f"Mistral API error: {str(e)}")
+
+                # Run sync function in executor
+                loop = asyncio.get_event_loop()
+                return await loop.run_in_executor(None, sync_generate)
+
+        return MistralClient(api_key)
+
+    async def generate_response(
+        self,
+        prompt: str,
+        max_tokens: int = 8192,
+        temperature: float = 0.7,
+        model: Optional[str] = None,
+        **kwargs,
+    ) -> AIResponse:
+        """Generate AI response with intelligent provider fallback"""
+
+        for provider in self.fallback_order:
+            if not self._is_provider_available(provider):
+                logger.debug(f"Skipping {provider.value}: not available")
+                continue
+
+            try:
+                logger.info(f"Attempting generation with {provider.value}")
+                start_time = time.time()
+
+                # Generate response based on provider type
+                if provider == AIProvider.GOOGLE:
+                    response = await self._generate_google_response(prompt, **kwargs)
+                elif provider == AIProvider.GROQ:
+                    response = await self._generate_groq_response(prompt, **kwargs)
+                elif provider == AIProvider.MISTRAL:
+                    response = await self._generate_mistral_response(prompt, **kwargs)
+                else:
+                    continue
+
+                response_time = time.time() - start_time
+
+                # Update status on success
+                self._update_provider_status(provider, True, response_time)
+
+                logger.info(
+                    f"Successfully generated response using {provider.value} in {response_time:.2f}s"
+                )
+
+                # Set actual response time
+                response.response_time = response_time
+                return response
+
+            except Exception as e:
+                response_time = time.time() - start_time
+                self._update_provider_status(provider, False, response_time)
+
+                logger.warning(f"Provider {provider.value} failed: {str(e)[:100]}...")
+
+                # If this is the last provider, re-raise the exception
+                if provider == self.fallback_order[-1]:
+                    raise Exception(f"All AI providers failed. Last error: {str(e)}")
+
+        raise Exception("No available AI providers")
+
+    def _is_provider_available(self, provider: AIProvider) -> bool:
+        """Check if a provider is available and healthy"""
+        return self.providers[provider].available and self._is_provider_healthy(
+            provider
+        )
+
+    def _is_provider_healthy(self, provider: AIProvider) -> bool:
+        """Check if provider is healthy (not rate limited, not too many failures)"""
+        status = self.providers[provider]
 
         # Check rate limiting
         if status.rate_limited_until and datetime.now() < status.rate_limited_until:
             return False
 
-        # Check consecutive failures (circuit breaker pattern)
+        # Check consecutive failures
         if status.consecutive_failures >= 3:
-            # Allow retry after 5 minutes
-            if status.last_failure and datetime.now() - status.last_failure < timedelta(
-                minutes=5
-            ):
-                return False
+            return False
 
         return True
 
     def _update_provider_status(
-        self,
-        provider: AIProvider,
-        success: bool,
-        response_time: float = 0.0,
-        error: str = None,
+        self, provider: AIProvider, success: bool, response_time: float
     ):
-        """Update provider status based on request outcome"""
+        """Update provider performance metrics"""
         status = self.providers[provider]
         status.total_requests += 1
 
@@ -211,110 +315,73 @@ class MultiProviderAIManager:
             if status.avg_response_time == 0:
                 status.avg_response_time = response_time
             else:
-                status.avg_response_time = (status.avg_response_time * 0.8) + (
-                    response_time * 0.2
+                status.avg_response_time = (
+                    status.avg_response_time * 0.8 + response_time * 0.2
                 )
         else:
             status.consecutive_failures += 1
             status.last_failure = datetime.now()
 
-            # Handle rate limiting
-            if error and ("429" in error or "rate" in error.lower()):
-                status.rate_limited_until = datetime.now() + timedelta(minutes=10)
-                logger.warning(
-                    f"Provider {provider.value} rate limited until {status.rate_limited_until}"
-                )
-
-    async def generate_response(self, prompt: str, **kwargs) -> AIResponse:
-        """Generate response using intelligent provider selection with fallback"""
-
-        # Try providers in fallback order
-        last_error = None
-
-        for provider in self.fallback_order:
-            if not self._is_provider_healthy(provider):
-                logger.debug(f"Skipping unhealthy provider: {provider.value}")
-                continue
-
-            try:
-                logger.info(f"Attempting response with provider: {provider.value}")
-                start_time = time.time()
-
-                # Generate response based on provider type
-                if provider == AIProvider.GOOGLE:
-                    response = await self._generate_google_response(prompt, **kwargs)
-                elif provider == AIProvider.GROQ:
-                    response = await self._generate_groq_response(prompt, **kwargs)
-                else:
-                    continue
-
-                response_time = time.time() - start_time
-
-                # Update status on success
-                self._update_provider_status(provider, True, response_time)
-
-                logger.info(
-                    f"✅ Response generated successfully with {provider.value} ({response_time:.2f}s)"
-                )
-                return response
-
-            except Exception as e:
-                error_str = str(e)
-                response_time = time.time() - start_time
-
-                # Update status on failure
-                self._update_provider_status(provider, False, response_time, error_str)
-
-                logger.warning(f"❌ Provider {provider.value} failed: {error_str}")
-                last_error = e
-
-                # Continue to next provider if auto_fallback is enabled
-                if not self.auto_fallback:
-                    break
-
-        # All providers failed
-        raise Exception(f"All AI providers failed. Last error: {last_error}")
-
     async def _generate_google_response(self, prompt: str, **kwargs) -> AIResponse:
         """Generate response using Google Gemini"""
         client = self.clients[AIProvider.GOOGLE]
 
-        response = await client.generate_response(
+        result = await client.generate_response(
             prompt=prompt,
             max_tokens=kwargs.get("max_tokens", 8192),
             temperature=kwargs.get("temperature", 0.7),
         )
 
         return AIResponse(
-            content=response["content"],
+            content=result["content"],
             provider="google",
-            model=response.get("model", "models/gemini-2.5-flash"),
-            usage=response.get("usage", {}),
-            metadata=response.get("metadata", {}),
+            model=result["model"],
+            usage=result["usage"],
+            metadata={
+                "provider_type": "google_gemini",
+                "safety_ratings": result.get("safety_ratings", []),
+            },
             response_time=0.0,  # Will be set by caller
         )
-
-
 
     async def _generate_groq_response(self, prompt: str, **kwargs) -> AIResponse:
         """Generate response using Groq"""
         client = self.clients[AIProvider.GROQ]
 
-        response = await client.generate_response(
-            prompt=prompt,
-            max_tokens=kwargs.get("max_tokens", 8192),
-            temperature=kwargs.get("temperature", 0.7),
-            model=kwargs.get("model", "llama-3.1-8b-instant"),
-        )
+        result = await client.generate_response(prompt, **kwargs)
 
         return AIResponse(
-            content=response["content"],
+            content=result["content"],
             provider="groq",
-            model=response.get("model", "llama-3.1-8b-instant"),
-            usage=response.get("usage", {}),
-            metadata=response.get("metadata", {}),
+            model=result["model"],
+            usage=result["usage"],
+            metadata={
+                "provider_type": "groq_llama",
+                "via": "groq_api",
+            },
             response_time=0.0,  # Will be set by caller
         )
+
+    async def _generate_mistral_response(self, prompt: str, **kwargs) -> AIResponse:
+        """Generate response using direct Mistral AI API"""
+        client = self.clients[AIProvider.MISTRAL]
+
+        try:
+            result = await client.generate_response(prompt, **kwargs)
+
+            return AIResponse(
+                content=result["content"],
+                provider="mistral",
+                model=result["model"],
+                usage=result["usage"],
+                metadata={
+                    "provider_type": "mistral_direct",
+                    "via": "mistral_api",
+                },
+                response_time=0.0,  # Will be set by caller
+            )
+        except Exception as e:
+            raise Exception(f"Mistral generation failed: {str(e)}")
 
     def get_provider_status(self) -> Dict[str, Dict[str, Any]]:
         """Get status of all providers"""
@@ -335,36 +402,13 @@ class MultiProviderAIManager:
                 "last_success": (
                     status.last_success.isoformat() if status.last_success else None
                 ),
-                "rate_limited": status.rate_limited_until is not None
-                and datetime.now() < status.rate_limited_until,
+                "last_failure": (
+                    status.last_failure.isoformat() if status.last_failure else None
+                ),
             }
 
         return status_report
 
-    def get_best_provider(self) -> Optional[AIProvider]:
-        """Get the best available provider based on performance metrics"""
-        healthy_providers = [
-            p for p in self.fallback_order if self._is_provider_healthy(p)
-        ]
-
-        if not healthy_providers:
-            return None
-
-        # Sort by success rate and response time
-        def provider_score(provider):
-            status = self.providers[provider]
-            if status.total_requests == 0:
-                return float("inf")  # No data, lowest priority
-
-            success_rate = status.successful_requests / status.total_requests
-            response_time_penalty = (
-                status.avg_response_time * 0.1
-            )  # 100ms = 0.01 penalty
-
-            return (1 - success_rate) + response_time_penalty
-
-        return min(healthy_providers, key=provider_score)
-
-
-# Global instance
-multi_provider_ai = MultiProviderAIManager()
+    def get_available_providers(self) -> List[str]:
+        """Get list of currently available providers"""
+        return [p.value for p in self.fallback_order if self._is_provider_healthy(p)]
