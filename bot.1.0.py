@@ -639,56 +639,13 @@ class AstraBot(commands.Bot):
             self.logger.info(f"   📅 Created: {guild.created_at.strftime('%Y-%m-%d')}")
             self.logger.info(f"   👑 Owner: {guild.owner}")
 
-            # Automatic guild join event capture
-            reporter = get_discord_reporter()
-            if reporter:
-                await reporter.auto_capture_guild_event(guild, "join")
-
-            # Initialize guild configuration
+            # 🚀 Performance: Skip expensive reporter operations for faster guild joins
+            # Initialize guild configuration (lightweight)
             await self._initialize_guild_config(guild)
 
-            # Initialize adaptive personality for this server
-            try:
-                from ai.consolidated_ai_engine import get_engine
-
-                ai_engine = get_engine()
-                if ai_engine:
-                    # Prepare initial context about the server
-                    initial_context = {
-                        "server_name": guild.name,
-                        "server_description": guild.description or "",
-                        "member_count": guild.member_count,
-                        "created_at": guild.created_at.isoformat(),
-                        "features": list(guild.features) if guild.features else [],
-                        "owner": str(guild.owner) if guild.owner else "Unknown",
-                    }
-
-                    # Initialize adaptive personality (no astronomy defaults)
-                    personality_result = await ai_engine.initialize_server_personality(
-                        guild_id=guild.id,
-                        guild_name=guild.name,
-                        initial_context=initial_context,
-                    )
-
-                    if personality_result.get("success"):
-                        self.logger.info(
-                            f"🧠 Adaptive personality initialized for {guild.name}"
-                        )
-                        self.logger.info(
-                            f"   🎯 Learning from community: {personality_result.get('message', 'Ready to adapt')}"
-                        )
-                    else:
-                        self.logger.warning(
-                            f"⚠️ Personality initialization failed: {personality_result.get('error', 'Unknown error')}"
-                        )
-
-                    # Schedule adaptive learning after some initial activity
-                    asyncio.create_task(self._schedule_initial_learning(guild))
-
-            except Exception as e:
-                self.logger.error(
-                    f"❌ Failed to initialize adaptive personality for {guild.name}: {e}"
-                )
+            # 🚀 Performance: Lightweight guild setup - AI initialization moved to background
+            # AI personality will be initialized on first interaction for better performance
+            self.logger.info(f"🧠 AI personality will initialize on first interaction for {guild.name}")
 
             # Sync commands if enabled
             if self.config.command_sync_on_join:
@@ -739,27 +696,9 @@ class AstraBot(commands.Bot):
                 self._command_count += 1
                 return
 
-            # Optimized message tracking - only for important messages
-            try:
-                # Only store context for messages that might need AI processing
-                if len(message.content) > 10 and (
-                    self.user.mentioned_in(message)
-                    or any(
-                        word in message.content.lower()
-                        for word in ["astra", "help", "?"]
-                    )
-                    or message.reference is not None
-                ):
-                    await self._store_message_context(message)
-
-                # Automatic message event capture (lightweight)
-                reporter = get_discord_reporter()
-                if reporter:
-                    # Run in background to avoid blocking
-                    asyncio.create_task(reporter.auto_capture_message_event(message))
-
-            except Exception as e:
-                self.logger.error(f"Error processing message context: {e}")
+            # 🚀 ULTRA-FAST: Skip expensive operations for better performance
+            # Only minimal processing to avoid 3+ second delays
+            # Context storage and reporting moved to AI cog for targeted processing
 
             # The AdvancedAICog on_message listener will handle all AI responses
             # with its sophisticated universal message interaction system
@@ -775,12 +714,7 @@ class AstraBot(commands.Bot):
                 f"User: {ctx.author} | Guild: {getattr(ctx.guild, 'name', 'DM')}"
             )
 
-            # Automatic command event capture
-            reporter = get_discord_reporter()
-            if reporter:
-                await reporter.auto_capture_command_event(
-                    ctx, ctx.command.qualified_name, success=True
-                )
+            # 🚀 Performance: Skip expensive reporter for faster command processing
 
             # Update command statistics
             await self._update_command_stats(ctx)
@@ -791,66 +725,43 @@ class AstraBot(commands.Bot):
             await self.error_handler.handle_command_error(ctx, error)
             self.stats.errors_handled += 1
 
-            # Automatic error event capture
-            reporter = get_discord_reporter()
-            if reporter:
-                await reporter.auto_capture_command_event(
-                    ctx,
-                    ctx.command.qualified_name if ctx.command else "unknown",
-                    success=False,
-                    error=str(error),
-                )
-                await reporter.auto_capture_error_event(
-                    error,
-                    f"Command error in {ctx.command.qualified_name if ctx.command else 'unknown'}",
-                    immediate=True,
-                )
+            # 🚀 Performance: Skip expensive error reporting for faster recovery
 
-        # Additional automatic event handlers for comprehensive capture
+        # 🚀 PERFORMANCE: Lightweight event handlers without expensive operations
         @self.event
         async def on_member_join(member):
-            """Automatic member join event capture"""
-            reporter = get_discord_reporter()
-            if reporter:
-                await reporter.auto_capture_member_event(member, "join")
+            """Lightweight member join event - expensive operations moved to welcome system"""
+            self.logger.info(f"👋 Member joined: {member} in {member.guild.name}")
 
         @self.event
         async def on_member_remove(member):
-            """Automatic member leave event capture"""
-            reporter = get_discord_reporter()
-            if reporter:
-                await reporter.auto_capture_member_event(member, "leave")
+            """Lightweight member leave event"""
+            self.logger.info(f"👋 Member left: {member} from {member.guild.name}")
 
         @self.event
         async def on_voice_state_update(member, before, after):
-            """Automatic voice state update capture"""
-            reporter = get_discord_reporter()
-            if reporter:
-                await reporter.auto_capture_voice_event(member, before, after)
+            """🚀 Performance: Lightweight voice state tracking"""
+            # Expensive reporting moved to dedicated voice tracking cog if needed
+            pass
 
         @self.event
         async def on_raw_reaction_add(payload):
-            """Automatic reaction add event capture"""
-            reporter = get_discord_reporter()
-            if reporter:
-                await reporter.auto_capture_reaction_event(payload)
+            """🚀 Performance: Lightweight reaction tracking"""
+            # Expensive reporting moved to reaction tracking cog if needed
+            pass
 
         @self.event
         async def on_raw_reaction_remove(payload):
-            """Automatic reaction remove event capture"""
-            reporter = get_discord_reporter()
-            if reporter:
-                await reporter.auto_capture_reaction_event(payload)
+            """🚀 Performance: Lightweight reaction tracking"""
+            # Expensive reporting moved to reaction tracking cog if needed
+            pass
 
         @self.event
         async def on_error(event, *args, **kwargs):
-            """Global error event capture"""
+            """🚀 Performance: Lightweight error logging"""
             error = args[0] if args else Exception("Unknown error")
-            reporter = get_discord_reporter()
-            if reporter:
-                await reporter.auto_capture_error_event(
-                    error, f"Global error in event: {event}", immediate=True
-                )
+            self.logger.error(f"Global error in event {event}: {error}")
+            self.stats.errors_handled += 1
 
     async def _sync_commands(self):
         """Sync application commands with enhanced error handling"""

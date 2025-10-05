@@ -181,21 +181,18 @@ class OptimizedAdmin(commands.GroupCog, name="admin"):
                 success_cogs = []
                 failed_cogs = []
 
-                # Get all Python files in cogs directory
-                cog_files = [
-                    f.replace(".py", "")
-                    for f in os.listdir("cogs")
-                    if f.endswith(".py")
-                    and not f.startswith("__")
-                    and f != "admin_optimized.py"
+                # Get only loaded extensions to avoid reloading unloaded ones
+                loaded_extensions = [
+                    ext_name for ext_name in self.bot.extensions.keys()
+                    if ext_name.startswith("cogs.") and ext_name != "cogs.admin_optimized"
                 ]
 
-                total_cogs = len(cog_files)
+                total_cogs = len(loaded_extensions)
 
-                for i, cog_name in enumerate(cog_files, 1):
-                    ext_name = f"cogs.{cog_name}"
+                for i, ext_name in enumerate(loaded_extensions, 1):
                     try:
                         await self.bot.reload_extension(ext_name)
+                        cog_name = ext_name.split(".")[-1]
                         success_cogs.append(cog_name)
                     except Exception as e:
                         failed_cogs.append(f"{cog_name}: {str(e)[:100]}")
