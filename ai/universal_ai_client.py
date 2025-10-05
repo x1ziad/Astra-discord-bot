@@ -23,6 +23,14 @@ except ImportError:
     ERROR_HANDLER_AVAILABLE = False
     logging.warning("AI Error Handler not available - fallback functionality limited")
 
+# Import Google Gemini client
+try:
+    from ai.google_gemini_client import google_gemini_client
+    GOOGLE_GEMINI_AVAILABLE = True
+except ImportError:
+    GOOGLE_GEMINI_AVAILABLE = False
+    logging.warning("Google Gemini client not available")
+
 # Import model mapping
 try:
     from ai.model_mapping import normalize_model_id, get_model_display_name
@@ -106,10 +114,19 @@ class AIResponse:
 class UniversalAIClient:
     """Universal AI client supporting multiple providers"""
 
-    def __init__(self, api_key: str = None, provider: str = "openrouter", **kwargs):
-        self.api_key = (
-            api_key or os.getenv("AI_API_KEY") or os.getenv("OPENROUTER_API_KEY")
-        )
+    def __init__(self, api_key: str = None, provider: str = "google", **kwargs):
+        # Provider-specific API key resolution
+        if not api_key:
+            if provider == "google":
+                self.api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+            elif provider == "openai":
+                self.api_key = os.getenv("OPENAI_API_KEY")
+            elif provider == "openrouter":
+                self.api_key = os.getenv("OPENROUTER_API_KEY") or os.getenv("AI_API_KEY")
+            else:
+                self.api_key = os.getenv("AI_API_KEY") or os.getenv("OPENROUTER_API_KEY")
+        else:
+            self.api_key = api_key
         self.provider = AIProvider(provider) if isinstance(provider, str) else provider
 
         # Provider-specific configuration
@@ -125,6 +142,11 @@ class UniversalAIClient:
             AIProvider.OPENAI: {
                 "base_url": "https://api.openai.com/v1",
                 "default_model": "gpt-4",
+                "headers": {},
+            },
+            AIProvider.GOOGLE: {
+                "base_url": "https://generativelanguage.googleapis.com/v1beta",
+                "default_model": "models/gemini-2.5-flash",
                 "headers": {},
             },
         }
@@ -1059,7 +1081,64 @@ class UniversalAIClient:
 
         headers = self._get_headers()
 
-        # Enhanced error handling with fallback support
+        # Handle Google Gemini with dedicated client
+        if self.provider == AIProvider.GOOGLE:
+            if GOOGLE_GEMINI_AVAILABLE and google_gemini_client.available:
+                try:
+                    logger.info(f"🧠 Using Google Gemini for response generation")
+                    
+                    # Use the dedicated Google Gemini client
+                    gemini_response = await google_gemini_client.chat_completion(
+                        messages=messages,
+                        max_tokens=kwargs.get("max_tokens", self.max_tokens),
+                        temperature=kwargs.get("temperature", self.temperature),
+                    )
+                    
+                    # Convert to AIResponse format
+                    ai_response = AIResponse(
+                        content=gemini_response['content'],
+                        model=gemini_response['model'],
+                        provider=gemini_response['provider'],
+                        usage=gemini_response['usage'],
+                        metadata=gemini_response['metadata'],
+                        created_at=datetime.now(timezone.utc),
+                        context_used=conversation_context,
+                        confidence_score=0.9  # High confidence for Google Gemini
+                    )
+                    
+                    # Store conversation history if context exists
+                    if conversation_context:
+                        conversation_context.message_history.append({
+                            "role": "assistant", 
+                            "content": ai_response.content,
+                            "timestamp": datetime.now(timezone.utc).isoformat()
+                        })
+                        await self.store_conversation_context_to_db(conversation_context)
+                    
+                    logger.info(f"✅ Google Gemini response generated successfully")
+                    return ai_response
+                    
+                except Exception as e:
+                    logger.error(f"❌ Google Gemini failed: {e}")
+                    # Fall back to OpenRouter if available
+                    if ERROR_HANDLER_AVAILABLE:
+                        next_provider = ai_error_handler.get_next_provider(['google'])
+                        if next_provider:
+                            logger.info(f"🔄 Falling back from Google to {next_provider}")
+                            # Update provider temporarily for this request
+                            original_provider = self.provider
+                            self.provider = AIProvider(next_provider)
+                            provider_config = self.config[self.provider]
+                            url = f"{provider_config['base_url']}/chat/completions"
+                            headers = self._get_headers()
+                        else:
+                            raise Exception(f"Google Gemini failed and no fallback available: {e}")
+                    else:
+                        raise Exception(f"Google Gemini failed: {e}")
+            else:
+                raise Exception("Google Gemini client not available or not configured")
+
+        # Enhanced error handling with fallback support for HTTP-based providers
         max_attempts = 3
         current_provider = self.provider.value
         attempted_providers = []
@@ -1426,6 +1505,11 @@ async def create_openrouter_client(api_key: str = None, **kwargs) -> UniversalAI
 async def create_openai_client(api_key: str = None, **kwargs) -> UniversalAIClient:
     """Create OpenAI client"""
     return await create_ai_client("openai", api_key, **kwargs)
+
+
+async def create_google_client(api_key: str = None, **kwargs) -> UniversalAIClient:
+    """Create Google Gemini client"""
+    return await create_ai_client("google", api_key, **kwargs)
 
 
 if __name__ == "__main__":

@@ -124,6 +124,7 @@ except ImportError as e:
 class AIProvider(Enum):
     """Available AI providers in order of preference"""
 
+    GOOGLE = "google"
     UNIVERSAL = "universal"
     OPENROUTER = "openrouter"
     OPENAI = "openai"
@@ -770,9 +771,12 @@ class ConsolidatedAIEngine:
 
                 logger.info(f"Using normalized model: {model}")
 
+                # Use Google Gemini as the default provider
+                provider = self.config.get("ai_provider", os.getenv("AI_PROVIDER", "google"))
+                
                 universal_client = UniversalAIClient(
                     api_key=self.config.get("ai_api_key") or os.getenv("AI_API_KEY"),
-                    base_url=self.config.get("ai_base_url") or os.getenv("AI_BASE_URL"),
+                    provider=provider,
                     model=model,
                 )
                 if universal_client.is_available():
