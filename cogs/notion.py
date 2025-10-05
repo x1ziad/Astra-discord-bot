@@ -88,36 +88,82 @@ class Notion(commands.GroupCog, name="notion"):
                 f"https://api.notion.com/v1/databases/{self.notion_database_id}/query"
             )
 
-            filter_data = {
-                "filter": {
-                    "and": [
-                        {
-                            "property": "Date",
-                            "date": {"after": datetime.now().isoformat()},
-                        },
-                        {
-                            "property": "Date",
-                            "date": {
-                                "before": (
-                                    datetime.now() + timedelta(days=30)
-                                ).isoformat()
-                            },
-                        },
-                    ]
-                },
-                "sorts": [{"property": "Date", "direction": "ascending"}],
-            }
+            # First, get database schema to check available properties
+            database_url = (
+                f"https://api.notion.com/v1/databases/{self.notion_database_id}"
+            )
 
             async with aiohttp.ClientSession() as session:
+                # Get database schema first
+                async with session.get(
+                    database_url, headers=headers
+                ) as schema_response:
+                    if schema_response.status != 200:
+                        schema_text = await schema_response.text()
+                        self.logger.error(
+                            f"Failed to get database schema: {schema_text}"
+                        )
+                        return
+
+                    schema_data = await schema_response.json()
+                    properties = schema_data.get("properties", {})
+
+                    # Find the first date property
+                    date_property = None
+                    for prop_name, prop_info in properties.items():
+                        if prop_info.get("type") == "date":
+                            date_property = prop_name
+                            break
+
+                    # Build query based on available properties
+                    filter_data = {}
+
+                    if date_property:
+                        # If date property exists, filter by upcoming dates
+                        filter_data = {
+                            "filter": {
+                                "and": [
+                                    {
+                                        "property": date_property,
+                                        "date": {"after": datetime.now().isoformat()},
+                                    },
+                                    {
+                                        "property": date_property,
+                                        "date": {
+                                            "before": (
+                                                datetime.now() + timedelta(days=30)
+                                            ).isoformat()
+                                        },
+                                    },
+                                ]
+                            },
+                            "sorts": [
+                                {"property": date_property, "direction": "ascending"}
+                            ],
+                        }
+                    else:
+                        # If no date property, just get recent items
+                        filter_data = {
+                            "sorts": [
+                                {"timestamp": "created_time", "direction": "descending"}
+                            ],
+                            "page_size": 20,
+                        }
+
+                # Now query the database with the dynamic filter
                 async with session.post(
                     query_url, headers=headers, json=filter_data
                 ) as response:
                     if response.status == 200:
                         data = await response.json()
                         self.cached_events = self.parse_notion_events(
-                            data.get("results", [])
+                            data.get("results", []), date_property
                         )
                         self.last_fetch = datetime.now()
+
+                        self.logger.info(
+                            f"Successfully synced {len(self.cached_events)} events from Notion"
+                        )
 
                         # Save to cache file
                         try:
@@ -126,6 +172,7 @@ class Notion(commands.GroupCog, name="notion"):
                                     {
                                         "timestamp": self.last_fetch.isoformat(),
                                         "events": self.cached_events,
+                                        "date_property": date_property,
                                     },
                                     f,
                                     indent=2,
@@ -167,30 +214,69 @@ class Notion(commands.GroupCog, name="notion"):
         except Exception as e:
             self.logger.error(f"Failed to load Notion cache: {e}")
 
-    def parse_notion_events(self, results):
-        """Parse the event data from Notion API response"""
+    def parse_notion_events(self, results, date_property=None):
+        """Parse Notion API results into event data."""
         events = []
-        for result in results:
-            try:
-                properties = result.get("properties", {})
-                title = self.get_notion_title(properties.get("Name", {}))
-                date = self.get_notion_date(properties.get("Date", {}))
-                description = self.get_notion_text(properties.get("Description", {}))
-                type_tag = self.get_notion_select(properties.get("Type", {}))
 
-                if title and date:
-                    events.append(
-                        {
-                            "title": title,
-                            "date": date,
-                            "description": description or "No description available",
-                            "type": type_tag or "General",
-                            "notion_url": result.get("url", ""),
-                        }
-                    )
-            except Exception as e:
-                self.logger.error(f"Error parsing Notion event: {e}")
-                continue
+        for page in results:
+            properties = page.get("properties", {})
+
+            # Extract event name
+            title_prop = properties.get("Title") or properties.get("Name")
+            if title_prop:
+                if title_prop.get("type") == "title":
+                    title_content = title_prop.get("title", [])
+                    if title_content:
+                        event_name = title_content[0].get(
+                            "plain_text", "Untitled Event"
+                        )
+                    else:
+                        event_name = "Untitled Event"
+                else:
+                    event_name = "Untitled Event"
+            else:
+                event_name = "Untitled Event"
+
+            # Extract date using the dynamically detected property
+            date_str = None
+            if date_property:
+                date_prop = properties.get(date_property)
+                if date_prop and date_prop.get("type") == "date":
+                    date_info = date_prop.get("date")
+                    if date_info:
+                        date_str = date_info.get("start")
+
+            # If no date property found, try common alternatives
+            if not date_str:
+                for prop_name in ["Date", "Created", "Due Date", "Start Date"]:
+                    date_prop = properties.get(prop_name)
+                    if date_prop and date_prop.get("type") == "date":
+                        date_info = date_prop.get("date")
+                        if date_info:
+                            date_str = date_info.get("start")
+                            break
+
+            # Fallback to created_time if no date found
+            if not date_str:
+                date_str = page.get("created_time")
+
+            # Extract description
+            description = ""
+            desc_prop = properties.get("Description")
+            if desc_prop and desc_prop.get("type") == "rich_text":
+                rich_text = desc_prop.get("rich_text", [])
+                if rich_text:
+                    description = rich_text[0].get("plain_text", "")
+
+            events.append(
+                {
+                    "name": event_name,
+                    "date": date_str,
+                    "description": description,
+                    "url": page.get("url", ""),
+                }
+            )
+
         return events
 
     def get_notion_title(self, title_property):
