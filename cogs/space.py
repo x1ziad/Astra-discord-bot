@@ -21,6 +21,9 @@ from utils.checks import feature_enabled
 from logger.enhanced_logger import log_performance
 from ui.ui_components import PaginatedView
 
+# AI Integration
+from ai.multi_provider_ai import MultiProviderAIManager
+
 
 # Add channel_only decorator directly in this file
 def channel_only(feature_name):
@@ -77,6 +80,9 @@ class Space(commands.GroupCog, name="space"):
         self.bot = bot
         self.config = unified_config
         self.logger = bot.logger
+        
+        # AI Integration
+        self.ai_manager = MultiProviderAIManager()
 
         # Cache directory
         self.cache_dir = Path("data/space")
@@ -378,14 +384,16 @@ class Space(commands.GroupCog, name="space"):
                 "❌ Error displaying the astronomy picture.", ephemeral=True
             )
 
-    @app_commands.command(name="fact", description="Get a random space fact")
-    @app_commands.describe(category="Fact category (optional)")
-    @app_commands.checks.cooldown(1, 5)  # 5 second cooldown
+    @app_commands.command(name="fact", description="Get a random space fact with AI explanation")
+    @app_commands.describe(category="Fact category (optional)", detailed="Get AI-powered detailed explanation")
+    @app_commands.checks.cooldown(1, 10)  # 10 second cooldown for AI enhanced
     @feature_enabled("space_content")
     async def fact_command(
-        self, interaction: discord.Interaction, category: Optional[str] = None
+        self, interaction: discord.Interaction, category: Optional[str] = None, detailed: bool = False
     ):
-        """Get a random space fact"""
+        """Get a random space fact with optional AI explanation"""
+        await interaction.response.defer()
+        
         fact = random.choice(self.space_facts)
 
         embed = discord.Embed(
@@ -394,10 +402,48 @@ class Space(commands.GroupCog, name="space"):
             color=self.config.get_color("space"),
         )
 
-        embed.set_footer(
-            text=f"Astra has {len(self.space_facts)} space facts in its database"
-        )
-        await interaction.response.send_message(embed=embed)
+        # Add AI explanation if requested
+        if detailed:
+            try:
+                prompt = f"""Explain this space fact in more detail: "{fact}"
+
+                Provide a brief, educational explanation that:
+                - Adds scientific context and background
+                - Explains why this is significant
+                - Includes 1-2 related interesting details
+                - Keep it accessible but informative
+                - Limit to 150 words"""
+
+                response = await self.ai_manager.generate_response(
+                    prompt=prompt,
+                    max_tokens=200,
+                    temperature=0.7
+                )
+
+                if response and response.content:
+                    embed.add_field(
+                        name="🤖 AI Explanation",
+                        value=response.content,
+                        inline=False
+                    )
+                    embed.set_footer(
+                        text=f"AI explanation by {response.provider.title()} • {len(self.space_facts)} facts available"
+                    )
+                else:
+                    embed.set_footer(
+                        text=f"Astra has {len(self.space_facts)} space facts in its database"
+                    )
+            except Exception as e:
+                self.logger.error(f"Error generating AI explanation: {e}")
+                embed.set_footer(
+                    text=f"Astra has {len(self.space_facts)} space facts in its database"
+                )
+        else:
+            embed.set_footer(
+                text=f"Use detailed=True for AI explanation • {len(self.space_facts)} facts available"
+            )
+
+        await interaction.followup.send(embed=embed)
 
     @app_commands.command(
         name="meteor", description="Get information about upcoming meteor showers"
@@ -927,6 +973,114 @@ class Space(commands.GroupCog, name="space"):
         )
 
         await interaction.response.send_message(embed=overview_embed)
+
+    @app_commands.command(name="analyze", description="AI-powered space topic analysis")
+    @app_commands.describe(topic="Space topic to analyze (e.g., 'Mars exploration', 'black holes', 'SpaceX missions')")
+    @app_commands.checks.cooldown(1, 30)  # 30 second cooldown for AI analysis
+    @feature_enabled("space_content")
+    async def analyze_space_topic(self, interaction: discord.Interaction, topic: str):
+        """AI-powered analysis of space topics"""
+        await interaction.response.defer()
+
+        try:
+            prompt = f"""Provide an informative analysis of this space topic: "{topic}"
+
+            Structure your response to include:
+            - Brief overview of the topic
+            - Current status or recent developments
+            - Key scientific facts or discoveries
+            - Future implications or prospects
+            - Why this topic is significant to space exploration
+
+            Keep it educational, accurate, and engaging. Limit to 300 words."""
+
+            response = await self.ai_manager.generate_response(
+                prompt=prompt,
+                max_tokens=400,
+                temperature=0.6
+            )
+
+            if response and response.content:
+                embed = discord.Embed(
+                    title=f"🔬 Space Analysis: {topic.title()}",
+                    description=response.content[:2000],  # Discord embed limit
+                    color=self.config.get_color("space"),
+                    timestamp=datetime.now(timezone.utc)
+                )
+                
+                embed.set_footer(text=f"AI Analysis powered by {response.provider.title()}")
+                
+                # Add space-themed thumbnail
+                embed.set_thumbnail(url="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0c/NASA_logo.svg/200px-NASA_logo.svg.png")
+                
+                await interaction.followup.send(embed=embed)
+            else:
+                await interaction.followup.send(
+                    "❌ AI service temporarily unavailable. Please try again later.",
+                    ephemeral=True
+                )
+
+        except Exception as e:
+            self.logger.error(f"Error in space analysis: {e}")
+            await interaction.followup.send(
+                "❌ Error analyzing space topic. Please try again later.",
+                ephemeral=True
+            )
+
+    @app_commands.command(name="compare", description="AI-powered comparison of space objects or concepts")
+    @app_commands.describe(
+        object1="First space object or concept",
+        object2="Second space object or concept"
+    )
+    @app_commands.checks.cooldown(1, 30)  # 30 second cooldown
+    @feature_enabled("space_content")
+    async def compare_space_objects(self, interaction: discord.Interaction, object1: str, object2: str):
+        """AI-powered comparison of space objects"""
+        await interaction.response.defer()
+
+        try:
+            prompt = f"""Compare these two space-related topics: "{object1}" and "{object2}"
+
+            Provide a detailed comparison including:
+            - Key similarities and differences
+            - Physical characteristics (if applicable)
+            - Scientific significance of each
+            - How they relate to our understanding of space
+            - Which aspects make each unique
+
+            Be factual, educational, and highlight interesting contrasts. Limit to 350 words."""
+
+            response = await self.ai_manager.generate_response(
+                prompt=prompt,
+                max_tokens=450,
+                temperature=0.5
+            )
+
+            if response and response.content:
+                embed = discord.Embed(
+                    title=f"⚖️ Space Comparison",
+                    color=self.config.get_color("space"),
+                    timestamp=datetime.now(timezone.utc)
+                )
+                
+                embed.add_field(name="📊 Comparing", value=f"{object1.title()} **vs** {object2.title()}", inline=False)
+                embed.add_field(name="🔍 Analysis", value=response.content[:1000], inline=False)
+                
+                embed.set_footer(text=f"AI Comparison powered by {response.provider.title()}")
+                
+                await interaction.followup.send(embed=embed)
+            else:
+                await interaction.followup.send(
+                    "❌ AI service temporarily unavailable. Please try again later.",
+                    ephemeral=True
+                )
+
+        except Exception as e:
+            self.logger.error(f"Error in space comparison: {e}")
+            await interaction.followup.send(
+                "❌ Error comparing space objects. Please try again later.",
+                ephemeral=True
+            )
 
 
 async def setup(bot):

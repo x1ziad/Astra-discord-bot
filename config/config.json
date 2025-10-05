@@ -18,7 +18,10 @@
       "enable_moderation": true,
       "enable_analytics": true,
       "enable_auto_responses": true,
-      "enable_slash_commands": true
+      "enable_slash_commands": true,
+      "space_content": true,
+      "space_content.iss_tracking": true,
+      "space_content.launch_notifications": true
     }
   },
   "ai": {
