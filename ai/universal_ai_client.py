@@ -26,6 +26,7 @@ except ImportError:
 # Import Google Gemini client
 try:
     from ai.google_gemini_client import google_gemini_client
+
     GOOGLE_GEMINI_AVAILABLE = True
 except ImportError:
     GOOGLE_GEMINI_AVAILABLE = False
@@ -118,13 +119,19 @@ class UniversalAIClient:
         # Provider-specific API key resolution
         if not api_key:
             if provider == "google":
-                self.api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+                self.api_key = os.getenv("GOOGLE_API_KEY") or os.getenv(
+                    "GEMINI_API_KEY"
+                )
             elif provider == "openai":
                 self.api_key = os.getenv("OPENAI_API_KEY")
             elif provider == "openrouter":
-                self.api_key = os.getenv("OPENROUTER_API_KEY") or os.getenv("AI_API_KEY")
+                self.api_key = os.getenv("OPENROUTER_API_KEY") or os.getenv(
+                    "AI_API_KEY"
+                )
             else:
-                self.api_key = os.getenv("AI_API_KEY") or os.getenv("OPENROUTER_API_KEY")
+                self.api_key = os.getenv("AI_API_KEY") or os.getenv(
+                    "OPENROUTER_API_KEY"
+                )
         else:
             self.api_key = api_key
         self.provider = AIProvider(provider) if isinstance(provider, str) else provider
@@ -516,6 +523,92 @@ class UniversalAIClient:
 
         except Exception as e:
             logger.error(f"Error saving conversation context to database: {e}")
+
+    async def store_conversation_context_to_db(self, conversation_context: list):
+        """Store conversation context from list format to database"""
+        try:
+            # Extract context info from the conversation list
+            if not conversation_context:
+                return
+
+            # Get database connection
+            try:
+                from utils.database import db
+
+                db_connection = db
+            except ImportError:
+                logger.warning("Database connection not available for context storing")
+                return
+
+            # Extract identifiers from context (look for user info in messages)
+            guild_id = None
+            channel_id = None
+            user_id = None
+
+            # Try to extract IDs from message metadata if available
+            for msg in conversation_context:
+                if isinstance(msg, dict):
+                    if "guild_id" in msg:
+                        guild_id = msg["guild_id"]
+                    if "channel_id" in msg:
+                        channel_id = msg["channel_id"]
+                    if "user_id" in msg:
+                        user_id = msg["user_id"]
+
+            # Create database key
+            context_db_key = (
+                f"conversation_context_{guild_id or 'dm'}_{channel_id or 'unknown'}"
+            )
+
+            # Get existing context or create new
+            existing_context = await db_connection.get(
+                "conversation_contexts", context_db_key, {"messages": []}
+            )
+
+            # Add conversation messages to database format
+            for msg in conversation_context[-10:]:  # Last 10 messages for performance
+                if isinstance(msg, dict) and "content" in msg:
+                    db_message = {
+                        "user_id": user_id if msg.get("role") == "user" else "bot",
+                        "username": "User" if msg.get("role") == "user" else "Bot",
+                        "content": msg.get("content", ""),
+                        "timestamp": msg.get("timestamp", datetime.now().isoformat()),
+                        "channel_id": channel_id,
+                        "guild_id": guild_id,
+                        "role": msg.get("role", "unknown"),
+                    }
+
+                    # Check if message already exists (avoid duplicates)
+                    if not any(
+                        existing_msg.get("content") == db_message["content"]
+                        and existing_msg.get("timestamp") == db_message["timestamp"]
+                        for existing_msg in existing_context["messages"]
+                    ):
+                        existing_context["messages"].append(db_message)
+
+            # Update metadata
+            existing_context.update(
+                {
+                    "last_activity": datetime.now().isoformat(),
+                    "channel_id": channel_id,
+                    "guild_id": guild_id,
+                    "message_count": len(existing_context["messages"]),
+                }
+            )
+
+            # Keep only recent messages
+            if len(existing_context["messages"]) > 50:
+                existing_context["messages"] = existing_context["messages"][-50:]
+
+            # Save to database
+            await db_connection.set(
+                "conversation_contexts", context_db_key, existing_context
+            )
+
+            logger.debug(f"Stored conversation context to database: {context_db_key}")
+
+        except Exception as e:
+            logger.error(f"Error storing conversation context to database: {e}")
 
     def _analyze_emotional_context(self, message: str) -> Dict[str, Any]:
         """Advanced emotional context analysis with sentiment and intensity detection"""
@@ -1086,45 +1179,51 @@ class UniversalAIClient:
             if GOOGLE_GEMINI_AVAILABLE and google_gemini_client.available:
                 try:
                     logger.info(f"🧠 Using Google Gemini for response generation")
-                    
+
                     # Use the dedicated Google Gemini client
                     gemini_response = await google_gemini_client.chat_completion(
                         messages=messages,
                         max_tokens=kwargs.get("max_tokens", self.max_tokens),
                         temperature=kwargs.get("temperature", self.temperature),
                     )
-                    
+
                     # Convert to AIResponse format
                     ai_response = AIResponse(
-                        content=gemini_response['content'],
-                        model=gemini_response['model'],
-                        provider=gemini_response['provider'],
-                        usage=gemini_response['usage'],
-                        metadata=gemini_response['metadata'],
+                        content=gemini_response["content"],
+                        model=gemini_response["model"],
+                        provider=gemini_response["provider"],
+                        usage=gemini_response["usage"],
+                        metadata=gemini_response["metadata"],
                         created_at=datetime.now(timezone.utc),
                         context_used=conversation_context,
-                        confidence_score=0.9  # High confidence for Google Gemini
+                        confidence_score=0.9,  # High confidence for Google Gemini
                     )
-                    
+
                     # Store conversation history if context exists
                     if conversation_context:
-                        conversation_context.message_history.append({
-                            "role": "assistant", 
-                            "content": ai_response.content,
-                            "timestamp": datetime.now(timezone.utc).isoformat()
-                        })
-                        await self.store_conversation_context_to_db(conversation_context)
-                    
+                        conversation_context.message_history.append(
+                            {
+                                "role": "assistant",
+                                "content": ai_response.content,
+                                "timestamp": datetime.now(timezone.utc).isoformat(),
+                            }
+                        )
+                        await self.store_conversation_context_to_db(
+                            conversation_context
+                        )
+
                     logger.info(f"✅ Google Gemini response generated successfully")
                     return ai_response
-                    
+
                 except Exception as e:
                     logger.error(f"❌ Google Gemini failed: {e}")
                     # Fall back to OpenRouter if available
                     if ERROR_HANDLER_AVAILABLE:
-                        next_provider = ai_error_handler.get_next_provider(['google'])
+                        next_provider = ai_error_handler.get_next_provider(["google"])
                         if next_provider:
-                            logger.info(f"🔄 Falling back from Google to {next_provider}")
+                            logger.info(
+                                f"🔄 Falling back from Google to {next_provider}"
+                            )
                             # Update provider temporarily for this request
                             original_provider = self.provider
                             self.provider = AIProvider(next_provider)
@@ -1132,7 +1231,9 @@ class UniversalAIClient:
                             url = f"{provider_config['base_url']}/chat/completions"
                             headers = self._get_headers()
                         else:
-                            raise Exception(f"Google Gemini failed and no fallback available: {e}")
+                            raise Exception(
+                                f"Google Gemini failed and no fallback available: {e}"
+                            )
                     else:
                         raise Exception(f"Google Gemini failed: {e}")
             else:
