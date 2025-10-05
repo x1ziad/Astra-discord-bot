@@ -1717,6 +1717,36 @@ class SecurityCommands(commands.Cog):
             await interaction.response.send_message(embed=embed, ephemeral=True)
             return
 
+        # Check if bot has necessary permissions
+        bot_member = interaction.guild.get_member(self.bot.user.id)
+        if not bot_member:
+            embed = discord.Embed(
+                title="❌ Bot Member Not Found",
+                description="Could not find bot member in guild.",
+                color=0xFF0000,
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            return
+
+        bot_permissions = bot_member.guild_permissions
+        missing_perms = []
+        
+        if not bot_permissions.manage_roles:
+            missing_perms.append("Manage Roles")
+        if not bot_permissions.moderate_members:
+            missing_perms.append("Moderate Members (Timeout)")
+        if not bot_permissions.manage_channels:
+            missing_perms.append("Manage Channels")
+            
+        if missing_perms:
+            embed = discord.Embed(
+                title="❌ Insufficient Bot Permissions",
+                description=f"Bot is missing required permissions:\n• {chr(10).join(missing_perms)}",
+                color=0xFF0000,
+            )
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            return
+
         await interaction.response.defer()
 
         try:
@@ -1727,19 +1757,35 @@ class SecurityCommands(commands.Cog):
 
             # Remove all roles except @everyone - MORE AGGRESSIVE APPROACH
             roles_removed = 0
+            roles_failed = []
+            bot_member = interaction.guild.get_member(self.bot.user.id)
+            bot_top_role = bot_member.top_role if bot_member else None
+            
+            logging.info(f"Attempting to quarantine {user} - removing {len(original_roles)} roles")
+            
             for role in original_roles:
                 try:
+                    # Check if bot can manage this role
+                    if bot_top_role and role >= bot_top_role:
+                        logging.warning(f"Cannot remove role {role.name} - higher than bot's top role")
+                        roles_failed.append(role.name)
+                        continue
+                        
                     await user.remove_roles(role, reason=f"🔒 QUARANTINE: {reason}")
                     roles_removed += 1
+                    logging.info(f"Removed role {role.name} from {user}")
                     await asyncio.sleep(0.1)  # Small delay to avoid rate limits
                 except discord.Forbidden as e:
-                    logging.warning(
-                        f"Could not remove role {role.name} from {user}: {e}"
-                    )
+                    logging.warning(f"Could not remove role {role.name} from {user}: {e}")
+                    roles_failed.append(role.name)
                     continue
                 except Exception as e:
                     logging.error(f"Error removing role {role.name}: {e}")
+                    roles_failed.append(role.name)
                     continue
+            
+            if roles_failed:
+                logging.warning(f"Failed to remove roles: {', '.join(roles_failed)}")
 
             # Apply additional restrictions to @everyone role for this user
             try:
@@ -1774,16 +1820,22 @@ class SecurityCommands(commands.Cog):
                 logging.error(f"Error applying channel restrictions: {e}")
 
             # Also timeout the user for the maximum Discord allows (28 days or quarantine duration)
+            timeout_applied = False
             try:
-                timeout_duration = min(duration * 60, 40320)  # Max 28 days in minutes
+                # Convert hours to seconds, max 28 days (2419200 seconds)
+                timeout_seconds = min(duration * 3600, 2419200)  # Max 28 days in seconds
                 await user.timeout(
-                    timedelta(minutes=timeout_duration),
+                    timedelta(seconds=timeout_seconds),
                     reason=f"🔒 QUARANTINE TIMEOUT: {reason}",
                 )
-            except discord.Forbidden:
-                logging.warning(f"Could not timeout {user} during quarantine")
+                timeout_applied = True
+                logging.info(f"Successfully applied {timeout_seconds/3600:.1f} hour timeout to {user}")
+            except discord.Forbidden as e:
+                logging.warning(f"Could not timeout {user} during quarantine - insufficient permissions: {e}")
+                timeout_applied = False
             except Exception as e:
                 logging.error(f"Error applying timeout during quarantine: {e}")
+                timeout_applied = False
 
             # Store quarantine data with additional info
             self.active_quarantines[user.id] = {
@@ -1794,7 +1846,7 @@ class SecurityCommands(commands.Cog):
                 "moderator": interaction.user.id,
                 "roles_removed": roles_removed,
                 "channel_restrictions_applied": True,
-                "timeout_applied": True,
+                "timeout_applied": timeout_applied,
             }
 
             # Log the quarantine
@@ -1833,17 +1885,26 @@ class SecurityCommands(commands.Cog):
 
             embed.add_field(name="⏰ Duration", value=f"{duration} hours", inline=True)
 
+            roles_status = f"{roles_removed}/{len(original_roles)}"
+            if roles_failed:
+                roles_status += f" (⚠️ {len(roles_failed)} failed)"
+            
             embed.add_field(
                 name="🔧 Roles Removed",
-                value=f"{roles_removed}/{len(original_roles)}",
+                value=roles_status,
                 inline=True,
             )
 
             embed.add_field(name="📝 Reason", value=reason, inline=False)
 
+            timeout_status = "✅ User timed out" if timeout_applied else "❌ Timeout failed (check permissions)"
+            role_details = f"• {roles_removed} roles removed"
+            if roles_failed:
+                role_details += f" ({len(roles_failed)} failed - check role hierarchy)"
+            
             embed.add_field(
                 name="⚡ Actions Taken",
-                value=f"• {roles_removed} roles removed\n• Channel permissions restricted\n• User timed out\n• Complete quarantine applied\n• Event logged forensically",
+                value=f"{role_details}\n• Channel permissions restricted\n• {timeout_status}\n• Complete quarantine applied\n• Event logged forensically",
                 inline=False,
             )
 
