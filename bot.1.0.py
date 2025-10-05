@@ -645,7 +645,9 @@ class AstraBot(commands.Bot):
 
             # 🚀 Performance: Lightweight guild setup - AI initialization moved to background
             # AI personality will be initialized on first interaction for better performance
-            self.logger.info(f"🧠 AI personality will initialize on first interaction for {guild.name}")
+            self.logger.info(
+                f"🧠 AI personality will initialize on first interaction for {guild.name}"
+            )
 
             # Sync commands if enabled
             if self.config.command_sync_on_join:

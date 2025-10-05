@@ -183,8 +183,10 @@ class OptimizedAdmin(commands.GroupCog, name="admin"):
 
                 # Get only loaded extensions to avoid reloading unloaded ones
                 loaded_extensions = [
-                    ext_name for ext_name in self.bot.extensions.keys()
-                    if ext_name.startswith("cogs.") and ext_name != "cogs.admin_optimized"
+                    ext_name
+                    for ext_name in self.bot.extensions.keys()
+                    if ext_name.startswith("cogs.")
+                    and ext_name != "cogs.admin_optimized"
                 ]
 
                 total_cogs = len(loaded_extensions)
