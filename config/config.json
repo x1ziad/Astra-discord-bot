@@ -21,7 +21,11 @@
       "enable_slash_commands": true,
       "space_content": true,
       "space_content.iss_tracking": true,
-      "space_content.launch_notifications": true
+      "space_content.launch_notifications": true,
+      "notion_integration": true,
+      "notion_tasks": true,
+      "notion_reminders": true,
+      "notion_notes": true
     }
   },
   "ai": {
