@@ -697,10 +697,10 @@ class AdvancedAICog(commands.Cog):
         try:
             # Only do lightweight message analysis for context - no responses
             await self._lightning_analyze_message(message)
-            
+
             # 🚀 PERFORMANCE: Skip interaction execution to prevent duplicates
             # All AI responses now handled by AI Companion cog
-            
+
         except Exception as e:
             self.logger.error(f"Message analysis error: {e}")
 

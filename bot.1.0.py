@@ -445,6 +445,7 @@ class AstraBot(commands.Bot):
                 "cogs.stats",
                 "cogs.bot_setup_enhanced",  # Consolidated setup system
                 "cogs.nexus",  # Advanced diagnostic interface
+                "cogs.security_commands",  # Manual security controls and monitoring
             ],
             # AI and enhanced features (depend on core)
             [

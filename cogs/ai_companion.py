@@ -330,33 +330,37 @@ class AICompanion(commands.Cog):
             wellness_parts = [
                 f"💚 **Hey {interaction.user.display_name}!** 🌟",
                 "",
-                checkin_response.get("message", "How are you feeling today? I'm here to support you! 😊"),
-                ""
+                checkin_response.get(
+                    "message", "How are you feeling today? I'm here to support you! 😊"
+                ),
+                "",
             ]
 
             if checkin_response.get("reflection_questions"):
-                wellness_parts.extend([
-                    "🤔 **Reflection Questions:**",
-                    checkin_response["reflection_questions"],
-                    ""
-                ])
+                wellness_parts.extend(
+                    [
+                        "🤔 **Reflection Questions:**",
+                        checkin_response["reflection_questions"],
+                        "",
+                    ]
+                )
 
             if checkin_response.get("wellness_tips"):
-                wellness_parts.extend([
-                    "✨ **Wellness Tips:**",
-                    checkin_response["wellness_tips"],
-                    ""
-                ])
+                wellness_parts.extend(
+                    ["✨ **Wellness Tips:**", checkin_response["wellness_tips"], ""]
+                )
 
-            wellness_parts.extend([
-                "🌟 **Remember:**",
-                checkin_response.get(
-                    "encouragement",
-                    "You're doing great, and I'm here if you need support! 💙",
-                ),
-                "",
-                "_Your AI companion is always here for you!_ 🤗"
-            ])
+            wellness_parts.extend(
+                [
+                    "🌟 **Remember:**",
+                    checkin_response.get(
+                        "encouragement",
+                        "You're doing great, and I'm here if you need support! 💙",
+                    ),
+                    "",
+                    "_Your AI companion is always here for you!_ 🤗",
+                ]
+            )
 
             wellness_message = "\n".join(wellness_parts)
 
@@ -455,7 +459,7 @@ Be warm, genuine, and supportive. Each section under 100 words."""
                 f"Thanks for sharing, {interaction.user.display_name}! I've noted that you're feeling **{mood}** today. 😊",
                 "",
                 f"💭 **Reflection:**",
-                response
+                response,
             ]
             mood_message = "\n".join(mood_message_parts)
 
@@ -464,19 +468,18 @@ Be warm, genuine, and supportive. Each section under 100 words."""
             mood_message_parts = [
                 f"🎭 **Your Mood Journey**",
                 "",
-                f"Current mood: **{user_mood.current_mood.title()}**"
+                f"Current mood: **{user_mood.current_mood.title()}**",
             ]
 
             # Show recent mood history
             if user_mood.mood_history:
                 recent_moods = user_mood.mood_history[-5:]  # Last 5 entries
-                mood_message_parts.extend([
-                    "",
-                    "📊 **Recent Moods:**"
-                ])
+                mood_message_parts.extend(["", "📊 **Recent Moods:**"])
                 for entry in recent_moods:
-                    mood_message_parts.append(f"• {entry['mood'].title()} - {entry['date']}")
-            
+                    mood_message_parts.append(
+                        f"• {entry['mood'].title()} - {entry['date']}"
+                    )
+
             mood_message = "\n".join(mood_message_parts)
 
         await interaction.response.send_message(mood_message, ephemeral=True)
@@ -556,27 +559,20 @@ Keep it under 100 words and use appropriate emojis."""
             celebration_parts = [
                 "🎉 **CELEBRATION TIME!** 🎉",
                 "",
-                celebration.get("message", f"Congratulations on {achievement}! 🌟")
+                celebration.get("message", f"Congratulations on {achievement}! 🌟"),
             ]
 
             if celebration.get("achievements"):
-                celebration_parts.extend([
-                    "",
-                    "🏆 **Achievement Unlocked:**",
-                    celebration["achievements"]
-                ])
+                celebration_parts.extend(
+                    ["", "🏆 **Achievement Unlocked:**", celebration["achievements"]]
+                )
 
             if celebration.get("encouragement"):
-                celebration_parts.extend([
-                    "",
-                    "✨ **Keep Going!**",
-                    celebration["encouragement"]
-                ])
+                celebration_parts.extend(
+                    ["", "✨ **Keep Going!**", celebration["encouragement"]]
+                )
 
-            celebration_parts.extend([
-                "",
-                "_So proud of you! 💙 - Your AI Companion_"
-            ])
+            celebration_parts.extend(["", "_So proud of you! 💙 - Your AI Companion_"])
 
             celebration_message = "\n".join(celebration_parts)
             await interaction.followup.send(celebration_message)
@@ -702,9 +698,9 @@ Be genuinely excited and supportive. Each section under 80 words."""
                 "• Have you taken care of yourself?",
                 "• Any wins to celebrate?",
                 "",
-                "_Use /checkin anytime for a personal wellness check!_ 💙"
+                "_Use /checkin anytime for a personal wellness check!_ 💙",
             ]
-            
+
             wellness_reminder = "\n".join(wellness_reminder_parts)
             await user.send(wellness_reminder)
             self.daily_check_ins[user_id] = datetime.now().date()
@@ -762,14 +758,14 @@ Create a warm, caring message (under 100 words) that:
                 "",
                 "🌱 **Stress Relief Tips:**",
                 "• Take 5 deep breaths",
-                "• Step away for a short break", 
+                "• Step away for a short break",
                 "• Listen to calming music",
                 "• Talk to someone you trust",
                 "",
                 "💙 **Remember:**",
-                "It's okay to feel overwhelmed sometimes. You're doing your best, and that's enough. I believe in you!"
+                "It's okay to feel overwhelmed sometimes. You're doing your best, and that's enough. I believe in you!",
             ]
-            
+
             stress_message = "\n".join(stress_parts)
             await user.send(stress_message)
 
