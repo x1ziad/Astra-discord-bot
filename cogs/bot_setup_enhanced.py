@@ -362,7 +362,7 @@ class BotSetup(commands.Cog):
             critical_perms = {
                 "send_messages": perms.send_messages,
                 "embed_links": perms.embed_links,
-                "use_slash_commands": perms.use_slash_commands,
+                "use_application_commands": perms.use_application_commands,
                 "read_message_history": perms.read_message_history
             }
             diagnostics["permissions"] = "✅ All critical permissions present" if all(critical_perms.values()) else "⚠️ Missing some permissions"

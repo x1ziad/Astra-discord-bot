@@ -423,9 +423,6 @@ class Stats(commands.GroupCog, name="stats"):
     # RENAMED: This method was causing the error - renamed from bot_info_command to _info_command
 
 
-
-
-
 async def setup(bot):
     """Setup function to add the cog to the bot"""
     await bot.add_cog(Stats(bot))

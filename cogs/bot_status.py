@@ -145,8 +145,6 @@ class BotStatus(commands.Cog):
             "errors_encountered": self.performance_data.get("error_count", 0),
         }
 
-
-
     @app_commands.command(
         name="performance", description="📈 Show detailed performance metrics"
     )

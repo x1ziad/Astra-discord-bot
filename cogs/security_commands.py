@@ -1756,7 +1756,7 @@ class SecurityCommands(commands.Cog):
                             overwrite.attach_files = False
                             overwrite.embed_links = False
                             overwrite.use_external_emojis = False
-                            overwrite.use_slash_commands = False
+                            overwrite.use_application_commands = False
 
                             await channel.set_permissions(
                                 user,
@@ -2489,7 +2489,7 @@ class SecurityCommands(commands.Cog):
             recent_violations = [
                 v
                 for v in user_violations
-                if (datetime.now(timezone.utc) - v.timestamp).total_seconds() < 86400
+                if (datetime.now(timezone.utc) - datetime.fromisoformat(v['timestamp'])).total_seconds() < 86400
             ]
 
             # Track warnings for this user

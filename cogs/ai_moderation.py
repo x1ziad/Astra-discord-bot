@@ -644,7 +644,6 @@ Create a warm, appreciative message (under 100 words) with appropriate emojis.""
 
     # Admin commands for moderation management
 
-
     @app_commands.command(
         name="userprofile", description="👤 View user moderation profile"
     )
