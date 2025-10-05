@@ -681,7 +681,10 @@ class AdvancedAICog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
-        """Lightning-Fast Universal Message Interaction System - Observes ALL messages with optimized response times"""
+        """🚀 DISABLED: Message handler moved to AI Companion for unified responses"""
+        # This handler is disabled to prevent duplicate responses
+        # AI Companion cog now handles all AI interactions
+        # Only keep message analysis for context
         if message.author.bot:
             return
 
@@ -691,28 +694,18 @@ class AdvancedAICog(commands.Cog):
         ):
             return
 
-        lightning_start = time.time()
-
         try:
-            # LIGHTNING MESSAGE ANALYSIS - Ultra-fast context processing
+            # Only do lightweight message analysis for context - no responses
             await self._lightning_analyze_message(message)
-
-            # ULTRA-FAST INTERACTION DECISION ENGINE
-            interaction_decision = await self._lightning_determine_interaction(message)
-
-            # EXECUTE LIGHTNING INTERACTION
-            if interaction_decision["should_interact"]:
-                await self._lightning_execute_interaction(message, interaction_decision)
-
-            # Track lightning performance (only log very slow processing)
-            lightning_time = time.time() - lightning_start
-            if lightning_time > 2.0:  # Only warn for very slow processing
-                self.logger.warning(
-                    f"Very slow message processing: {lightning_time:.3f}s"
-                )
+            
+            # 🚀 PERFORMANCE: Skip interaction execution to prevent duplicates
+            # All AI responses now handled by AI Companion cog
+            
+        except Exception as e:
+            self.logger.error(f"Message analysis error: {e}")
 
         except Exception as e:
-            self.logger.error(f"Lightning message processing error: {e}")
+            self.logger.error(f"Message analysis error: {e}")
 
     async def _lightning_analyze_message(self, message: discord.Message):
         """Enhanced message analysis with improved context understanding"""

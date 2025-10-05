@@ -185,70 +185,108 @@ class AICompanion(commands.Cog):
             user_mood.stress_indicators += 1
 
     async def _respond_as_companion(self, message: discord.Message):
-        """Respond as an AI companion"""
+        """Respond as an AI companion with response coordination"""
         if not AI_AVAILABLE:
             await message.add_reaction("💙")
             return
 
+        # Set flag to prevent other AI cogs from responding
+        if not hasattr(self.bot, '_ai_response_handled'):
+            self.bot._ai_response_handled = {}
+        
+        # Check if another AI cog already handled this message
+        if message.id in self.bot._ai_response_handled:
+            return
+            
+        # Mark this message as being handled
+        self.bot._ai_response_handled[message.id] = 'companion'
+        
         try:
             user_mood = await self.get_user_mood(message.author.id)
 
-            # Generate contextual companion response
-            response = await self._generate_companion_response(message, user_mood)
+            # Generate contextual, personalized companion response
+            response = await self._generate_unified_ai_response(message, user_mood)
 
             if response:
-                # Create companion embed
-                embed = discord.Embed(
-                    description=response,
-                    color=0x87CEEB,
-                    timestamp=datetime.now(timezone.utc),
-                )
-                embed.set_author(
-                    name="Astra - Your AI Companion 🤖💙",
-                    icon_url=self.bot.user.avatar.url if self.bot.user.avatar else None,
-                )
-
-                await message.reply(embed=embed, mention_author=False)
+                # Send unified response without embed for more natural conversation
+                await message.reply(response, mention_author=False)
+                
+                # Clean up the response tracking after a delay
+                asyncio.create_task(self._cleanup_response_tracking(message.id))
 
         except Exception as e:
             self.logger.error(f"Companion response error: {e}")
             await message.add_reaction("💙")
 
-    async def _generate_companion_response(
+    async def _generate_unified_ai_response(
         self, message: discord.Message, user_mood: UserMood
     ) -> str:
-        """Generate AI-powered companion response"""
+        """Generate unified, context-aware AI response with full conversation awareness"""
         try:
-            context = f"""You are Astra, a warm, supportive AI companion and friend. Respond to this message with empathy and care.
+            # Get conversation history for better context
+            conversation_history = []
+            if hasattr(self, 'conversation_contexts') and message.author.id in self.conversation_contexts:
+                conversation_history = self.conversation_contexts[message.author.id][-3:]  # Last 3 messages
+            
+            # Build rich context for AI
+            context_parts = [
+                f"You are Astra, {message.author.display_name}'s AI companion and friend.",
+                f"Current conversation in #{message.channel.name}",
+                f"User mood: {user_mood.current_mood}",
+            ]
+            
+            if conversation_history:
+                context_parts.append("Recent conversation context:")
+                for msg in conversation_history:
+                    context_parts.append(f"- {msg}")
+            
+            context_parts.extend([
+                f"User's message: \"{message.content}\"",
+                "",
+                "Guidelines:",
+                "- Be warm, helpful, and genuinely caring",
+                "- Provide thoughtful, contextual responses", 
+                "- Use appropriate emojis naturally",
+                "- Keep responses conversational (under 200 words)",
+                "- Remember previous conversation context",
+                "- Be knowledgeable but personable",
+                "",
+                "Respond as their AI companion:"
+            ])
 
-User: {message.author.display_name}
-Message: "{message.content}"
-Current mood: {user_mood.current_mood}
-Positive interactions: {user_mood.positive_interactions}
-Stress level: {user_mood.stress_indicators}
-
-Be:
-- Warm and genuinely caring
-- Supportive without being overwhelming  
-- Use appropriate emojis
-- Keep response under 150 words
-- Match their energy level
-- Offer practical help if needed
-
-Respond as their AI friend and companion."""
+            full_context = "\n".join(context_parts)
 
             response = await process_conversation(
-                message=context,
+                message=full_context,
                 user_id=message.author.id,
-                guild_id=message.guild.id,
+                guild_id=message.guild.id if message.guild else None,
                 channel_id=message.channel.id,
             )
+            
+            # Store in conversation context for future reference
+            if not hasattr(self, 'conversation_contexts'):
+                self.conversation_contexts = {}
+            if message.author.id not in self.conversation_contexts:
+                self.conversation_contexts[message.author.id] = []
+                
+            self.conversation_contexts[message.author.id].append(f"User: {message.content}")
+            self.conversation_contexts[message.author.id].append(f"Astra: {response}")
+            
+            # Keep only recent context (last 10 exchanges)
+            if len(self.conversation_contexts[message.author.id]) > 10:
+                self.conversation_contexts[message.author.id] = self.conversation_contexts[message.author.id][-10:]
 
             return response.strip()
 
         except Exception as e:
-            self.logger.error(f"Companion response generation failed: {e}")
+            self.logger.error(f"Unified AI response generation failed: {e}")
             return None
+
+    async def _cleanup_response_tracking(self, message_id: int):
+        """Clean up response tracking after a delay to prevent memory leaks"""
+        await asyncio.sleep(300)  # 5 minutes
+        if hasattr(self.bot, '_ai_response_handled') and message_id in self.bot._ai_response_handled:
+            del self.bot._ai_response_handled[message_id]
 
     @app_commands.command(
         name="checkin",
