@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Multi-Provider AI Management System
-Manages 3 AI providers (Google, OpenAI, Groq) with intelligent fallback
+Manages 2 AI providers (Google Gemini, Groq) with intelligent fallback
 """
 import asyncio
 import os
@@ -19,7 +19,6 @@ class AIProvider(Enum):
     """Supported AI providers"""
 
     GOOGLE = "google"
-    OPENAI = "openai"
     GROQ = "groq"
 
 
@@ -57,7 +56,6 @@ class MultiProviderAIManager:
     def __init__(self):
         self.providers = {
             AIProvider.GOOGLE: ProviderStatus(AIProvider.GOOGLE),
-            AIProvider.OPENAI: ProviderStatus(AIProvider.OPENAI),
             AIProvider.GROQ: ProviderStatus(AIProvider.GROQ),
         }
 
@@ -72,7 +70,7 @@ class MultiProviderAIManager:
 
     def _get_fallback_order(self) -> List[AIProvider]:
         """Get provider fallback order from environment"""
-        fallback_str = os.getenv("FALLBACK_PROVIDERS", "google,openai,groq")
+        fallback_str = os.getenv("FALLBACK_PROVIDERS", "google,groq")
         provider_names = [p.strip().lower() for p in fallback_str.split(",")]
 
         fallback_order = []
@@ -102,21 +100,7 @@ class MultiProviderAIManager:
             logger.error(f"Failed to initialize Google client: {e}")
             self.providers[AIProvider.GOOGLE].available = False
 
-        # OpenAI
-        try:
-            from ai.universal_ai_client import UniversalAIClient
 
-            openai_key = os.getenv("OPENAI_API_KEY")
-            if openai_key and openai_key != "your_openai_api_key_here":
-                self.clients[AIProvider.OPENAI] = UniversalAIClient(provider="openai")
-                self.providers[AIProvider.OPENAI].available = True
-                logger.info("OpenAI client: Available")
-            else:
-                self.providers[AIProvider.OPENAI].available = False
-                logger.info("OpenAI client: Not Available (no API key)")
-        except Exception as e:
-            logger.error(f"Failed to initialize OpenAI client: {e}")
-            self.providers[AIProvider.OPENAI].available = False
 
         # Groq
         try:
@@ -259,8 +243,6 @@ class MultiProviderAIManager:
                 # Generate response based on provider type
                 if provider == AIProvider.GOOGLE:
                     response = await self._generate_google_response(prompt, **kwargs)
-                elif provider == AIProvider.OPENAI:
-                    response = await self._generate_openai_response(prompt, **kwargs)
                 elif provider == AIProvider.GROQ:
                     response = await self._generate_groq_response(prompt, **kwargs)
                 else:
@@ -312,24 +294,7 @@ class MultiProviderAIManager:
             response_time=0.0,  # Will be set by caller
         )
 
-    async def _generate_openai_response(self, prompt: str, **kwargs) -> AIResponse:
-        """Generate response using OpenAI"""
-        client = self.clients[AIProvider.OPENAI]
 
-        response = await client.generate_response(
-            prompt=prompt,
-            max_tokens=kwargs.get("max_tokens", 4000),
-            temperature=kwargs.get("temperature", 0.7),
-        )
-
-        return AIResponse(
-            content=response["content"],
-            provider="openai",
-            model=response.get("model", "gpt-4"),
-            usage=response.get("usage", {}),
-            metadata=response.get("metadata", {}),
-            response_time=0.0,  # Will be set by caller
-        )
 
     async def _generate_groq_response(self, prompt: str, **kwargs) -> AIResponse:
         """Generate response using Groq"""

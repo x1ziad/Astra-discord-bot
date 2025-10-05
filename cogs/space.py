@@ -80,7 +80,7 @@ class Space(commands.GroupCog, name="space"):
         self.bot = bot
         self.config = unified_config
         self.logger = bot.logger
-        
+
         # AI Integration
         self.ai_manager = MultiProviderAIManager()
 
@@ -384,16 +384,24 @@ class Space(commands.GroupCog, name="space"):
                 "❌ Error displaying the astronomy picture.", ephemeral=True
             )
 
-    @app_commands.command(name="fact", description="Get a random space fact with AI explanation")
-    @app_commands.describe(category="Fact category (optional)", detailed="Get AI-powered detailed explanation")
+    @app_commands.command(
+        name="fact", description="Get a random space fact with AI explanation"
+    )
+    @app_commands.describe(
+        category="Fact category (optional)",
+        detailed="Get AI-powered detailed explanation",
+    )
     @app_commands.checks.cooldown(1, 10)  # 10 second cooldown for AI enhanced
     @feature_enabled("space_content")
     async def fact_command(
-        self, interaction: discord.Interaction, category: Optional[str] = None, detailed: bool = False
+        self,
+        interaction: discord.Interaction,
+        category: Optional[str] = None,
+        detailed: bool = False,
     ):
         """Get a random space fact with optional AI explanation"""
         await interaction.response.defer()
-        
+
         fact = random.choice(self.space_facts)
 
         embed = discord.Embed(
@@ -415,16 +423,12 @@ class Space(commands.GroupCog, name="space"):
                 - Limit to 150 words"""
 
                 response = await self.ai_manager.generate_response(
-                    prompt=prompt,
-                    max_tokens=200,
-                    temperature=0.7
+                    prompt=prompt, max_tokens=200, temperature=0.7
                 )
 
                 if response and response.content:
                     embed.add_field(
-                        name="🤖 AI Explanation",
-                        value=response.content,
-                        inline=False
+                        name="🤖 AI Explanation", value=response.content, inline=False
                     )
                     embed.set_footer(
                         text=f"AI explanation by {response.provider.title()} • {len(self.space_facts)} facts available"
@@ -975,7 +979,9 @@ class Space(commands.GroupCog, name="space"):
         await interaction.response.send_message(embed=overview_embed)
 
     @app_commands.command(name="analyze", description="AI-powered space topic analysis")
-    @app_commands.describe(topic="Space topic to analyze (e.g., 'Mars exploration', 'black holes', 'SpaceX missions')")
+    @app_commands.describe(
+        topic="Space topic to analyze (e.g., 'Mars exploration', 'black holes', 'SpaceX missions')"
+    )
     @app_commands.checks.cooldown(1, 30)  # 30 second cooldown for AI analysis
     @feature_enabled("space_content")
     async def analyze_space_topic(self, interaction: discord.Interaction, topic: str):
@@ -995,9 +1001,7 @@ class Space(commands.GroupCog, name="space"):
             Keep it educational, accurate, and engaging. Limit to 300 words."""
 
             response = await self.ai_manager.generate_response(
-                prompt=prompt,
-                max_tokens=400,
-                temperature=0.6
+                prompt=prompt, max_tokens=400, temperature=0.6
             )
 
             if response and response.content:
@@ -1005,36 +1009,44 @@ class Space(commands.GroupCog, name="space"):
                     title=f"🔬 Space Analysis: {topic.title()}",
                     description=response.content[:2000],  # Discord embed limit
                     color=self.config.get_color("space"),
-                    timestamp=datetime.now(timezone.utc)
+                    timestamp=datetime.now(timezone.utc),
                 )
-                
-                embed.set_footer(text=f"AI Analysis powered by {response.provider.title()}")
-                
+
+                embed.set_footer(
+                    text=f"AI Analysis powered by {response.provider.title()}"
+                )
+
                 # Add space-themed thumbnail
-                embed.set_thumbnail(url="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0c/NASA_logo.svg/200px-NASA_logo.svg.png")
-                
+                embed.set_thumbnail(
+                    url="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0c/NASA_logo.svg/200px-NASA_logo.svg.png"
+                )
+
                 await interaction.followup.send(embed=embed)
             else:
                 await interaction.followup.send(
                     "❌ AI service temporarily unavailable. Please try again later.",
-                    ephemeral=True
+                    ephemeral=True,
                 )
 
         except Exception as e:
             self.logger.error(f"Error in space analysis: {e}")
             await interaction.followup.send(
                 "❌ Error analyzing space topic. Please try again later.",
-                ephemeral=True
+                ephemeral=True,
             )
 
-    @app_commands.command(name="compare", description="AI-powered comparison of space objects or concepts")
+    @app_commands.command(
+        name="compare", description="AI-powered comparison of space objects or concepts"
+    )
     @app_commands.describe(
         object1="First space object or concept",
-        object2="Second space object or concept"
+        object2="Second space object or concept",
     )
     @app_commands.checks.cooldown(1, 30)  # 30 second cooldown
     @feature_enabled("space_content")
-    async def compare_space_objects(self, interaction: discord.Interaction, object1: str, object2: str):
+    async def compare_space_objects(
+        self, interaction: discord.Interaction, object1: str, object2: str
+    ):
         """AI-powered comparison of space objects"""
         await interaction.response.defer()
 
@@ -1051,35 +1063,41 @@ class Space(commands.GroupCog, name="space"):
             Be factual, educational, and highlight interesting contrasts. Limit to 350 words."""
 
             response = await self.ai_manager.generate_response(
-                prompt=prompt,
-                max_tokens=450,
-                temperature=0.5
+                prompt=prompt, max_tokens=450, temperature=0.5
             )
 
             if response and response.content:
                 embed = discord.Embed(
                     title=f"⚖️ Space Comparison",
                     color=self.config.get_color("space"),
-                    timestamp=datetime.now(timezone.utc)
+                    timestamp=datetime.now(timezone.utc),
                 )
-                
-                embed.add_field(name="📊 Comparing", value=f"{object1.title()} **vs** {object2.title()}", inline=False)
-                embed.add_field(name="🔍 Analysis", value=response.content[:1000], inline=False)
-                
-                embed.set_footer(text=f"AI Comparison powered by {response.provider.title()}")
-                
+
+                embed.add_field(
+                    name="📊 Comparing",
+                    value=f"{object1.title()} **vs** {object2.title()}",
+                    inline=False,
+                )
+                embed.add_field(
+                    name="🔍 Analysis", value=response.content[:1000], inline=False
+                )
+
+                embed.set_footer(
+                    text=f"AI Comparison powered by {response.provider.title()}"
+                )
+
                 await interaction.followup.send(embed=embed)
             else:
                 await interaction.followup.send(
                     "❌ AI service temporarily unavailable. Please try again later.",
-                    ephemeral=True
+                    ephemeral=True,
                 )
 
         except Exception as e:
             self.logger.error(f"Error in space comparison: {e}")
             await interaction.followup.send(
                 "❌ Error comparing space objects. Please try again later.",
-                ephemeral=True
+                ephemeral=True,
             )
 
 

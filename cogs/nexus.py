@@ -1261,8 +1261,7 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
                 ai_services.append("OpenRouter: 🟢 CONFIGURED")
             if os.getenv("GEMINI_API_KEY"):
                 ai_services.append("Gemini: 🟢 CONFIGURED")
-            if os.getenv("OPENAI_API_KEY"):
-                ai_services.append("OpenAI: 🟢 CONFIGURED")
+
         except:
             pass
 

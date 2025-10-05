@@ -28,7 +28,7 @@ class Notion(commands.GroupCog, name="notion"):
         self.bot = bot
         self.config = unified_config
         self.logger = bot.logger
-        
+
         # AI Integration
         self.ai_manager = MultiProviderAIManager()
 
@@ -36,7 +36,7 @@ class Notion(commands.GroupCog, name="notion"):
         self.notion_token = os.getenv("NOTION_TOKEN")
         self.notion_database_id = os.getenv("NOTION_DATABASE_ID")
         self.notion_tasks_db = os.getenv("NOTION_TASKS_DB")
-        self.notion_reminders_db = os.getenv("NOTION_REMINDERS_DB") 
+        self.notion_reminders_db = os.getenv("NOTION_REMINDERS_DB")
         self.notion_notes_db = os.getenv("NOTION_NOTES_DB")
 
         # Cache directory
@@ -435,26 +435,31 @@ class Notion(commands.GroupCog, name="notion"):
 
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
-    @app_commands.command(name="create_task", description="Create a new task in Notion with AI enhancement")
+    @app_commands.command(
+        name="create_task",
+        description="Create a new task in Notion with AI enhancement",
+    )
     @app_commands.describe(
         title="Task title",
         description="Task description (optional)",
         priority="Task priority (High/Medium/Low)",
-        due_date="Due date (YYYY-MM-DD format, optional)"
+        due_date="Due date (YYYY-MM-DD format, optional)",
     )
     async def create_task_command(
-        self, 
-        interaction: discord.Interaction, 
-        title: str, 
+        self,
+        interaction: discord.Interaction,
+        title: str,
         description: Optional[str] = None,
         priority: Optional[str] = "Medium",
-        due_date: Optional[str] = None
+        due_date: Optional[str] = None,
     ):
         """Create a new task in Notion with AI enhancement"""
         await interaction.response.defer()
 
         if not self.notion_token:
-            await interaction.followup.send("❌ Notion integration not configured.", ephemeral=True)
+            await interaction.followup.send(
+                "❌ Notion integration not configured.", ephemeral=True
+            )
             return
 
         try:
@@ -476,14 +481,12 @@ class Notion(commands.GroupCog, name="notion"):
                     Return only the enhanced description, no extra text."""
 
                     response = await self.ai_manager.generate_response(
-                        prompt=prompt,
-                        max_tokens=200,
-                        temperature=0.7
+                        prompt=prompt, max_tokens=200, temperature=0.7
                     )
 
                     if response and response.content:
                         enhanced_description = response.content.strip()
-                        
+
                 except Exception as e:
                     self.logger.error(f"AI enhancement failed: {e}")
                     # Continue with original description
@@ -492,11 +495,13 @@ class Notion(commands.GroupCog, name="notion"):
             parsed_due_date = None
             if due_date:
                 try:
-                    parsed_due_date = datetime.strptime(due_date, "%Y-%m-%d").date().isoformat()
+                    parsed_due_date = (
+                        datetime.strptime(due_date, "%Y-%m-%d").date().isoformat()
+                    )
                 except ValueError:
                     await interaction.followup.send(
-                        "❌ Invalid date format. Please use YYYY-MM-DD format.", 
-                        ephemeral=True
+                        "❌ Invalid date format. Please use YYYY-MM-DD format.",
+                        ephemeral=True,
                     )
                     return
 
@@ -505,51 +510,54 @@ class Notion(commands.GroupCog, name="notion"):
                 title="✅ Task Created Successfully",
                 description=f"**{title}** has been added to your Notion workspace.",
                 color=self.config.get_color("success"),
-                timestamp=datetime.now(timezone.utc)
+                timestamp=datetime.now(timezone.utc),
             )
 
             embed.add_field(name="📝 Title", value=title, inline=False)
             if enhanced_description:
                 embed.add_field(
-                    name="📋 Description", 
-                    value=enhanced_description[:500] + ("..." if len(enhanced_description) > 500 else ""), 
-                    inline=False
+                    name="📋 Description",
+                    value=enhanced_description[:500]
+                    + ("..." if len(enhanced_description) > 500 else ""),
+                    inline=False,
                 )
             embed.add_field(name="⚡ Priority", value=priority, inline=True)
             if parsed_due_date:
                 embed.add_field(name="📅 Due Date", value=due_date, inline=True)
 
             embed.set_footer(text=f"Task created by {interaction.user.display_name}")
-            
+
             await interaction.followup.send(embed=embed)
 
         except Exception as e:
             self.logger.error(f"Error creating Notion task: {e}")
-            await interaction.followup.send("❌ Failed to create task in Notion.", ephemeral=True)
+            await interaction.followup.send(
+                "❌ Failed to create task in Notion.", ephemeral=True
+            )
 
-    @app_commands.command(name="quick_note", description="Create a quick note in Notion")
+    @app_commands.command(
+        name="quick_note", description="Create a quick note in Notion"
+    )
     @app_commands.describe(
-        content="Note content",
-        tags="Tags for the note (comma-separated, optional)"
+        content="Note content", tags="Tags for the note (comma-separated, optional)"
     )
     async def quick_note_command(
-        self, 
-        interaction: discord.Interaction, 
-        content: str,
-        tags: Optional[str] = None
+        self, interaction: discord.Interaction, content: str, tags: Optional[str] = None
     ):
         """Create a quick note in Notion"""
         await interaction.response.defer()
 
         if not self.notion_token:
-            await interaction.followup.send("❌ Notion integration not configured.", ephemeral=True)
+            await interaction.followup.send(
+                "❌ Notion integration not configured.", ephemeral=True
+            )
             return
 
         try:
             # Use AI to enhance and categorize the note
             enhanced_content = content
             suggested_tags = []
-            
+
             if len(content) > 20:
                 try:
                     prompt = f"""Analyze this note content and:
@@ -563,27 +571,28 @@ class Notion(commands.GroupCog, name="notion"):
                     TAGS: [tag1, tag2, tag3]"""
 
                     response = await self.ai_manager.generate_response(
-                        prompt=prompt,
-                        max_tokens=250,
-                        temperature=0.6
+                        prompt=prompt, max_tokens=250, temperature=0.6
                     )
 
                     if response and response.content:
-                        lines = response.content.strip().split('\n')
+                        lines = response.content.strip().split("\n")
                         for line in lines:
-                            if line.startswith('ENHANCED:'):
-                                enhanced_content = line.replace('ENHANCED:', '').strip()
-                            elif line.startswith('TAGS:'):
-                                tags_text = line.replace('TAGS:', '').strip()
-                                suggested_tags = [tag.strip() for tag in tags_text.strip('[]').split(',')]
-                                
+                            if line.startswith("ENHANCED:"):
+                                enhanced_content = line.replace("ENHANCED:", "").strip()
+                            elif line.startswith("TAGS:"):
+                                tags_text = line.replace("TAGS:", "").strip()
+                                suggested_tags = [
+                                    tag.strip()
+                                    for tag in tags_text.strip("[]").split(",")
+                                ]
+
                 except Exception as e:
                     self.logger.error(f"AI note enhancement failed: {e}")
 
             # Combine user tags with AI suggestions
             final_tags = []
             if tags:
-                final_tags.extend([tag.strip() for tag in tags.split(',')])
+                final_tags.extend([tag.strip() for tag in tags.split(",")])
             if suggested_tags and not tags:
                 final_tags.extend(suggested_tags[:3])  # Limit to 3 AI suggestions
 
@@ -592,34 +601,43 @@ class Notion(commands.GroupCog, name="notion"):
                 title="📝 Note Created Successfully",
                 description="Your note has been saved to Notion.",
                 color=self.config.get_color("success"),
-                timestamp=datetime.now(timezone.utc)
+                timestamp=datetime.now(timezone.utc),
             )
 
             embed.add_field(
-                name="📄 Content", 
-                value=enhanced_content[:800] + ("..." if len(enhanced_content) > 800 else ""), 
-                inline=False
+                name="📄 Content",
+                value=enhanced_content[:800]
+                + ("..." if len(enhanced_content) > 800 else ""),
+                inline=False,
             )
-            
+
             if final_tags:
-                embed.add_field(name="🏷️ Tags", value=", ".join(final_tags), inline=False)
+                embed.add_field(
+                    name="🏷️ Tags", value=", ".join(final_tags), inline=False
+                )
 
             embed.set_footer(text=f"Note created by {interaction.user.display_name}")
-            
+
             await interaction.followup.send(embed=embed)
 
         except Exception as e:
             self.logger.error(f"Error creating Notion note: {e}")
-            await interaction.followup.send("❌ Failed to create note in Notion.", ephemeral=True)
+            await interaction.followup.send(
+                "❌ Failed to create note in Notion.", ephemeral=True
+            )
 
-    @app_commands.command(name="search", description="Search Notion database with AI-powered results")
+    @app_commands.command(
+        name="search", description="Search Notion database with AI-powered results"
+    )
     @app_commands.describe(query="Search query")
     async def search_notion_command(self, interaction: discord.Interaction, query: str):
         """Search Notion database with AI-powered results"""
         await interaction.response.defer()
 
         if not self.notion_token or not self.notion_database_id:
-            await interaction.followup.send("❌ Notion integration not configured.", ephemeral=True)
+            await interaction.followup.send(
+                "❌ Notion integration not configured.", ephemeral=True
+            )
             return
 
         try:
@@ -634,35 +652,38 @@ class Notion(commands.GroupCog, name="notion"):
                 Return only the enhanced query, no extra text."""
 
                 response = await self.ai_manager.generate_response(
-                    prompt=prompt,
-                    max_tokens=100,
-                    temperature=0.5
+                    prompt=prompt, max_tokens=100, temperature=0.5
                 )
 
                 if response and response.content:
                     enhanced_query = response.content.strip()
-                    
+
             except Exception as e:
                 self.logger.error(f"Query enhancement failed: {e}")
 
             # Create search results embed
             embed = discord.Embed(
                 title="🔍 Notion Search Results",
-                description=f"Searching for: **{query}**" + (f"\nEnhanced query: *{enhanced_query}*" if enhanced_query != query else ""),
+                description=f"Searching for: **{query}**"
+                + (
+                    f"\nEnhanced query: *{enhanced_query}*"
+                    if enhanced_query != query
+                    else ""
+                ),
                 color=self.config.get_color("info"),
-                timestamp=datetime.now(timezone.utc)
+                timestamp=datetime.now(timezone.utc),
             )
 
             embed.add_field(
                 name="📊 Search Status",
                 value="Search functionality ready - database integration in progress.",
-                inline=False
+                inline=False,
             )
 
             embed.add_field(
                 name="🔄 Next Steps",
                 value="• Database search implementation\n• AI-powered result ranking\n• Content summarization",
-                inline=False
+                inline=False,
             )
 
             await interaction.followup.send(embed=embed)
@@ -671,25 +692,31 @@ class Notion(commands.GroupCog, name="notion"):
             self.logger.error(f"Error searching Notion: {e}")
             await interaction.followup.send("❌ Search failed.", ephemeral=True)
 
-    @app_commands.command(name="summary", description="Get AI-powered summary of your Notion workspace")
+    @app_commands.command(
+        name="summary", description="Get AI-powered summary of your Notion workspace"
+    )
     async def workspace_summary_command(self, interaction: discord.Interaction):
         """Get AI-powered summary of your Notion workspace"""
         await interaction.response.defer()
 
         if not self.notion_token:
-            await interaction.followup.send("❌ Notion integration not configured.", ephemeral=True)
+            await interaction.followup.send(
+                "❌ Notion integration not configured.", ephemeral=True
+            )
             return
 
         try:
             # Generate workspace summary using cached data
             events_count = len(self.cached_events)
-            
+
             if events_count > 0:
                 # Use AI to create a summary of upcoming events
-                events_text = "\n".join([
-                    f"- {event['title']} ({event['type']}) - {event['date']}"
-                    for event in self.cached_events[:10]
-                ])
+                events_text = "\n".join(
+                    [
+                        f"- {event['title']} ({event['type']}) - {event['date']}"
+                        for event in self.cached_events[:10]
+                    ]
+                )
 
                 prompt = f"""Create a helpful summary of this Notion workspace based on upcoming events:
 
@@ -705,48 +732,48 @@ class Notion(commands.GroupCog, name="notion"):
                 Keep it concise and actionable, around 200 words."""
 
                 response = await self.ai_manager.generate_response(
-                    prompt=prompt,
-                    max_tokens=300,
-                    temperature=0.6
+                    prompt=prompt, max_tokens=300, temperature=0.6
                 )
 
                 embed = discord.Embed(
                     title="📊 Notion Workspace Summary",
                     color=self.config.get_color("info"),
-                    timestamp=datetime.now(timezone.utc)
+                    timestamp=datetime.now(timezone.utc),
                 )
 
                 if response and response.content:
                     embed.add_field(
-                        name="🤖 AI Analysis",
-                        value=response.content,
-                        inline=False
+                        name="🤖 AI Analysis", value=response.content, inline=False
                     )
-                    embed.set_footer(text=f"Analysis by {response.provider.title()} • {events_count} events analyzed")
+                    embed.set_footer(
+                        text=f"Analysis by {response.provider.title()} • {events_count} events analyzed"
+                    )
                 else:
                     embed.add_field(
                         name="📋 Workspace Stats",
                         value=f"• {events_count} upcoming events\n• Last sync: {self.last_fetch.strftime('%Y-%m-%d %H:%M') if self.last_fetch else 'Never'}",
-                        inline=False
+                        inline=False,
                     )
 
             else:
                 embed = discord.Embed(
                     title="📊 Notion Workspace Summary",
                     description="No events found in your Notion workspace.",
-                    color=self.config.get_color("warning")
+                    color=self.config.get_color("warning"),
                 )
                 embed.add_field(
                     name="💡 Getting Started",
                     value="• Create a database in Notion\n• Add events with Date property\n• Use `/notion sync` to refresh",
-                    inline=False
+                    inline=False,
                 )
 
             await interaction.followup.send(embed=embed)
 
         except Exception as e:
             self.logger.error(f"Error generating workspace summary: {e}")
-            await interaction.followup.send("❌ Failed to generate summary.", ephemeral=True)
+            await interaction.followup.send(
+                "❌ Failed to generate summary.", ephemeral=True
+            )
 
 
 async def setup(bot):
