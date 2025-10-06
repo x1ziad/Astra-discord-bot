@@ -20,7 +20,7 @@ from config.unified_config import unified_config
 from utils.permissions import has_permission, PermissionLevel, check_user_permission
 
 try:
-    from ai.consolidated_ai_engine import get_engine, process_conversation
+    from ai.multi_provider_ai import MultiProviderAIManager
 
     AI_AVAILABLE = True
 except ImportError:
@@ -268,9 +268,9 @@ Respond in JSON format:
     "suggested_response": "supportive message suggestion"
 }}"""
 
-            response = await process_conversation(
-                message=prompt, user_id=0, guild_id=0, channel_id=0  # System analysis
-            )
+            ai_manager = MultiProviderAIManager()
+            ai_response = await ai_manager.generate_response(prompt)
+            response = ai_response.content if ai_response.success else '{"toxicity_score": 0, "suggested_response": "I\'m here to help moderate our community!"}'
 
             # Try to extract JSON from response
             json_match = re.search(r"\{.*\}", response, re.DOTALL)
@@ -382,12 +382,9 @@ Respond in JSON format:
     "action_taken": "What action was taken"
 }}"""
 
-            ai_response = await process_conversation(
-                message=prompt,
-                user_id=user.id,
-                guild_id=user.guild.id if user.guild else 0,
-                channel_id=0,
-            )
+            ai_manager = MultiProviderAIManager()
+            ai_response_obj = await ai_manager.generate_response(prompt)
+            ai_response = ai_response_obj.content if ai_response_obj.success else '{"title": "Community Guidelines Reminder 📝", "message": "Let\'s work together to keep our community positive!", "guidance": "Remember to be respectful", "encouragement": "You\'re part of making this a great space!", "action_taken": "Gentle reminder sent"}'
 
             # Parse AI response
             json_match = re.search(r"\{.*\}", ai_response, re.DOTALL)
@@ -432,12 +429,9 @@ Respond in JSON format:
     "action_taken": "Supportive outreach"
 }}"""
 
-            ai_response = await process_conversation(
-                message=prompt,
-                user_id=user.id,
-                guild_id=user.guild.id if user.guild else 0,
-                channel_id=0,
-            )
+            ai_manager = MultiProviderAIManager()
+            ai_response_obj = await ai_manager.generate_response(prompt)
+            ai_response = ai_response_obj.content if ai_response_obj.success else '{"title": "We\'re Here for You 💙", "message": "I can see you might be going through something difficult. You\'re not alone, and this community cares about you.", "resources": "Consider talking to a trusted friend, family member, or counselor", "encouragement": "You matter, and things can get better. Take it one day at a time.", "action_taken": "Supportive outreach"}'
 
             json_match = re.search(r"\{.*\}", ai_response, re.DOTALL)
             if json_match:
@@ -573,12 +567,9 @@ They have:
 
 Create a warm, appreciative message (under 100 words) with appropriate emojis."""
 
-            ai_response = await process_conversation(
-                message=prompt,
-                user_id=user.id,
-                guild_id=user.guild.id if user.guild else 0,
-                channel_id=channel.id,
-            )
+            ai_manager = MultiProviderAIManager()
+            ai_response_obj = await ai_manager.generate_response(prompt)
+            ai_response = ai_response_obj.content if ai_response_obj.success else "Thank you for being such a positive presence in our community! Your contributions make this space better for everyone. Keep being awesome! ✨"
 
             embed = discord.Embed(
                 title="🌟 Community Star!",
@@ -815,12 +806,9 @@ Create a warm, appreciative message (under 100 words) with appropriate emojis.""
                 try:
                     prompt = f"Generate a brief, encouraging message for {message.author.display_name} who has been a positive member of the community. Keep it under 50 words and include an emoji."
 
-                    ai_response = await process_conversation(
-                        message=prompt,
-                        user_id=message.author.id,
-                        guild_id=message.guild.id,
-                        channel_id=message.channel.id,
-                    )
+                    ai_manager = MultiProviderAIManager()
+                    ai_response_obj = await ai_manager.generate_response(prompt)
+                    ai_response = ai_response_obj.content if ai_response_obj.success else f"Thanks for being awesome, {message.author.display_name}! 🌟"
 
                     await message.add_reaction("⭐")
 

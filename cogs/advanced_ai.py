@@ -27,7 +27,7 @@ AI_ENGINE_AVAILABLE = False
 OPTIMIZED_AI_AVAILABLE = False
 
 try:
-    from ai.consolidated_ai_engine import get_engine, initialize_engine
+    from ai.multi_provider_ai import MultiProviderAIManager
 
     AI_ENGINE_AVAILABLE = True
     logger.info("✅ Consolidated AI Engine imported successfully")
@@ -35,7 +35,7 @@ except ImportError as e:
     logger.warning(f"❌ Consolidated AI Engine not available: {e}")
 
 try:
-    from ai.consolidated_ai_engine import ConsolidatedAIEngine as OptimizedAIEngine
+    from ai.multi_provider_ai import MultiProviderAIManager as OptimizedAIEngine
 
     def get_optimized_engine():
         return OptimizedAIEngine()
@@ -100,25 +100,17 @@ class AdvancedAICog(commands.Cog):
                     self.logger.info("✅ Using Optimized AI Engine")
                     return
 
-            # Fallback to consolidated engine
+            # Use MultiProviderAIManager
             if AI_ENGINE_AVAILABLE:
-                self.ai_client = get_engine()
-                if self.ai_client:
-                    self.logger.info("✅ Using Consolidated AI Engine")
-                    return
+                self.ai_client = MultiProviderAIManager()
+                self.logger.info("✅ Using Multi-Provider AI Manager")
+                return
 
-            # Initialize engine if not available
+            # Initialize AI manager if not available
             try:
-                self.ai_client = initialize_engine(
-                    {
-                        "ai_api_key": os.getenv("AI_API_KEY"),
-                        "ai_model": os.getenv("AI_MODEL", "deepseek/deepseek-r1:nitro"),
-                        "openrouter_api_key": os.getenv("OPENROUTER_API_KEY"),
-                    }
-                )
-                if self.ai_client:
-                    self.logger.info("✅ Initialized new AI Engine")
-                    return
+                self.ai_client = MultiProviderAIManager()
+                self.logger.info("✅ Initialized Multi-Provider AI Manager")
+                return
             except Exception as e:
                 self.logger.error(f"Failed to initialize AI engine: {e}")
 

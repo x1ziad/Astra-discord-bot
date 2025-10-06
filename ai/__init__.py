@@ -4,7 +4,7 @@ AI Module Package
 This package contains all AI-related components for the AstraBot system.
 
 Components:
-- consolidated_ai_engine: Main AI engine with multiple provider support
+- multi_provider_ai: Modern Multi-Provider AI Management System
 - universal_ai_client: Universal client for various AI services
 - openrouter_client: Specialized OpenRouter API client
 - advanced_intelligence: Advanced AI intelligence system
@@ -12,24 +12,23 @@ Components:
 - enhanced_ai_config: AI configuration management
 """
 
-from .consolidated_ai_engine import (
-    ConsolidatedAIEngine,
-    UniversalAIClient,
+from .multi_provider_ai import (
+    MultiProviderAIManager,
+    AIProvider,
     AIResponse,
-    ConversationContext,
+    ProviderStatus,
 )
-from .universal_ai_client import UniversalAIClient as UAIClient, AIProvider
+from .universal_ai_client import UniversalAIClient as UAIClient
 from .openrouter_client import OpenRouterClient
 from .user_profiling import UserProfileManager
 
 __all__ = [
-    "ConsolidatedAIEngine",
-    "UniversalAIClient",
+    "MultiProviderAIManager",
+    "AIProvider",
+    "AIResponse",
+    "ProviderStatus",
     "UAIClient",
     "OpenRouterClient",
-    "AIResponse",
-    "ConversationContext",
-    "AIProvider",
     "UserProfileManager",
 ]
 

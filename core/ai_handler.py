@@ -28,13 +28,10 @@ class AIHandler:
     async def _initialize_ai(self):
         """Initialize AI engine connection"""
         try:
-            from ai.consolidated_ai_engine import get_engine
+            from ai.multi_provider_ai import MultiProviderAIManager
 
-            self.ai_engine = get_engine()
-            if self.ai_engine:
-                logger.info("✅ AI Handler initialized with consolidated engine")
-            else:
-                logger.warning("⚠️ AI engine not available - using fallback responses")
+            self.ai_engine = MultiProviderAIManager()
+            logger.info("✅ AI Handler initialized with Multi-Provider AI Manager")
         except Exception as e:
             logger.error(f"❌ Failed to initialize AI engine: {e}")
 

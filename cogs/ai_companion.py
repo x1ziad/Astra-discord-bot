@@ -20,7 +20,7 @@ from config.unified_config import unified_config
 from utils.permissions import has_permission, PermissionLevel
 
 try:
-    from ai.consolidated_ai_engine import get_engine, process_conversation
+    from ai.multi_provider_ai import MultiProviderAIManager
 
     AI_AVAILABLE = True
 except ImportError:
@@ -266,12 +266,9 @@ class AICompanion(commands.Cog):
 
             full_context = "\n".join(context_parts)
 
-            response = await process_conversation(
-                message=full_context,
-                user_id=message.author.id,
-                guild_id=message.guild.id if message.guild else None,
-                channel_id=message.channel.id,
-            )
+            ai_manager = MultiProviderAIManager()
+            ai_response = await ai_manager.generate_response(full_context)
+            response = ai_response.content if ai_response.success else "I'm having trouble thinking right now. Could you try again?"
 
             # Store in conversation context for future reference
             if not hasattr(self, "conversation_contexts"):
@@ -399,12 +396,9 @@ Create a caring check-in with:
 
 Be warm, genuine, and supportive. Each section under 100 words."""
 
-            response = await process_conversation(
-                message=prompt,
-                user_id=user.id,
-                guild_id=user.guild.id if user.guild else 0,
-                channel_id=0,
-            )
+            ai_manager = MultiProviderAIManager()
+            ai_response = await ai_manager.generate_response(prompt)
+            response = ai_response.content if ai_response.success else "I'm here for you! 💙"
 
             # Try to parse JSON response
             json_match = re.search(r"\{.*\}", response, re.DOTALL)
@@ -497,12 +491,9 @@ Provide a caring, empathetic response that:
 
 Keep it under 100 words and use appropriate emojis."""
 
-            response = await process_conversation(
-                message=prompt,
-                user_id=user.id,
-                guild_id=user.guild.id if user.guild else 0,
-                channel_id=0,
-            )
+            ai_manager = MultiProviderAIManager()
+            ai_response = await ai_manager.generate_response(prompt)
+            response = ai_response.content if ai_response.success else "Keep being awesome! 🌟"
             return response.strip()
 
         except Exception:
@@ -613,12 +604,9 @@ Create a joyful response with:
 
 Be genuinely excited and supportive. Each section under 80 words."""
 
-            response = await process_conversation(
-                message=prompt,
-                user_id=user.id,
-                guild_id=user.guild.id if user.guild else 0,
-                channel_id=0,
-            )
+            ai_manager = MultiProviderAIManager()
+            ai_response = await ai_manager.generate_response(prompt)
+            response = ai_response.content if ai_response.success else "Congratulations! 🎉"
 
             json_match = re.search(r"\{.*\}", response, re.DOTALL)
             if json_match:
@@ -732,9 +720,9 @@ Create a warm, caring message (under 100 words) that:
 - Doesn't feel intrusive
 - Includes appropriate emojis"""
 
-            response = await process_conversation(
-                message=prompt, user_id=user_id, guild_id=0, channel_id=0
-            )
+            ai_manager = MultiProviderAIManager()
+            ai_response = await ai_manager.generate_response(prompt)
+            response = ai_response.content if ai_response.success else "Hope you're having a great day! 💙"
 
             # Send natural message without embed formatting
             natural_message = f"💙 {response.strip()}"

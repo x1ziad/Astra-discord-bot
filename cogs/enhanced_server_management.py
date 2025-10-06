@@ -1,4 +1,8 @@
 """
+ai_manager = MultiProviderAIManager()
+
+ai_response_obj = await ai_manager.generate_response(prompt)
+
 Enhanced Server Management with AI Companion Features
 Sophisticated server management with personalized AI responses and community building
 """
@@ -20,7 +24,7 @@ from config.unified_config import unified_config
 from utils.permissions import has_permission, PermissionLevel, check_user_permission
 
 try:
-    from ai.consolidated_ai_engine import get_engine, process_conversation
+    from ai.multi_provider_ai import MultiProviderAIManager
 
     AI_AVAILABLE = True
 except ImportError:
@@ -219,9 +223,9 @@ Generate recommendations in this format:
 
 Keep each section under 150 characters. Be encouraging and specific."""
 
-            ai_response = await process_conversation(
-                message=prompt, user_id=0, guild_id=guild.id, channel_id=0
-            )
+            ai_manager = MultiProviderAIManager()
+            ai_response_obj = await ai_manager.generate_response(prompt)
+            ai_response = ai_response_obj.content if ai_response_obj.success else '{"insights": "Your server is well-managed!", "suggestions": "Keep up the great work!", "encouragement": "You\'re doing amazing!"}'
 
             # Try to parse JSON response
             json_match = re.search(r"\{.*\}", ai_response, re.DOTALL)
@@ -352,9 +356,13 @@ Requirements:
 - Match the {style} tone
 - Be welcoming and engaging"""
 
-            response = await process_conversation(
-                message=prompt, user_id=0, guild_id=guild.id, channel_id=0
-            )
+            response = ai_response_obj.content if ai_response_obj.success else "I'm processing that request for you! 🤖" 
+
+            ai_manager = MultiProviderAIManager()
+
+
+            ai_response_obj = await ai_manager.generate_response(prompt)
+
 
             return response.strip()
 
@@ -487,9 +495,11 @@ Health score: {health.engagement_score}/100
 Provide 3 bullet points with actionable recommendations (under 200 chars total)."""
 
         try:
-            response = await process_conversation(
-                message=prompt, user_id=0, guild_id=guild.id, channel_id=0
-            )
+            response = ai_response_obj.content if ai_response_obj.success else "I'm processing that request for you! 🤖" 
+            ai_manager = MultiProviderAIManager()
+
+            ai_response_obj = await ai_manager.generate_response(prompt)
+
             return response.strip()[:200]
         except Exception:
             return "• Host regular community events\n• Encourage member introductions\n• Create topic-specific channels"
@@ -621,9 +631,11 @@ Issues found:
 
 Provide 3-4 bullet points with specific optimization actions (under 200 chars total)."""
 
-            response = await process_conversation(
-                message=prompt, user_id=0, guild_id=guild.id, channel_id=0
-            )
+            response = ai_response_obj.content if ai_response_obj.success else "I'm processing that request for you! 🤖" 
+            ai_manager = MultiProviderAIManager()
+
+            ai_response_obj = await ai_manager.generate_response(prompt)
+
             return response.strip()[:200]
 
         except Exception:
@@ -710,12 +722,13 @@ Context:
 
 Create a warm, {settings.get('style', 'friendly')} welcome (under 150 chars) that mentions their name."""
 
-            response = await process_conversation(
-                message=prompt,
-                user_id=member.id,
-                guild_id=member.guild.id,
-                channel_id=0,
-            )
+            response = ai_response_obj.content if ai_response_obj.success else "I'm processing that request for you! 🤖" 
+
+            ai_manager = MultiProviderAIManager()
+
+
+            ai_response_obj = await ai_manager.generate_response(prompt)
+
 
             return response.strip()
 
@@ -840,9 +853,9 @@ Server stats:
 
 Provide fun, actionable bullet points to boost community activity (under 250 chars total)."""
 
-            response = await process_conversation(
-                message=prompt, user_id=0, guild_id=guild.id, channel_id=0
-            )
+            ai_manager = MultiProviderAIManager()
+            ai_response_obj = await ai_manager.generate_response(prompt)
+            response = ai_response_obj.content if ai_response_obj.success else "I'm processing that request for you! 🤖" 
             return response.strip()[:250]
 
         except Exception:

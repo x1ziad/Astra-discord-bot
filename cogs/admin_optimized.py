@@ -22,7 +22,7 @@ from utils.command_optimizer import ResponseCache
 from utils.command_optimizer import auto_optimize_commands
 
 try:
-    from ai.consolidated_ai_engine import ConsolidatedAIEngine
+    from ai.multi_provider_ai import MultiProviderAIManager
 
     AI_ENGINE_AVAILABLE = True
 except ImportError:

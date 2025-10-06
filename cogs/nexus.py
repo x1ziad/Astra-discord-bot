@@ -330,7 +330,7 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
 
         # AI Services (if available)
         try:
-            from ai.consolidated_ai_engine import ConsolidatedAIEngine
+            from ai.multi_provider_ai import MultiProviderAIManager
 
             connections["AI Matrix"] = "🟢 LINKED"
         except ImportError:
@@ -703,7 +703,7 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
         # Check OpenRouter
         if service in ["openrouter", "all"]:
             try:
-                from ai.consolidated_ai_engine import ConsolidatedAIEngine
+                from ai.multi_provider_ai import MultiProviderAIManager
 
                 openrouter_status = "🟢 ONLINE"
                 openrouter_info = "Text AI operational"
@@ -737,11 +737,11 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
 
             services_status["MagicHour.ai"] = (magichour_status, magichour_info)
 
-        # Add consolidated AI if exists
+        # Add Multi-Provider AI if exists
         try:
-            from ai.consolidated_ai_engine import ConsolidatedAIEngine
+            from ai.multi_provider_ai import MultiProviderAIManager
 
-            services_status["Consolidated AI"] = ("🟢 AVAILABLE", "Engine loaded")
+            services_status["Multi-Provider AI"] = ("🟢 AVAILABLE", "Manager loaded")
         except ImportError:
             services_status["Consolidated AI"] = ("🔴 UNAVAILABLE", "Engine missing")
 
@@ -1079,7 +1079,7 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
 
         # AI Services Status
         try:
-            from ai.consolidated_ai_engine import ConsolidatedAIEngine
+            from ai.multi_provider_ai import MultiProviderAIManager
 
             ai_status = "🟢 OPERATIONAL"
         except:
@@ -1346,10 +1346,10 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
 
         # Check AI client availability and get current configuration
         try:
-            from ai.consolidated_ai_engine import ConsolidatedAIEngine
+            from ai.multi_provider_ai import MultiProviderAIManager
 
-            # Get AI engine instance
-            ai_engine = ConsolidatedAIEngine()
+            # Get AI manager instance
+            ai_engine = MultiProviderAIManager()
 
             # Get universal AI client
             universal_client = getattr(ai_engine, "universal_ai_client", None)
