@@ -385,7 +385,7 @@ class AstraBot(commands.Bot):
 
             # Check which providers are available
             mistral_key = os.getenv("MISTRAL_API_KEY")
-            google_key = os.getenv("GOOGLE_API_KEY") 
+            google_key = os.getenv("GOOGLE_API_KEY")
             groq_key = os.getenv("GROQ_API_KEY")
 
             available_providers = []
@@ -400,22 +400,26 @@ class AstraBot(commands.Bot):
                 self.logger.info("⚡ Groq configured")
 
             if available_providers:
-                self.logger.info(f"✅ AI System initialized with {len(available_providers)} providers: {', '.join(available_providers)}")
+                self.logger.info(
+                    f"✅ AI System initialized with {len(available_providers)} providers: {', '.join(available_providers)}"
+                )
                 self.logger.info("🎯 Intelligent fallback system enabled")
                 self.logger.info("🔄 Load balancing active")
             else:
                 self.logger.warning("⚠️ No AI providers configured")
-                self.logger.info("📝 To enable AI: Set MISTRAL_API_KEY, GOOGLE_API_KEY, or GROQ_API_KEY")
+                self.logger.info(
+                    "📝 To enable AI: Set MISTRAL_API_KEY, GOOGLE_API_KEY, or GROQ_API_KEY"
+                )
 
             # Test AI functionality with a quick call
             try:
                 test_response = await self.ai_manager.generate_response(
-                    "Hello! Test connection.", 
-                    max_tokens=20, 
-                    temperature=0.1
+                    "Hello! Test connection.", max_tokens=20, temperature=0.1
                 )
                 if test_response and test_response.success:
-                    self.logger.info(f"✅ AI test successful with {test_response.provider.title()}")
+                    self.logger.info(
+                        f"✅ AI test successful with {test_response.provider.title()}"
+                    )
                 else:
                     self.logger.warning("⚠️ AI test response failed")
             except Exception as test_error:
