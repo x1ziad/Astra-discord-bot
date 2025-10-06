@@ -373,23 +373,27 @@ class Notion(commands.GroupCog, name="notion"):
 
         # Add upcoming events to embed
         for event in self.cached_events[:5]:  # Show first 5 events
-            event_date = event["date"]
-            if "T" in event_date:  # If date includes time
+            event_date = event.get("date", "No date")
+            if event_date and event_date != "No date" and "T" in str(event_date):  # If date includes time
                 try:
-                    dt = datetime.fromisoformat(event_date)
+                    dt = datetime.fromisoformat(str(event_date))
                     formatted_date = f"<t:{int(dt.timestamp())}:F>"
                 except:
-                    formatted_date = event_date
+                    formatted_date = str(event_date)
             else:
-                formatted_date = event_date
+                formatted_date = str(event_date) if event_date else "No date set"
+
+            # Use the correct keys from parse_notion_events
+            event_name = event.get('name', 'Untitled Event')
+            event_description = event.get('description', 'No description')
+            event_url = event.get('url', '#')
 
             embed.add_field(
-                name=f"📌 {event['title']}",
+                name=f"📌 {event_name}",
                 value=(
                     f"**When:** {formatted_date}\n"
-                    f"**Type:** {event['type']}\n"
-                    f"**Details:** {event['description'][:150]}{'...' if len(event['description']) > 150 else ''}\n"
-                    f"[View in Notion]({event['notion_url']})"
+                    f"**Details:** {event_description[:150]}{'...' if len(event_description) > 150 else ''}\n"
+                    f"[View in Notion]({event_url})"
                 ),
                 inline=False,
             )
@@ -799,7 +803,7 @@ class Notion(commands.GroupCog, name="notion"):
                 # Use AI to create a summary of upcoming events
                 events_text = "\n".join(
                     [
-                        f"- {event['title']} ({event['type']}) - {event['date']}"
+                        f"- {event.get('name', 'Untitled')} - {event.get('date', 'No date')}"
                         for event in self.cached_events[:10]
                     ]
                 )
