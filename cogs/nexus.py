@@ -57,17 +57,19 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
         """Check if user is admin or owner"""
         if self._is_owner(interaction.user.id):
             return True
-        if interaction.guild and hasattr(interaction.user, 'guild_permissions'):
+        if interaction.guild and hasattr(interaction.user, "guild_permissions"):
             return interaction.user.guild_permissions.administrator
         return False
 
-    async def _check_permissions(self, interaction: discord.Interaction, admin_required: bool = False) -> bool:
+    async def _check_permissions(
+        self, interaction: discord.Interaction, admin_required: bool = False
+    ) -> bool:
         """Check permissions and send error if denied"""
         if admin_required:
             if not self._is_admin_or_owner(interaction):
                 await interaction.response.send_message(
                     "🚫 **ACCESS DENIED** - This command requires administrator permissions or bot ownership.",
-                    ephemeral=True
+                    ephemeral=True,
                 )
                 return False
         return True
@@ -77,19 +79,6 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
         if key in self._cache:
             self._cache[key]["data"] = data
             self._cache[key]["timestamp"] = time.time()
-
-    async def _check_permissions(self, interaction: discord.Interaction) -> bool:
-        """Enhanced permission checking"""
-        if interaction.user.id == self.bot.owner_id:
-            return True
-
-        if (
-            hasattr(interaction.user, "guild_permissions")
-            and interaction.user.guild_permissions.administrator
-        ):
-            return True
-
-        return False
 
     @app_commands.command(
         name="ping",
@@ -2231,28 +2220,26 @@ Analyze your capabilities, performance, and potential. What are your strengths? 
             await interaction.followup.send(embed=error_embed)
 
     @app_commands.command(
-        name="uptime",
-        description="⏰ AI-Enhanced System Uptime & Performance Analysis"
+        name="uptime", description="⏰ AI-Enhanced System Uptime & Performance Analysis"
     )
     @app_commands.describe(
         detailed="Enable AI-powered performance analysis and insights"
     )
     async def enhanced_uptime(
-        self,
-        interaction: discord.Interaction,
-        detailed: Optional[bool] = False
+        self, interaction: discord.Interaction, detailed: Optional[bool] = False
     ):
         """AI-Enhanced uptime with intelligent performance analysis"""
         await interaction.response.defer()
-        
+
         try:
             # Import AI manager for enhanced analysis
             from ai.multi_provider_ai import MultiProviderAIManager
+
             ai_manager = MultiProviderAIManager()
-            
+
             # Get comprehensive uptime data
             uptime_data = await self._get_comprehensive_uptime_data()
-            
+
             # Generate AI analysis if detailed mode
             ai_analysis = None
             if detailed:
@@ -2267,7 +2254,7 @@ Analyze your capabilities, performance, and potential. What are your strengths? 
                 Users: {uptime_data['user_count']:,} users
                 
                 Provide a brief analysis of the bot's performance, stability, and efficiency. Highlight any notable metrics and suggest if performance is optimal, good, or needs attention. Be encouraging but honest."""
-                
+
                 try:
                     ai_response = await ai_manager.generate_response(
                         prompt=analysis_prompt, max_tokens=250, temperature=0.6
@@ -2276,166 +2263,176 @@ Analyze your capabilities, performance, and potential. What are your strengths? 
                         ai_analysis = ai_response.content
                 except:
                     pass
-                    
+
             # Create enhanced embed
             embed = discord.Embed(
                 title="⏰ NEXUS Enhanced Uptime Analysis",
                 description=f"🚀 **System Online Since:** <t:{int(uptime_data['start_timestamp'])}:F>",
                 color=0x00D4AA,
-                timestamp=datetime.now(timezone.utc)
+                timestamp=datetime.now(timezone.utc),
             )
-            
+
             # Core Metrics
             embed.add_field(
                 name="📊 Core Metrics",
                 value=f"**Uptime:** {uptime_data['uptime_str']}\n"
-                      f"**Memory:** {uptime_data['memory_mb']:.1f} MB\n"
-                      f"**CPU:** {uptime_data['cpu_percent']:.1f}%\n"
-                      f"**Latency:** {self.bot.latency * 1000:.1f}ms",
-                inline=True
+                f"**Memory:** {uptime_data['memory_mb']:.1f} MB\n"
+                f"**CPU:** {uptime_data['cpu_percent']:.1f}%\n"
+                f"**Latency:** {self.bot.latency * 1000:.1f}ms",
+                inline=True,
             )
-            
+
             # Activity Stats
             embed.add_field(
                 name="⚡ Activity Statistics",
                 value=f"**Commands:** {uptime_data['commands_executed']:,}\n"
-                      f"**Messages:** {uptime_data['messages_processed']:,}\n"
-                      f"**Errors:** {uptime_data['errors_handled']:,}\n"
-                      f"**Success Rate:** {uptime_data['success_rate']:.1f}%",
-                inline=True
+                f"**Messages:** {uptime_data['messages_processed']:,}\n"
+                f"**Errors:** {uptime_data['errors_handled']:,}\n"
+                f"**Success Rate:** {uptime_data['success_rate']:.1f}%",
+                inline=True,
             )
-            
+
             # Network Presence
             embed.add_field(
                 name="🌐 Network Presence",
                 value=f"**Servers:** {uptime_data['guild_count']:,}\n"
-                      f"**Users:** {uptime_data['user_count']:,}\n"
-                      f"**Channels:** {uptime_data['channel_count']:,}\n"
-                      f"**Reach:** {uptime_data['reach_percentage']:.1f}% active",
-                inline=True
+                f"**Users:** {uptime_data['user_count']:,}\n"
+                f"**Channels:** {uptime_data['channel_count']:,}\n"
+                f"**Reach:** {uptime_data['reach_percentage']:.1f}% active",
+                inline=True,
             )
-            
+
             # AI Analysis if available
             if ai_analysis:
                 embed.add_field(
-                    name="🧠 AI Performance Analysis",
-                    value=ai_analysis,
-                    inline=False
+                    name="🧠 AI Performance Analysis", value=ai_analysis, inline=False
                 )
-                
+
             # System Health Indicator
-            health_icon = "🟢" if uptime_data['memory_mb'] < 400 and uptime_data['cpu_percent'] < 60 else "🟡" if uptime_data['memory_mb'] < 800 else "🔴"
+            health_icon = (
+                "🟢"
+                if uptime_data["memory_mb"] < 400 and uptime_data["cpu_percent"] < 60
+                else "🟡" if uptime_data["memory_mb"] < 800 else "🔴"
+            )
             embed.add_field(
                 name=f"{health_icon} System Health",
                 value=f"Status: **{'Excellent' if health_icon == '🟢' else 'Good' if health_icon == '🟡' else 'Attention Needed'}**\n"
-                      f"Stability: **{uptime_data['stability_score']:.1f}/10**\n"
-                      f"Efficiency: **{uptime_data['efficiency_score']:.1f}/10**",
-                inline=True
+                f"Stability: **{uptime_data['stability_score']:.1f}/10**\n"
+                f"Efficiency: **{uptime_data['efficiency_score']:.1f}/10**",
+                inline=True,
             )
-            
-            embed.set_footer(text="🌌 NEXUS Enhanced Uptime Analysis • AI-Powered Insights")
-            
+
+            embed.set_footer(
+                text="🌌 NEXUS Enhanced Uptime Analysis • AI-Powered Insights"
+            )
+
             if self.bot.user and self.bot.user.avatar:
                 embed.set_thumbnail(url=self.bot.user.avatar.url)
-                
+
             await interaction.followup.send(embed=embed)
-            
+
         except Exception as e:
             self.logger.error(f"Enhanced uptime error: {e}")
             error_embed = discord.Embed(
                 title="❌ Analysis Error",
                 description="Unable to complete enhanced uptime analysis.",
-                color=0xFF4444
+                color=0xFF4444,
             )
             await interaction.followup.send(embed=error_embed)
 
     async def _get_comprehensive_uptime_data(self) -> Dict[str, Any]:
         """Get comprehensive uptime and performance data"""
         now = datetime.now(timezone.utc)
-        start_time = getattr(self.bot, 'start_time', now)
+        start_time = getattr(self.bot, "start_time", now)
         uptime_delta = now - start_time
-        
+
         # Format uptime string
         days = uptime_delta.days
         hours, remainder = divmod(uptime_delta.seconds, 3600)
         minutes, seconds = divmod(remainder, 60)
         uptime_str = f"{days}d {hours}h {minutes}m {seconds}s"
-        
+
         # Get system stats
         memory_mb = self._get_memory_usage()
         cpu_percent = self._get_cpu_usage()
-        
+
         # Get bot stats
-        stats = getattr(self.bot, 'stats', None)
-        commands_executed = getattr(stats, 'commands_executed', 0) if stats else 0
-        messages_processed = getattr(stats, 'messages_processed', 0) if stats else 0
-        errors_handled = getattr(stats, 'errors_handled', 0) if stats else 0
-        
+        stats = getattr(self.bot, "stats", None)
+        commands_executed = getattr(stats, "commands_executed", 0) if stats else 0
+        messages_processed = getattr(stats, "messages_processed", 0) if stats else 0
+        errors_handled = getattr(stats, "errors_handled", 0) if stats else 0
+
         # Calculate success rate
         total_operations = commands_executed + messages_processed
-        success_rate = ((total_operations - errors_handled) / max(total_operations, 1)) * 100
-        
+        success_rate = (
+            (total_operations - errors_handled) / max(total_operations, 1)
+        ) * 100
+
         # Guild and user counts
         guild_count = len(self.bot.guilds)
         user_count = sum(guild.member_count or 0 for guild in self.bot.guilds)
         channel_count = sum(len(guild.channels) for guild in self.bot.guilds)
-        
+
         # Calculate reach percentage (rough estimate of active users)
         reach_percentage = min((commands_executed / max(user_count, 1)) * 100, 100)
-        
+
         # Calculate stability and efficiency scores
-        stability_score = min(10, max(0, 10 - (errors_handled / max(total_operations, 1)) * 100))
+        stability_score = min(
+            10, max(0, 10 - (errors_handled / max(total_operations, 1)) * 100)
+        )
         efficiency_score = min(10, max(0, 10 - (memory_mb / 100) - (cpu_percent / 10)))
-        
+
         return {
-            'uptime_str': uptime_str,
-            'start_timestamp': start_time.timestamp(),
-            'memory_mb': memory_mb,
-            'cpu_percent': cpu_percent,
-            'commands_executed': commands_executed,
-            'messages_processed': messages_processed,
-            'errors_handled': errors_handled,
-            'success_rate': success_rate,
-            'guild_count': guild_count,
-            'user_count': user_count,
-            'channel_count': channel_count,
-            'reach_percentage': reach_percentage,
-            'stability_score': stability_score,
-            'efficiency_score': efficiency_score
+            "uptime_str": uptime_str,
+            "start_timestamp": start_time.timestamp(),
+            "memory_mb": memory_mb,
+            "cpu_percent": cpu_percent,
+            "commands_executed": commands_executed,
+            "messages_processed": messages_processed,
+            "errors_handled": errors_handled,
+            "success_rate": success_rate,
+            "guild_count": guild_count,
+            "user_count": user_count,
+            "channel_count": channel_count,
+            "reach_percentage": reach_percentage,
+            "stability_score": stability_score,
+            "efficiency_score": efficiency_score,
         }
 
     @app_commands.command(
-        name="stats",
-        description="📈 AI-Enhanced Bot Statistics & Analytics Dashboard"
+        name="stats", description="📈 AI-Enhanced Bot Statistics & Analytics Dashboard"
     )
     @app_commands.describe(
         category="Specific stats category (performance, usage, network, ai)",
-        ai_insights="Enable AI-powered statistical analysis and trends"
+        ai_insights="Enable AI-powered statistical analysis and trends",
     )
     async def enhanced_stats(
         self,
         interaction: discord.Interaction,
         category: Optional[str] = None,
-        ai_insights: Optional[bool] = False
+        ai_insights: Optional[bool] = False,
     ):
         """AI-Enhanced bot statistics with intelligent analysis"""
         await interaction.response.defer()
-        
+
         try:
             # Import AI manager for enhanced analysis
             from ai.multi_provider_ai import MultiProviderAIManager
+
             ai_manager = MultiProviderAIManager()
-            
+
             # Get comprehensive stats
             stats_data = await self._get_comprehensive_stats()
-            
+
             if category:
                 # Category-specific stats
-                embed = await self._create_category_stats_embed(stats_data, category.lower())
+                embed = await self._create_category_stats_embed(
+                    stats_data, category.lower()
+                )
             else:
                 # General stats overview
                 embed = await self._create_general_stats_embed(stats_data)
-                
+
             # Add AI insights if requested
             if ai_insights:
                 insights_prompt = f"""Analyze these Discord bot statistics and provide insights:
@@ -2456,7 +2453,7 @@ Analyze your capabilities, performance, and potential. What are your strengths? 
                 - Engagement rate: {stats_data['engagement_rate']:.1f}%
                 
                 Provide brief insights about performance trends, usage patterns, and growth potential. Be analytical but encouraging."""
-                
+
                 try:
                     ai_response = await ai_manager.generate_response(
                         prompt=insights_prompt, max_tokens=300, temperature=0.6
@@ -2465,318 +2462,335 @@ Analyze your capabilities, performance, and potential. What are your strengths? 
                         embed.add_field(
                             name="🧠 AI Statistical Insights",
                             value=ai_response.content,
-                            inline=False
+                            inline=False,
                         )
                 except:
                     pass
-                    
+
             embed.set_footer(text="📈 NEXUS Enhanced Statistics • AI-Powered Analytics")
             await interaction.followup.send(embed=embed)
-            
+
         except Exception as e:
             self.logger.error(f"Enhanced stats error: {e}")
             error_embed = discord.Embed(
                 title="❌ Statistics Error",
                 description="Unable to generate enhanced statistics.",
-                color=0xFF4444
+                color=0xFF4444,
             )
             await interaction.followup.send(embed=error_embed)
 
     async def _get_comprehensive_stats(self) -> Dict[str, Any]:
         """Get comprehensive bot statistics"""
         now = datetime.now(timezone.utc)
-        start_time = getattr(self.bot, 'start_time', now)
+        start_time = getattr(self.bot, "start_time", now)
         uptime_hours = (now - start_time).total_seconds() / 3600
-        
+
         # Get bot stats
-        stats = getattr(self.bot, 'stats', None)
-        total_commands = getattr(stats, 'commands_executed', 0) if stats else 0
-        total_messages = getattr(stats, 'messages_processed', 0) if stats else 0
-        total_errors = getattr(stats, 'errors_handled', 0) if stats else 0
-        
+        stats = getattr(self.bot, "stats", None)
+        total_commands = getattr(stats, "commands_executed", 0) if stats else 0
+        total_messages = getattr(stats, "messages_processed", 0) if stats else 0
+        total_errors = getattr(stats, "errors_handled", 0) if stats else 0
+
         # Calculate rates
         commands_per_hour = total_commands / max(uptime_hours, 1)
         messages_per_hour = total_messages / max(uptime_hours, 1)
-        
+
         # Network stats
         total_servers = len(self.bot.guilds)
         total_users = sum(guild.member_count or 0 for guild in self.bot.guilds)
         total_channels = sum(len(guild.channels) for guild in self.bot.guilds)
-        
+
         # Calculate engagement and efficiency metrics
         engagement_rate = (total_commands / max(total_users, 1)) * 100
         memory_mb = self._get_memory_usage()
         memory_efficiency = max(0, 100 - (memory_mb / 10))  # Rough efficiency score
-        
+
         # Estimate active users (users who've used commands)
         active_users = min(total_users, total_commands)  # Conservative estimate
-        
+
         # Server growth (placeholder - would need historical data)
         server_growth = 5.0  # Placeholder percentage
-        
+
         return {
-            'uptime_hours': uptime_hours,
-            'total_commands': total_commands,
-            'total_messages': total_messages,
-            'total_errors': total_errors,
-            'commands_per_hour': commands_per_hour,
-            'messages_per_hour': messages_per_hour,
-            'total_servers': total_servers,
-            'total_users': total_users,
-            'total_channels': total_channels,
-            'active_users': active_users,
-            'engagement_rate': engagement_rate,
-            'memory_efficiency': memory_efficiency,
-            'server_growth': server_growth,
-            'success_rate': ((total_commands + total_messages - total_errors) / max(total_commands + total_messages, 1)) * 100
+            "uptime_hours": uptime_hours,
+            "total_commands": total_commands,
+            "total_messages": total_messages,
+            "total_errors": total_errors,
+            "commands_per_hour": commands_per_hour,
+            "messages_per_hour": messages_per_hour,
+            "total_servers": total_servers,
+            "total_users": total_users,
+            "total_channels": total_channels,
+            "active_users": active_users,
+            "engagement_rate": engagement_rate,
+            "memory_efficiency": memory_efficiency,
+            "server_growth": server_growth,
+            "success_rate": (
+                (total_commands + total_messages - total_errors)
+                / max(total_commands + total_messages, 1)
+            )
+            * 100,
         }
 
-    async def _create_general_stats_embed(self, stats_data: Dict[str, Any]) -> discord.Embed:
+    async def _create_general_stats_embed(
+        self, stats_data: Dict[str, Any]
+    ) -> discord.Embed:
         """Create general statistics embed"""
         embed = discord.Embed(
             title="📈 NEXUS Enhanced Statistics Dashboard",
             description="Comprehensive bot performance and usage analytics",
             color=0x00D4AA,
-            timestamp=datetime.now(timezone.utc)
+            timestamp=datetime.now(timezone.utc),
         )
-        
+
         # Performance Metrics
         embed.add_field(
             name="⚡ Performance Metrics",
             value=f"**Uptime:** {stats_data['uptime_hours']:.1f} hours\n"
-                  f"**Commands/hr:** {stats_data['commands_per_hour']:.1f}\n"
-                  f"**Messages/hr:** {stats_data['messages_per_hour']:.1f}\n"
-                  f"**Success Rate:** {stats_data['success_rate']:.1f}%",
-            inline=True
+            f"**Commands/hr:** {stats_data['commands_per_hour']:.1f}\n"
+            f"**Messages/hr:** {stats_data['messages_per_hour']:.1f}\n"
+            f"**Success Rate:** {stats_data['success_rate']:.1f}%",
+            inline=True,
         )
-        
+
         # Usage Statistics
         embed.add_field(
             name="📊 Usage Statistics",
             value=f"**Total Commands:** {stats_data['total_commands']:,}\n"
-                  f"**Messages Processed:** {stats_data['total_messages']:,}\n"
-                  f"**Active Users:** {stats_data['active_users']:,}\n"
-                  f"**Engagement:** {stats_data['engagement_rate']:.2f}%",
-            inline=True
+            f"**Messages Processed:** {stats_data['total_messages']:,}\n"
+            f"**Active Users:** {stats_data['active_users']:,}\n"
+            f"**Engagement:** {stats_data['engagement_rate']:.2f}%",
+            inline=True,
         )
-        
+
         # Network Reach
         embed.add_field(
             name="🌐 Network Reach",
             value=f"**Servers:** {stats_data['total_servers']:,}\n"
-                  f"**Users:** {stats_data['total_users']:,}\n"
-                  f"**Channels:** {stats_data['total_channels']:,}\n"
-                  f"**Growth:** +{stats_data['server_growth']:.1f}%",
-            inline=True
+            f"**Users:** {stats_data['total_users']:,}\n"
+            f"**Channels:** {stats_data['total_channels']:,}\n"
+            f"**Growth:** +{stats_data['server_growth']:.1f}%",
+            inline=True,
         )
-        
+
         return embed
 
-    async def _create_category_stats_embed(self, stats_data: Dict[str, Any], category: str) -> discord.Embed:
+    async def _create_category_stats_embed(
+        self, stats_data: Dict[str, Any], category: str
+    ) -> discord.Embed:
         """Create category-specific statistics embed"""
         categories = {
-            'performance': {
-                'title': '⚡ Performance Statistics',
-                'fields': {
-                    'Efficiency Metrics': f"Memory Efficiency: {stats_data['memory_efficiency']:.1f}%\n"
-                                        f"Commands/Hour: {stats_data['commands_per_hour']:.1f}\n"
-                                        f"Success Rate: {stats_data['success_rate']:.1f}%",
-                }
+            "performance": {
+                "title": "⚡ Performance Statistics",
+                "fields": {
+                    "Efficiency Metrics": f"Memory Efficiency: {stats_data['memory_efficiency']:.1f}%\n"
+                    f"Commands/Hour: {stats_data['commands_per_hour']:.1f}\n"
+                    f"Success Rate: {stats_data['success_rate']:.1f}%",
+                },
             },
-            'usage': {
-                'title': '📊 Usage Analytics',
-                'fields': {
-                    'Command Statistics': f"Total Commands: {stats_data['total_commands']:,}\n"
-                                        f"Messages Processed: {stats_data['total_messages']:,}\n"
-                                        f"Active Users: {stats_data['active_users']:,}",
-                }
+            "usage": {
+                "title": "📊 Usage Analytics",
+                "fields": {
+                    "Command Statistics": f"Total Commands: {stats_data['total_commands']:,}\n"
+                    f"Messages Processed: {stats_data['total_messages']:,}\n"
+                    f"Active Users: {stats_data['active_users']:,}",
+                },
             },
-            'network': {
-                'title': '🌐 Network Statistics',
-                'fields': {
-                    'Reach Metrics': f"Servers: {stats_data['total_servers']:,}\n"
-                                   f"Users: {stats_data['total_users']:,}\n"
-                                   f"Channels: {stats_data['total_channels']:,}",
-                }
-            }
+            "network": {
+                "title": "🌐 Network Statistics",
+                "fields": {
+                    "Reach Metrics": f"Servers: {stats_data['total_servers']:,}\n"
+                    f"Users: {stats_data['total_users']:,}\n"
+                    f"Channels: {stats_data['total_channels']:,}",
+                },
+            },
         }
-        
+
         if category not in categories:
-            category = 'performance'  # Default fallback
-            
+            category = "performance"  # Default fallback
+
         cat_info = categories[category]
         embed = discord.Embed(
             title=f"📈 NEXUS {cat_info['title']}",
             color=0x00D4AA,
-            timestamp=datetime.now(timezone.utc)
+            timestamp=datetime.now(timezone.utc),
         )
-        
-        for field_name, field_value in cat_info['fields'].items():
+
+        for field_name, field_value in cat_info["fields"].items():
             embed.add_field(name=field_name, value=field_value, inline=False)
-            
+
         return embed
 
     @app_commands.command(
         name="optimize_system",
-        description="🔧 NEXUS System Optimization - Remove Duplicate Commands"
+        description="🔧 NEXUS System Optimization - Remove Duplicate Commands",
     )
     @app_commands.default_permissions(administrator=True)
     @app_commands.describe(
         action="Optimization action to perform",
-        confirm="Confirm the optimization action"
+        confirm="Confirm the optimization action",
     )
     async def optimize_system(
         self,
         interaction: discord.Interaction,
         action: Literal["remove_duplicates", "check_conflicts", "system_cleanup"],
-        confirm: Optional[bool] = False
+        confirm: Optional[bool] = False,
     ):
         """NEXUS System Optimization - Remove duplicate commands and enhance performance"""
-        
+
         # Admin/Owner check
         if not await self._check_permissions(interaction, admin_required=True):
             return
-            
+
         await interaction.response.defer(ephemeral=True)
-        
+
         try:
             if action == "remove_duplicates":
                 if not confirm:
                     embed = discord.Embed(
                         title="⚠️ NEXUS System Optimization",
                         description="**Remove Duplicate Commands**\n\nThis will disable traditional commands that are better handled by NEXUS:\n\n"
-                                  "• `/help` → NEXUS Help System\n"
-                                  "• Basic `/userinfo` → Enhanced NEXUS userinfo\n"
-                                  "• Basic `/uptime` → Enhanced NEXUS uptime\n"
-                                  "• Basic `/stats` → Enhanced NEXUS stats\n\n"
-                                  "**⚡ Benefits:**\n"
-                                  "• AI-powered enhanced features\n"
-                                  "• Better performance and efficiency\n"
-                                  "• Unified command experience\n"
-                                  "• Reduced system conflicts\n\n"
-                                  "**Use `confirm: True` to proceed.**",
-                        color=0xFFAA00
+                        "• `/help` → NEXUS Help System\n"
+                        "• Basic `/userinfo` → Enhanced NEXUS userinfo\n"
+                        "• Basic `/uptime` → Enhanced NEXUS uptime\n"
+                        "• Basic `/stats` → Enhanced NEXUS stats\n\n"
+                        "**⚡ Benefits:**\n"
+                        "• AI-powered enhanced features\n"
+                        "• Better performance and efficiency\n"
+                        "• Unified command experience\n"
+                        "• Reduced system conflicts\n\n"
+                        "**Use `confirm: True` to proceed.**",
+                        color=0xFFAA00,
                     )
                     await interaction.followup.send(embed=embed)
                     return
-                
+
                 # Perform optimization
                 optimized_commands = []
                 removed_cogs = []
-                
+
                 # Check for duplicate cogs to remove
-                duplicate_cogs = ['help', 'utilities', 'stats']  # Cogs with commands that NEXUS does better
-                
+                duplicate_cogs = [
+                    "help",
+                    "utilities",
+                    "stats",
+                ]  # Cogs with commands that NEXUS does better
+
                 for cog_name in duplicate_cogs:
                     cog = self.bot.get_cog(cog_name)
                     if cog:
                         # Don't actually remove - just report what would be optimized
-                        optimized_commands.append(f"✅ {cog_name.title()} cog (enhanced by NEXUS)")
-                        
+                        optimized_commands.append(
+                            f"✅ {cog_name.title()} cog (enhanced by NEXUS)"
+                        )
+
                 embed = discord.Embed(
                     title="🚀 NEXUS Optimization Complete",
                     description="**System optimization analysis completed!**\n\n"
-                              "NEXUS has identified commands that can be enhanced with AI-powered features.",
-                    color=0x00DD00
+                    "NEXUS has identified commands that can be enhanced with AI-powered features.",
+                    color=0x00DD00,
                 )
-                
+
                 if optimized_commands:
                     embed.add_field(
                         name="⚡ Enhanced Commands",
                         value="\n".join(optimized_commands),
-                        inline=False
+                        inline=False,
                     )
-                    
+
                 embed.add_field(
                     name="🧠 NEXUS Advantages",
                     value="• AI-powered intelligent responses\n"
-                          "• Real-time system analysis\n"
-                          "• Enhanced performance metrics\n"
-                          "• Unified command experience\n"
-                          "• Advanced diagnostic capabilities",
-                    inline=False
+                    "• Real-time system analysis\n"
+                    "• Enhanced performance metrics\n"
+                    "• Unified command experience\n"
+                    "• Advanced diagnostic capabilities",
+                    inline=False,
                 )
-                
+
             elif action == "check_conflicts":
                 conflicts = await self._analyze_command_conflicts()
                 embed = discord.Embed(
                     title="🔍 NEXUS Conflict Analysis",
                     description="Command conflict and optimization analysis",
-                    color=0x00AAFF
+                    color=0x00AAFF,
                 )
-                
+
                 if conflicts:
                     embed.add_field(
                         name="⚠️ Potential Conflicts",
                         value="\n".join(conflicts),
-                        inline=False
+                        inline=False,
                     )
                 else:
                     embed.add_field(
                         name="✅ No Conflicts Detected",
                         value="All commands are optimally configured",
-                        inline=False
+                        inline=False,
                     )
-                    
+
             else:  # system_cleanup
                 cleanup_results = await self._perform_system_cleanup()
                 embed = discord.Embed(
                     title="🧹 NEXUS System Cleanup",
                     description="System cleanup and optimization completed",
-                    color=0x00DD00
+                    color=0x00DD00,
                 )
-                
+
                 embed.add_field(
                     name="🗑️ Cleanup Results",
                     value="\n".join(cleanup_results),
-                    inline=False
+                    inline=False,
                 )
-                
+
             embed.set_footer(text="🌌 NEXUS System Optimization • Enhanced Performance")
             await interaction.followup.send(embed=embed)
-            
+
         except Exception as e:
             self.logger.error(f"System optimization error: {e}")
             error_embed = discord.Embed(
                 title="❌ Optimization Error",
                 description="Unable to complete system optimization.",
-                color=0xFF4444
+                color=0xFF4444,
             )
             await interaction.followup.send(embed=error_embed)
-    
+
     async def _analyze_command_conflicts(self) -> List[str]:
         """Analyze potential command conflicts"""
         conflicts = []
-        
+
         # Check for duplicate command functionality
-        nexus_commands = ['help', 'userinfo', 'uptime', 'stats']
-        
+        nexus_commands = ["help", "userinfo", "uptime", "stats"]
+
         for cmd_name in nexus_commands:
             # Check if other cogs have similar commands
             for other_cmd in self.bot.tree.get_commands():
-                if hasattr(other_cmd, 'name') and cmd_name in other_cmd.name.lower():
+                if hasattr(other_cmd, "name") and cmd_name in other_cmd.name.lower():
                     if not isinstance(other_cmd.binding, NexusControlSystem):
-                        conflicts.append(f"⚠️ {cmd_name}: Enhanced NEXUS version available")
-                        
+                        conflicts.append(
+                            f"⚠️ {cmd_name}: Enhanced NEXUS version available"
+                        )
+
         return conflicts
-    
+
     async def _perform_system_cleanup(self) -> List[str]:
         """Perform system cleanup operations"""
         cleanup_results = []
-        
+
         # Clear caches
         for cache_key in self._cache:
             self._cache[cache_key] = {"data": None, "timestamp": 0, "ttl": 30}
         cleanup_results.append("✅ NEXUS caches cleared")
-        
+
         # Memory optimization
         import gc
+
         collected = gc.collect()
         if collected > 0:
             cleanup_results.append(f"✅ Garbage collection: {collected} objects")
-            
+
         cleanup_results.append("✅ System optimization completed")
-        
+
         return cleanup_results
 
 
