@@ -544,6 +544,67 @@ Provide 3 bullet points with actionable recommendations (under 200 chars total).
                 "❌ Role operation failed. Please try again."
             )
 
+    async def _analyze_roles(self, interaction: discord.Interaction):
+        """Analyze server roles with AI insights"""
+        guild = interaction.guild
+
+        # Collect role statistics
+        total_roles = len(guild.roles) - 1  # Exclude @everyone
+        managed_roles = sum(1 for role in guild.roles if role.managed)
+        custom_roles = total_roles - managed_roles
+        unused_roles = sum(
+            1
+            for role in guild.roles
+            if len(role.members) == 0 and role.name != "@everyone"
+        )
+
+        # Color analysis
+        color_conflicts = {}
+        for role in guild.roles:
+            if role.name != "@everyone" and role.color.value != 0:
+                if role.color.value in color_conflicts:
+                    color_conflicts[role.color.value].append(role)
+                else:
+                    color_conflicts[role.color.value] = [role]
+
+        conflicts = sum(1 for roles in color_conflicts.values() if len(roles) > 1)
+
+        embed = discord.Embed(
+            title="🎭 Server Role Analysis",
+            description=f"Comprehensive role analysis for **{guild.name}**",
+            color=0x9932CC,
+            timestamp=datetime.now(timezone.utc),
+        )
+
+        embed.add_field(
+            name="📊 Role Statistics",
+            value=f"• Total Roles: **{total_roles}**\n"
+            f"• Custom Roles: **{custom_roles}**\n"
+            f"• Managed Roles: **{managed_roles}**\n"
+            f"• Unused Roles: **{unused_roles}**",
+            inline=True,
+        )
+
+        embed.add_field(
+            name="🎨 Color Analysis",
+            value=f"• Unique Colors: **{len(color_conflicts)}**\n"
+            f"• Color Conflicts: **{conflicts}**\n"
+            f"• Default Color: **{total_roles - len(color_conflicts)}**",
+            inline=True,
+        )
+
+        # Generate AI recommendations
+        if unused_roles > 5 or conflicts > 3:
+            embed.add_field(
+                name="🤖 AI Recommendations",
+                value="• Consider cleaning unused roles\n"
+                "• Resolve color conflicts for better hierarchy\n"
+                "• Use role templates for consistency",
+                inline=False,
+            )
+
+        await interaction.followup.send(embed=embed)
+
     async def _optimize_roles_ai(self, interaction: discord.Interaction):
         """AI-powered role optimization"""
         guild = interaction.guild

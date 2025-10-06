@@ -374,7 +374,9 @@ class Notion(commands.GroupCog, name="notion"):
         # Add upcoming events to embed
         for event in self.cached_events[:5]:  # Show first 5 events
             event_date = event.get("date", "No date")
-            if event_date and event_date != "No date" and "T" in str(event_date):  # If date includes time
+            if (
+                event_date and event_date != "No date" and "T" in str(event_date)
+            ):  # If date includes time
                 try:
                     dt = datetime.fromisoformat(str(event_date))
                     formatted_date = f"<t:{int(dt.timestamp())}:F>"
@@ -384,9 +386,9 @@ class Notion(commands.GroupCog, name="notion"):
                 formatted_date = str(event_date) if event_date else "No date set"
 
             # Use the correct keys from parse_notion_events
-            event_name = event.get('name', 'Untitled Event')
-            event_description = event.get('description', 'No description')
-            event_url = event.get('url', '#')
+            event_name = event.get("name", "Untitled Event")
+            event_description = event.get("description", "No description")
+            event_url = event.get("url", "#")
 
             embed.add_field(
                 name=f"📌 {event_name}",
