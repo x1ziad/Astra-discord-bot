@@ -1534,13 +1534,30 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
 
         discord_reporter = get_discord_reporter()
         if not discord_reporter:
-            embed.add_field(
-                name="❌ Status",
-                value="Discord Data Reporter is not initialized",
-                inline=False,
-            )
-            await interaction.followup.send(embed=embed)
-            return
+            # Try to initialize the reporter
+            try:
+                from utils.discord_data_reporter import initialize_discord_reporter
+                discord_reporter = await initialize_discord_reporter(self.bot)
+                if not discord_reporter:
+                    embed.add_field(
+                        name="❌ Status", 
+                        value="Discord Data Reporter failed to initialize - Check configuration",
+                        inline=False
+                    )
+                else:
+                    embed.add_field(
+                        name="✅ Status",
+                        value="Discord Data Reporter initialized successfully",
+                        inline=False
+                    )
+            except Exception as e:
+                embed.add_field(
+                    name="❌ Status",
+                    value=f"Discord Data Reporter initialization error: {str(e)[:100]}",
+                    inline=False,
+                )
+                await interaction.followup.send(embed=embed)
+                return
 
         try:
             # Test all channels
