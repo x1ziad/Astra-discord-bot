@@ -33,6 +33,12 @@ data/*.db-wal
 # Local testing files
 test_*.py
 *_test.py
+*_demo.py
+demo_*.py
+*_verification.py
+verification_*.py
+sync_check.py
+final_verification.py
 
 # Backup directories and temporary files
 backup_*/
