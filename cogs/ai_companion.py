@@ -268,7 +268,11 @@ class AICompanion(commands.Cog):
 
             ai_manager = MultiProviderAIManager()
             ai_response = await ai_manager.generate_response(full_context)
-            response = ai_response.content if ai_response.success else "I'm having trouble thinking right now. Could you try again?"
+            response = (
+                ai_response.content
+                if ai_response.success
+                else "I'm having trouble thinking right now. Could you try again?"
+            )
 
             # Store in conversation context for future reference
             if not hasattr(self, "conversation_contexts"):
@@ -378,27 +382,22 @@ class AICompanion(commands.Cog):
     ) -> Dict[str, str]:
         """Generate personalized wellness check-in"""
         try:
-            prompt = f"""Generate a personalized wellness check-in for {user.display_name}.
+            prompt = f"""Wellness check-in for {user.display_name}. Mood: {mood.current_mood}. Be caring and supportive.
 
-Context:
-- Current mood: {mood.current_mood}
-- Positive interactions: {mood.positive_interactions}
-- Stress indicators: {mood.stress_indicators}
-- Days since last check-in: {int((time.time() - mood.last_check_in) / 86400) if mood.last_check_in else 0}
-
-Create a caring check-in with:
+JSON:
 {{
-    "greeting": "Warm, personalized greeting",
-    "reflection_questions": "2-3 thoughtful questions to help them reflect",
-    "wellness_tips": "Practical wellness suggestions",
-    "encouragement": "Uplifting, supportive message"
-}}
-
-Be warm, genuine, and supportive. Each section under 100 words."""
+    "greeting": "Hi {user.display_name}! 👋",
+    "acknowledgment": "Hope you're doing well",
+    "question": "How are you feeling today?",
+    "support": "I'm here for you",
+    "closing": "Take care! 💙"
+}}"""
 
             ai_manager = MultiProviderAIManager()
             ai_response = await ai_manager.generate_response(prompt)
-            response = ai_response.content if ai_response.success else "I'm here for you! 💙"
+            response = (
+                ai_response.content if ai_response.success else "I'm here for you! 💙"
+            )
 
             # Try to parse JSON response
             json_match = re.search(r"\{.*\}", response, re.DOTALL)
@@ -481,19 +480,13 @@ Be warm, genuine, and supportive. Each section under 100 words."""
     async def _generate_mood_response(self, user: discord.Member, mood: str) -> str:
         """Generate AI response to mood update"""
         try:
-            prompt = f"""Respond supportively to {user.display_name} who just shared they're feeling {mood}.
-
-Provide a caring, empathetic response that:
-- Acknowledges their feeling
-- Offers gentle support or encouragement
-- Suggests a helpful tip if appropriate
-- Shows you care about their wellbeing
-
-Keep it under 100 words and use appropriate emojis."""
+            prompt = f"""{user.display_name} feels {mood}. Respond with empathy, support, and helpful tip. Brief with emojis."""
 
             ai_manager = MultiProviderAIManager()
             ai_response = await ai_manager.generate_response(prompt)
-            response = ai_response.content if ai_response.success else "Keep being awesome! 🌟"
+            response = (
+                ai_response.content if ai_response.success else "Keep being awesome! 🌟"
+            )
             return response.strip()
 
         except Exception:
@@ -606,7 +599,9 @@ Be genuinely excited and supportive. Each section under 80 words."""
 
             ai_manager = MultiProviderAIManager()
             ai_response = await ai_manager.generate_response(prompt)
-            response = ai_response.content if ai_response.success else "Congratulations! 🎉"
+            response = (
+                ai_response.content if ai_response.success else "Congratulations! 🎉"
+            )
 
             json_match = re.search(r"\{.*\}", response, re.DOTALL)
             if json_match:
@@ -722,7 +717,11 @@ Create a warm, caring message (under 100 words) that:
 
             ai_manager = MultiProviderAIManager()
             ai_response = await ai_manager.generate_response(prompt)
-            response = ai_response.content if ai_response.success else "Hope you're having a great day! 💙"
+            response = (
+                ai_response.content
+                if ai_response.success
+                else "Hope you're having a great day! 💙"
+            )
 
             # Send natural message without embed formatting
             natural_message = f"💙 {response.strip()}"

@@ -1,8 +1,4 @@
 """
-ai_manager = MultiProviderAIManager()
-
-ai_response_obj = await ai_manager.generate_response(prompt)
-
 Enhanced Server Management with AI Companion Features
 Sophisticated server management with personalized AI responses and community building
 """
@@ -91,7 +87,9 @@ class EnhancedServerManagement(commands.GroupCog, name="server"):
     @app_commands.default_permissions(administrator=True)
     async def interactive_setup(self, interaction: discord.Interaction):
         """Interactive server setup with AI-powered recommendations"""
-        if not await check_user_permission(interaction.user, PermissionLevel.ADMIN, interaction.guild):
+        if not await check_user_permission(
+            interaction.user, PermissionLevel.ADMIN, interaction.guild
+        ):
             await interaction.response.send_message(
                 "❌ You need administrator permissions for this command.",
                 ephemeral=True,
@@ -206,26 +204,23 @@ class EnhancedServerManagement(commands.GroupCog, name="server"):
     ) -> Dict[str, Any]:
         """Generate AI-powered setup recommendations"""
         try:
-            prompt = f"""You are Astra, a friendly AI server management assistant. Analyze this Discord server and provide setup recommendations.
+            prompt = f"""Server: {guild.name} ({guild.member_count} members). Score: {setup_data.get('setup_score', 75)}/100. Missing: {', '.join(setup_data.get('missing_features', [])[:3])}.
 
-Server: {guild.name}
-Members: {guild.member_count}
-Current setup score: {setup_data.get('setup_score', 75)}/100
-Missing features: {', '.join(setup_data.get('missing_features', []))}
-
-Generate recommendations in this format:
+JSON:
 {{
-    "priority_recommendations": "• Top 3 priority items as bullet points",
-    "community_building": "Tips for building an engaged community",
-    "technical_setup": "Technical configuration suggestions",
-    "engagement_ideas": "Creative ideas to boost member engagement"
-}}
-
-Keep each section under 150 characters. Be encouraging and specific."""
+    "priority_recommendations": "• Top 3 priorities",
+    "community_building": "Engagement tips",
+    "technical_setup": "Config suggestions",
+    "engagement_ideas": "Creative ideas"
+}}"""
 
             ai_manager = MultiProviderAIManager()
             ai_response_obj = await ai_manager.generate_response(prompt)
-            ai_response = ai_response_obj.content if ai_response_obj.success else '{"insights": "Your server is well-managed!", "suggestions": "Keep up the great work!", "encouragement": "You\'re doing amazing!"}'
+            ai_response = (
+                ai_response_obj.content
+                if ai_response_obj.success
+                else '{"insights": "Your server is well-managed!", "suggestions": "Keep up the great work!", "encouragement": "You\'re doing amazing!"}'
+            )
 
             # Try to parse JSON response
             json_match = re.search(r"\{.*\}", ai_response, re.DOTALL)
@@ -263,7 +258,9 @@ Keep each section under 150 characters. Be encouraging and specific."""
         auto_role: Optional[discord.Role] = None,
     ):
         """Setup intelligent welcome system with AI-generated messages"""
-        if not await check_user_permission(interaction.user, PermissionLevel.MODERATOR, interaction.guild):
+        if not await check_user_permission(
+            interaction.user, PermissionLevel.MODERATOR, interaction.guild
+        ):
             await interaction.response.send_message(
                 "❌ You need moderator permissions for this command.", ephemeral=True
             )
@@ -342,27 +339,17 @@ Keep each section under 150 characters. Be encouraging and specific."""
     ) -> str:
         """Generate AI-powered welcome message"""
         try:
-            prompt = f"""Generate a {style} welcome message for a new member joining {guild.name}.
+            prompt = f"""Welcome message for {guild.name} ({guild.member_count} members). Style: {style}. Use {{user}} placeholder. Under 200 chars, emojis, engaging."""
 
-Server context:
-- Name: {guild.name}
-- Member count: {guild.member_count}
-- Style: {style}
-
-Requirements:
-- Use {{user}} as placeholder for member name
-- Include appropriate emojis
-- Keep under 200 characters
-- Match the {style} tone
-- Be welcoming and engaging"""
-
-            response = ai_response_obj.content if ai_response_obj.success else "I'm processing that request for you! 🤖" 
+            response = (
+                ai_response_obj.content
+                if ai_response_obj.success
+                else "I'm processing that request for you! 🤖"
+            )
 
             ai_manager = MultiProviderAIManager()
 
-
             ai_response_obj = await ai_manager.generate_response(prompt)
-
 
             return response.strip()
 
@@ -385,7 +372,9 @@ Requirements:
         self, interaction: discord.Interaction, action: str = "health"
     ):
         """Advanced community analysis with AI insights"""
-        if not await check_user_permission(interaction.user, PermissionLevel.MODERATOR, interaction.guild):
+        if not await check_user_permission(
+            interaction.user, PermissionLevel.MODERATOR, interaction.guild
+        ):
             await interaction.response.send_message(
                 "❌ You need moderator permissions for this command.", ephemeral=True
             )
@@ -495,7 +484,11 @@ Health score: {health.engagement_score}/100
 Provide 3 bullet points with actionable recommendations (under 200 chars total)."""
 
         try:
-            response = ai_response_obj.content if ai_response_obj.success else "I'm processing that request for you! 🤖" 
+            response = (
+                ai_response_obj.content
+                if ai_response_obj.success
+                else "I'm processing that request for you! 🤖"
+            )
             ai_manager = MultiProviderAIManager()
 
             ai_response_obj = await ai_manager.generate_response(prompt)
@@ -521,7 +514,9 @@ Provide 3 bullet points with actionable recommendations (under 200 chars total).
         color: Optional[str] = None,
     ):
         """Advanced role management with AI optimization"""
-        if not await check_user_permission(interaction.user, PermissionLevel.MODERATOR, interaction.guild):
+        if not await check_user_permission(
+            interaction.user, PermissionLevel.MODERATOR, interaction.guild
+        ):
             await interaction.response.send_message(
                 "❌ You need moderator permissions for this command.", ephemeral=True
             )
@@ -631,7 +626,11 @@ Issues found:
 
 Provide 3-4 bullet points with specific optimization actions (under 200 chars total)."""
 
-            response = ai_response_obj.content if ai_response_obj.success else "I'm processing that request for you! 🤖" 
+            response = (
+                ai_response_obj.content
+                if ai_response_obj.success
+                else "I'm processing that request for you! 🤖"
+            )
             ai_manager = MultiProviderAIManager()
 
             ai_response_obj = await ai_manager.generate_response(prompt)
@@ -722,13 +721,15 @@ Context:
 
 Create a warm, {settings.get('style', 'friendly')} welcome (under 150 chars) that mentions their name."""
 
-            response = ai_response_obj.content if ai_response_obj.success else "I'm processing that request for you! 🤖" 
+            response = (
+                ai_response_obj.content
+                if ai_response_obj.success
+                else "I'm processing that request for you! 🤖"
+            )
 
             ai_manager = MultiProviderAIManager()
 
-
             ai_response_obj = await ai_manager.generate_response(prompt)
-
 
             return response.strip()
 
@@ -844,18 +845,15 @@ Create a warm, {settings.get('style', 'friendly')} welcome (under 150 chars) tha
     ) -> str:
         """Generate AI-powered community improvement suggestions"""
         try:
-            prompt = f"""Generate 3-4 creative community engagement ideas for Discord server "{guild.name}".
-
-Server stats:
-- Members: {guild.member_count}
-- Engagement score: {health.engagement_score}/100
-- Channels: {len(guild.text_channels)}
-
-Provide fun, actionable bullet points to boost community activity (under 250 chars total)."""
+            prompt = f"""4 engagement ideas for {guild.name} ({guild.member_count} members, score {health.engagement_score}/100). Bullet points, actionable, fun."""
 
             ai_manager = MultiProviderAIManager()
             ai_response_obj = await ai_manager.generate_response(prompt)
-            response = ai_response_obj.content if ai_response_obj.success else "I'm processing that request for you! 🤖" 
+            response = (
+                ai_response_obj.content
+                if ai_response_obj.success
+                else "I'm processing that request for you! 🤖"
+            )
             return response.strip()[:250]
 
         except Exception:

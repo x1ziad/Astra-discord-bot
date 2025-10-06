@@ -270,7 +270,11 @@ Respond in JSON format:
 
             ai_manager = MultiProviderAIManager()
             ai_response = await ai_manager.generate_response(prompt)
-            response = ai_response.content if ai_response.success else '{"toxicity_score": 0, "suggested_response": "I\'m here to help moderate our community!"}'
+            response = (
+                ai_response.content
+                if ai_response.success
+                else '{"toxicity_score": 0, "suggested_response": "I\'m here to help moderate our community!"}'
+            )
 
             # Try to extract JSON from response
             json_match = re.search(r"\{.*\}", response, re.DOTALL)
@@ -354,37 +358,24 @@ Respond in JSON format:
                 return await self._generate_supportive_response(user, profile)
 
             # Create AI prompt for moderation response
-            prompt = f"""You are Astra, a friendly and supportive Discord bot moderator. Generate a personalized moderation response.
+            prompt = f"""Moderate {user.display_name} for {violation.value} ({mod_level.name}). Style: {profile.preferred_moderator_style}. History: {len(profile.violation_patterns)} violations, {profile.positive_interactions} positive acts.
 
-Context:
-- User: {user.display_name}
-- Violation: {violation.value}
-- Severity: {mod_level.name}
-- User's preferred style: {profile.preferred_moderator_style}
-- Communication style: {profile.personality_traits['communication_style']}
-- Previous violations: {dict(profile.violation_patterns)}
-- Positive interactions: {profile.positive_interactions}
-
-Requirements:
-1. Be {profile.preferred_moderator_style} in tone
-2. Address the specific violation type
-3. Provide constructive guidance
-4. Use appropriate emojis
-5. Keep it under 200 words
-6. Be encouraging while firm
-
-Respond in JSON format:
+JSON response:
 {{
-    "title": "Response title with emoji",
-    "message": "Main response message",
-    "guidance": "Specific guidance or tip",
-    "encouragement": "Positive/encouraging note",
-    "action_taken": "What action was taken"
+    "title": "Title with emoji",
+    "message": "Direct, helpful message",
+    "guidance": "Specific tip",
+    "encouragement": "Positive note",
+    "action_taken": "Action taken"
 }}"""
 
             ai_manager = MultiProviderAIManager()
             ai_response_obj = await ai_manager.generate_response(prompt)
-            ai_response = ai_response_obj.content if ai_response_obj.success else '{"title": "Community Guidelines Reminder 📝", "message": "Let\'s work together to keep our community positive!", "guidance": "Remember to be respectful", "encouragement": "You\'re part of making this a great space!", "action_taken": "Gentle reminder sent"}'
+            ai_response = (
+                ai_response_obj.content
+                if ai_response_obj.success
+                else '{"title": "Community Guidelines Reminder 📝", "message": "Let\'s work together to keep our community positive!", "guidance": "Remember to be respectful", "encouragement": "You\'re part of making this a great space!", "action_taken": "Gentle reminder sent"}'
+            )
 
             # Parse AI response
             json_match = re.search(r"\{.*\}", ai_response, re.DOTALL)
@@ -410,28 +401,22 @@ Respond in JSON format:
     ) -> Dict[str, Any]:
         """Generate supportive response for emotional distress"""
         try:
-            prompt = f"""You are Astra, a compassionate AI companion. A user named {user.display_name} seems to be experiencing emotional distress. 
-
-Generate a supportive, caring response that:
-1. Shows empathy and understanding
-2. Offers comfort without being preachy
-3. Suggests positive resources or actions
-4. Uses warm, caring language
-5. Includes appropriate emojis
-6. Keeps it under 150 words
-
-Respond in JSON format:
+            prompt = f"""{user.display_name} needs emotional support. Be empathetic, caring, brief. JSON:
 {{
-    "title": "Supportive title with emoji",
-    "message": "Caring, empathetic response",
-    "resources": "Helpful suggestions or resources",
-    "encouragement": "Uplifting, hopeful message",
+    "title": "💙 We're Here for You",
+    "message": "You're not alone. This community cares.",
+    "resources": "Talk to trusted friend/counselor",
+    "encouragement": "You matter. Things get better.",
     "action_taken": "Supportive outreach"
 }}"""
 
             ai_manager = MultiProviderAIManager()
             ai_response_obj = await ai_manager.generate_response(prompt)
-            ai_response = ai_response_obj.content if ai_response_obj.success else '{"title": "We\'re Here for You 💙", "message": "I can see you might be going through something difficult. You\'re not alone, and this community cares about you.", "resources": "Consider talking to a trusted friend, family member, or counselor", "encouragement": "You matter, and things can get better. Take it one day at a time.", "action_taken": "Supportive outreach"}'
+            ai_response = (
+                ai_response_obj.content
+                if ai_response_obj.success
+                else '{"title": "We\'re Here for You 💙", "message": "I can see you might be going through something difficult. You\'re not alone, and this community cares about you.", "resources": "Consider talking to a trusted friend, family member, or counselor", "encouragement": "You matter, and things can get better. Take it one day at a time.", "action_taken": "Supportive outreach"}'
+            )
 
             json_match = re.search(r"\{.*\}", ai_response, re.DOTALL)
             if json_match:
@@ -569,7 +554,11 @@ Create a warm, appreciative message (under 100 words) with appropriate emojis.""
 
             ai_manager = MultiProviderAIManager()
             ai_response_obj = await ai_manager.generate_response(prompt)
-            ai_response = ai_response_obj.content if ai_response_obj.success else "Thank you for being such a positive presence in our community! Your contributions make this space better for everyone. Keep being awesome! ✨"
+            ai_response = (
+                ai_response_obj.content
+                if ai_response_obj.success
+                else "Thank you for being such a positive presence in our community! Your contributions make this space better for everyone. Keep being awesome! ✨"
+            )
 
             embed = discord.Embed(
                 title="🌟 Community Star!",
@@ -808,7 +797,11 @@ Create a warm, appreciative message (under 100 words) with appropriate emojis.""
 
                     ai_manager = MultiProviderAIManager()
                     ai_response_obj = await ai_manager.generate_response(prompt)
-                    ai_response = ai_response_obj.content if ai_response_obj.success else f"Thanks for being awesome, {message.author.display_name}! 🌟"
+                    ai_response = (
+                        ai_response_obj.content
+                        if ai_response_obj.success
+                        else f"Thanks for being awesome, {message.author.display_name}! 🌟"
+                    )
 
                     await message.add_reaction("⭐")
 

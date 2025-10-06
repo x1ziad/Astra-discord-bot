@@ -207,35 +207,19 @@ class AdvancedAICog(commands.Cog):
             response = None
 
             # Method 1: Enhanced AI processing with better context
-            if hasattr(self.ai_client, "process_conversation"):
+            if hasattr(self.ai_client, "generate_response"):
                 try:
                     # Create primary AI task with enhanced context
                     primary_task = asyncio.create_task(
-                        self.ai_client.process_conversation(
-                            full_prompt,
-                            user_id,
-                            guild_id=guild_id,
-                            channel_id=channel_id,
-                            context={
-                                "history": recent_history,
-                                "conversation_meta": conversation_context,
-                            },
-                        )
+                        self.ai_client.generate_response(full_prompt)
                     )
 
                     # Create fallback task with context awareness
                     async def context_aware_fallback():
                         await asyncio.sleep(0.3)
                         if hasattr(self.ai_client, "generate_response"):
-                            return await self.ai_client.generate_response(
-                                full_prompt,
-                                context={
-                                    "history": recent_history,
-                                    "optimized": True,
-                                    "conversation_meta": conversation_context,
-                                    "personality": "friendly_witty_space_themed",
-                                },
-                            )
+                            ai_response = await self.ai_client.generate_response(full_prompt)
+                            return ai_response.content if ai_response.success else None
                         return None
 
                     fallback_task = asyncio.create_task(context_aware_fallback())
@@ -244,7 +228,8 @@ class AdvancedAICog(commands.Cog):
                     timeout = (
                         3.0 if conversation_context.get("active_conversation") else 2.0
                     )
-                    response = await asyncio.wait_for(primary_task, timeout=timeout)
+                    ai_response = await asyncio.wait_for(primary_task, timeout=timeout)
+                    response = ai_response.content if ai_response.success else None
 
                     # Cancel fallback if primary succeeded
                     fallback_task.cancel()
@@ -2098,13 +2083,9 @@ class AdvancedAICog(commands.Cog):
             }
 
             # Generate response using available AI engine with enhanced context
-            if hasattr(self.ai_client, "process_conversation"):
-                response = await self.ai_client.process_conversation(
-                    message.content,
-                    user_id,
-                    guild_id=message.guild.id if message.guild else None,
-                    channel_id=message.channel.id,
-                )
+            if hasattr(self.ai_client, "generate_response"):
+                ai_response = await self.ai_client.generate_response(message.content)
+                response = ai_response.content if ai_response.success else "I'm having trouble thinking right now. Could you try again?"
             elif hasattr(self.ai_client, "generate_response"):
                 # Build context dictionary for ConsolidatedAIEngine compatibility
                 context_dict = {

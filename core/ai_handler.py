@@ -88,20 +88,11 @@ class AIHandler:
                 self.conversation_history[user_id] = []
 
             # Add timeout protection
-            response = await asyncio.wait_for(
-                self.ai_engine.process_conversation(
-                    message=message.content,
-                    user_id=user_id,
-                    guild_id=message.guild.id if message.guild else None,
-                    channel_id=message.channel.id,
-                    context_data={
-                        "username": str(message.author),
-                        "channel_name": message.channel.name,
-                        "recent_history": self.conversation_history[user_id][-5:],
-                    },
-                ),
-                timeout=10.0,  # 10 second timeout
+            ai_response = await asyncio.wait_for(
+                self.ai_engine.generate_response(message.content),
+                timeout=15.0
             )
+            response = ai_response.content if ai_response.success else "I'm having trouble processing that. Could you try again?"
 
             # Update conversation history
             self.conversation_history[user_id].append(
@@ -150,13 +141,11 @@ class AIHandler:
             return "AI services are currently unavailable. Please try again later!"
 
         try:
-            response = await asyncio.wait_for(
-                self.ai_engine.process_conversation(
-                    message=question, user_id=user_id, context_data=context or {}
-                ),
+            ai_response = await asyncio.wait_for(
+                self.ai_engine.generate_response(question),
                 timeout=15.0,
             )
-            return response
+            return ai_response.content if ai_response.success else "I'm having trouble with that question. Please try again later!"
         except asyncio.TimeoutError:
             return "That's a complex question! Let me think about it and get back to you. 🤔"
         except Exception as e:
