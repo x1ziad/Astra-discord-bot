@@ -445,19 +445,21 @@ class AstraBot(commands.Bot):
         """Initialize permission system with owner ID"""
         try:
             from utils.permissions import setup_permissions
-            
+
             # Set up permission manager
             permission_manager = setup_permissions(self)
-            
+
             # Ensure owner ID is properly configured
             owner_id = self.config.get_owner_id()
             if owner_id:
                 self.logger.info(f"🔐 Bot owner configured: {owner_id}")
             else:
-                self.logger.warning("⚠️ No bot owner configured - some commands may be restricted")
-                
+                self.logger.warning(
+                    "⚠️ No bot owner configured - some commands may be restricted"
+                )
+
             self.logger.info("🛡️ Permission system initialized successfully")
-            
+
         except Exception as e:
             self.logger.error(f"❌ Permission system initialization failed: {e}")
             # Don't raise as permissions can fallback to basic checks

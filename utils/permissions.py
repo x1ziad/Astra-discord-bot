@@ -92,12 +92,12 @@ class PermissionManager:
             # First check configured OWNER_ID from environment/config
             import os
             from config.unified_config import unified_config
-            
+
             # Try configured owner ID first
             configured_owner_id = unified_config.get_owner_id()
             if configured_owner_id and user.id == configured_owner_id:
                 return True
-                
+
             # Check environment variable as backup
             env_owner_id = os.getenv("OWNER_ID")
             if env_owner_id:
@@ -106,11 +106,11 @@ class PermissionManager:
                         return True
                 except ValueError:
                     pass
-            
+
             # Fallback to Discord application owner
             app_info = await self.bot.application_info()
             return user.id == app_info.owner.id
-            
+
         except Exception as e:
             self.logger.error(f"Error checking bot owner: {e}")
             # Emergency fallback - check hardcoded owner ID
@@ -277,11 +277,11 @@ async def check_user_permission(
         # Check configured owner ID first
         import os
         from config.unified_config import unified_config
-        
+
         configured_owner_id = unified_config.get_owner_id()
         if configured_owner_id and user.id == configured_owner_id:
             return True
-            
+
         env_owner_id = os.getenv("OWNER_ID")
         if env_owner_id:
             try:
@@ -289,11 +289,11 @@ async def check_user_permission(
                     return True
             except ValueError:
                 pass
-        
+
         # Emergency fallback
         if user.id == 1115739214148026469:
             return True
-            
+
         return user.id == guild.owner_id
 
     return False

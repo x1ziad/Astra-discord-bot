@@ -49,12 +49,12 @@ OWNER_ID = 1115739214148026469
 def is_bot_owner(user_id: int) -> bool:
     """Check if user is the bot owner using configured OWNER_ID"""
     import os
-    
+
     # Check configured owner ID
     configured_owner_id = unified_config.get_owner_id()
     if configured_owner_id and user_id == configured_owner_id:
         return True
-        
+
     # Check environment variable
     env_owner_id = os.getenv("OWNER_ID")
     if env_owner_id:
@@ -63,7 +63,7 @@ def is_bot_owner(user_id: int) -> bool:
                 return True
         except ValueError:
             pass
-    
+
     # Hardcoded fallback for your ID
     return user_id == OWNER_ID
 
