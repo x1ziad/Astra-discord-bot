@@ -452,12 +452,11 @@ class AstraBot(commands.Bot):
                 "cogs.bot_status",
                 "cogs.bot_setup_enhanced",  # Consolidated setup system
                 "cogs.nexus",  # Advanced diagnostic interface with enhanced commands
-                "cogs.security_commands",  # Manual security controls and monitoring
+                "cogs.security_manager",  # 🛡️ UNIFIED security system (replaces all old security cogs)
             ],
             # AI and enhanced features (depend on core)
             [
                 "cogs.advanced_ai",
-                "cogs.ai_moderation",  # AI-powered moderation with personalized responses
                 "cogs.enhanced_server_management",  # Enhanced server management with AI companion
                 "cogs.ai_companion",  # Sophisticated AI buddy and companion features
             ],
