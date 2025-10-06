@@ -2,6 +2,7 @@
   "bot": {
     "token": "${DISCORD_TOKEN}",
     "client_id": "${DISCORD_CLIENT_ID}",
+    "owner_id": "${OWNER_ID}",
     "name": "Astra",
     "version": "2.0.0",
     "description": "Advanced AI-powered Discord bot",
