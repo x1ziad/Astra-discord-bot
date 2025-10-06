@@ -84,7 +84,7 @@ try:
     def log_railway_env_diagnostic():
         """Optimized Railway environment diagnostic"""
         # Only check essential environment variables for faster startup
-        essential_vars = ["AI_API_KEY", "AI_PROVIDER"]
+        essential_vars = ["DISCORD_TOKEN"]
 
         logger = logging.getLogger("astra.railway_diagnostic")
         logger.info("🚀 Railway Environment Status:")
@@ -378,43 +378,48 @@ class AstraBot(commands.Bot):
     async def _initialize_ai_systems(self):
         """Initialize AI engine and context manager for enhanced conversation"""
         try:
-            from ai.consolidated_ai_engine import initialize_engine, get_engine
+            from ai.multi_provider_ai import MultiProviderAIManager
 
-            # Check for API keys
-            openai_key = os.getenv("OPENAI_API_KEY")
-            ai_key = os.getenv("AI_API_KEY")
-            openrouter_key = os.getenv("OPENROUTER_API_KEY")
+            # Initialize the new multi-provider AI system
+            self.ai_manager = MultiProviderAIManager()
 
-            # Configure AI with available keys
-            ai_config = {
-                "ai_api_key": ai_key or openai_key,
-                "openai_api_key": openai_key,
-                "openrouter_api_key": openrouter_key,
-                "ai_model": "gpt-3.5-turbo",
-                "ai_provider": "openai" if openai_key else "mock",
-            }
+            # Check which providers are available
+            mistral_key = os.getenv("MISTRAL_API_KEY")
+            google_key = os.getenv("GOOGLE_API_KEY") 
+            groq_key = os.getenv("GROQ_API_KEY")
 
-            # Initialize AI engine
-            ai_engine = initialize_engine(ai_config)
+            available_providers = []
+            if mistral_key:
+                available_providers.append("Mistral AI")
+                self.logger.info("🚀 Mistral AI configured")
+            if google_key:
+                available_providers.append("Google Gemini")
+                self.logger.info("🧠 Google Gemini configured")
+            if groq_key:
+                available_providers.append("Groq")
+                self.logger.info("⚡ Groq configured")
 
-            if ai_config["ai_api_key"] or openai_key or openrouter_key:
-                self.logger.info("✅ AI Engine initialized with API access")
-                if openai_key:
-                    self.logger.info("🤖 OpenAI API configured")
-                if openrouter_key:
-                    self.logger.info("🌐 OpenRouter API configured")
+            if available_providers:
+                self.logger.info(f"✅ AI System initialized with {len(available_providers)} providers: {', '.join(available_providers)}")
+                self.logger.info("🎯 Intelligent fallback system enabled")
+                self.logger.info("🔄 Load balancing active")
             else:
-                self.logger.info("🤖 AI Engine running in mock mode (no API keys)")
-                self.logger.info(
-                    "📝 To enable AI: Set OPENAI_API_KEY or OPENROUTER_API_KEY"
+                self.logger.warning("⚠️ No AI providers configured")
+                self.logger.info("📝 To enable AI: Set MISTRAL_API_KEY, GOOGLE_API_KEY, or GROQ_API_KEY")
+
+            # Test AI functionality with a quick call
+            try:
+                test_response = await self.ai_manager.generate_response(
+                    "Hello! Test connection.", 
+                    max_tokens=20, 
+                    temperature=0.1
                 )
-
-            # Test AI functionality
-            engine = get_engine()
-            if engine:
-                self.logger.info("✅ AI systems ready for conversations")
-            else:
-                self.logger.warning("⚠️ AI engine initialization failed")
+                if test_response and test_response.success:
+                    self.logger.info(f"✅ AI test successful with {test_response.provider.title()}")
+                else:
+                    self.logger.warning("⚠️ AI test response failed")
+            except Exception as test_error:
+                self.logger.warning(f"⚠️ AI test failed: {test_error}")
 
         except Exception as e:
             self.logger.error(f"❌ AI initialization error: {e}")
