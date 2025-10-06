@@ -242,22 +242,24 @@ JSON:
         }
 
     @app_commands.command(
-        name="welcome", description="🎉 Setup intelligent welcome system"
+        name="welcome", description="🎉 Setup AI-powered welcome system with personalized greetings"
     )
     @app_commands.describe(
-        channel="Channel for welcome messages",
-        style="Welcome message style (friendly/professional/fun)",
+        channel="Channel for welcome messages (defaults to configured welcome channel)",
+        style="Welcome message style (friendly/professional/fun/enthusiastic)",
         auto_role="Role to assign to new members",
+        enable_ai="Enable AI-powered personalized welcome messages",
     )
     @app_commands.default_permissions(manage_guild=True)
     async def setup_welcome(
         self,
         interaction: discord.Interaction,
-        channel: discord.TextChannel,
+        channel: Optional[discord.TextChannel] = None,
         style: Optional[str] = "friendly",
         auto_role: Optional[discord.Role] = None,
+        enable_ai: Optional[bool] = True,
     ):
-        """Setup intelligent welcome system with AI-generated messages"""
+        """Setup AI-powered welcome system with personalized greetings and server introduction"""
         if not await check_user_permission(
             interaction.user, PermissionLevel.MODERATOR, interaction.guild
         ):
@@ -270,15 +272,30 @@ JSON:
 
         try:
             guild_id = interaction.guild.id
+            
+            # Use provided channel or default welcome channel (1399956513745014970)
+            welcome_channel_id = channel.id if channel else 1399956513745014970
+            welcome_channel = interaction.guild.get_channel(welcome_channel_id)
+            
+            if not welcome_channel:
+                await interaction.followup.send(
+                    f"❌ Welcome channel not found. Please specify a valid channel or ensure channel ID {welcome_channel_id} exists.",
+                    ephemeral=True
+                )
+                return
 
-            # Store welcome settings
+            # Enhanced welcome settings with AI capabilities
             welcome_settings = {
-                "channel_id": channel.id,
+                "channel_id": welcome_channel_id,
                 "style": style,
                 "auto_role_id": auto_role.id if auto_role else None,
                 "enabled": True,
                 "personalized_messages": True,
-                "ai_generated": AI_AVAILABLE,
+                "ai_generated": enable_ai and AI_AVAILABLE,
+                "introduce_astra": True,
+                "server_introduction": True,
+                "member_count_celebration": True,
+                "account_age_mention": True,
             }
 
             self.member_welcomes[guild_id] = welcome_settings
@@ -703,34 +720,36 @@ Provide 3-4 bullet points with specific optimization actions (under 200 chars to
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
-        """Enhanced member join handling with AI companionship"""
+        """Enhanced member join handling with AI-powered personalized welcomes"""
         guild_id = member.guild.id
 
-        # Check if welcome system is enabled
+        # Check if welcome system is enabled for this guild
         if (
             guild_id not in self.member_welcomes
             or not self.member_welcomes[guild_id]["enabled"]
         ):
+            # Use default welcome system with configured welcome channel
+            await self._handle_default_welcome(member)
             return
 
         settings = self.member_welcomes[guild_id]
         channel = member.guild.get_channel(settings["channel_id"])
 
         if not channel:
+            # Fallback to default welcome channel
+            await self._handle_default_welcome(member)
             return
 
         try:
-            # Generate personalized welcome message
-            if AI_AVAILABLE and settings.get("ai_generated", False):
+            # Generate personalized welcome message with AI
+            if settings.get("ai_generated", True) and AI_AVAILABLE:
                 welcome_message = await self._generate_personalized_welcome(
                     member, settings
                 )
             else:
-                welcome_message = (
-                    f"Welcome to **{member.guild.name}**, {member.mention}! 🎉"
-                )
+                welcome_message = self._generate_fallback_welcome(member, settings)
 
-            # Create welcome embed
+            # Create comprehensive welcome embed
             embed = discord.Embed(
                 title="🎉 Welcome to the Community!",
                 description=welcome_message,
@@ -741,61 +760,207 @@ Provide 3-4 bullet points with specific optimization actions (under 200 chars to
             embed.set_thumbnail(
                 url=member.avatar.url if member.avatar else member.default_avatar.url
             )
+            
+            # Add comprehensive getting started information
             embed.add_field(
-                name="👋 Getting Started",
-                value="• Check out our rules and guidelines\n• Introduce yourself in the chat\n• Ask questions - we're here to help!",
+                name="� Getting Started",
+                value="• Explore our channels and find your interests\n• Check out our community guidelines\n• Introduce yourself and meet other members\n• Ask **Astra** (me!) anything you need help with!",
                 inline=False,
             )
+            
+            # Add member information if enabled
+            if settings.get("member_count_celebration", True):
+                embed.add_field(
+                    name="👥 Community Stats",
+                    value=f"You're member **#{member.guild.member_count}** in our growing community!",
+                    inline=True,
+                )
+            
+            if settings.get("account_age_mention", True):
+                account_age = (datetime.now(timezone.utc) - member.created_at).days
+                embed.add_field(
+                    name="📅 Account Info",
+                    value=f"Discord account: {account_age} days old",
+                    inline=True,
+                )
 
-            # Send welcome message
-            await channel.send(embed=embed)
+            embed.set_footer(
+                text="💫 Powered by Astra AI - Your friendly community companion!",
+                icon_url=self.bot.user.avatar.url if self.bot.user.avatar else None
+            )
+
+            # Send welcome message with member mention
+            await channel.send(content=f"🎉 {member.mention}", embed=embed)
 
             # Assign auto role if configured
             if settings.get("auto_role_id"):
                 auto_role = member.guild.get_role(settings["auto_role_id"])
                 if auto_role:
-                    await member.add_roles(auto_role, reason="Auto-role on join")
+                    await member.add_roles(auto_role, reason="Auto-role assignment by Astra")
+                    
+            # Send follow-up tips after a short delay
+            await asyncio.sleep(30)  # 30 seconds delay
+            await self._send_welcome_tips(channel, member)
 
-            # Update community health
-            health = await self.get_community_health(guild_id)
-            health.positive_interactions += 1
+            # Update community health metrics
+            try:
+                health = await self.get_community_health(guild_id)
+                health.positive_interactions += 1
+            except:
+                pass  # Don't fail welcome if health update fails
 
         except Exception as e:
-            self.logger.error(f"Member join handling error: {e}")
+            self.logger.error(f"Enhanced welcome system error for {member}: {e}")
+            # Fallback to simple welcome
+            await self._handle_default_welcome(member)
 
     async def _generate_personalized_welcome(
         self, member: discord.Member, settings: Dict
     ) -> str:
-        """Generate personalized AI welcome message"""
+        """Generate comprehensive AI-powered welcome message with Astra introduction"""
         try:
+            from ai.multi_provider_ai import MultiProviderAIManager
+            
             # Analyze member for personalization hints
             account_age = (datetime.now(timezone.utc) - member.created_at).days
             is_new_to_discord = account_age < 30
+            member_number = member.guild.member_count
+            
+            # Create comprehensive welcome prompt
+            prompt = f"""Generate a warm, personalized welcome message for {member.display_name} who just joined {member.guild.name}.
 
-            prompt = f"""Generate a personalized welcome message for {member.display_name} joining {member.guild.name}.
+Key Requirements:
+- Style: {settings.get('style', 'friendly')} and welcoming
+- Introduce yourself as "Astra", the AI companion bot for this server
+- Mention this is member #{member_number} in the community
+- Account age context: {account_age} days old {'(new to Discord!)' if is_new_to_discord else '(experienced user)'}
+- Include brief server introduction highlighting community aspects
+- Encourage engagement and offer help
+- Keep it warm but concise (under 200 characters)
+- Use emojis appropriately
 
-Context:
-- Style: {settings.get('style', 'friendly')}
-- Account age: {account_age} days
-- New to Discord: {is_new_to_discord}
-- Server size: {member.guild.member_count} members
-
-Create a warm, {settings.get('style', 'friendly')} welcome (under 150 chars) that mentions their name."""
-
-            response = (
-                ai_response_obj.content
-                if ai_response_obj.success
-                else "I'm processing that request for you! 🤖"
-            )
+Example tone: Friendly, welcoming, helpful, and enthusiastic about the community."""
 
             ai_manager = MultiProviderAIManager()
+            ai_response_obj = await ai_manager.generate_response(
+                prompt, 
+                max_tokens=150, 
+                temperature=0.8
+            )
+            
+            if ai_response_obj and ai_response_obj.success:
+                return ai_response_obj.content.strip()
+            else:
+                # Enhanced fallback message
+                return self._generate_fallback_welcome(member, settings)
 
-            ai_response_obj = await ai_manager.generate_response(prompt)
+        except Exception as e:
+            self.logger.error(f"AI welcome generation failed: {e}")
+            return self._generate_fallback_welcome(member, settings)
+    
+    def _generate_fallback_welcome(self, member: discord.Member, settings: Dict) -> str:
+        """Generate fallback welcome message when AI is unavailable"""
+        style = settings.get('style', 'friendly')
+        member_num = member.guild.member_count
+        
+        style_messages = {
+            'friendly': f"🎉 Welcome to **{member.guild.name}**, {member.mention}! I'm **Astra**, your AI companion here to help! You're our #{member_num} member - so excited to have you! Feel free to explore and ask me anything! 🚀✨",
+            'professional': f"Welcome to **{member.guild.name}**, {member.mention}. I'm **Astra**, the AI assistant for this community. As member #{member_num}, we're pleased to have you join us. Please let me know if you need any assistance getting started.",
+            'fun': f"🎊 WOOHOO! {member.mention} just dropped into **{member.guild.name}**! 🎉 I'm **Astra**, your fun AI buddy! You're lucky #{member_num} - let's make this community even more awesome together! Ready for some fun? 🚀🎮✨",
+            'enthusiastic': f"🌟 AMAZING! Welcome {member.mention} to the incredible **{member.guild.name}** community! I'm **Astra**, your enthusiastic AI companion! As member #{member_num}, you're part of something special! Can't wait to chat and help you explore everything here! �🚀"
+        }
+        
+        return style_messages.get(style, style_messages['friendly'])
 
-            return response.strip()
-
-        except Exception:
-            return f"Welcome to **{member.guild.name}**, {member.mention}! We're excited to have you join our amazing community! 🌟"
+    async def _handle_default_welcome(self, member: discord.Member):
+        """Handle welcome for guilds without custom welcome setup using default channel"""
+        try:
+            # Use the configured default welcome channel
+            welcome_channel = member.guild.get_channel(1399956513745014970)
+            
+            if not welcome_channel:
+                # Fallback to system channel or first available text channel
+                welcome_channel = member.guild.system_channel or next(
+                    (ch for ch in member.guild.text_channels if ch.permissions_for(member.guild.me).send_messages), 
+                    None
+                )
+            
+            if not welcome_channel:
+                return  # No suitable channel found
+            
+            # Generate simple but effective welcome
+            welcome_message = f"🎉 Welcome to **{member.guild.name}**, {member.mention}! I'm **Astra**, your AI companion here to help you explore and enjoy our community! Feel free to ask me anything! 🚀✨"
+            
+            embed = discord.Embed(
+                title="🌟 New Member Alert!",
+                description=welcome_message,
+                color=0x00BFFF,
+                timestamp=datetime.now(timezone.utc),
+            )
+            
+            embed.set_thumbnail(
+                url=member.avatar.url if member.avatar else member.default_avatar.url
+            )
+            
+            embed.add_field(
+                name="👥 You're Member #",
+                value=f"**{member.guild.member_count}**",
+                inline=True,
+            )
+            
+            embed.add_field(
+                name="🤖 Meet Astra",
+                value="Your AI companion ready to help!",
+                inline=True,
+            )
+            
+            embed.set_footer(text="Welcome to our community! 🎊")
+            
+            await welcome_channel.send(embed=embed)
+            
+        except Exception as e:
+            self.logger.error(f"Default welcome failed for {member}: {e}")
+    
+    async def _send_welcome_tips(self, channel: discord.TextChannel, member: discord.Member):
+        """Send helpful tips to new members after welcome"""
+        try:
+            tips_embed = discord.Embed(
+                title="💡 Quick Tips for New Members",
+                description=f"Hey {member.mention}, here are some tips to get you started!",
+                color=0x00BFFF,
+            )
+            
+            tips_embed.add_field(
+                name="🔍 Explore",
+                value="Check out different channels to find topics you're interested in!",
+                inline=False,
+            )
+            
+            tips_embed.add_field(
+                name="💬 Engage",
+                value="Don't be shy! Jump into conversations and share your thoughts.",
+                inline=False,
+            )
+            
+            tips_embed.add_field(
+                name="🤖 Ask Astra",
+                value="I'm here 24/7 to help! Just mention me or ask questions.",
+                inline=False,
+            )
+            
+            tips_embed.set_footer(text="These tips will auto-delete in 2 minutes to keep the channel clean.")
+            
+            tips_message = await channel.send(embed=tips_embed)
+            
+            # Auto-delete tips after 2 minutes
+            await asyncio.sleep(120)
+            try:
+                await tips_message.delete()
+            except:
+                pass  # Message might already be deleted
+                
+        except Exception as e:
+            self.logger.error(f"Failed to send welcome tips: {e}")
 
     @tasks.loop(hours=6)
     async def health_monitoring(self):
