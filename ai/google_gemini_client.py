@@ -227,7 +227,7 @@ class GoogleGeminiClient:
 
         except Exception as e:
             error_str = str(e)
-            
+
             # Handle quota exceeded errors gracefully
             if "429" in error_str and "quota" in error_str.lower():
                 logger.warning(f"⚠️ Google Gemini quota exceeded: {error_str[:100]}...")
@@ -235,7 +235,11 @@ class GoogleGeminiClient:
                     "content": "I'm temporarily unable to process requests due to API quota limits. Please try again later or use an alternative AI provider.",
                     "model": "models/gemini-2.5-flash",
                     "provider": "google",
-                    "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+                    "usage": {
+                        "prompt_tokens": 0,
+                        "completion_tokens": 0,
+                        "total_tokens": 0,
+                    },
                     "metadata": {
                         "temperature": temperature,
                         "max_tokens": max_tokens,
@@ -244,7 +248,7 @@ class GoogleGeminiClient:
                         "error": "quota_exceeded",
                     },
                 }
-            
+
             logger.error(f"❌ Google Gemini API error: {e}")
             raise Exception(f"Google Gemini API error: {str(e)}")
 
