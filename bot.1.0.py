@@ -905,14 +905,16 @@ class AstraBot(commands.Bot):
 
             if recent_messages:
                 # Use the new AI manager for server adaptation
-                if hasattr(self, 'ai_manager') and self.ai_manager:
+                if hasattr(self, "ai_manager") and self.ai_manager:
                     try:
                         # Simple adaptation using the multi-provider system
                         self.logger.info(
                             f"🎯 Server activity analysis completed for {guild.name}"
                         )
-                        self.logger.debug(f"Detected {len(recent_messages)} recent messages")
-                        
+                        self.logger.debug(
+                            f"Detected {len(recent_messages)} recent messages"
+                        )
+
                     except Exception as e:
                         self.logger.error(f"Server adaptation error: {e}")
                 else:
