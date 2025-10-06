@@ -89,11 +89,32 @@ class PermissionManager:
     async def is_bot_owner(self, user: Union[discord.Member, discord.User]) -> bool:
         """Check if user is the bot owner"""
         try:
+            # First check configured OWNER_ID from environment/config
+            import os
+            from config.unified_config import unified_config
+            
+            # Try configured owner ID first
+            configured_owner_id = unified_config.get_owner_id()
+            if configured_owner_id and user.id == configured_owner_id:
+                return True
+                
+            # Check environment variable as backup
+            env_owner_id = os.getenv("OWNER_ID")
+            if env_owner_id:
+                try:
+                    if user.id == int(env_owner_id):
+                        return True
+                except ValueError:
+                    pass
+            
+            # Fallback to Discord application owner
             app_info = await self.bot.application_info()
             return user.id == app_info.owner.id
+            
         except Exception as e:
             self.logger.error(f"Error checking bot owner: {e}")
-            return False
+            # Emergency fallback - check hardcoded owner ID
+            return user.id == 1115739214148026469
 
     async def _check_trusted(self, user: discord.Member, guild: discord.Guild) -> bool:
         """Check if user has trusted permissions"""
@@ -253,6 +274,26 @@ async def check_user_permission(
     elif level == PermissionLevel.ADMINISTRATOR:
         return user.guild_permissions.administrator
     elif level == PermissionLevel.OWNER:
+        # Check configured owner ID first
+        import os
+        from config.unified_config import unified_config
+        
+        configured_owner_id = unified_config.get_owner_id()
+        if configured_owner_id and user.id == configured_owner_id:
+            return True
+            
+        env_owner_id = os.getenv("OWNER_ID")
+        if env_owner_id:
+            try:
+                if user.id == int(env_owner_id):
+                    return True
+            except ValueError:
+                pass
+        
+        # Emergency fallback
+        if user.id == 1115739214148026469:
+            return True
+            
         return user.id == guild.owner_id
 
     return False

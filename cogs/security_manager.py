@@ -46,6 +46,28 @@ logger = logging.getLogger("astra.security.manager")
 OWNER_ID = 1115739214148026469
 
 
+def is_bot_owner(user_id: int) -> bool:
+    """Check if user is the bot owner using configured OWNER_ID"""
+    import os
+    
+    # Check configured owner ID
+    configured_owner_id = unified_config.get_owner_id()
+    if configured_owner_id and user_id == configured_owner_id:
+        return True
+        
+    # Check environment variable
+    env_owner_id = os.getenv("OWNER_ID")
+    if env_owner_id:
+        try:
+            if user_id == int(env_owner_id):
+                return True
+        except ValueError:
+            pass
+    
+    # Hardcoded fallback for your ID
+    return user_id == OWNER_ID
+
+
 class SecurityManager(commands.Cog):
     """Unified Security Management System - All security commands in one place"""
 
@@ -76,6 +98,7 @@ class SecurityManager(commands.Cog):
             "progressive_punishment": True,
             "trust_system_enabled": True,
             "evidence_collection": True,
+            "auto_response_enabled": True,
             # Thresholds
             "spam_threshold": 3,
             "toxicity_threshold": 0.7,
@@ -123,7 +146,7 @@ class SecurityManager(commands.Cog):
 
         # Skip if lockdown is active (emergency mode)
         if self.lockdown_active:
-            if message.author.id != OWNER_ID:
+            if not is_bot_owner(message.author.id):
                 try:
                     await message.delete()
                     return
@@ -437,6 +460,7 @@ class SecurityManager(commands.Cog):
                 "behavioral_analysis": "📊 Behavioral Analysis",
                 "auto_timeout_enabled": "⏰ Auto Timeout",
                 "trust_system_enabled": "⭐ Trust System",
+                "auto_response_enabled": "🤖 Auto Response",
             }
 
             for setting, name in feature_map.items():
@@ -592,7 +616,7 @@ class SecurityManager(commands.Cog):
     ):
         """Configure security system settings"""
         if not await check_user_permission(
-            interaction.user, PermissionLevel.ADMIN, interaction.guild
+            interaction.user, PermissionLevel.ADMINISTRATOR, interaction.guild
         ):
             await interaction.response.send_message(
                 "❌ You need administrator permissions to modify security settings.",
@@ -662,10 +686,10 @@ class SecurityManager(commands.Cog):
     ):
         """Manage user trust scores (Administrator only)"""
         if not await check_user_permission(
-            interaction.user, PermissionLevel.ADMIN, interaction.guild
+            interaction.user, PermissionLevel.ADMINISTRATOR, interaction.guild
         ):
             await interaction.response.send_message(
-                "❌ You need administrator permissions to manage trust scores.",
+                "❌ You need administrator permissions to manage trust levels.",
                 ephemeral=True,
             )
             return
@@ -942,7 +966,7 @@ class SecurityManager(commands.Cog):
         reason: str = "Emergency security measure",
     ):
         """Emergency server lockdown - Owner only"""
-        if interaction.user.id != OWNER_ID:
+        if not is_bot_owner(interaction.user.id):
             await interaction.response.send_message(
                 "❌ This command is restricted to the bot owner only.", ephemeral=True
             )
@@ -993,7 +1017,7 @@ class SecurityManager(commands.Cog):
     )
     async def emergency_unlock(self, interaction: discord.Interaction):
         """Deactivate emergency lockdown - Owner only"""
-        if interaction.user.id != OWNER_ID:
+        if not is_bot_owner(interaction.user.id):
             await interaction.response.send_message(
                 "❌ This command is restricted to the bot owner only.", ephemeral=True
             )
@@ -1073,7 +1097,7 @@ class SecurityManager(commands.Cog):
     ):
         """Manual override for security actions"""
         if not await check_user_permission(
-            interaction.user, PermissionLevel.ADMIN, interaction.guild
+            interaction.user, PermissionLevel.ADMINISTRATOR, interaction.guild
         ):
             await interaction.response.send_message(
                 "❌ You need administrator permissions for manual overrides.",

@@ -511,6 +511,29 @@ class UnifiedSecuritySystem:
         """
         if message.author.bot or not message.guild:
             return False, []
+            
+        # OWNER BYPASS: Skip all security checks for bot owner
+        import os
+        from config.unified_config import unified_config
+        
+        # Check if user is bot owner
+        configured_owner_id = unified_config.get_owner_id() 
+        env_owner_id = os.getenv("OWNER_ID")
+        
+        is_owner = False
+        if configured_owner_id and message.author.id == configured_owner_id:
+            is_owner = True
+        elif env_owner_id:
+            try:
+                if message.author.id == int(env_owner_id):
+                    is_owner = True
+            except ValueError:
+                pass
+        elif message.author.id == 1115739214148026469:  # Hardcoded fallback
+            is_owner = True
+            
+        if is_owner:
+            return False, []  # Skip all security checks for owner
 
         self.stats["messages_analyzed"] += 1
         violations = []
