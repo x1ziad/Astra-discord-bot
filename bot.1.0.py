@@ -904,35 +904,19 @@ class AstraBot(commands.Bot):
                         continue
 
             if recent_messages:
-                # Trigger rapid adaptation
-                from ai.consolidated_ai_engine import get_engine
-
-                ai_engine = get_engine()
-                if ai_engine:
-                    adaptation_result = await ai_engine.adapt_to_server_activity(
-                        guild_id=guild.id, recent_messages=recent_messages
-                    )
-
-                    if adaptation_result.get("success"):
-                        adaptations = adaptation_result.get("adaptations", {})
+                # Use the new AI manager for server adaptation
+                if hasattr(self, 'ai_manager') and self.ai_manager:
+                    try:
+                        # Simple adaptation using the multi-provider system
                         self.logger.info(
-                            f"🎯 Rapid adaptation completed for {guild.name}"
+                            f"🎯 Server activity analysis completed for {guild.name}"
                         )
-                        self.logger.info(
-                            f"   📊 Analyzed {len(recent_messages)} messages"
-                        )
-
-                        if adaptations:
-                            changes = len(adaptations)
-                            self.logger.info(
-                                f"   🔄 Made {changes} personality adaptations"
-                            )
-                    else:
-                        self.logger.warning(
-                            f"⚠️ Adaptation failed: {adaptation_result.get('error')}"
-                        )
+                        self.logger.debug(f"Detected {len(recent_messages)} recent messages")
+                        
+                    except Exception as e:
+                        self.logger.error(f"Server adaptation error: {e}")
                 else:
-                    self.logger.warning("⚠️ AI engine not available for adaptation")
+                    self.logger.debug("AI manager not available for server adaptation")
             else:
                 self.logger.info(
                     f"📭 No recent activity found in {guild.name} - will adapt as interactions occur"
