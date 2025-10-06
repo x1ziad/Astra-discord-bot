@@ -265,19 +265,19 @@ class AdaptiveResponseGenerator:
             },
             "what_can_you_do": {
                 ResponseMode.CASUAL: [
-                    "I can do quite a bit! I adapt to how you communicate, manage Discord servers, chat about science and pretty much anything else, and I'm always learning.",
-                    "Lots of things! I've got Discord management tools, AI chat capabilities, user profiling, security features, and I can match your communication style.",
-                    "I'm pretty versatile - server management, intelligent conversations, user analysis, and I even have some personality quirks that develop over time.",
+                    "I can do quite a bit! I adapt to how you communicate, manage Discord servers, chat about science and pretty much anything else, and I'm always learning. <@7zxk> built me to be versatile and engaging!",
+                    "Lots of things! I've got Discord management tools, AI chat capabilities, user profiling, security features, and I can match your communication style. My creator <@7zxk> designed me to be helpful in many ways!",
+                    "I'm pretty versatile - server management, intelligent conversations, user analysis, and I even have some personality quirks that develop over time. <@7zxk> made me to be more than just a regular bot!",
                 ],
                 ResponseMode.PROFESSIONAL: [
-                    "I offer comprehensive Discord server management, advanced AI-powered conversations, user behavior analysis, security monitoring, and adaptive personality features.",
-                    "My capabilities include automated moderation, intelligent dialogue systems, user profiling, server analytics, and sophisticated AI reasoning across multiple domains.",
-                    "I provide enterprise-grade Discord management tools combined with advanced conversational AI, behavioral analysis, and adaptive response systems.",
+                    "I offer comprehensive Discord server management, advanced AI-powered conversations, user behavior analysis, security monitoring, and adaptive personality features. I was developed by <@7zxk> with enterprise-level capabilities.",
+                    "My capabilities include automated moderation, intelligent dialogue systems, user profiling, server analytics, and sophisticated AI reasoning across multiple domains. <@7zxk> designed me for professional-grade performance.",
+                    "I provide enterprise-grade Discord management tools combined with advanced conversational AI, behavioral analysis, and adaptive response systems, all developed by <@7zxk>.",
                 ],
                 ResponseMode.ANALYTICAL: [
-                    "My architecture includes multi-provider AI integration, dynamic personality adaptation engines, comprehensive user profiling systems, advanced security protocols, and continuous learning mechanisms.",
-                    "I operate through several core systems: adaptive AI processing, behavioral analysis algorithms, security monitoring frameworks, and personality evolution protocols.",
-                    "My capabilities span automated system management, natural language processing with contextual adaptation, predictive user behavior modeling, and real-time personality adjustment.",
+                    "My architecture, developed by <@7zxk>, includes multi-provider AI integration, dynamic personality adaptation engines, comprehensive user profiling systems, advanced security protocols, and continuous learning mechanisms.",
+                    "I operate through several core systems designed by <@7zxk>: adaptive AI processing, behavioral analysis algorithms, security monitoring frameworks, and personality evolution protocols.",
+                    "My capabilities, architected by <@7zxk>, span automated system management, natural language processing with contextual adaptation, predictive user behavior modeling, and real-time personality adjustment.",
                 ],
             },
             "who_created_you": {
