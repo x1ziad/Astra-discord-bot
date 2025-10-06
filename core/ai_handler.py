@@ -89,10 +89,13 @@ class AIHandler:
 
             # Add timeout protection
             ai_response = await asyncio.wait_for(
-                self.ai_engine.generate_response(message.content),
-                timeout=15.0
+                self.ai_engine.generate_response(message.content), timeout=15.0
             )
-            response = ai_response.content if ai_response.success else "I'm having trouble processing that. Could you try again?"
+            response = (
+                ai_response.content
+                if ai_response.success
+                else "I'm having trouble processing that. Could you try again?"
+            )
 
             # Update conversation history
             self.conversation_history[user_id].append(
@@ -145,7 +148,11 @@ class AIHandler:
                 self.ai_engine.generate_response(question),
                 timeout=15.0,
             )
-            return ai_response.content if ai_response.success else "I'm having trouble with that question. Please try again later!"
+            return (
+                ai_response.content
+                if ai_response.success
+                else "I'm having trouble with that question. Please try again later!"
+            )
         except asyncio.TimeoutError:
             return "That's a complex question! Let me think about it and get back to you. 🤔"
         except Exception as e:

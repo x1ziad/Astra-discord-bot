@@ -218,7 +218,9 @@ class AdvancedAICog(commands.Cog):
                     async def context_aware_fallback():
                         await asyncio.sleep(0.3)
                         if hasattr(self.ai_client, "generate_response"):
-                            ai_response = await self.ai_client.generate_response(full_prompt)
+                            ai_response = await self.ai_client.generate_response(
+                                full_prompt
+                            )
                             return ai_response.content if ai_response.success else None
                         return None
 
@@ -2085,7 +2087,11 @@ class AdvancedAICog(commands.Cog):
             # Generate response using available AI engine with enhanced context
             if hasattr(self.ai_client, "generate_response"):
                 ai_response = await self.ai_client.generate_response(message.content)
-                response = ai_response.content if ai_response.success else "I'm having trouble thinking right now. Could you try again?"
+                response = (
+                    ai_response.content
+                    if ai_response.success
+                    else "I'm having trouble thinking right now. Could you try again?"
+                )
             elif hasattr(self.ai_client, "generate_response"):
                 # Build context dictionary for ConsolidatedAIEngine compatibility
                 context_dict = {
