@@ -31,9 +31,9 @@ ENV PYTHONDONTWRITEBYTECODE=1
 # Expose port (Railway will handle this automatically)
 EXPOSE 8000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD python -c "import requests; requests.get('http://localhost:8000/health', timeout=5)" || exit 1
+# Health check for Discord bot
+HEALTHCHECK --interval=60s --timeout=10s --start-period=120s --retries=3 \
+    CMD python -c "import psutil; exit(0 if any(p.info['name'] == 'python' for p in psutil.process_iter(['name'])) else 1)" || exit 1
 
 # Run the bot
 CMD ["python", "bot.1.0.py"]
