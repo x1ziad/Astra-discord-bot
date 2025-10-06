@@ -467,8 +467,8 @@ class AstraBot(commands.Bot):
             ["cogs.analytics", "cogs.roles"],
             # Game-specific and optional features
             ["cogs.quiz", "cogs.space"],
-            # Help and utility features
-            ["cogs.help", "cogs.notion"],
+            # Utility features (help now handled by NEXUS)
+            ["cogs.notion"],
         ]
 
         total_loaded = 0
