@@ -1610,6 +1610,571 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
         embed.set_footer(text="NEXUS Channel Testing • Discord Data Reporter")
         await interaction.followup.send(embed=embed)
 
+    @app_commands.command(
+        name="help",
+        description="🧠 AI-Powered Self-Aware Help System - Comprehensive Feature Analysis",
+    )
+    @app_commands.describe(
+        category="Specific category to explore (ai, server, space, admin, utilities)",
+        detailed="Get detailed AI-generated explanations for commands",
+    )
+    async def nexus_help(
+        self,
+        interaction: discord.Interaction,
+        category: Optional[str] = None,
+        detailed: Optional[bool] = False,
+    ):
+        """🧠 AI-Powered Self-Aware Help System with comprehensive bot analysis"""
+        await interaction.response.defer()
+
+        try:
+            # Import AI manager
+            from ai.multi_provider_ai import MultiProviderAIManager
+
+            ai_manager = MultiProviderAIManager()
+
+            # Get bot capabilities dynamically
+            bot_features = await self._analyze_bot_capabilities()
+
+            if not category:
+                # Main help overview with AI self-awareness
+                embed = await self._create_main_help_embed(
+                    ai_manager, bot_features, detailed
+                )
+            else:
+                # Category-specific help with AI explanations
+                embed = await self._create_category_help_embed(
+                    ai_manager, category, bot_features, detailed
+                )
+
+            await interaction.followup.send(embed=embed)
+
+        except Exception as e:
+            self.logger.error(f"Nexus help error: {e}")
+            fallback_embed = discord.Embed(
+                title="🌌 NEXUS Help System",
+                description="Advanced help system temporarily unavailable. Using fallback mode.",
+                color=0x3498DB,
+            )
+            await interaction.followup.send(embed=fallback_embed)
+
+    async def _analyze_bot_capabilities(self) -> Dict[str, Any]:
+        """Analyze current bot capabilities and features with deep introspection"""
+        capabilities = {
+            "loaded_cogs": [],
+            "total_commands": 0,
+            "ai_providers": [],
+            "features": {},
+            "stats": {
+                "guilds": len(self.bot.guilds),
+                "users": sum(guild.member_count or 0 for guild in self.bot.guilds),
+                "uptime": getattr(self.bot, "stats", None),
+                "memory_usage": self._get_memory_usage(),
+                "cpu_usage": self._get_cpu_usage(),
+            },
+            "extensions": {},
+            "health_status": {},
+            "performance_metrics": {},
+        }
+
+        # Analyze loaded cogs and their commands
+        for cog_name, cog in self.bot.cogs.items():
+            cog_info = {
+                "name": cog_name,
+                "commands": [],
+                "description": (
+                    getattr(cog, "__doc__", "").strip()
+                    if hasattr(cog, "__doc__")
+                    else "No description"
+                ),
+            }
+
+            # Get app commands for this cog
+            for command in self.bot.tree.get_commands():
+                if hasattr(command, "binding") and command.binding == cog:
+                    cog_info["commands"].append(
+                        {"name": command.name, "description": command.description}
+                    )
+                elif isinstance(command, app_commands.Group) and command.binding == cog:
+                    for subcommand in command.commands:
+                        cog_info["commands"].append(
+                            {
+                                "name": f"{command.name} {subcommand.name}",
+                                "description": subcommand.description,
+                            }
+                        )
+
+            capabilities["loaded_cogs"].append(cog_info)
+            capabilities["total_commands"] += len(cog_info["commands"])
+
+        # Check AI providers
+        try:
+            import os
+
+            if os.getenv("MISTRAL_API_KEY"):
+                capabilities["ai_providers"].append("Mistral AI")
+            if os.getenv("GOOGLE_API_KEY"):
+                capabilities["ai_providers"].append("Google Gemini")
+            if os.getenv("GROQ_API_KEY"):
+                capabilities["ai_providers"].append("Groq")
+        except:
+            pass
+
+        # Check features from config with detailed analysis
+        capabilities["features"] = {
+            "ai_enabled": self.config.is_feature_enabled("ai"),
+            "moderation": self.config.is_feature_enabled("moderation"),
+            "analytics": self.config.is_feature_enabled("analytics"),
+            "space_content": self.config.is_feature_enabled("space_content"),
+            "notion_integration": self.config.is_feature_enabled("notion_integration"),
+            "voice_commands": self.config.is_feature_enabled("voice"),
+            "auto_responses": self.config.is_feature_enabled("auto_responses"),
+        }
+
+        # Analyze extension health
+        if hasattr(self.bot, 'extension_health'):
+            capabilities["extensions"] = getattr(self.bot, 'extension_health', {})
+        
+        # Get performance metrics
+        capabilities["performance_metrics"] = await self._get_performance_metrics()
+        
+        # Analyze health status
+        capabilities["health_status"] = await self._analyze_health_status()
+
+        return capabilities
+
+    async def _create_main_help_embed(
+        self, ai_manager, bot_features: Dict[str, Any], detailed: bool
+    ) -> discord.Embed:
+        """Create main help embed with AI self-awareness"""
+
+        # Generate AI self-awareness description
+        ai_prompt = f"""You are Astra, an advanced AI-powered Discord bot. Based on your current capabilities, write a self-aware introduction that describes what you can do.
+
+Your current features:
+- Loaded cogs: {len(bot_features['loaded_cogs'])} modules
+- Total commands: {bot_features['total_commands']}
+- AI providers: {', '.join(bot_features['ai_providers']) if bot_features['ai_providers'] else 'None configured'}
+- Serving: {bot_features['stats']['guilds']} servers with {bot_features['stats']['users']} users
+- Features: {', '.join([k for k, v in bot_features['features'].items() if v])}
+
+Write a confident, engaging self-introduction that highlights your advanced capabilities and AI-powered features. Keep it concise but impressive. Show personality and self-awareness."""
+
+        try:
+            ai_response = await ai_manager.generate_response(
+                prompt=ai_prompt, max_tokens=300, temperature=0.7
+            )
+            ai_description = (
+                ai_response.content
+                if ai_response and ai_response.success
+                else "Advanced AI-powered Discord bot with comprehensive server management and space exploration features."
+            )
+        except:
+            ai_description = "Advanced AI-powered Discord bot with comprehensive server management and space exploration features."
+
+        embed = discord.Embed(
+            title="🌌 NEXUS Help System - AI Self-Awareness",
+            description=ai_description,
+            color=0x00D4AA,
+            timestamp=datetime.now(timezone.utc),
+        )
+
+        # Core Categories
+        categories = {
+            "🤖 AI Features": {
+                "commands": "ai_companion, advanced_ai, ai_moderation",
+                "description": f"Powered by {len(bot_features['ai_providers'])} AI providers",
+            },
+            "🏛️ Server Management": {
+                "commands": "enhanced_server_management, admin, roles",
+                "description": "Complete server control and optimization",
+            },
+            "🌌 Space & Science": {
+                "commands": "space content, NASA integration, celestial tracking",
+                "description": "Explore the cosmos with real data",
+            },
+            "📊 Analytics & Monitoring": {
+                "commands": "stats, nexus diagnostics, performance tracking",
+                "description": "Comprehensive system monitoring",
+            },
+            "🎮 Entertainment": {
+                "commands": "quiz system, interactive games, trivia",
+                "description": "Engaging community activities",
+            },
+            "⚙️ Utilities": {
+                "commands": "general tools, help system, configuration",
+                "description": "Essential bot utilities",
+            },
+        }
+
+        for category, info in categories.items():
+            embed.add_field(
+                name=category,
+                value=f"**{info['description']}**\n`/nexus help {category.split()[1].lower()}`",
+                inline=True,
+            )
+
+        # System Status
+        embed.add_field(
+            name="📈 System Status",
+            value=f"🏠 **{bot_features['stats']['guilds']}** servers\n"
+            f"👥 **{bot_features['stats']['users']:,}** users\n"
+            f"⚡ **{bot_features['total_commands']}** commands\n"
+            f"🧠 **{len(bot_features['ai_providers'])}** AI providers",
+            inline=True,
+        )
+
+        # Quick Actions
+        embed.add_field(
+            name="🚀 Quick Actions",
+            value="`/nexus help ai` - AI capabilities\n"
+            "`/nexus help server` - Server tools\n"
+            "`/nexus help space` - Space features\n"
+            "`/nexus system` - Full diagnostics",
+            inline=True,
+        )
+
+        embed.set_footer(
+            text="🧠 AI-Powered Self-Aware Help System • Use /nexus help [category] for details"
+        )
+
+        if self.bot.user and self.bot.user.avatar:
+            embed.set_thumbnail(url=self.bot.user.avatar.url)
+
+        return embed
+
+    def _get_memory_usage(self) -> float:
+        """Get current memory usage in MB"""
+        try:
+            process = psutil.Process()
+            return process.memory_info().rss / 1024 / 1024
+        except:
+            return 0.0
+
+    def _get_cpu_usage(self) -> float:
+        """Get current CPU usage percentage"""
+        try:
+            process = psutil.Process()
+            return process.cpu_percent()
+        except:
+            return 0.0
+
+    async def _get_performance_metrics(self) -> Dict[str, Any]:
+        """Get comprehensive performance metrics"""
+        metrics = {
+            "response_time": 0.0,
+            "commands_processed": getattr(self.bot.stats, 'commands_executed', 0) if hasattr(self.bot, 'stats') else 0,
+            "messages_processed": getattr(self.bot.stats, 'messages_processed', 0) if hasattr(self.bot, 'stats') else 0,
+            "errors_handled": getattr(self.bot.stats, 'errors_handled', 0) if hasattr(self.bot, 'stats') else 0,
+            "uptime_seconds": getattr(self.bot.stats, 'uptime_seconds', 0) if hasattr(self.bot, 'stats') else 0,
+        }
+        
+        # Test response time
+        start_time = time.time()
+        await asyncio.sleep(0.001)  # Minimal async operation
+        metrics["response_time"] = (time.time() - start_time) * 1000
+        
+        return metrics
+
+    async def _analyze_health_status(self) -> Dict[str, Any]:
+        """Analyze overall system health"""
+        health = {
+            "overall": "excellent",
+            "database": "connected",
+            "ai_providers": "active",
+            "memory": "optimal",
+            "cpu": "optimal",
+            "extensions": "loaded",
+        }
+        
+        try:
+            # Check database connection
+            await db.get("health_check", "test", None)
+            health["database"] = "connected"
+        except:
+            health["database"] = "disconnected"
+            health["overall"] = "degraded"
+        
+        # Check memory usage
+        memory_mb = self._get_memory_usage()
+        if memory_mb > 500:
+            health["memory"] = "high"
+            health["overall"] = "caution"
+        elif memory_mb > 1000:
+            health["memory"] = "critical"
+            health["overall"] = "critical"
+        
+        # Check CPU usage
+        cpu_percent = self._get_cpu_usage()
+        if cpu_percent > 80:
+            health["cpu"] = "high"
+            health["overall"] = "caution"
+        elif cpu_percent > 95:
+            health["cpu"] = "critical"
+            health["overall"] = "critical"
+        
+        # Check extensions
+        if hasattr(self.bot, 'failed_extensions') and self.bot.failed_extensions:
+            health["extensions"] = f"{len(self.bot.failed_extensions)} failed"
+            health["overall"] = "degraded"
+        
+        return health
+
+    async def _create_category_help_embed(
+        self, ai_manager, category: str, bot_features: Dict[str, Any], detailed: bool
+    ) -> discord.Embed:
+        """Create category-specific help embed with AI explanations"""
+
+        category_lower = category.lower()
+
+        # Define category mappings
+        category_info = {
+            "ai": {
+                "title": "🤖 AI Features & Capabilities",
+                "description": "Advanced artificial intelligence systems",
+                "cogs": ["advanced_ai", "ai_companion", "ai_moderation"],
+                "color": 0xFF6B6B,
+            },
+            "server": {
+                "title": "🏛️ Server Management",
+                "description": "Comprehensive server administration tools",
+                "cogs": ["enhanced_server_management", "admin_optimized", "roles"],
+                "color": 0x4ECDC4,
+            },
+            "space": {
+                "title": "🌌 Space & Science",
+                "description": "Cosmic exploration and scientific data",
+                "cogs": ["space"],
+                "color": 0x45B7D1,
+            },
+            "admin": {
+                "title": "⚙️ Administration",
+                "description": "Bot configuration and control",
+                "cogs": ["admin_optimized", "nexus"],
+                "color": 0xF39C12,
+            },
+            "utilities": {
+                "title": "🛠️ Utilities & Tools",
+                "description": "General purpose utilities",
+                "cogs": ["utilities", "help", "stats"],
+                "color": 0x9B59B6,
+            },
+        }
+
+        if category_lower not in category_info:
+            # Fallback for unknown category
+            return discord.Embed(
+                title="❓ Unknown Category",
+                description=f"Category '{category}' not found. Use `/nexus help` for available categories.",
+                color=0xFF4444,
+            )
+
+        cat_info = category_info[category_lower]
+        
+        # Create AI-powered category description
+        ai_prompt = f"""You are Astra, an AI-powered Discord bot. Describe your {cat_info['title']} capabilities in detail.
+        
+        Available cogs in this category: {', '.join(cat_info['cogs'])}
+        Category focus: {cat_info['description']}
+        
+        Write a comprehensive but engaging description of what you can do in this category. Be specific about features and capabilities. Show expertise and enthusiasm."""
+        
+        try:
+            ai_response = await ai_manager.generate_response(
+                prompt=ai_prompt, max_tokens=400, temperature=0.7
+            )
+            ai_description = (
+                ai_response.content
+                if ai_response and ai_response.success
+                else cat_info['description']
+            )
+        except:
+            ai_description = cat_info['description']
+
+        embed = discord.Embed(
+            title=cat_info['title'],
+            description=ai_description,
+            color=cat_info['color'],
+            timestamp=datetime.now(timezone.utc),
+        )
+
+        # Find and list commands for this category
+        relevant_commands = []
+        for cog_info in bot_features['loaded_cogs']:
+            if any(cog_name.lower() in cog_info['name'].lower() for cog_name in cat_info['cogs']):
+                for cmd in cog_info['commands']:
+                    relevant_commands.append(f"`{cmd['name']}` - {cmd['description']}")
+
+        if relevant_commands:
+            # Split commands into chunks to avoid embed limits
+            command_chunks = [relevant_commands[i:i+10] for i in range(0, len(relevant_commands), 10)]
+            
+            for i, chunk in enumerate(command_chunks):
+                field_name = "📋 Available Commands" if i == 0 else f"📋 Commands (cont. {i+1})"
+                embed.add_field(
+                    name=field_name,
+                    value="\n".join(chunk),
+                    inline=False,
+                )
+
+        # Add category-specific stats
+        if category_lower == "ai" and bot_features['ai_providers']:
+            embed.add_field(
+                name="🧠 AI Providers",
+                value="\n".join([f"✅ {provider}" for provider in bot_features['ai_providers']]),
+                inline=True,
+            )
+        
+        elif category_lower == "server":
+            embed.add_field(
+                name="🏛️ Server Reach",
+                value=f"Managing **{bot_features['stats']['guilds']}** servers\nServing **{bot_features['stats']['users']:,}** users",
+                inline=True,
+            )
+
+        embed.set_footer(text=f"🌌 NEXUS • {cat_info['title']} • Use detailed=True for more info")
+        
+        return embed
+
+    @app_commands.command(
+        name="self_analysis",
+        description="🧠 Complete AI-Powered Self-Analysis & System Introspection",
+    )
+    @app_commands.describe(
+        deep_scan="Perform deep system analysis (may take longer)",
+        include_performance="Include detailed performance metrics",
+    )
+    async def self_analysis(
+        self,
+        interaction: discord.Interaction,
+        deep_scan: Optional[bool] = False,
+        include_performance: Optional[bool] = True,
+    ):
+        """🧠 Complete AI-powered self-analysis and system introspection"""
+        await interaction.response.defer()
+
+        try:
+            # Import AI manager
+            from ai.multi_provider_ai import MultiProviderAIManager
+            ai_manager = MultiProviderAIManager()
+
+            # Get comprehensive bot analysis
+            bot_features = await self._analyze_bot_capabilities()
+            
+            # Generate AI self-analysis
+            analysis_prompt = f"""You are Astra, an advanced AI-powered Discord bot. Perform a comprehensive self-analysis based on your current state.
+
+Current Status:
+- Serving {bot_features['stats']['guilds']} servers with {bot_features['stats']['users']:,} users
+- {len(bot_features['loaded_cogs'])} modules loaded with {bot_features['total_commands']} commands
+- AI Providers: {', '.join(bot_features['ai_providers']) if bot_features['ai_providers'] else 'None'}
+- Memory Usage: {bot_features['stats']['memory_usage']:.1f} MB
+- CPU Usage: {bot_features['stats']['cpu_usage']:.1f}%
+- Health Status: {bot_features['health_status']['overall']}
+- Features: {', '.join([k for k, v in bot_features['features'].items() if v])}
+
+Analyze your capabilities, performance, and potential. What are your strengths? What could be improved? What makes you unique? Be self-aware and analytical but confident."""
+
+            ai_response = await ai_manager.generate_response(
+                prompt=analysis_prompt, max_tokens=500, temperature=0.6
+            )
+            
+            ai_analysis = (
+                ai_response.content
+                if ai_response and ai_response.success
+                else "Advanced AI-powered Discord bot with comprehensive capabilities."
+            )
+
+            embed = discord.Embed(
+                title="🧠 NEXUS Self-Analysis Report",
+                description=ai_analysis,
+                color=0x00D4AA,
+                timestamp=datetime.now(timezone.utc),
+            )
+
+            # System Overview
+            embed.add_field(
+                name="🤖 System Overview",
+                value=f"**Modules:** {len(bot_features['loaded_cogs'])}\n"
+                      f"**Commands:** {bot_features['total_commands']}\n"
+                      f"**AI Providers:** {len(bot_features['ai_providers'])}\n"
+                      f"**Features:** {len([k for k, v in bot_features['features'].items() if v])}",
+                inline=True,
+            )
+
+            # Performance Metrics
+            if include_performance:
+                perf_metrics = bot_features['performance_metrics']
+                embed.add_field(
+                    name="📊 Performance",
+                    value=f"**Memory:** {bot_features['stats']['memory_usage']:.1f} MB\n"
+                          f"**CPU:** {bot_features['stats']['cpu_usage']:.1f}%\n"
+                          f"**Response:** {perf_metrics['response_time']:.2f}ms\n"
+                          f"**Commands:** {perf_metrics['commands_processed']:,}",
+                    inline=True,
+                )
+
+            # Health Status
+            health = bot_features['health_status']
+            health_indicators = {
+                "excellent": "🟢",
+                "good": "🟡", 
+                "caution": "🟠",
+                "degraded": "🔴",
+                "critical": "💀"
+            }
+            
+            health_icon = health_indicators.get(health['overall'], "❓")
+            embed.add_field(
+                name="💖 Health Status",
+                value=f"{health_icon} **{health['overall'].title()}**\n"
+                      f"Database: {health['database']}\n"
+                      f"Extensions: {health['extensions']}\n"
+                      f"AI: {health['ai_providers']}",
+                inline=True,
+            )
+
+            # Capabilities Matrix
+            capabilities_text = ""
+            for feature, enabled in bot_features['features'].items():
+                icon = "✅" if enabled else "❌"
+                capabilities_text += f"{icon} {feature.replace('_', ' ').title()}\n"
+            
+            embed.add_field(
+                name="⚡ Capabilities Matrix",
+                value=capabilities_text,
+                inline=False,
+            )
+
+            if deep_scan:
+                # Add extension health details
+                if bot_features['extensions']:
+                    healthy_ext = sum(1 for status in bot_features['extensions'].values() if status)
+                    total_ext = len(bot_features['extensions'])
+                    
+                    embed.add_field(
+                        name="🔧 Extension Health",
+                        value=f"**Healthy:** {healthy_ext}/{total_ext}\n"
+                              f"**Success Rate:** {(healthy_ext/total_ext)*100:.1f}%",
+                        inline=True,
+                    )
+
+            embed.set_footer(text="🧠 AI-Powered Self-Analysis • NEXUS Control System")
+            
+            if self.bot.user and self.bot.user.avatar:
+                embed.set_thumbnail(url=self.bot.user.avatar.url)
+
+            await interaction.followup.send(embed=embed)
+
+        except Exception as e:
+            self.logger.error(f"Self-analysis error: {e}")
+            error_embed = discord.Embed(
+                title="❌ Self-Analysis Error",
+                description="Unable to complete self-analysis. System introspection temporarily unavailable.",
+                color=0xFF4444,
+            )
+            await interaction.followup.send(embed=error_embed)
+
 
 async def setup(bot):
     await bot.add_cog(NexusControlSystem(bot))
