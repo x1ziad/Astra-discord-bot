@@ -1514,17 +1514,13 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
 
     @app_commands.command(
         name="test_reporting",
-        description="🧪 [OWNER ONLY] Test Discord Data Reporting Channels",
+        description="🧪 [ADMIN/OWNER] Test Discord Data Reporting Channels",
     )
     @app_commands.default_permissions(administrator=True)
     async def test_reporting_command(self, interaction: discord.Interaction):
-        """Test Discord data reporting channels - OWNER ONLY"""
-        # Owner-only check
-        if interaction.user.id != self.bot.owner_id:
-            await interaction.response.send_message(
-                "🚫 **ACCESS DENIED** - This command is restricted to the bot owner only.",
-                ephemeral=True,
-            )
+        """Test Discord data reporting channels - Admin/Owner access"""
+        # Admin/Owner check using consistent permission system
+        if not await self._check_permissions(interaction, admin_required=True):
             return
 
         await interaction.response.defer()
