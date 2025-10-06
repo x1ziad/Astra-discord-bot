@@ -446,14 +446,12 @@ class AstraBot(commands.Bot):
 
         # Extension loading order with dependencies - OPTIMIZED
         extension_groups = [
-            # Core utilities (no dependencies) - Performance optimized loading order
+            # Core utilities (no dependencies) - NEXUS provides enhanced userinfo/uptime/stats
             [
                 "cogs.admin_optimized",  # Optimized consolidated admin system
                 "cogs.bot_status",
-                "cogs.utilities",
-                "cogs.stats",
                 "cogs.bot_setup_enhanced",  # Consolidated setup system
-                "cogs.nexus",  # Advanced diagnostic interface
+                "cogs.nexus",  # Advanced diagnostic interface with enhanced commands
                 "cogs.security_commands",  # Manual security controls and monitoring
             ],
             # AI and enhanced features (depend on core)
