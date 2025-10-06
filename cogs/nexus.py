@@ -89,7 +89,7 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
     async def quantum_ping(self, interaction: discord.Interaction):
         """⚛️ Advanced quantum ping with comprehensive system metrics"""
         start_time = time.perf_counter()
-        
+
         embed = discord.Embed(
             title="⚛️ NEXUS QUANTUM PING",
             color=0x00FF88,
@@ -99,9 +99,13 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
         # Measure response times
         discord_latency = round(self.bot.latency * 1000, 2)
         response_time = round((time.perf_counter() - start_time) * 1000, 2)
-        
+
         # Quality assessment
-        quality = "🟢 Excellent" if discord_latency < 100 else "🟡 Good" if discord_latency < 200 else "🔴 Poor"
+        quality = (
+            "🟢 Excellent"
+            if discord_latency < 100
+            else "🟡 Good" if discord_latency < 200 else "🔴 Poor"
+        )
 
         embed.add_field(
             name="🌐 Quantum Tunnel Latency",
@@ -168,9 +172,13 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
             # System Health Metrics
             cpu_usage = psutil.cpu_percent(interval=1)
             memory = psutil.virtual_memory()
-            
-            health_status = "🟢 OPTIMAL" if cpu_usage < 50 and memory.percent < 70 else "🟡 STABLE" if cpu_usage < 80 else "🔴 STRESSED"
-            
+
+            health_status = (
+                "🟢 OPTIMAL"
+                if cpu_usage < 50 and memory.percent < 70
+                else "🟡 STABLE" if cpu_usage < 80 else "🔴 STRESSED"
+            )
+
             embed.add_field(
                 name="🎯 System Health",
                 value=f"```yaml\nStatus: {health_status}\nCPU: {cpu_usage:.1f}%\nMemory: {memory.percent:.1f}%\nUptime: {str(datetime.now(timezone.utc) - self.bot.start_time).split('.')[0] if hasattr(self.bot, 'start_time') else 'Unknown'}```",
@@ -180,7 +188,7 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
             # Bot Performance
             loaded_cogs = list(self.bot.cogs.keys())
             cog_count = len(loaded_cogs)
-            
+
             embed.add_field(
                 name="🤖 Bot Performance",
                 value=f"```yaml\nLoaded Modules: {cog_count}\nGuilds: {len(self.bot.guilds)}\nUsers: {sum(g.member_count or 0 for g in self.bot.guilds):,}\nLatency: {round(self.bot.latency * 1000, 2)}ms```",
@@ -188,7 +196,9 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
             )
 
             # AI Systems Status
-            ai_status = "✅ OPERATIONAL" if hasattr(self.bot, 'ai_client') else "⚠️ LIMITED"
+            ai_status = (
+                "✅ OPERATIONAL" if hasattr(self.bot, "ai_client") else "⚠️ LIMITED"
+            )
             embed.add_field(
                 name="🧠 AI Systems",
                 value=f"```yaml\nStatus: {ai_status}\nProviders: Multi-Provider\nContext: Advanced\nSelf-Awareness: Active```",
@@ -262,21 +272,41 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
             # System Health Analysis
             cpu_usage = psutil.cpu_percent(interval=1)
             memory = psutil.virtual_memory()
-            disk_usage = psutil.disk_usage('/')
-            
+            disk_usage = psutil.disk_usage("/")
+
             # Health scoring
             health_score = 100
-            if cpu_usage > 80: health_score -= 30
-            elif cpu_usage > 60: health_score -= 15
-            
-            if memory.percent > 85: health_score -= 25
-            elif memory.percent > 70: health_score -= 10
-            
-            if disk_usage.percent > 90: health_score -= 20
-            elif disk_usage.percent > 80: health_score -= 10
+            if cpu_usage > 80:
+                health_score -= 30
+            elif cpu_usage > 60:
+                health_score -= 15
 
-            health_grade = "A+" if health_score >= 95 else "A" if health_score >= 85 else "B" if health_score >= 75 else "C" if health_score >= 60 else "D"
-            health_emoji = "🟢" if health_score >= 80 else "🟡" if health_score >= 60 else "🔴"
+            if memory.percent > 85:
+                health_score -= 25
+            elif memory.percent > 70:
+                health_score -= 10
+
+            if disk_usage.percent > 90:
+                health_score -= 20
+            elif disk_usage.percent > 80:
+                health_score -= 10
+
+            health_grade = (
+                "A+"
+                if health_score >= 95
+                else (
+                    "A"
+                    if health_score >= 85
+                    else (
+                        "B"
+                        if health_score >= 75
+                        else "C" if health_score >= 60 else "D"
+                    )
+                )
+            )
+            health_emoji = (
+                "🟢" if health_score >= 80 else "🟡" if health_score >= 60 else "🔴"
+            )
 
             embed.add_field(
                 name=f"{health_emoji} Overall Health",
@@ -294,7 +324,7 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
             # System Components
             loaded_cogs = len(self.bot.cogs)
             expected_cogs = 10  # Approximate expected number
-            
+
             embed.add_field(
                 name="🔧 System Components",
                 value=f"```yaml\nLoaded Cogs: {loaded_cogs}/{expected_cogs} {'✅' if loaded_cogs >= expected_cogs * 0.8 else '⚠️'}\nDatabase: {'✅ Connected' if hasattr(self.bot, 'db') else '❌ Not Connected'}\nAI Systems: {'✅ Active' if hasattr(self.bot, 'ai_client') else '⚠️ Limited'}\nCache System: {'✅ Operational' if self._cache else '❌ Disabled'}```",
@@ -387,7 +417,7 @@ class NexusControlSystem(commands.GroupCog, name="nexus"):
     @app_commands.default_permissions(administrator=True)
     async def ai_tokens_monitor(self, interaction: discord.Interaction):
         """🎯 Advanced AI token usage monitoring and optimization system"""
-        
+
         if not await self._check_permissions(interaction, admin_required=True):
             return
 
@@ -440,7 +470,7 @@ Efficiency:     94.2% optimal```""",
     @app_commands.default_permissions(administrator=True)
     async def test_reporting_command(self, interaction: discord.Interaction):
         """Test Discord data reporting channels - Admin access"""
-        
+
         if not await self._check_permissions(interaction, admin_required=True):
             return
 
@@ -458,18 +488,19 @@ Efficiency:     94.2% optimal```""",
             # Try to initialize the reporter
             try:
                 from utils.discord_data_reporter import initialize_discord_reporter
+
                 discord_reporter = await initialize_discord_reporter(self.bot)
                 if not discord_reporter:
                     embed.add_field(
-                        name="❌ Status", 
+                        name="❌ Status",
                         value="Discord Data Reporter failed to initialize - Check configuration",
-                        inline=False
+                        inline=False,
                     )
                 else:
                     embed.add_field(
                         name="✅ Status",
                         value="Discord Data Reporter initialized successfully",
-                        inline=False
+                        inline=False,
                     )
             except Exception as e:
                 embed.add_field(
@@ -489,13 +520,13 @@ Efficiency:     94.2% optimal```""",
                     value="Discord Data Reporter is operational",
                     inline=False,
                 )
-                
+
                 embed.add_field(
                     name="🔧 Test Results",
                     value="```yaml\nInitialization: ✅ Success\nConnection: ✅ Active\nChannels: ✅ Configured\nReporting: ✅ Functional```",
                     inline=False,
                 )
-                
+
             except Exception as e:
                 embed.add_field(
                     name="❌ Test Error",
@@ -519,7 +550,7 @@ Efficiency:     94.2% optimal```""",
 
         try:
             current_time = datetime.now(timezone.utc)
-            start_time = getattr(self.bot, 'start_time', current_time)
+            start_time = getattr(self.bot, "start_time", current_time)
             uptime_duration = current_time - start_time
 
             embed = discord.Embed(
@@ -545,7 +576,7 @@ Efficiency:     94.2% optimal```""",
             # Performance metrics
             cpu_usage = psutil.cpu_percent()
             memory = psutil.virtual_memory()
-            
+
             embed.add_field(
                 name="⚡ Performance Metrics",
                 value=f"```yaml\nCPU Usage: {cpu_usage:.1f}%\nMemory Usage: {memory.percent:.1f}%\nBot Latency: {round(self.bot.latency * 1000, 2)}ms\nResponse Quality: {'🟢 Optimal' if self.bot.latency < 0.1 else '🟡 Good' if self.bot.latency < 0.2 else '🔴 Degraded'}```",
@@ -554,7 +585,7 @@ Efficiency:     94.2% optimal```""",
 
             # AI Analysis
             efficiency_score = max(0, 100 - (cpu_usage * 0.7) - (memory.percent * 0.3))
-            
+
             embed.add_field(
                 name="🧠 AI Analysis",
                 value=f"```yaml\nEfficiency Score: {efficiency_score:.1f}/100\nSystem Load: {'Light' if cpu_usage < 30 else 'Moderate' if cpu_usage < 70 else 'Heavy'}\nRecommendation: {'System performing optimally' if efficiency_score > 80 else 'Consider system optimization' if efficiency_score > 60 else 'System maintenance recommended'}\nNext Check: {(current_time + timedelta(hours=1)).strftime('%H:%M UTC')}```",
@@ -595,7 +626,7 @@ Efficiency:     94.2% optimal```""",
             total_guilds = len(self.bot.guilds)
             total_users = sum(guild.member_count or 0 for guild in self.bot.guilds)
             total_channels = sum(len(guild.channels) for guild in self.bot.guilds)
-            
+
             embed.add_field(
                 name="🤖 Bot Metrics",
                 value=f"```yaml\nServers: {total_guilds:,}\nTotal Users: {total_users:,}\nChannels: {total_channels:,}\nLoaded Cogs: {len(self.bot.cogs)}\nCommands: 10 Essential```",
@@ -605,8 +636,10 @@ Efficiency:     94.2% optimal```""",
             # Performance Analytics
             cpu_usage = psutil.cpu_percent()
             memory = psutil.virtual_memory()
-            uptime = datetime.now(timezone.utc) - getattr(self.bot, 'start_time', datetime.now(timezone.utc))
-            
+            uptime = datetime.now(timezone.utc) - getattr(
+                self.bot, "start_time", datetime.now(timezone.utc)
+            )
+
             embed.add_field(
                 name="⚡ Performance Analytics",
                 value=f"```yaml\nCPU Usage: {cpu_usage:.1f}%\nMemory Usage: {memory.percent:.1f}%\nUptime: {str(uptime).split('.')[0]}\nLatency: {round(self.bot.latency * 1000, 2)}ms\nEfficiency: {max(0, 100 - cpu_usage - (memory.percent * 0.5)):.1f}%```",
@@ -615,8 +648,12 @@ Efficiency:     94.2% optimal```""",
 
             # AI Insights
             activity_score = min(100, (total_guilds * 2) + (total_users / 1000))
-            growth_trend = "📈 Growing" if total_guilds > 5 else "🔄 Stable" if total_guilds > 1 else "🌱 New"
-            
+            growth_trend = (
+                "📈 Growing"
+                if total_guilds > 5
+                else "🔄 Stable" if total_guilds > 1 else "🌱 New"
+            )
+
             embed.add_field(
                 name="🧠 AI Insights",
                 value=f"```yaml\nActivity Score: {activity_score:.1f}/100\nGrowth Trend: {growth_trend}\nUsage Pattern: {'High Activity' if total_users > 1000 else 'Moderate Activity' if total_users > 100 else 'Growing Community'}\nOptimization: {'Excellent' if cpu_usage < 50 else 'Good' if cpu_usage < 80 else 'Needs Attention'}```",
@@ -627,10 +664,18 @@ Efficiency:     94.2% optimal```""",
             health_indicators = [
                 "✅" if cpu_usage < 70 else "⚠️" if cpu_usage < 90 else "❌",
                 "✅" if memory.percent < 70 else "⚠️" if memory.percent < 85 else "❌",
-                "✅" if self.bot.latency < 0.2 else "⚠️" if self.bot.latency < 0.5 else "❌",
-                "✅" if len(self.bot.cogs) >= 8 else "⚠️" if len(self.bot.cogs) >= 5 else "❌"
+                (
+                    "✅"
+                    if self.bot.latency < 0.2
+                    else "⚠️" if self.bot.latency < 0.5 else "❌"
+                ),
+                (
+                    "✅"
+                    if len(self.bot.cogs) >= 8
+                    else "⚠️" if len(self.bot.cogs) >= 5 else "❌"
+                ),
             ]
-            
+
             embed.add_field(
                 name="🎯 System Health",
                 value=f"```yaml\nCPU Health: {health_indicators[0]}\nMemory Health: {health_indicators[1]}\nNetwork Health: {health_indicators[2]}\nModule Health: {health_indicators[3]}\nOverall Status: {'🟢 Optimal' if health_indicators.count('✅') >= 3 else '🟡 Good' if health_indicators.count('✅') >= 2 else '🔴 Needs Attention'}```",
@@ -657,9 +702,9 @@ Efficiency:     94.2% optimal```""",
     )
     async def capability_scan(self, interaction: discord.Interaction):
         """AI-powered capability scanning and feature analysis"""
-        
+
         await interaction.response.defer()
-        
+
         try:
             embed = discord.Embed(
                 title="🤖 NEXUS CAPABILITY SCANNER",
@@ -667,18 +712,18 @@ Efficiency:     94.2% optimal```""",
                 color=0x00AAFF,
                 timestamp=datetime.now(timezone.utc),
             )
-            
+
             # Analyze bot capabilities
             total_commands = 10  # NEXUS essential commands
             loaded_cogs = len(self.bot.cogs)
-            
+
             # Core Capabilities
             embed.add_field(
                 name="🎯 Core Capabilities",
                 value=f"```yaml\nEssential Commands: {total_commands}\nLoaded Modules: {loaded_cogs}\nAI Integration: Multi-Provider\nSelf-Diagnostics: Advanced\nSecurity Level: Enterprise```",
                 inline=False,
             )
-            
+
             # System Features
             embed.add_field(
                 name="⚡ System Features",
@@ -690,23 +735,23 @@ Intelligent Caching: ✅ Optimized
 Error Handling: ✅ Comprehensive```""",
                 inline=False,
             )
-            
+
             # Unique Capabilities
             unique_features = [
                 "🌌 Quantum-enhanced connectivity testing",
-                "🧠 AI-powered self-awareness system", 
+                "🧠 AI-powered self-awareness system",
                 "📊 Real-time performance optimization",
                 "🔍 Advanced system diagnostics",
                 "⚡ Multi-provider AI integration",
-                "🛡️ Enterprise-grade security controls"
+                "🛡️ Enterprise-grade security controls",
             ]
-            
+
             embed.add_field(
-                name="🌟 Unique Capabilities", 
+                name="🌟 Unique Capabilities",
                 value="\n".join([f"• {feature}" for feature in unique_features]),
                 inline=False,
             )
-            
+
             # Self-Awareness Analysis
             awareness_score = 95  # High score for optimized system
             embed.add_field(
@@ -714,10 +759,12 @@ Error Handling: ✅ Comprehensive```""",
                 value=f"**🧠 Advanced AI Self-Awareness**\n```yaml\nAwareness Score: {awareness_score}/100\nFeature Detection: ✅ Active\nAdaptive Learning: ✅ Enabled\nContext Understanding: ✅ Advanced\nSystem Optimization: ✅ Continuous```",
                 inline=False,
             )
-            
-            embed.set_footer(text="NEXUS Capability Scanner • AI-Powered Analysis Engine")
+
+            embed.set_footer(
+                text="NEXUS Capability Scanner • AI-Powered Analysis Engine"
+            )
             await interaction.followup.send(embed=embed)
-            
+
         except Exception as e:
             error_embed = discord.Embed(
                 title="❌ Capability Scan Error",
