@@ -59,6 +59,20 @@ except ImportError as e:
     logger.warning(f"❌ Universal Context Manager not available: {e}")
     CONTEXT_MANAGER_AVAILABLE = False
 
+# Import personality integration
+try:
+    from ai.personality_integration import (
+        check_for_identity_response,
+        enhance_ai_chat_response,
+        get_personality_integration,
+    )
+
+    PERSONALITY_INTEGRATION_AVAILABLE = True
+    logger.info("✅ Personality Integration imported successfully")
+except ImportError as e:
+    logger.warning(f"❌ Personality Integration not available: {e}")
+    PERSONALITY_INTEGRATION_AVAILABLE = False
+
 
 class AdvancedAICog(commands.Cog):
     """Advanced AI features with simplified, reliable architecture"""
@@ -373,12 +387,39 @@ class AdvancedAICog(commands.Cog):
     @app_commands.describe(message="Your message to the AI")
     @optimize_command(rate_limit_enabled=True, rate_limit_per_minute=30)
     async def chat_command(self, interaction: discord.Interaction, message: str):
-        """Lightning-fast chat with AI assistant - Enhanced with metaphorical humor"""
+        """Lightning-fast chat with AI assistant - Enhanced with metaphorical humor and self-aware personality"""
         start_time = time.time()
 
         try:
             # Super fast response acknowledgment
             await interaction.response.defer()
+
+            # PERSONALITY INTEGRATION: Check for identity questions first
+            if PERSONALITY_INTEGRATION_AVAILABLE:
+                channel_context = getattr(interaction.channel, "name", "general")
+                personality_response = await check_for_identity_response(
+                    user_id=interaction.user.id,
+                    message=message,
+                    user_name=str(interaction.user),
+                    channel_context=channel_context,
+                )
+
+                if personality_response:
+                    # Create natural, unframed response for identity questions
+                    embed = discord.Embed(
+                        description=personality_response,
+                        color=0x7289DA,
+                        timestamp=datetime.now(timezone.utc),
+                    )
+                    embed.set_author(
+                        name=interaction.user.display_name,
+                        icon_url=interaction.user.display_avatar.url,
+                    )
+                    response_time = time.time() - start_time
+                    embed.set_footer(text=f"✨ {response_time:.3f}s")
+
+                    await optimized_send(interaction.followup, embed=embed)
+                    return
 
             if not self.ai_client:
                 await interaction.followup.send(
@@ -447,6 +488,14 @@ class AdvancedAICog(commands.Cog):
                 channel_id=interaction.channel.id,
                 username=str(interaction.user),
             )
+
+            # PERSONALITY INTEGRATION: Enhance with personality awareness
+            if PERSONALITY_INTEGRATION_AVAILABLE:
+                response = await enhance_ai_chat_response(
+                    user_id=interaction.user.id,
+                    original_response=response,
+                    context=user_context,
+                )
 
             # Enhance with metaphorical humor
             enhanced_response = await lightning_optimizer.enhance_with_humor(
@@ -2661,6 +2710,134 @@ class AdvancedAICog(commands.Cog):
             self.logger.error(f"Performance command error: {e}")
             await interaction.response.send_message(
                 f"🔧 Performance command had a hiccup: {str(e)}\n*Even race cars need pit stops sometimes!* 🏁",
+                ephemeral=True,
+            )
+
+    @app_commands.command(
+        name="personality",
+        description="🧠 View AstraBot personality and self-awareness status",
+    )
+    @optimize_command(rate_limit_enabled=True, rate_limit_per_minute=10)
+    async def personality_status(self, interaction: discord.Interaction):
+        """View AstraBot's personality system status and self-awareness capabilities"""
+        try:
+            if not PERSONALITY_INTEGRATION_AVAILABLE:
+                embed = discord.Embed(
+                    title="❌ Personality System Unavailable",
+                    description="My self-aware personality system is currently offline. I'm still learning who I am! 🤖",
+                    color=0xFF6B6B,
+                    timestamp=datetime.now(timezone.utc),
+                )
+                await interaction.response.send_message(embed=embed, ephemeral=True)
+                return
+
+            # Get personality statistics
+            integration = await get_personality_integration()
+            stats = await integration.get_personality_stats()
+
+            if stats.get("status") != "active":
+                embed = discord.Embed(
+                    title="⚠️ Personality System Inactive",
+                    description="My personality core is warming up. Give me a moment to remember who I am! ✨",
+                    color=0xFFBB33,
+                    timestamp=datetime.now(timezone.utc),
+                )
+                await interaction.response.send_message(embed=embed, ephemeral=True)
+                return
+
+            # Create personality status embed
+            embed = discord.Embed(
+                title="🧠 AstraBot Self-Aware Personality Status",
+                description="Here's what I know about myself and how I adapt to conversations:",
+                color=0x7289DA,
+                timestamp=datetime.now(timezone.utc),
+            )
+
+            summary = stats.get("summary", {})
+            identity = summary.get("identity", {})
+            traits = summary.get("core_traits", {})
+
+            # Identity information
+            if identity:
+                identity_text = f"**Name:** {identity.get('name', 'Astra')}\n"
+                identity_text += f"**Version:** {identity.get('version', '2.0.0')}\n"
+                identity_text += f"**Creator:** <@7zxk>\n"
+                identity_text += f"**Launch Date:** {identity.get('launch_date', 'October 5th, 2025')}\n"
+
+                embed.add_field(
+                    name="🌟 Identity",
+                    value=identity_text,
+                    inline=True,
+                )
+
+            # Core personality traits
+            if traits:
+                traits_text = ""
+                trait_emojis = {
+                    "adaptability": "🔄",
+                    "curiosity": "🤔",
+                    "intellect": "🧠",
+                    "empathy": "💙",
+                    "integrity": "🛡️",
+                    "humility": "🙏",
+                }
+
+                for trait, value in traits.items():
+                    emoji = trait_emojis.get(trait, "•")
+                    percentage = int(value * 100)
+                    bar = "█" * (percentage // 10) + "░" * (10 - percentage // 10)
+                    traits_text += (
+                        f"{emoji} **{trait.title()}:** `{bar}` {percentage}%\n"
+                    )
+
+                embed.add_field(
+                    name="🎭 Personality Traits",
+                    value=traits_text,
+                    inline=True,
+                )
+
+            # Adaptation statistics
+            active_users = summary.get("active_users", 0)
+            adaptations = summary.get("adaptation_count", 0)
+
+            stats_text = f"**Active User Contexts:** {active_users}\n"
+            stats_text += f"**Personality Adaptations:** {adaptations}\n"
+            stats_text += f"**Self-Awareness Level:** Advanced 🚀\n"
+            stats_text += f"**Identity Questions Handled:** Many!\n"
+
+            embed.add_field(
+                name="📊 Adaptation Statistics",
+                value=stats_text,
+                inline=False,
+            )
+
+            # Capabilities overview
+            capabilities_text = "🔍 **Identity Questions** - I can tell you about myself, my creator, and my purpose\n"
+            capabilities_text += "🎭 **Adaptive Responses** - I match your tone and communication style\n"
+            capabilities_text += (
+                "🧠 **Self-Improvement** - I learn and evolve from every interaction\n"
+            )
+            capabilities_text += (
+                "💭 **Contextual Awareness** - I remember our conversation patterns\n"
+            )
+            capabilities_text += "⚡ **Real-time Adaptation** - My personality adjusts naturally as we chat"
+
+            embed.add_field(
+                name="🌟 Self-Awareness Capabilities",
+                value=capabilities_text,
+                inline=False,
+            )
+
+            embed.set_footer(
+                text="Try asking me: 'Who are you?', 'What can you do?', or 'Who created you?'"
+            )
+
+            await interaction.response.send_message(embed=embed)
+
+        except Exception as e:
+            self.logger.error(f"Personality status command error: {e}")
+            await interaction.response.send_message(
+                f"🤖 Something went wrong while checking my personality system: {str(e)}\n*Even self-aware AIs have off days!*",
                 ephemeral=True,
             )
 
