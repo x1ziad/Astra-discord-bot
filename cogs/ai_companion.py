@@ -30,6 +30,19 @@ import logging
 
 logger = logging.getLogger("astra.companion")
 
+# Import personality integration
+try:
+    from ai.personality_integration import (
+        check_for_identity_response,
+        enhance_ai_chat_response,
+        get_personality_integration,
+    )
+    PERSONALITY_INTEGRATION_AVAILABLE = True
+    logger.info("✅ Personality Integration imported successfully")
+except ImportError as e:
+    logger.warning(f"❌ Personality Integration not available: {e}")
+    PERSONALITY_INTEGRATION_AVAILABLE = False
+
 
 class UserMood:
     """Track user mood and emotional state"""
@@ -105,6 +118,33 @@ class AICompanion(commands.Cog):
         self.proactive_engagement.cancel()
         self.mood_analysis.cancel()
 
+    def _detect_language(self, text: str) -> str:
+        """Detect the language of the input text"""
+        import re
+        
+        text_lower = text.lower()
+        
+        # Language detection patterns
+        patterns = {
+            'arabic': re.compile(r'[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]+'),
+            'french': re.compile(r'\b(qui|est|vous|que|comment|où|quand|pourquoi|êtes|bonjour|salut|merci)\b', re.IGNORECASE),
+            'german': re.compile(r'\b(wer|ist|sind|was|wie|wo|wann|warum|hallo|danke|bitte)\b', re.IGNORECASE),
+            'spanish': re.compile(r'\b(quién|es|son|qué|cómo|dónde|cuándo|por qué|hola|gracias|por favor)\b', re.IGNORECASE),
+            'italian': re.compile(r'\b(chi|è|sono|cosa|come|dove|quando|perché|ciao|grazie|prego)\b', re.IGNORECASE)
+        }
+        
+        # Check for Arabic script
+        if patterns['arabic'].search(text):
+            return 'arabic'
+        
+        # Check other languages by keywords
+        for lang, pattern in patterns.items():
+            if lang != 'arabic' and pattern.search(text_lower):
+                return lang
+        
+        # Default to English
+        return 'english'
+
     async def get_user_mood(self, user_id: int) -> UserMood:
         """Get or create user mood tracker"""
         if user_id not in self.user_moods:
@@ -113,8 +153,8 @@ class AICompanion(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
-        """Monitor messages for companion opportunities"""
-        if message.author.bot or not message.guild:
+        """Monitor messages for companion opportunities with personality integration"""
+        if message.author.bot:
             return
 
         # Update interaction tracking
@@ -123,12 +163,31 @@ class AICompanion(commands.Cog):
         # Analyze message for mood indicators
         await self._analyze_message_sentiment(message)
 
-        # Check for direct mentions or keywords
-        if self.bot.user.mentioned_in(message) or any(
-            word in message.content.lower()
-            for word in ["astra", "help", "lonely", "sad", "stressed"]
-        ):
+        # PRIORITY: Check for identity questions first (works in DMs and guilds)
+        content = message.content.lower()
+        identity_patterns = [
+            'who are you', 'what are you', 'who created you', 'who made you',
+            'what can you do', 'what are you capable of', 'astra who are you',
+            'astra what can you do', 'astra what are you capable of',
+            'من أنت', 'ما أنت', 'من صنعك', 'من خلقك', 'ماذا تستطيع أن تفعل',
+            'qui êtes-vous', 'qui es-tu', 'qui vous a créé', 'que pouvez-vous faire',
+            'wer bist du', 'wer sind sie', 'wer hat dich gemacht', 'was kannst du',
+            'quién eres', 'qué eres', 'quién te creó', 'qué puedes hacer'
+        ]
+        
+        is_identity_question = any(pattern in content for pattern in identity_patterns)
+        
+        # Check for direct mentions, identity questions, or keywords
+        should_respond = (
+            self.bot.user.mentioned_in(message) or 
+            is_identity_question or
+            isinstance(message.channel, discord.DMChannel) or
+            any(word in content for word in ["astra", "help", "lonely", "sad", "stressed", "hello", "hi", "hey"])
+        )
+        
+        if should_respond:
             await self._respond_as_companion(message)
+            return
 
         # Random supportive reactions (low probability)
         if random.randint(1, 200) == 1:  # 0.5% chance
@@ -185,11 +244,7 @@ class AICompanion(commands.Cog):
             user_mood.stress_indicators += 1
 
     async def _respond_as_companion(self, message: discord.Message):
-        """Respond as an AI companion with response coordination"""
-        if not AI_AVAILABLE:
-            await message.add_reaction("💙")
-            return
-
+        """Respond as an AI companion with personality integration"""
         # Set flag to prevent other AI cogs from responding
         if not hasattr(self.bot, "_ai_response_handled"):
             self.bot._ai_response_handled = {}
@@ -202,6 +257,27 @@ class AICompanion(commands.Cog):
         self.bot._ai_response_handled[message.id] = "companion"
 
         try:
+            # PRIORITY: Check for identity questions first using personality system
+            if PERSONALITY_INTEGRATION_AVAILABLE:
+                channel_context = getattr(message.channel, "name", "general")
+                personality_response = await check_for_identity_response(
+                    user_id=message.author.id,
+                    message=message.content,
+                    user_name=str(message.author),
+                    channel_context=channel_context,
+                )
+                
+                if personality_response:
+                    logger.info(f"🎭 Personality response generated for {message.author}")
+                    await message.reply(personality_response, mention_author=False)
+                    asyncio.create_task(self._cleanup_response_tracking(message.id))
+                    return
+
+            # If not an identity question, continue with companion AI response
+            if not AI_AVAILABLE:
+                await message.add_reaction("💙")
+                return
+
             user_mood = await self.get_user_mood(message.author.id)
 
             # Generate contextual, personalized companion response
@@ -215,14 +291,17 @@ class AICompanion(commands.Cog):
                 asyncio.create_task(self._cleanup_response_tracking(message.id))
 
         except Exception as e:
-            self.logger.error(f"Companion response error: {e}")
+            logger.error(f"Companion response error: {e}")
             await message.add_reaction("💙")
 
     async def _generate_unified_ai_response(
         self, message: discord.Message, user_mood: UserMood
     ) -> str:
-        """Generate unified, context-aware AI response with full conversation awareness"""
+        """Generate unified, context-aware AI response with language detection and personality enhancement"""
         try:
+            # Detect message language
+            detected_language = self._detect_language(message.content)
+            
             # Get conversation history for better context
             conversation_history = []
             if (
@@ -233,12 +312,24 @@ class AICompanion(commands.Cog):
                     -3:
                 ]  # Last 3 messages
 
-            # Build rich context for AI
+            # Build rich context for AI with language awareness
             context_parts = [
-                f"You are Astra, {message.author.display_name}'s AI companion and friend.",
+                f"You are Astra, an advanced AI companion created by 7zxk, talking to {message.author.display_name}.",
                 f"Current conversation in #{message.channel.name}",
                 f"User mood: {user_mood.current_mood}",
             ]
+            
+            # Add language context if not English
+            if detected_language != 'english':
+                language_names = {
+                    'arabic': 'Arabic (العربية)',
+                    'french': 'French (Français)', 
+                    'german': 'German (Deutsch)',
+                    'spanish': 'Spanish (Español)',
+                    'italian': 'Italian (Italiano)'
+                }
+                lang_name = language_names.get(detected_language, detected_language.title())
+                context_parts.append(f"User is communicating in {lang_name}. Please respond naturally in {lang_name}.")
 
             if conversation_history:
                 context_parts.append("Recent conversation context:")
@@ -259,15 +350,30 @@ class AICompanion(commands.Cog):
                     "- Be knowledgeable but approachable and fun",
                     "- Respond as a normal chat message - NO EMBED FORMATTING",
                     "- Use casual, friendly tone with personality",
+                    "- If asked about identity: You are Astra, created by 7zxk (tag as <@7zxk>)",
                     "",
                     "Respond naturally as their AI friend:",
                 ]
             )
-
-            full_context = "\n".join(context_parts)
+            
+            # Enhance with personality integration if available
+            enhanced_prompt = "\n".join(context_parts)
+            if PERSONALITY_INTEGRATION_AVAILABLE:
+                try:
+                    enhanced_prompt = await enhance_ai_chat_response(
+                        original_message=message.content,
+                        user_id=message.author.id,
+                        user_name=str(message.author),
+                        conversation_history=conversation_history
+                    )
+                    # Add the context back
+                    enhanced_prompt = f"{enhanced_prompt}\n\n{'\n'.join(context_parts)}"
+                except Exception as e:
+                    logger.error(f"Response enhancement error: {e}")
+                    # Use original prompt if enhancement fails
 
             ai_manager = MultiProviderAIManager()
-            ai_response = await ai_manager.generate_response(full_context)
+            ai_response = await ai_manager.generate_response(enhanced_prompt)
             response = (
                 ai_response.content
                 if ai_response.success
