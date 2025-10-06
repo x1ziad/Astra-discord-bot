@@ -37,6 +37,7 @@ try:
         enhance_ai_chat_response,
         get_personality_integration,
     )
+
     PERSONALITY_INTEGRATION_AVAILABLE = True
     logger.info("✅ Personality Integration imported successfully")
 except ImportError as e:
@@ -121,29 +122,41 @@ class AICompanion(commands.Cog):
     def _detect_language(self, text: str) -> str:
         """Detect the language of the input text"""
         import re
-        
+
         text_lower = text.lower()
-        
+
         # Language detection patterns
         patterns = {
-            'arabic': re.compile(r'[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]+'),
-            'french': re.compile(r'\b(qui|est|vous|que|comment|où|quand|pourquoi|êtes|bonjour|salut|merci)\b', re.IGNORECASE),
-            'german': re.compile(r'\b(wer|ist|sind|was|wie|wo|wann|warum|hallo|danke|bitte)\b', re.IGNORECASE),
-            'spanish': re.compile(r'\b(quién|es|son|qué|cómo|dónde|cuándo|por qué|hola|gracias|por favor)\b', re.IGNORECASE),
-            'italian': re.compile(r'\b(chi|è|sono|cosa|come|dove|quando|perché|ciao|grazie|prego)\b', re.IGNORECASE)
+            "arabic": re.compile(r"[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]+"),
+            "french": re.compile(
+                r"\b(qui|est|vous|que|comment|où|quand|pourquoi|êtes|bonjour|salut|merci)\b",
+                re.IGNORECASE,
+            ),
+            "german": re.compile(
+                r"\b(wer|ist|sind|was|wie|wo|wann|warum|hallo|danke|bitte)\b",
+                re.IGNORECASE,
+            ),
+            "spanish": re.compile(
+                r"\b(quién|es|son|qué|cómo|dónde|cuándo|por qué|hola|gracias|por favor)\b",
+                re.IGNORECASE,
+            ),
+            "italian": re.compile(
+                r"\b(chi|è|sono|cosa|come|dove|quando|perché|ciao|grazie|prego)\b",
+                re.IGNORECASE,
+            ),
         }
-        
+
         # Check for Arabic script
-        if patterns['arabic'].search(text):
-            return 'arabic'
-        
+        if patterns["arabic"].search(text):
+            return "arabic"
+
         # Check other languages by keywords
         for lang, pattern in patterns.items():
-            if lang != 'arabic' and pattern.search(text_lower):
+            if lang != "arabic" and pattern.search(text_lower):
                 return lang
-        
+
         # Default to English
-        return 'english'
+        return "english"
 
     async def get_user_mood(self, user_id: int) -> UserMood:
         """Get or create user mood tracker"""
@@ -166,25 +179,56 @@ class AICompanion(commands.Cog):
         # PRIORITY: Check for identity questions first (works in DMs and guilds)
         content = message.content.lower()
         identity_patterns = [
-            'who are you', 'what are you', 'who created you', 'who made you',
-            'what can you do', 'what are you capable of', 'astra who are you',
-            'astra what can you do', 'astra what are you capable of',
-            'من أنت', 'ما أنت', 'من صنعك', 'من خلقك', 'ماذا تستطيع أن تفعل',
-            'qui êtes-vous', 'qui es-tu', 'qui vous a créé', 'que pouvez-vous faire',
-            'wer bist du', 'wer sind sie', 'wer hat dich gemacht', 'was kannst du',
-            'quién eres', 'qué eres', 'quién te creó', 'qué puedes hacer'
+            "who are you",
+            "what are you",
+            "who created you",
+            "who made you",
+            "what can you do",
+            "what are you capable of",
+            "astra who are you",
+            "astra what can you do",
+            "astra what are you capable of",
+            "من أنت",
+            "ما أنت",
+            "من صنعك",
+            "من خلقك",
+            "ماذا تستطيع أن تفعل",
+            "qui êtes-vous",
+            "qui es-tu",
+            "qui vous a créé",
+            "que pouvez-vous faire",
+            "wer bist du",
+            "wer sind sie",
+            "wer hat dich gemacht",
+            "was kannst du",
+            "quién eres",
+            "qué eres",
+            "quién te creó",
+            "qué puedes hacer",
         ]
-        
+
         is_identity_question = any(pattern in content for pattern in identity_patterns)
-        
+
         # Check for direct mentions, identity questions, or keywords
         should_respond = (
-            self.bot.user.mentioned_in(message) or 
-            is_identity_question or
-            isinstance(message.channel, discord.DMChannel) or
-            any(word in content for word in ["astra", "help", "lonely", "sad", "stressed", "hello", "hi", "hey"])
+            self.bot.user.mentioned_in(message)
+            or is_identity_question
+            or isinstance(message.channel, discord.DMChannel)
+            or any(
+                word in content
+                for word in [
+                    "astra",
+                    "help",
+                    "lonely",
+                    "sad",
+                    "stressed",
+                    "hello",
+                    "hi",
+                    "hey",
+                ]
+            )
         )
-        
+
         if should_respond:
             await self._respond_as_companion(message)
             return
@@ -266,9 +310,11 @@ class AICompanion(commands.Cog):
                     user_name=str(message.author),
                     channel_context=channel_context,
                 )
-                
+
                 if personality_response:
-                    logger.info(f"🎭 Personality response generated for {message.author}")
+                    logger.info(
+                        f"🎭 Personality response generated for {message.author}"
+                    )
                     await message.reply(personality_response, mention_author=False)
                     asyncio.create_task(self._cleanup_response_tracking(message.id))
                     return
@@ -301,7 +347,7 @@ class AICompanion(commands.Cog):
         try:
             # Detect message language
             detected_language = self._detect_language(message.content)
-            
+
             # Get conversation history for better context
             conversation_history = []
             if (
@@ -318,18 +364,22 @@ class AICompanion(commands.Cog):
                 f"Current conversation in #{message.channel.name}",
                 f"User mood: {user_mood.current_mood}",
             ]
-            
+
             # Add language context if not English
-            if detected_language != 'english':
+            if detected_language != "english":
                 language_names = {
-                    'arabic': 'Arabic (العربية)',
-                    'french': 'French (Français)', 
-                    'german': 'German (Deutsch)',
-                    'spanish': 'Spanish (Español)',
-                    'italian': 'Italian (Italiano)'
+                    "arabic": "Arabic (العربية)",
+                    "french": "French (Français)",
+                    "german": "German (Deutsch)",
+                    "spanish": "Spanish (Español)",
+                    "italian": "Italian (Italiano)",
                 }
-                lang_name = language_names.get(detected_language, detected_language.title())
-                context_parts.append(f"User is communicating in {lang_name}. Please respond naturally in {lang_name}.")
+                lang_name = language_names.get(
+                    detected_language, detected_language.title()
+                )
+                context_parts.append(
+                    f"User is communicating in {lang_name}. Please respond naturally in {lang_name}."
+                )
 
             if conversation_history:
                 context_parts.append("Recent conversation context:")
@@ -355,7 +405,7 @@ class AICompanion(commands.Cog):
                     "Respond naturally as their AI friend:",
                 ]
             )
-            
+
             # Enhance with personality integration if available
             enhanced_prompt = "\n".join(context_parts)
             if PERSONALITY_INTEGRATION_AVAILABLE:
@@ -364,7 +414,7 @@ class AICompanion(commands.Cog):
                         original_message=message.content,
                         user_id=message.author.id,
                         user_name=str(message.author),
-                        conversation_history=conversation_history
+                        conversation_history=conversation_history,
                     )
                     # Add the context back
                     enhanced_prompt = f"{enhanced_prompt}\n\n{'\n'.join(context_parts)}"
