@@ -411,10 +411,13 @@ class AICompanion(commands.Cog):
             if PERSONALITY_INTEGRATION_AVAILABLE:
                 try:
                     enhanced_prompt = await enhance_ai_chat_response(
-                        original_message=message.content,
                         user_id=message.author.id,
-                        user_name=str(message.author),
-                        conversation_history=conversation_history,
+                        original_response=enhanced_prompt,
+                        context={
+                            "original_message": message.content,
+                            "user_name": str(message.author),
+                            "conversation_history": conversation_history,
+                        }
                     )
                     # Add the context back
                     enhanced_prompt = f"{enhanced_prompt}\n\n{'\n'.join(context_parts)}"

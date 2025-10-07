@@ -221,10 +221,13 @@ class AIHandler:
             if PERSONALITY_INTEGRATION_AVAILABLE:
                 try:
                     enhanced_prompt = await enhance_ai_chat_response(
-                        original_message=message.content,
                         user_id=user_id,
-                        user_name=str(message.author),
-                        conversation_history=self.conversation_history.get(user_id, []),
+                        original_response=enhanced_prompt,
+                        context={
+                            "original_message": message.content,
+                            "user_name": str(message.author),
+                            "conversation_history": self.conversation_history.get(user_id, []),
+                        }
                     )
                 except Exception as e:
                     logger.error(f"Response enhancement error: {e}")

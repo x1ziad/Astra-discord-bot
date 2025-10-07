@@ -464,7 +464,9 @@ class SecurityManager(commands.Cog):
             }
 
             for setting, name in feature_map.items():
-                if guild_settings.get(setting, False):
+                # Use default settings as fallback
+                default_value = self.default_settings.get(setting, False)
+                if guild_settings.get(setting, default_value):
                     active_features.append(f"✅ {name}")
                 else:
                     active_features.append(f"❌ {name}")
