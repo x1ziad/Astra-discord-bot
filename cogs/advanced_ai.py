@@ -387,7 +387,7 @@ class AdvancedAICog(commands.Cog):
     @app_commands.describe(message="Your message to the AI")
     @optimize_command(rate_limit_enabled=True, rate_limit_per_minute=30)
     async def chat_command(self, interaction: discord.Interaction, message: str):
-        """Lightning-fast chat with AI assistant - Enhanced with metaphorical humor and self-aware personality"""
+        """Lightning-fast chat with Astra - Enhanced with metaphorical humor and self-aware personality"""
         start_time = time.time()
 
         try:

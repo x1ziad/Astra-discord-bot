@@ -226,8 +226,10 @@ class AIHandler:
                         context={
                             "original_message": message.content,
                             "user_name": str(message.author),
-                            "conversation_history": self.conversation_history.get(user_id, []),
-                        }
+                            "conversation_history": self.conversation_history.get(
+                                user_id, []
+                            ),
+                        },
                     )
                 except Exception as e:
                     logger.error(f"Response enhancement error: {e}")
@@ -290,11 +292,11 @@ class AIHandler:
         # Multi-language fallback responses
         responses = {
             "english": {
-                "greeting": "Hey there! I'm Astra, your AI companion created by <@7zxk>! Ready to help! 👋",
+                "greeting": "Hey there! I'm Astra, created by <@7zxk>! What can I do for you? 👋",
                 "question": "That's a great question! I'm processing... 🤔",
-                "help": "I'm here to help! What do you need assistance with? 🚀",
+                "help": "Astra here! What do you need assistance with? 🚀",
                 "thanks": "You're welcome! Happy to help! ✨",
-                "who": "I'm Astra, an advanced AI companion created by <@7zxk>! I'm here to help with anything you need! 🌟",
+                "who": "I'm Astra, advanced Discord intelligence created by <@7zxk>! I handle everything from conversations to server management! 🌟",
                 "default": "I'm here and listening! What's on your mind? 🌟",
             },
             "arabic": {

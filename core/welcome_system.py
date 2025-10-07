@@ -25,7 +25,7 @@ class WelcomeSystem:
             "enabled": True,
             "channel_name": "welcome",
             "auto_role": None,
-            "welcome_message": "👋 Welcome to **{guild_name}**, {user_mention}!\n\nI'm **Astra**, your AI companion. Feel free to ask me anything or just chat!\n\n🎭 **React below to choose your role and get started!**",
+            "welcome_message": "👋 Welcome to **{guild_name}**, {user_mention}!\n\nI'm **Astra**. Feel free to ask me anything or just chat!\n\n🎭 **React below to choose your role and get started!**",
             "dm_welcome": False,
             "dm_message": "Welcome to {guild_name}! I'm Astra, ready to help you explore and have fun! 🚀",
         }
@@ -151,7 +151,7 @@ class WelcomeSystem:
 
             embed.add_field(
                 name="🤖 **I'm Astra!**",
-                value="Your AI companion ready to help with anything you need!",
+                value="Astra - Ready to help with anything you need!",
                 inline=False,
             )
 

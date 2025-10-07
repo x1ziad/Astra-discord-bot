@@ -1,6 +1,6 @@
 """
-Enhanced Server Management with AI Companion Features
-Sophisticated server management with personalized AI responses and community building
+Enhanced Server Management with Astra Intelligence
+Sophisticated server management with personalized responses and community building
 """
 
 import discord
@@ -45,7 +45,7 @@ class CommunityHealth:
 
 
 class EnhancedServerManagement(commands.GroupCog, name="server"):
-    """Enhanced server management with AI companion features"""
+    """Enhanced server management with Astra intelligence"""
 
     def __init__(self, bot):
         super().__init__()
@@ -58,7 +58,7 @@ class EnhancedServerManagement(commands.GroupCog, name="server"):
         self.member_welcomes = {}  # guild_id -> welcome_settings
         self.activity_tracking = {}  # guild_id -> activity_data
 
-        # AI companion features
+        # Astra intelligence features
         self.companion_settings = {
             "personality_adaptation": True,
             "proactive_assistance": True,
@@ -112,7 +112,7 @@ class EnhancedServerManagement(commands.GroupCog, name="server"):
             # Create interactive setup embed
             embed = discord.Embed(
                 title="🚀 Smart Server Setup Assistant",
-                description=f"Hi {interaction.user.mention}! I'm Astra, your AI companion. Let me help you optimize **{guild.name}** for maximum engagement and community health! 🌟",
+                description=f"Hi {interaction.user.mention}! I'm Astra. Let me optimize **{guild.name}** for maximum engagement and community health! 🌟",
                 color=0x00BFFF,
                 timestamp=datetime.now(timezone.utc),
             )
@@ -831,7 +831,7 @@ Provide 3-4 bullet points with specific optimization actions (under 200 chars to
 
 Key Requirements:
 - Style: {settings.get('style', 'friendly')} and welcoming
-- Introduce yourself as "Astra", the AI companion bot for this server
+- Introduce yourself as "Astra", the intelligent bot managing this server
 - Mention this is member #{member_number} in the community
 - Account age context: {account_age} days old {'(new to Discord!)' if is_new_to_discord else '(experienced user)'}
 - Include brief server introduction highlighting community aspects
@@ -864,8 +864,8 @@ Example tone: Friendly, welcoming, helpful, and enthusiastic about the community
         member_num = member.guild.member_count
         
         style_messages = {
-            'friendly': f"🎉 Welcome to **{member.guild.name}**, {member.mention}! I'm **Astra**, your AI companion here to help! You're our #{member_num} member - so excited to have you! Feel free to explore and ask me anything! 🚀✨",
-            'professional': f"Welcome to **{member.guild.name}**, {member.mention}. I'm **Astra**, the AI assistant for this community. As member #{member_num}, we're pleased to have you join us. Please let me know if you need any assistance getting started.",
+            'friendly': f"🎉 Welcome to **{member.guild.name}**, {member.mention}! I'm **Astra**! You're our #{member_num} member - so excited to have you! Feel free to explore and ask me anything! 🚀✨",
+            'professional': f"Welcome to **{member.guild.name}**, {member.mention}. I'm **Astra**, managing this community. As member #{member_num}, we're pleased to have you join us. Let me know if you need assistance getting started.",
             'fun': f"🎊 WOOHOO! {member.mention} just dropped into **{member.guild.name}**! 🎉 I'm **Astra**, your fun AI buddy! You're lucky #{member_num} - let's make this community even more awesome together! Ready for some fun? 🚀🎮✨",
             'enthusiastic': f"🌟 AMAZING! Welcome {member.mention} to the incredible **{member.guild.name}** community! I'm **Astra**, your enthusiastic AI companion! As member #{member_num}, you're part of something special! Can't wait to chat and help you explore everything here! �🚀"
         }
@@ -889,7 +889,7 @@ Example tone: Friendly, welcoming, helpful, and enthusiastic about the community
                 return  # No suitable channel found
             
             # Generate simple but effective welcome
-            welcome_message = f"🎉 Welcome to **{member.guild.name}**, {member.mention}! I'm **Astra**, your AI companion here to help you explore and enjoy our community! Feel free to ask me anything! 🚀✨"
+            welcome_message = f"🎉 Welcome to **{member.guild.name}**, {member.mention}! I'm **Astra**! Ready to help you explore and enjoy our community! Feel free to ask me anything! 🚀✨"
             
             embed = discord.Embed(
                 title="🌟 New Member Alert!",
@@ -910,7 +910,7 @@ Example tone: Friendly, welcoming, helpful, and enthusiastic about the community
             
             embed.add_field(
                 name="🤖 Meet Astra",
-                value="Your AI companion ready to help!",
+                value="Astra - Ready to help!",
                 inline=True,
             )
             

@@ -277,7 +277,7 @@ class LightningPerformanceOptimizer:
                 "Assistance protocol engaged! Let's solve this puzzle 🧩",
             ],
             "thanks": [
-                "You're welcome! Happy to be your friendly AI companion 🤖",
+                "You're welcome! Astra's always happy to help 🤖",
                 "Anytime! Spreading good vibes across the cosmos ✨",
                 "My pleasure! It's like having superpowers for helpfulness ⚡",
             ],

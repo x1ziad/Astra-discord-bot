@@ -1,6 +1,6 @@
 """
-AI Companion Features - Sophisticated Buddy System
-Provides friendly, intelligent companionship and proactive assistance
+Astra - Advanced Discord Intelligence
+Provides intelligent, personalized interaction and proactive assistance
 """
 
 import discord
@@ -58,7 +58,7 @@ class UserMood:
 
 
 class CompanionPersonality:
-    """AI companion personality and behavior traits"""
+    """Astra's personality and behavior traits"""
 
     def __init__(self):
         self.traits = {
@@ -70,16 +70,16 @@ class CompanionPersonality:
             "enthusiasm": 0.8,
         }
         self.interaction_styles = {
-            "supportive": "I'm here to help and support you! 💙",
+            "supportive": "Astra's got your back! Always ready to support you! 💙",
             "playful": "Let's have some fun together! 🎉",
             "mentor": "I'm here to guide and teach! 🌟",
-            "friend": "Just your friendly AI buddy! 😊",
+            "friend": "It's Astra - your digital companion and friend! 😊",
         }
         self.current_style = "friend"
 
 
 class AICompanion(commands.Cog):
-    """AI Companion - Your sophisticated Discord buddy"""
+    """Astra - Your sophisticated Discord intelligence"""
 
     def __init__(self, bot):
         self.bot = bot
@@ -288,7 +288,7 @@ class AICompanion(commands.Cog):
             user_mood.stress_indicators += 1
 
     async def _respond_as_companion(self, message: discord.Message):
-        """Respond as an AI companion with personality integration"""
+        """Respond as Astra with full personality integration"""
         # Set flag to prevent other AI cogs from responding
         if not hasattr(self.bot, "_ai_response_handled"):
             self.bot._ai_response_handled = {}
@@ -360,7 +360,7 @@ class AICompanion(commands.Cog):
 
             # Build rich context for AI with language awareness
             context_parts = [
-                f"You are Astra, an advanced AI companion created by 7zxk, talking to {message.author.display_name}.",
+                f"You are Astra, created by 7zxk, talking to {message.author.display_name}.",
                 f"Current conversation in #{message.channel.name}",
                 f"User mood: {user_mood.current_mood}",
             ]
@@ -402,7 +402,7 @@ class AICompanion(commands.Cog):
                     "- Use casual, friendly tone with personality",
                     "- If asked about identity: You are Astra, created by 7zxk (tag as <@7zxk>)",
                     "",
-                    "Respond naturally as their AI friend:",
+                    "Respond as Astra, their intelligent companion:",
                 ]
             )
 
@@ -417,7 +417,7 @@ class AICompanion(commands.Cog):
                             "original_message": message.content,
                             "user_name": str(message.author),
                             "conversation_history": conversation_history,
-                        }
+                        },
                     )
                     # Add the context back
                     enhanced_prompt = f"{enhanced_prompt}\n\n{'\n'.join(context_parts)}"
@@ -467,10 +467,10 @@ class AICompanion(commands.Cog):
 
     @app_commands.command(
         name="checkin",
-        description="💙 Personal wellness check-in with your AI companion",
+        description="💙 Personal wellness check-in with Astra",
     )
     async def wellness_checkin(self, interaction: discord.Interaction):
-        """Personal wellness check-in with AI companion"""
+        """Personal wellness check-in with Astra"""
         await interaction.response.defer(ephemeral=True)
 
         try:
@@ -518,7 +518,7 @@ class AICompanion(commands.Cog):
                         "You're doing great, and I'm here if you need support! 💙",
                     ),
                     "",
-                    "_Your AI companion is always here for you!_ 🤗",
+                    "_Astra is always here for you!_ 🤗",
                 ]
             )
 
@@ -687,7 +687,7 @@ JSON:
     )
     @app_commands.describe(achievement="What are you celebrating?")
     async def celebrate(self, interaction: discord.Interaction, achievement: str):
-        """Celebrate user achievements with AI companion"""
+        """Celebrate user achievements with Astra"""
         await interaction.response.defer()
 
         try:
@@ -715,7 +715,7 @@ JSON:
                     ["", "✨ **Keep Going!**", celebration["encouragement"]]
                 )
 
-            celebration_parts.extend(["", "_So proud of you! 💙 - Your AI Companion_"])
+            celebration_parts.extend(["", "_So proud of you! 💙 - Astra_"])
 
             celebration_message = "\n".join(celebration_parts)
             await interaction.followup.send(celebration_message)
