@@ -14,10 +14,10 @@ from typing import Optional, Dict, Any, List
 from ai.universal_ai_client import UniversalAIClient
 from ai.universal_context_manager import UniversalContextManager
 from core.unified_security_system import UnifiedSecuritySystem
-from logger.enhanced_logger import EnhancedLogger
+from logger.enhanced_logger import setup_enhanced_logger
 from utils.response_enhancer import ResponseEnhancer
 from utils.astra_personality import get_personality_core, AstraMode
-from ui.embeds import create_embed
+from ui.embeds import EmbedBuilder
 
 import discord
 from discord import app_commands
@@ -77,6 +77,12 @@ class AICompanion(commands.Cog):
         self.response_enhancer = ResponseEnhancer()  # Enhanced response generation
 
         # Personality system integrated via get_personality_core
+
+        # Initialize AI client
+        if AI_AVAILABLE:
+            self.ai_client = UniversalAIClient()
+        else:
+            self.ai_client = None
 
         # Activity tracking
         self.last_interactions = {}  # user_id -> timestamp
@@ -153,6 +159,8 @@ class AICompanion(commands.Cog):
         """Monitor messages for companion opportunities with personality integration"""
         if message.author.bot:
             return
+
+
 
         # Update interaction tracking
         self.last_interactions[message.author.id] = time.time()
@@ -286,7 +294,7 @@ class AICompanion(commands.Cog):
 
         try:
             # Generate AI response using the new personality system
-            if not AI_AVAILABLE:
+            if not AI_AVAILABLE or not self.ai_client:
                 await message.add_reaction("💙")
                 return
 
