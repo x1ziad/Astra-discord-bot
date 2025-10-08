@@ -414,7 +414,15 @@ class SecurityManager(commands.Cog):
 
             # Get security statistics
             stats = self.security_system.get_security_stats()
-            guild_settings = self.get_guild_settings(interaction.guild.id)
+            
+            # Get guild settings with enhanced error handling
+            try:
+                guild_settings = self.get_guild_settings(interaction.guild.id)
+                if not guild_settings:
+                    guild_settings = getattr(self, 'default_settings', {}).copy()
+            except Exception as settings_error:
+                self.logger.warning(f"Error getting guild settings: {settings_error}")
+                guild_settings = getattr(self, 'default_settings', {}).copy()
 
             embed = discord.Embed(
                 title="🛡️ Security System Status",
@@ -452,6 +460,19 @@ class SecurityManager(commands.Cog):
 
             # Active features status
             active_features = []
+            
+            # Ensure default settings exist
+            default_settings = getattr(self, 'default_settings', {
+                "security_enabled": True,
+                "spam_detection": True,
+                "toxicity_detection": True,
+                "threat_intelligence": True,
+                "behavioral_analysis": True,
+                "auto_timeout_enabled": True,
+                "trust_system_enabled": True,
+                "auto_response_enabled": True,
+            })
+            
             feature_map = {
                 "security_enabled": "🛡️ Security System",
                 "spam_detection": "📢 Spam Detection",
@@ -464,12 +485,18 @@ class SecurityManager(commands.Cog):
             }
 
             for setting, name in feature_map.items():
-                # Use default settings as fallback
-                default_value = self.default_settings.get(setting, False)
-                if guild_settings.get(setting, default_value):
-                    active_features.append(f"✅ {name}")
-                else:
-                    active_features.append(f"❌ {name}")
+                # Enhanced fallback system for missing settings
+                try:
+                    default_value = default_settings.get(setting, False)
+                    setting_value = guild_settings.get(setting, default_value) if guild_settings else default_value
+                    
+                    if setting_value:
+                        active_features.append(f"✅ {name}")
+                    else:
+                        active_features.append(f"❌ {name}")
+                except Exception as setting_error:
+                    self.logger.warning(f"Error processing setting {setting}: {setting_error}")
+                    active_features.append(f"⚠️ {name} (Error)")
 
             embed.add_field(
                 name="🔧 Active Features",
