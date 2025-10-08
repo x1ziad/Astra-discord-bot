@@ -14,18 +14,8 @@ from discord.ext import commands
 logger = logging.getLogger("astra.core.ai")
 
 # Import personality integration
-try:
-    from ai.personality_integration import (
-        check_for_identity_response,
-        enhance_ai_chat_response,
-        get_personality_integration,
-    )
-
-    PERSONALITY_INTEGRATION_AVAILABLE = True
-    logger.info("✅ Personality Integration imported successfully")
-except ImportError as e:
-    logger.warning(f"❌ Personality Integration not available: {e}")
-    PERSONALITY_INTEGRATION_AVAILABLE = False
+# New personality system imported directly
+from utils.astra_personality import get_personality_core
 
 # Language detection patterns
 LANGUAGE_PATTERNS = {
@@ -184,25 +174,11 @@ class AIHandler:
         return False
 
     async def _generate_response(self, message: discord.Message) -> str:
-        """Generate AI response using personality integration and language detection"""
-        # PRIORITY: Check for identity questions first using personality system
-        if PERSONALITY_INTEGRATION_AVAILABLE:
-            try:
-                channel_context = getattr(message.channel, "name", "general")
-                personality_response = await check_for_identity_response(
-                    user_id=message.author.id,
-                    message=message.content,
-                    user_name=str(message.author),
-                    channel_context=channel_context,
-                )
-
-                if personality_response:
-                    logger.info(
-                        f"🎭 Personality response generated for identity question"
-                    )
-                    return personality_response
-            except Exception as e:
-                logger.error(f"Personality integration error: {e}")
+        """Generate AI response using the new personality system"""
+        # Use the new personality system
+        personality_core = get_personality_core(
+            message.guild.id if message.guild else None
+        )
 
         # Detect language for multilingual support
         detected_language = detect_language(message.content)
@@ -216,23 +192,15 @@ class AIHandler:
             if user_id not in self.conversation_history:
                 self.conversation_history[user_id] = []
 
-            # Enhance prompt with personality context and language awareness
+            # Enhance prompt with personality context
+            context = {
+                "message": message.content,
+                "user_id": str(message.author.id),
+                "username": message.author.display_name,
+                "conversation_history": self.conversation_history.get(user_id, []),
+            }
+            personality_style = personality_core.generate_response_style(context)
             enhanced_prompt = message.content
-            if PERSONALITY_INTEGRATION_AVAILABLE:
-                try:
-                    enhanced_prompt = await enhance_ai_chat_response(
-                        user_id=user_id,
-                        original_response=enhanced_prompt,
-                        context={
-                            "original_message": message.content,
-                            "user_name": str(message.author),
-                            "conversation_history": self.conversation_history.get(
-                                user_id, []
-                            ),
-                        },
-                    )
-                except Exception as e:
-                    logger.error(f"Response enhancement error: {e}")
 
             # Add language context to the prompt
             if detected_language != "english":

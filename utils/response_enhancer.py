@@ -1,159 +1,191 @@
 #!/usr/bin/env python3
 """
 Enhanced Response Generator - More Concise and Contextual
-Provides intelligent response filtering to avoid unnecessary creator mentions
+Provides intelligent response enhancement and creator mention detection
 """
 
 import re
-from typing import Dict, List, Optional
+import logging
+from typing import Dict, List, Any, Optional
+from datetime import datetime, timezone
+
+logger = logging.getLogger("astra.response_enhancer")
 
 
 class ResponseEnhancer:
-    """Enhances AI responses to be more concise and contextually appropriate"""
-    
+    """Enhances AI responses with contextual intelligence and creator mention logic"""
+
     def __init__(self):
-        # Patterns that suggest user wants to know about origins/creation
-        self.creator_inquiry_patterns = [
-            r"who.*made.*you",
-            r"who.*created.*you", 
-            r"who.*built.*you",
-            r"who.*your.*creator",
-            r"who.*developed.*you",
-            r"tell.*about.*creator",
-            r"origins?",
-            r"where.*come.*from",
-            r"who.*7zxk",
-            r"who.*owner",
+        self.creator_patterns = [
+            r"\b(who\s+(made|created|built|designed|developed)\s+you)\b",
+            r"\b(your\s+(creator|maker|developer|author|owner))\b",
+            r"\b(who\s+is\s+your\s+(creator|maker|developer))\b",
+            r"\b(who\s+do\s+you\s+belong\s+to)\b",
+            r"\b(who\s+owns\s+you)\b",
+            r"\b(who\s+(programmed|coded)\s+you)\b",
         ]
-        
-        # Patterns that suggest casual conversation (avoid creator mentions)
-        self.casual_patterns = [
-            r"how.*you.*doing",
-            r"what.*up",
-            r"hey.*there",
-            r"hello",
-            r"hi\b",
-            r"sup\b",
-            r"wassup",
-            r"yo\b",
-            r"good.*morning",
-            r"good.*afternoon", 
-            r"good.*evening",
+
+        # Compile patterns for efficiency
+        self.compiled_patterns = [
+            re.compile(pattern, re.IGNORECASE) for pattern in self.creator_patterns
         ]
-        
-        # Response modifiers for different contexts
-        self.context_modifiers = {
-            "greeting": ["Hey!", "What's up?", "Yo!", "Hi there!", "Howdy!"],
-            "question": ["Hmm...", "Interesting!", "Let me think...", "Good question!"],
-            "thanks": ["Anytime!", "No problem!", "You got it!", "Happy to help!"],
-            "casual_chat": ["Right?", "Totally!", "I feel you!", "For sure!", "Exactly!"],
-        }
-    
-    def should_mention_creator(self, message: str) -> bool:
-        """Determine if the response should mention the creator"""
-        message_lower = message.lower()
-        
-        # Check if user is asking about origins/creation
-        for pattern in self.creator_inquiry_patterns:
-            if re.search(pattern, message_lower):
+
+    def should_mention_creator(
+        self, message_content: str, context: Dict[str, Any]
+    ) -> bool:
+        """Determine if creator should be mentioned based on message content and context"""
+
+        # Check for direct creator-related questions
+        for pattern in self.compiled_patterns:
+            if pattern.search(message_content):
                 return True
-        
-        # Check if it's casual conversation (avoid creator mentions)
-        for pattern in self.casual_patterns:
-            if re.search(pattern, message_lower):
-                return False
-                
-        # Default: don't mention creator unless specifically relevant
-        return False
-    
-    def get_contextual_response_style(self, message: str, conversation_history: List[str] = None) -> str:
-        """Determine the appropriate response style based on context"""
-        message_lower = message.lower()
-        
-        # Check conversation flow
-        if conversation_history:
-            recent_context = " ".join(conversation_history[-3:]).lower()
-            if "lol" in recent_context or "😂" in recent_context or "haha" in recent_context:
-                return "playful"
-            if any(word in recent_context for word in ["help", "problem", "issue", "error"]):
-                return "helpful"
-        
-        # Check message tone
-        if any(word in message_lower for word in ["lol", "haha", "😂", "funny", "joke"]):
-            return "playful"
-        elif any(word in message_lower for word in ["help", "how", "what", "why", "when"]):
-            return "helpful"
-        elif any(word in message_lower for word in ["thanks", "thank you", "awesome", "great"]):
-            return "appreciative"
-        else:
-            return "conversational"
-    
-    def enhance_response_guidelines(self, message: str, conversation_history: List[str] = None) -> Dict[str, str]:
-        """Generate enhanced response guidelines based on context"""
-        
-        style = self.get_contextual_response_style(message, conversation_history)
-        mention_creator = self.should_mention_creator(message)
-        
-        guidelines = {
-            "style": style,
-            "mention_creator": mention_creator,
-            "max_words": 80 if style == "conversational" else 120,
-            "tone": self._get_tone_guidance(style),
-            "specific_instructions": self._get_specific_instructions(style, mention_creator)
-        }
-        
-        return guidelines
-    
-    def _get_tone_guidance(self, style: str) -> str:
-        """Get tone guidance for different styles"""
-        tone_map = {
-            "playful": "Be witty and fun, match their energy",
-            "helpful": "Be direct and solution-focused", 
-            "appreciative": "Be warm and genuine",
-            "conversational": "Be natural and engaging",
-        }
-        return tone_map.get(style, "Be authentic and contextual")
-    
-    def _get_specific_instructions(self, style: str, mention_creator: bool) -> List[str]:
-        """Get specific instructions based on context"""
-        base_instructions = [
-            "Keep it concise and natural",
-            "Match the user's energy level",
-            "Use contextual understanding, not generic responses",
+
+        # Check for origin/source questions
+        origin_keywords = [
+            "origin",
+            "source",
+            "where did you come from",
+            "how were you made",
         ]
-        
-        if not mention_creator:
-            base_instructions.append("Don't mention your creator unless specifically asked about origins")
-        
-        style_specific = {
-            "playful": ["Use humor that fits the moment", "Be spontaneous and witty"],
-            "helpful": ["Be direct and actionable", "Focus on solving their need"],
-            "appreciative": ["Show genuine warmth", "Acknowledge their sentiment"],
-            "conversational": ["Flow naturally with the conversation", "Show interest in their thoughts"],
+        message_lower = message_content.lower()
+
+        if any(keyword in message_lower for keyword in origin_keywords):
+            return True
+
+        # Context-based decisions
+        conversation_history = context.get("conversation_history", [])
+
+        # If creator was mentioned in recent context, continue that thread
+        recent_messages = " ".join(conversation_history[-3:]).lower()
+        if "creator" in recent_messages or "made you" in recent_messages:
+            return True
+
+        return False
+
+    def get_contextual_response_style(self, context: Dict[str, Any]) -> Dict[str, str]:
+        """Determine appropriate response style based on context"""
+
+        style = {"length": "medium", "tone": "balanced", "formality": "casual"}
+
+        # Analyze context for style cues
+        message = context.get("message_content", "").lower()
+        user_mood = context.get("user_mood", "neutral")
+        channel_name = context.get("channel", "")
+
+        # Length adjustments
+        if "?" in message or any(
+            word in message for word in ["how", "what", "why", "explain"]
+        ):
+            style["length"] = "long"  # Questions need thorough answers
+        elif any(word in message for word in ["thanks", "ty", "ok", "cool"]):
+            style["length"] = "short"  # Simple acknowledgments
+
+        # Tone adjustments
+        if user_mood in ["stressed", "sad", "angry"]:
+            style["tone"] = "supportive"
+        elif user_mood in ["excited", "happy"]:
+            style["tone"] = "enthusiastic"
+        elif "serious" in message or "important" in message:
+            style["tone"] = "professional"
+
+        # Formality adjustments
+        if "admin" in channel_name.lower() or "mod" in channel_name.lower():
+            style["formality"] = "professional"
+        elif "casual" in channel_name.lower() or "chat" in channel_name.lower():
+            style["formality"] = "casual"
+
+        return style
+
+    def enhance_response_guidelines(
+        self,
+        message_content: str,
+        context: Dict[str, Any],
+        style_preferences: Dict[str, Any] = None,
+    ) -> Dict[str, Any]:
+        """Generate enhanced response guidelines based on message content and context"""
+
+        guidelines = {
+            "max_words": 120,
+            "tone": "balanced",
+            "style": "conversational",
+            "specific_instructions": [],
+            "mention_creator": False,
         }
-        
-        return base_instructions + style_specific.get(style, [])
 
+        # Apply style preferences if provided (from personality system)
+        if style_preferences:
+            guidelines.update(style_preferences)
 
-# Test the enhancement system
-if __name__ == "__main__":
-    enhancer = ResponseEnhancer()
-    
-    test_messages = [
-        "Hey what's up?",
-        "Who created you?", 
-        "Can you help me with something?",
-        "Haha that's funny 😂",
-        "Thanks for the help!",
-    ]
-    
-    print("🧪 TESTING RESPONSE ENHANCEMENT")
-    print("=" * 40)
-    
-    for msg in test_messages:
-        guidelines = enhancer.enhance_response_guidelines(msg)
-        print(f"\nMessage: '{msg}'")
-        print(f"Style: {guidelines['style']}")
-        print(f"Mention creator: {guidelines['mention_creator']}")
-        print(f"Max words: {guidelines['max_words']}")
-        print(f"Tone: {guidelines['tone']}")
+        # Context-aware adjustments
+        message_lower = message_content.lower()
+
+        # Adjust for question vs statement
+        if any(
+            word in message_lower
+            for word in ["?", "how", "what", "why", "when", "where"]
+        ):
+            guidelines["style"] = "informative"
+            guidelines["specific_instructions"].append(
+                "Provide helpful and accurate information"
+            )
+            # Don't override personality-set word limits unless necessary
+            if style_preferences is None or "max_words" not in style_preferences:
+                guidelines["max_words"] = 150
+
+        # Adjust for emotional content
+        if any(
+            word in message_lower
+            for word in ["sad", "upset", "worried", "stressed", "angry"]
+        ):
+            guidelines["tone"] = "supportive"
+            guidelines["specific_instructions"].append(
+                "Be empathetic and supportive - increase warmth"
+            )
+            # Shorter responses for emotional support
+            if style_preferences is None or "max_words" not in style_preferences:
+                guidelines["max_words"] = 100
+
+        # Adjust for celebration/positive content
+        if any(
+            word in message_lower
+            for word in ["awesome", "great", "amazing", "thanks", "good job"]
+        ):
+            guidelines["tone"] = "enthusiastic"
+            guidelines["specific_instructions"].append(
+                "Match the positive energy and celebrate with them"
+            )
+            if style_preferences is None or "max_words" not in style_preferences:
+                guidelines["max_words"] = 80
+
+        # Adjust for technical content
+        if any(
+            word in message_lower
+            for word in ["error", "bug", "fix", "problem", "issue", "code"]
+        ):
+            guidelines["style"] = "technical"
+            guidelines["specific_instructions"].append(
+                "Be precise, solution-oriented, and technical"
+            )
+            # Technical responses can be longer for explanations
+            if style_preferences is None or "max_words" not in style_preferences:
+                guidelines["max_words"] = 200
+
+        # Adjust for commands or direct requests
+        if message_lower.startswith("astra") or "/astra" in message_lower:
+            guidelines["specific_instructions"].append(
+                "This is a direct command - be responsive and action-oriented"
+            )
+
+        # Check for creator mention context
+        if self.should_mention_creator(message_content, context):
+            guidelines["mention_creator"] = True
+
+        # Add personality-aware instructions
+        guidelines["specific_instructions"].append(
+            "Respond authentically as Astra with your current personality settings"
+        )
+        guidelines["specific_instructions"].append(
+            "You're the crew's AI companion - be confident and capable"
+        )
+
+        return guidelines

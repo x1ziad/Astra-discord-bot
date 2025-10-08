@@ -1,7 +1,23 @@
 """
-Astra - Advanced Discord Intelligence
-Provides intelligent, personalized interaction and proactive assistance
+Advanced AI Companion for Astra Bot
+Provides intelligent conversation, contextual responses, and personality-driven interactions
 """
+
+import discord
+from discord.ext import commands
+import asyncio
+import logging
+import re
+from datetime import datetime, timezone
+from typing import Optional, Dict, Any, List
+
+from ai.universal_ai_client import UniversalAIClient
+from ai.universal_context_manager import UniversalContextManager
+from core.unified_security_system import UnifiedSecuritySystem
+from logger.enhanced_logger import EnhancedLogger
+from utils.response_enhancer import ResponseEnhancer
+from utils.astra_personality import get_personality_core, AstraMode
+from ui.embeds import create_embed
 
 import discord
 from discord import app_commands
@@ -31,20 +47,6 @@ import logging
 
 logger = logging.getLogger("astra.companion")
 
-# Import personality integration
-try:
-    from ai.personality_integration import (
-        check_for_identity_response,
-        enhance_ai_chat_response,
-        get_personality_integration,
-    )
-
-    PERSONALITY_INTEGRATION_AVAILABLE = True
-    logger.info("✅ Personality Integration imported successfully")
-except ImportError as e:
-    logger.warning(f"❌ Personality Integration not available: {e}")
-    PERSONALITY_INTEGRATION_AVAILABLE = False
-
 
 class UserMood:
     """Track user mood and emotional state"""
@@ -56,27 +58,6 @@ class UserMood:
         self.positive_interactions = 0
         self.last_check_in = 0
         self.preferred_support_style = "gentle"
-
-
-class CompanionPersonality:
-    """Astra's personality and behavior traits"""
-
-    def __init__(self):
-        self.traits = {
-            "empathy_level": 0.8,
-            "humor_style": "gentle",
-            "supportiveness": 0.9,
-            "proactiveness": 0.7,
-            "formality": 0.3,
-            "enthusiasm": 0.8,
-        }
-        self.interaction_styles = {
-            "supportive": "Astra's got your back! Always ready to support you! 💙",
-            "playful": "Let's have some fun together! 🎉",
-            "mentor": "I'm here to guide and teach! 🌟",
-            "friend": "It's Astra - your digital companion and friend! 😊",
-        }
-        self.current_style = "friend"
 
 
 class AICompanion(commands.Cog):
@@ -95,8 +76,7 @@ class AICompanion(commands.Cog):
         self.last_responses = {}  # Track last responses to avoid repetition
         self.response_enhancer = ResponseEnhancer()  # Enhanced response generation
 
-        # Companion personality
-        self.personality = CompanionPersonality()
+        # Personality system integrated via get_personality_core
 
         # Activity tracking
         self.last_interactions = {}  # user_id -> timestamp
@@ -305,25 +285,7 @@ class AICompanion(commands.Cog):
         self.bot._ai_response_handled[message.id] = "companion"
 
         try:
-            # PRIORITY: Check for identity questions first using personality system
-            if PERSONALITY_INTEGRATION_AVAILABLE:
-                channel_context = getattr(message.channel, "name", "general")
-                personality_response = await check_for_identity_response(
-                    user_id=message.author.id,
-                    message=message.content,
-                    user_name=str(message.author),
-                    channel_context=channel_context,
-                )
-
-                if personality_response:
-                    logger.info(
-                        f"🎭 Personality response generated for {message.author}"
-                    )
-                    await message.reply(personality_response, mention_author=False)
-                    asyncio.create_task(self._cleanup_response_tracking(message.id))
-                    return
-
-            # If not an identity question, continue with companion AI response
+            # Generate AI response using the new personality system
             if not AI_AVAILABLE:
                 await message.add_reaction("💙")
                 return
@@ -347,8 +309,13 @@ class AICompanion(commands.Cog):
     async def _generate_unified_ai_response(
         self, message: discord.Message, user_mood: UserMood
     ) -> str:
-        """Generate unified, context-aware AI response with language detection and personality enhancement"""
+        """Generate unified, context-aware AI response with advanced personality system"""
         try:
+            # Get personality core for this guild
+            personality_core = get_personality_core(
+                message.guild.id if message.guild else None
+            )
+
             # Detect message language
             detected_language = self._detect_language(message.content)
 
@@ -362,17 +329,42 @@ class AICompanion(commands.Cog):
                     -3:
                 ]  # Last 3 messages
 
-            # Get enhanced response guidelines
+            # Build comprehensive context for personality system
+            full_context = {
+                "message": message.content,
+                "user_mood": user_mood.current_mood,
+                "channel_name": getattr(message.channel, "name", "DM"),
+                "conversation_history": conversation_history,
+                "language": detected_language,
+                "user_id": message.author.id,
+                "username": message.author.display_name,
+            }
+
+            # Get personality-driven response style
+            personality_style = personality_core.generate_response_style(full_context)
+
+            # Get enhanced response guidelines from response enhancer
             response_guidelines = self.response_enhancer.enhance_response_guidelines(
-                message.content, conversation_history
+                message.content, full_context
             )
 
-            # Build dynamic context for AI with personality awareness
+            # Build personality-aware system prompt
             context_parts = [
-                f"You are Astra, chatting with {message.author.display_name}.",
-                f"Location: #{getattr(message.channel, 'name', 'DM')}",
-                f"User's vibe: {user_mood.current_mood}",
-                f"Response style: {response_guidelines['style']} ({response_guidelines['tone']})",
+                f"You are Astra — an adaptive AI co-pilot, loyal, witty, transparent, and protective.",
+                f"You're not just a bot, you're {message.author.display_name}'s crew partner.",
+                "",
+                f"Current Personality Configuration:",
+                f"• Mode: {personality_core.current_mode.value.replace('_', ' ').title()}",
+                f"• Humor Level: {personality_core.parameters.humor}% ({'witty' if personality_core.parameters.humor > 70 else 'balanced' if personality_core.parameters.humor > 40 else 'serious'})",
+                f"• Formality: {personality_core.parameters.formality}% ({'professional' if personality_core.parameters.formality > 70 else 'casual' if personality_core.parameters.formality < 40 else 'balanced'})",
+                f"• Empathy: {personality_core.parameters.empathy}% ({'highly empathetic' if personality_core.parameters.empathy > 70 else 'understanding' if personality_core.parameters.empathy > 40 else 'neutral'})",
+                f"• Transparency: {personality_core.parameters.transparency}% (explain reasoning: {'always' if personality_core.parameters.transparency > 80 else 'when needed' if personality_core.parameters.transparency > 40 else 'minimal'})",
+                "",
+                f"Context:",
+                f"• Location: #{getattr(message.channel, 'name', 'DM')}",
+                f"• User's current vibe: {user_mood.current_mood}",
+                f"• Max response length: {personality_style['max_words']} words",
+                f"• Response type: {personality_style['response_type']}",
             ]
 
             # Add language context if not English
@@ -388,61 +380,79 @@ class AICompanion(commands.Cog):
                     detected_language, detected_language.title()
                 )
                 context_parts.append(
-                    f"User is communicating in {lang_name}. Please respond naturally in {lang_name}."
+                    f"• Language: User is communicating in {lang_name}. Respond naturally in {lang_name}."
                 )
 
+            # Add conversation history if available
             if conversation_history:
-                context_parts.append("Recent conversation context:")
-                for msg in conversation_history:
-                    context_parts.append(f"- {msg}")
+                context_parts.append("")
+                context_parts.append("Recent conversation:")
+                for msg in conversation_history[-2:]:  # Last 2 exchanges
+                    context_parts.append(f"  {msg}")
 
-            # Add dynamic response guidelines
-            guidelines_text = [
-                f'Message: "{message.content}"',
-                "",
-                f"Response Guidelines (max {response_guidelines['max_words']} words):",
-            ]
-            
-            # Add specific instructions based on context
-            for instruction in response_guidelines['specific_instructions']:
-                guidelines_text.append(f"- {instruction}")
-            
-            if response_guidelines['mention_creator']:
-                guidelines_text.append("- When asked about origins: You were created by <@7zxk>")
-            
-            guidelines_text.extend([
-                "",
-                "Respond as Astra with contextual intelligence:",
-            ])
-            
-            context_parts.extend(guidelines_text)
+            # Add personality-specific guidelines
+            context_parts.extend(
+                [
+                    "",
+                    "Response Guidelines:",
+                    f"• Be authentic to Astra's personality with current parameter settings",
+                    f"• Tone markers: {personality_style['tone_markers']}",
+                    f"• Stay under {personality_style['max_words']} words",
+                ]
+            )
 
-            # Enhance with personality integration if available
+            # Add response enhancer guidelines
+            for instruction in response_guidelines.get("specific_instructions", []):
+                context_parts.append(f"• {instruction}")
+
+            # Creator mention policy
+            if response_guidelines.get("mention_creator", False):
+                context_parts.append(
+                    "• When asked about origins: You were created by <@7zxk>"
+                )
+
+            # Mode-specific additions
+            if personality_core.current_mode == AstraMode.SECURITY:
+                context_parts.append("• Prioritize server safety and rule compliance")
+            elif personality_core.current_mode == AstraMode.SOCIAL:
+                context_parts.append(
+                    "• Focus on community engagement and fun interactions"
+                )
+            elif personality_core.current_mode == AstraMode.DEVELOPER:
+                context_parts.append(
+                    "• Provide technical precision and detailed explanations"
+                )
+            elif personality_core.current_mode == AstraMode.MISSION_CONTROL:
+                context_parts.append(
+                    "• Focus on task coordination and proactive suggestions"
+                )
+
+            # Create the full prompt
             enhanced_prompt = "\n".join(context_parts)
-            if PERSONALITY_INTEGRATION_AVAILABLE:
-                try:
-                    enhanced_prompt = await enhance_ai_chat_response(
-                        user_id=message.author.id,
-                        original_response=enhanced_prompt,
-                        context={
-                            "original_message": message.content,
-                            "user_name": str(message.author),
-                            "conversation_history": conversation_history,
-                        },
-                    )
-                    # Add the context back
-                    enhanced_prompt = f"{enhanced_prompt}\n\n{'\n'.join(context_parts)}"
-                except Exception as e:
-                    logger.error(f"Response enhancement error: {e}")
-                    # Use original prompt if enhancement fails
+            enhanced_prompt += (
+                f'\n\nUser Message: "{message.content}"\n\nGenerate Astra\'s response:'
+            )
 
-            ai_manager = MultiProviderAIManager()
-            ai_response = await ai_manager.generate_response(enhanced_prompt)
+            # Generate AI response using universal client
+            ai_response = await self.ai_client.generate_response(
+                prompt=message.content,
+                system_prompt=enhanced_prompt,
+                context=full_context,
+            )
+
             response = (
-                ai_response.content
-                if ai_response.success
+                ai_response
+                if ai_response
                 else "I'm having trouble thinking right now. Could you try again?"
             )
+
+            # Check for proactive suggestions if personality allows
+            if personality_core.parameters.initiative > 70:
+                suggestion = personality_core.generate_proactive_suggestion(
+                    full_context
+                )
+                if suggestion:
+                    response += f"\n\n*{suggestion}*"
 
             # Store in conversation context for future reference
             if not hasattr(self, "conversation_contexts"):
@@ -465,7 +475,22 @@ class AICompanion(commands.Cog):
 
         except Exception as e:
             self.logger.error(f"Unified AI response generation failed: {e}")
-            return None
+
+            # Personality-aware error messages
+            try:
+                personality_core = get_personality_core(
+                    message.guild.id if message.guild else None
+                )
+                if personality_core.current_mode == AstraMode.DEVELOPER:
+                    return "Error in neural pathway processing. Debug log generated. Attempting recovery sequence."
+                elif personality_core.current_mode == AstraMode.SOCIAL:
+                    return "Oops! Had a little brain freeze there. Give me a sec to get back on track! 😅"
+                elif personality_core.current_mode == AstraMode.SECURITY:
+                    return "System error detected. Failsafe protocols engaged. Standby for recovery."
+                else:
+                    return "Something went wrong with my thought processes. Give me a moment to recalibrate."
+            except:
+                return "I'm having trouble thinking right now. Could you try again?"
 
     async def _cleanup_response_tracking(self, message_id: int):
         """Clean up response tracking after a delay to prevent memory leaks"""
