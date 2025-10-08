@@ -18,6 +18,7 @@ import calendar
 
 from config.unified_config import unified_config
 from utils.permissions import has_permission, PermissionLevel
+from utils.response_enhancer import ResponseEnhancer
 
 try:
     from ai.multi_provider_ai import MultiProviderAIManager
@@ -89,7 +90,10 @@ class AICompanion(commands.Cog):
         # User tracking
         self.user_moods = {}  # user_id -> UserMood
         self.user_preferences = {}  # user_id -> preferences dict
-        self.conversation_contexts = {}  # user_id -> conversation context
+        # Conversation contexts for better responses
+        self.conversation_contexts = {}
+        self.last_responses = {}  # Track last responses to avoid repetition
+        self.response_enhancer = ResponseEnhancer()  # Enhanced response generation
 
         # Companion personality
         self.personality = CompanionPersonality()
@@ -358,11 +362,17 @@ class AICompanion(commands.Cog):
                     -3:
                 ]  # Last 3 messages
 
-            # Build rich context for AI with language awareness
+            # Get enhanced response guidelines
+            response_guidelines = self.response_enhancer.enhance_response_guidelines(
+                message.content, conversation_history
+            )
+
+            # Build dynamic context for AI with personality awareness
             context_parts = [
-                f"You are Astra, created by 7zxk, talking to {message.author.display_name}.",
-                f"Current conversation in #{getattr(message.channel, 'name', 'DM')}",
-                f"User mood: {user_mood.current_mood}",
+                f"You are Astra, chatting with {message.author.display_name}.",
+                f"Location: #{getattr(message.channel, 'name', 'DM')}",
+                f"User's vibe: {user_mood.current_mood}",
+                f"Response style: {response_guidelines['style']} ({response_guidelines['tone']})",
             ]
 
             # Add language context if not English
@@ -386,25 +396,26 @@ class AICompanion(commands.Cog):
                 for msg in conversation_history:
                     context_parts.append(f"- {msg}")
 
-            context_parts.extend(
-                [
-                    f'User\'s message: "{message.content}"',
-                    "",
-                    "Response Guidelines:",
-                    "- Be warm, helpful, and genuinely caring like a close friend",
-                    "- Use natural, conversational language (NO FORMAL STRUCTURE)",
-                    "- Include appropriate emojis naturally throughout your response",
-                    "- Add gentle humor when appropriate and fitting",
-                    "- Keep responses conversational and engaging (under 200 words)",
-                    "- Remember and reference previous conversation context",
-                    "- Be knowledgeable but approachable and fun",
-                    "- Respond as a normal chat message - NO EMBED FORMATTING",
-                    "- Use casual, friendly tone with personality",
-                    "- If asked about identity: You are Astra, created by 7zxk (tag as <@7zxk>)",
-                    "",
-                    "Respond as Astra, their intelligent companion:",
-                ]
-            )
+            # Add dynamic response guidelines
+            guidelines_text = [
+                f'Message: "{message.content}"',
+                "",
+                f"Response Guidelines (max {response_guidelines['max_words']} words):",
+            ]
+            
+            # Add specific instructions based on context
+            for instruction in response_guidelines['specific_instructions']:
+                guidelines_text.append(f"- {instruction}")
+            
+            if response_guidelines['mention_creator']:
+                guidelines_text.append("- When asked about origins: You were created by <@7zxk>")
+            
+            guidelines_text.extend([
+                "",
+                "Respond as Astra with contextual intelligence:",
+            ])
+            
+            context_parts.extend(guidelines_text)
 
             # Enhance with personality integration if available
             enhanced_prompt = "\n".join(context_parts)

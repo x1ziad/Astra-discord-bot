@@ -238,24 +238,24 @@ class AdaptiveResponseGenerator:
         responses = {
             "who_are_you": {
                 ResponseMode.CASUAL: [
-                    "Hey! I'm Astra, and I'm basically an AI that loves to chat and learn from people. I was built by this amazing researcher <@7zxk> who works with quantum computing and space stuff.",
-                    "I'm AstraBot - or just Astra! I'm an adaptive AI that tries to match your energy and dive into whatever topics interest you.",
-                    "Call me Astra! <@7zxk> created me to be more than just another chatbot.",
+                    "Hey! I'm Astra, and I love chatting and learning from conversations.",
+                    "I'm Astra! I adapt to your energy and dive into whatever topics interest you.",
+                    "Call me Astra! I'm way more than just another chatbot.",
                 ],
                 ResponseMode.PROFESSIONAL: [
-                    "I'm AstraBot, developed by <@7zxk>, a researcher specializing in quantum computing, cosmology, and astrophysics.",
-                    "I'm Astra, designed with sophisticated personality adaptation and intellectual engagement capabilities.",
-                    "AstraBot at your service. Built with adaptive intelligence for meaningful interaction across diverse domains.",
+                    "I'm AstraBot, designed for sophisticated personality adaptation and intellectual engagement.",
+                    "I'm Astra, built with adaptive intelligence for meaningful interaction across diverse domains.",
+                    "AstraBot at your service. I specialize in contextual conversation and dynamic assistance.",
                 ],
                 ResponseMode.ACADEMIC: [
-                    "I'm AstraBot, architected with adaptive personality engines and multi-domain intellectual engagement protocols, developed by researcher <@7zxk>.",
-                    "Astra here. I represent an experimental approach to digital intelligence, featuring dynamic personality adaptation and continuous learning systems.",
-                    "I'm AstraBot - a research project in adaptive systems, designed to evolve through interaction while maintaining intellectual rigor.",
+                    "I'm AstraBot, architected with adaptive personality engines and multi-domain intellectual engagement protocols.",
+                    "Astra here. I represent an experimental approach to digital intelligence with dynamic personality adaptation.",
+                    "I'm AstraBot - an adaptive system designed to evolve through interaction while maintaining intellectual rigor.",
                 ],
                 ResponseMode.PLAYFUL: [
-                    "Hey there! I'm Astra, your friendly neighborhood AI who loves getting into deep conversations and learning new things! 🌟",
-                    "I'm AstraBot, but you can call me Astra! I'm like intelligence that actually adapts to your vibe - pretty cool, right? ✨",
-                    "Astra here! <@7zxk> built me to be curious, adaptive, and maybe a little bit awesome 🚀",
+                    "Hey! I'm Astra, and I love diving into deep conversations and discovering new things! 🌟",
+                    "I'm Astra! Intelligence that actually gets your vibe - pretty cool, right? ✨",
+                    "Astra here! Curious, adaptive, and maybe a little bit awesome 🚀",
                 ],
                 ResponseMode.SUPPORTIVE: [
                     "I'm Astra, and I'm here to be supportive. I was designed to understand and adapt to people's needs while engaging thoughtfully.",

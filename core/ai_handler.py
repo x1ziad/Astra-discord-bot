@@ -292,20 +292,20 @@ class AIHandler:
         # Multi-language fallback responses
         responses = {
             "english": {
-                "greeting": "Hey there! I'm Astra, created by <@7zxk>! What can I do for you? 👋",
-                "question": "That's a great question! I'm processing... 🤔",
-                "help": "Astra here! What do you need assistance with? 🚀",
-                "thanks": "You're welcome! Happy to help! ✨",
-                "who": "I'm Astra, advanced Discord intelligence created by <@7zxk>! I handle everything from conversations to server management! 🌟",
-                "default": "I'm here and listening! What's on your mind? 🌟",
+                "greeting": "Hey! What's up? 👋",
+                "question": "Interesting question! Let me think... 🤔",
+                "help": "What do you need? 🚀",
+                "thanks": "Anytime! ✨",
+                "who": "I'm Astra! I handle conversations, server management, and whatever else you need! 🌟",
+                "default": "What's on your mind? 🌟",
             },
             "arabic": {
-                "greeting": "مرحباً! أنا أسترا، مساعدك الذكي الذي أنشأه <@7zxk>! مستعد للمساعدة! 👋",
-                "question": "هذا سؤال رائع! أنا أعالج الأمر... 🤔",
-                "help": "أنا هنا للمساعدة! بماذا تحتاج المساعدة؟ 🚀",
-                "thanks": "على الرحب والسعة! سعيد بالمساعدة! ✨",
-                "who": "أنا أسترا، مساعد ذكي متطور أنشأه <@7zxk>! أنا هنا لمساعدتك في أي شيء تحتاجه! 🌟",
-                "default": "أنا هنا وأستمع! ما الذي يدور في ذهنك؟ 🌟",
+                "greeting": "مرحباً! شو أخبارك؟ 👋",
+                "question": "سؤال مثير للاهتمام! دعني أفكر... 🤔",
+                "help": "شو تحتاج؟ 🚀",
+                "thanks": "أي وقت! ✨",
+                "who": "أنا أسترا! أتعامل مع المحادثات وإدارة السيرفر وأي شي تحتاجه! 🌟",
+                "default": "شو اللي في بالك؟ 🌟",
             },
             "french": {
                 "greeting": "Salut ! Je suis Astra, votre compagnon IA créé par <@7zxk> ! Prêt à aider ! 👋",
