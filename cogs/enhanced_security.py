@@ -421,7 +421,7 @@ class EnhancedSecurity(commands.Cog):
     ):
         """Configure guild security settings"""
         if not await check_user_permission(
-            interaction.user, PermissionLevel.ADMIN, interaction.guild
+            interaction.user, PermissionLevel.ADMINISTRATOR, interaction.guild
         ):
             await interaction.response.send_message(
                 "❌ You need administrator permissions to modify security settings.",
@@ -485,7 +485,7 @@ class EnhancedSecurity(commands.Cog):
     ):
         """Modify user trust score (Administrator only)"""
         if not await check_user_permission(
-            interaction.user, PermissionLevel.ADMIN, interaction.guild
+            interaction.user, PermissionLevel.ADMINISTRATOR, interaction.guild
         ):
             await interaction.response.send_message(
                 "❌ You need administrator permissions to modify trust scores.",

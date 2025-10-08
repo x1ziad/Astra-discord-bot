@@ -361,7 +361,7 @@ class AICompanion(commands.Cog):
             # Build rich context for AI with language awareness
             context_parts = [
                 f"You are Astra, created by 7zxk, talking to {message.author.display_name}.",
-                f"Current conversation in #{message.channel.name}",
+                f"Current conversation in #{getattr(message.channel, 'name', 'DM')}",
                 f"User mood: {user_mood.current_mood}",
             ]
 

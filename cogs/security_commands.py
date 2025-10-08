@@ -788,7 +788,7 @@ class SecurityCommands(commands.Cog):
                 timestamp=datetime.now(timezone.utc),
                 context={
                     "deletion_type": "manual",
-                    "channel_name": message.channel.name,
+                    "channel_name": getattr(message.channel, 'name', 'DM'),
                     "message_created": message.created_at.isoformat(),
                 },
                 ai_confidence=0.5,  # Medium confidence for deletion logging

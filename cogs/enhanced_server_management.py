@@ -88,7 +88,7 @@ class EnhancedServerManagement(commands.GroupCog, name="server"):
     async def interactive_setup(self, interaction: discord.Interaction):
         """Interactive server setup with AI-powered recommendations"""
         if not await check_user_permission(
-            interaction.user, PermissionLevel.ADMIN, interaction.guild
+            interaction.user, PermissionLevel.ADMINISTRATOR, interaction.guild
         ):
             await interaction.response.send_message(
                 "❌ You need administrator permissions for this command.",
