@@ -969,8 +969,12 @@ class DiscordDataReporter:
                 "guild_name": member.guild.name,
                 "user_id": member.id,
                 "username": str(member),
-                "before_channel": getattr(before.channel, 'name', 'DM') if before.channel else None,
-                "after_channel": getattr(after.channel, 'name', 'DM') if after.channel else None,
+                "before_channel": (
+                    getattr(before.channel, "name", "DM") if before.channel else None
+                ),
+                "after_channel": (
+                    getattr(after.channel, "name", "DM") if after.channel else None
+                ),
                 "event_type": self._determine_voice_event_type(before, after),
                 "timestamp": datetime.now(timezone.utc).isoformat(),
                 "automatic_capture": True,

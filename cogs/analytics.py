@@ -96,7 +96,7 @@ class Analytics(commands.GroupCog, name="analytics"):
                 "guild_id": message.guild.id,
                 "guild_name": message.guild.name,
                 "channel_id": message.channel.id,
-                "channel_name": getattr(message.channel, 'name', 'DM'),
+                "channel_name": getattr(message.channel, "name", "DM"),
                 "user_id": message.author.id,
                 "username": str(message.author),
                 "message_length": len(message.content),
@@ -152,8 +152,14 @@ class Analytics(commands.GroupCog, name="analytics"):
                     "guild_name": member.guild.name,
                     "user_id": member.id,
                     "username": str(member),
-                    "before_channel": getattr(before.channel, 'name', 'DM') if before.channel else None,
-                    "after_channel": getattr(after.channel, 'name', 'DM') if after.channel else None,
+                    "before_channel": (
+                        getattr(before.channel, "name", "DM")
+                        if before.channel
+                        else None
+                    ),
+                    "after_channel": (
+                        getattr(after.channel, "name", "DM") if after.channel else None
+                    ),
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                     "date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
                 }
