@@ -18,9 +18,15 @@ Features:
 - Production-ready logging and metrics
 """
 
+# Suppress Google gRPC ALTS credentials warning for local development
+import os
+os.environ['GRPC_VERBOSITY'] = 'ERROR'
+os.environ['GLOG_minloglevel'] = '2'
+# Additional ABSL logging suppression (Google's internal logging)
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+
 import asyncio
 import logging
-import os
 import platform
 import signal
 import sys
@@ -1315,6 +1321,20 @@ async def main():
             format="%(asctime)s | %(levelname)-8s | %(name)-15s | %(message)s",
             datefmt="%H:%M:%S",
         )
+        
+        # Suppress specific Google gRPC warnings
+        class ALTSWarningFilter(logging.Filter):
+            def filter(self, record):
+                return not (
+                    "ALTS creds ignored" in record.getMessage() or
+                    "Not running on GCP" in record.getMessage()
+                )
+        
+        # Apply the filter to relevant loggers
+        for logger_name in ['grpc', 'google', 'absl']:
+            logging.getLogger(logger_name).addFilter(ALTSWarningFilter())
+            logging.getLogger(logger_name).setLevel(logging.ERROR)
+        
         logger = logging.getLogger("Astra.Main")
 
     try:

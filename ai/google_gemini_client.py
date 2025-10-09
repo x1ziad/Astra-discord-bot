@@ -3,9 +3,13 @@ Google Gemini AI Client for Astra Bot
 Provides Google Generative AI integration using the official Google GenAI SDK
 """
 
+# Suppress Google gRPC ALTS credentials warning for local development
+import os
+os.environ.setdefault('GRPC_VERBOSITY', 'ERROR')
+os.environ.setdefault('GLOG_minloglevel', '2')
+
 import asyncio
 import logging
-import os
 from typing import Dict, Any, Optional, List
 from datetime import datetime, timezone
 
