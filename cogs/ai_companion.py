@@ -160,8 +160,6 @@ class AICompanion(commands.Cog):
         if message.author.bot:
             return
 
-
-
         # Update interaction tracking
         self.last_interactions[message.author.id] = time.time()
 

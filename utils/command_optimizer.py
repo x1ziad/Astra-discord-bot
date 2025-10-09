@@ -70,15 +70,19 @@ class ResponseCache:
         self.default_ttl = default_ttl
         self._cache = {}
         self._timestamps = {}
+        self._hits = 0
+        self._misses = 0
 
     async def get(self, key: str):
         """Get cached response"""
         if key in self._cache:
             timestamp, ttl, value = self._cache[key]
             if time.time() - timestamp < ttl:
+                self._hits += 1
                 return value
             else:
                 await self.delete(key)
+        self._misses += 1
         return None
 
     async def set(self, key: str, value, ttl: int = None):
@@ -109,6 +113,24 @@ class ResponseCache:
     def size(self) -> int:
         """Get cache size"""
         return len(self._cache)
+
+    def get_stats(self) -> dict:
+        """Get cache statistics"""
+        current_size = len(self._cache)
+        
+        # Calculate hit rate (simplified - would need proper tracking for accuracy)
+        # For now, we'll provide a basic implementation
+        hit_rate = 0.0
+        if hasattr(self, '_hits') and hasattr(self, '_misses'):
+            total_requests = self._hits + self._misses
+            hit_rate = self._hits / total_requests if total_requests > 0 else 0.0
+        
+        return {
+            'size': current_size,
+            'max_size': self.max_size,
+            'hit_rate': hit_rate,
+            'ttl': self.default_ttl
+        }
 
 
 class OptimizedCommand:

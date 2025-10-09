@@ -460,14 +460,8 @@ class AdvancedAICog(commands.Cog):
                 username=str(interaction.user),
             )
 
-            # PERSONALITY INTEGRATION: Use new personality system
-            personality_core = get_personality_core(interaction.guild.id if interaction.guild else None)
-            personality_context = {
-                'message': message,
-                'user_id': str(interaction.user.id),
-                'username': interaction.user.display_name
-            }
-            response = personality_core.apply_personality_to_response(response, personality_context)
+            # PERSONALITY INTEGRATION: Response already influenced by personality system
+            # The AI client includes personality-aware system prompts, so no additional processing needed
 
             # Enhance with metaphorical humor
             enhanced_response = await lightning_optimizer.enhance_with_humor(
