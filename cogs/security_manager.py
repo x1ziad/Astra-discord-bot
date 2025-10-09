@@ -991,20 +991,167 @@ class SecurityManager(commands.Cog):
             )
 
     # ═══════════════════════════════════════════════════════════════════════════════
+    # LOCKDOWN CONTROLS - Owner and Admin Access
+    # ═══════════════════════════════════════════════════════════════════════════════
+
+    @app_commands.command(
+        name="manual_lockdown",
+        description="🔒 Manual server lockdown for maintenance or planned security (Admin+)",
+    )
+    @app_commands.describe(
+        reason="Reason for the manual lockdown",
+        duration="Expected duration in minutes (optional)",
+    )
+    @app_commands.default_permissions(manage_guild=True)
+    async def manual_lockdown(
+        self,
+        interaction: discord.Interaction,
+        reason: str = "Scheduled maintenance",
+        duration: int = None,
+    ):
+        """Manual server lockdown for maintenance or planned security measures"""
+        if not await check_user_permission(
+            interaction.user, PermissionLevel.ADMINISTRATOR, interaction.guild
+        ):
+            await interaction.response.send_message(
+                "❌ You need administrator permissions for manual lockdowns.",
+                ephemeral=True,
+            )
+            return
+
+        try:
+            if self.lockdown_active:
+                await interaction.response.send_message(
+                    "⚠️ Server is already in lockdown mode. Use `/emergency_unlock` to restore first.",
+                    ephemeral=True,
+                )
+                return
+
+            # Defer response
+            await interaction.response.defer()
+
+            guild = interaction.guild
+
+            # Use the same lockdown mechanism as emergency
+            self.lockdown_active = True
+            self.lockdown_reason = f"Manual lockdown: {reason}"
+            self.lockdown_timestamp = time.time()
+
+            # Lock channels (same as emergency but with different messaging)
+            locked_channels = []
+
+            for channel in guild.text_channels:
+                try:
+                    overwrites = channel.overwrites_for(guild.default_role)
+                    overwrites.send_messages = False
+                    overwrites.add_reactions = False
+                    overwrites.attach_files = False
+
+                    await channel.set_permissions(
+                        guild.default_role,
+                        overwrite=overwrites,
+                        reason=f"🔒 Manual lockdown: {reason}",
+                    )
+                    locked_channels.append(channel.id)
+                except:
+                    pass
+
+            self.lockdown_channels = locked_channels
+
+            # Send notification to general channel
+            general_channel_id = 1399956514176897178
+            general_channel = guild.get_channel(general_channel_id)
+
+            if general_channel:
+                try:
+                    # Allow bot to send message
+                    bot_overwrites = general_channel.overwrites_for(guild.me)
+                    bot_overwrites.send_messages = True
+                    await general_channel.set_permissions(
+                        guild.me, overwrite=bot_overwrites
+                    )
+
+                    # Create maintenance notification
+                    maintenance_embed = discord.Embed(
+                        title="🔒 SERVER MAINTENANCE MODE",
+                        description=f"**The server has been temporarily locked for {reason.lower()}.**\n\n"
+                        "🛠️ **This is planned maintenance, not an emergency**\n"
+                        "⏳ **Normal service will resume shortly**\n"
+                        "💙 **Thank you for your patience**",
+                        color=0xFFAA00,
+                        timestamp=datetime.now(timezone.utc),
+                    )
+
+                    if duration:
+                        maintenance_embed.add_field(
+                            name="⏰ Expected Duration",
+                            value=f"Approximately {duration} minutes",
+                            inline=True,
+                        )
+
+                    maintenance_embed.add_field(
+                        name="📋 Details", value=f"```{reason}```", inline=False
+                    )
+
+                    maintenance_embed.set_footer(
+                        text="Astra Security • Maintenance Mode"
+                    )
+
+                    await general_channel.send(
+                        content="@everyone 🔒 **MAINTENANCE MODE ACTIVE**",
+                        embed=maintenance_embed,
+                    )
+                except:
+                    pass
+
+            # Create admin response
+            response_embed = discord.Embed(
+                title="🔒 MANUAL LOCKDOWN ACTIVATED",
+                description=f"**Reason:** {reason}\n"
+                f"**Initiated by:** {interaction.user.mention}\n"
+                f"**Expected Duration:** {f'{duration} minutes' if duration else 'Not specified'}",
+                color=0xFFAA00,
+                timestamp=datetime.now(timezone.utc),
+            )
+
+            response_embed.add_field(
+                name="📊 Lockdown Status",
+                value=f"**Channels Locked:** {len(locked_channels)}\n"
+                f"**Type:** Manual/Planned\n"
+                f"**Community Notified:** ✅",
+                inline=True,
+            )
+
+            response_embed.set_footer(text="Use /emergency_unlock to restore server")
+
+            await interaction.followup.send(embed=response_embed)
+
+            self.logger.info(
+                f"🔒 Manual lockdown activated by {interaction.user}: {reason}"
+            )
+
+        except Exception as e:
+            self.logger.error(f"Error in manual_lockdown command: {e}")
+            await interaction.followup.send(
+                "❌ An error occurred during manual lockdown activation.",
+                ephemeral=True,
+            )
+
+    # ═══════════════════════════════════════════════════════════════════════════════
     # EMERGENCY CONTROLS - Owner Only
     # ═══════════════════════════════════════════════════════════════════════════════
 
     @app_commands.command(
         name="emergency_lockdown",
-        description="🚨 Emergency server lockdown (Owner only)",
+        description="🚨 CRITICAL: Complete server lockdown - locks ALL channels + emergency broadcast",
     )
-    @app_commands.describe(reason="Reason for emergency lockdown")
+    @app_commands.describe(reason="Reason for emergency lockdown (optional)")
     async def emergency_lockdown(
         self,
         interaction: discord.Interaction,
-        reason: str = "Emergency security measure",
+        reason: str = "Potential security threat detected",
     ):
-        """Emergency server lockdown - Owner only"""
+        """CRITICAL EMERGENCY: Complete server lockdown with broadcast notification"""
         if not is_bot_owner(interaction.user.id):
             await interaction.response.send_message(
                 "❌ This command is restricted to the bot owner only.", ephemeral=True
@@ -1012,50 +1159,228 @@ class SecurityManager(commands.Cog):
             return
 
         try:
+            # Defer response as this will take time
+            await interaction.response.defer()
+
+            guild = interaction.guild
+            if not guild:
+                await interaction.followup.send(
+                    "❌ This command must be used in a server.", ephemeral=True
+                )
+                return
+
+            # Activate lockdown state
             self.lockdown_active = True
             self.lockdown_reason = reason
             self.lockdown_timestamp = time.time()
 
-            embed = discord.Embed(
-                title="🚨 EMERGENCY LOCKDOWN ACTIVATED",
-                description=f"**Reason:** {reason}\n"
-                f"**Activated by:** {interaction.user.mention}\n"
-                f"**Time:** {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}",
+            # Track locked channels for restoration
+            locked_channels = []
+            locked_voice_channels = []
+
+            # PHASE 1: Lock ALL text channels
+            self.logger.critical(
+                f"🚨 EMERGENCY LOCKDOWN PHASE 1: Locking all text channels..."
+            )
+            for channel in guild.text_channels:
+                try:
+                    # Store current permissions before locking
+                    overwrites = channel.overwrites_for(guild.default_role)
+
+                    # Remove all messaging permissions
+                    overwrites.send_messages = False
+                    overwrites.add_reactions = False
+                    overwrites.attach_files = False
+                    overwrites.embed_links = False
+                    overwrites.use_external_emojis = False
+                    overwrites.mention_everyone = False
+                    overwrites.create_public_threads = False
+                    overwrites.create_private_threads = False
+                    overwrites.send_messages_in_threads = False
+
+                    await channel.set_permissions(
+                        guild.default_role,
+                        overwrite=overwrites,
+                        reason=f"🚨 EMERGENCY LOCKDOWN: {reason}",
+                    )
+                    locked_channels.append(channel.id)
+
+                except Exception as e:
+                    self.logger.error(
+                        f"Failed to lock text channel {channel.name}: {e}"
+                    )
+
+            # PHASE 2: Lock ALL voice channels
+            self.logger.critical(
+                f"🚨 EMERGENCY LOCKDOWN PHASE 2: Locking all voice channels..."
+            )
+            for channel in guild.voice_channels:
+                try:
+                    # Store current permissions before locking
+                    overwrites = channel.overwrites_for(guild.default_role)
+
+                    # Remove voice permissions
+                    overwrites.connect = False
+                    overwrites.speak = False
+                    overwrites.stream = False
+                    overwrites.use_voice_activation = False
+                    overwrites.priority_speaker = False
+
+                    await channel.set_permissions(
+                        guild.default_role,
+                        overwrite=overwrites,
+                        reason=f"🚨 EMERGENCY LOCKDOWN: {reason}",
+                    )
+                    locked_voice_channels.append(channel.id)
+
+                    # Disconnect all users from voice channel
+                    for member in channel.members:
+                        try:
+                            await member.move_to(
+                                None,
+                                reason="Emergency lockdown - voice channels secured",
+                            )
+                        except:
+                            pass
+
+                except Exception as e:
+                    self.logger.error(
+                        f"Failed to lock voice channel {channel.name}: {e}"
+                    )
+
+            # Store locked channels for restoration
+            self.lockdown_channels = locked_channels + locked_voice_channels
+
+            # PHASE 3: Send emergency broadcast to general channel
+            self.logger.critical(
+                f"🚨 EMERGENCY LOCKDOWN PHASE 3: Broadcasting emergency message..."
+            )
+
+            # Find general channel (specific ID provided)
+            general_channel_id = 1399956514176897178
+            general_channel = guild.get_channel(general_channel_id)
+
+            if general_channel:
+                try:
+                    # Temporarily allow bot to send in general channel
+                    bot_overwrites = general_channel.overwrites_for(guild.me)
+                    bot_overwrites.send_messages = True
+                    bot_overwrites.mention_everyone = True
+                    await general_channel.set_permissions(
+                        guild.me,
+                        overwrite=bot_overwrites,
+                        reason="Emergency broadcast permission",
+                    )
+
+                    # Create emergency broadcast embed
+                    emergency_embed = discord.Embed(
+                        title="🚨 EMERGENCY SERVER LOCKDOWN ACTIVATED",
+                        description="**⚠️ CRITICAL SECURITY ALERT ⚠️**\n\n"
+                        "**The server is currently under emergency lockdown to protect against potential malicious activities.**\n\n"
+                        "🔒 **All channels have been temporarily secured**\n"
+                        "🛡️ **Security protocols are now in maximum protection mode**\n"
+                        "⏳ **Normal service will be restored once the situation is resolved**",
+                        color=0xFF0000,
+                        timestamp=datetime.now(timezone.utc),
+                    )
+
+                    emergency_embed.add_field(
+                        name="🔴 Current Status",
+                        value="• All text channels locked\n• All voice channels secured\n• Emergency protocols active\n• Staff investigating situation",
+                        inline=True,
+                    )
+
+                    emergency_embed.add_field(
+                        name="⏰ What's Next",
+                        value="• Security team is investigating\n• You will be notified when resolved\n• Please remain calm and patient\n• No action required from users",
+                        inline=True,
+                    )
+
+                    emergency_embed.add_field(
+                        name="📋 Reason", value=f"```{reason}```", inline=False
+                    )
+
+                    emergency_embed.set_footer(
+                        text="Astra Security System • Emergency Protocol Active",
+                        icon_url=guild.me.display_avatar.url,
+                    )
+
+                    # Send emergency broadcast with @everyone ping
+                    await general_channel.send(
+                        content="@everyone 🚨 **EMERGENCY SECURITY LOCKDOWN** 🚨",
+                        embed=emergency_embed,
+                    )
+
+                except Exception as e:
+                    self.logger.error(f"Failed to send emergency broadcast: {e}")
+            else:
+                self.logger.error(
+                    f"Could not find general channel with ID {general_channel_id}"
+                )
+
+            # PHASE 4: Create admin response embed
+            response_embed = discord.Embed(
+                title="🚨 EMERGENCY LOCKDOWN SUCCESSFULLY ACTIVATED",
+                description=f"**Server:** {guild.name}\n"
+                f"**Initiated by:** {interaction.user.mention}\n"
+                f"**Timestamp:** {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}\n"
+                f"**Reason:** {reason}",
                 color=0xFF0000,
                 timestamp=datetime.now(timezone.utc),
             )
 
-            embed.add_field(
-                name="🔒 Lockdown Effects",
-                value="• All non-owner messages will be deleted\n"
-                "• Only owner can send messages\n"
-                "• Security system in maximum protection mode\n"
-                "• All automated moderation suspended",
+            response_embed.add_field(
+                name="🔒 Lockdown Statistics",
+                value=f"**Text Channels Locked:** {len(locked_channels)}\n"
+                f"**Voice Channels Secured:** {len(locked_voice_channels)}\n"
+                f"**Total Channels Affected:** {len(locked_channels) + len(locked_voice_channels)}\n"
+                f"**Emergency Broadcast:** {'✅ Sent' if general_channel else '❌ Failed'}",
+                inline=True,
+            )
+
+            response_embed.add_field(
+                name="🛡️ Security Measures Active",
+                value="• Complete channel lockdown\n• Voice users disconnected\n• Emergency broadcast sent\n• Maximum protection mode\n• Owner-only messaging",
+                inline=True,
+            )
+
+            response_embed.add_field(
+                name="🔧 Administrative Controls",
+                value="Use `/emergency_unlock` to restore normal operations and notify users that the server is safe again.",
                 inline=False,
             )
 
-            embed.set_footer(text="Use /emergency_unlock to deactivate lockdown")
+            response_embed.set_footer(
+                text="EMERGENCY PROTOCOL ACTIVE • Use /emergency_unlock to restore"
+            )
 
-            await interaction.response.send_message(embed=embed)
+            await interaction.followup.send(embed=response_embed)
 
-            # Log the emergency lockdown
+            # Log the critical emergency lockdown
             self.logger.critical(
-                f"🚨 EMERGENCY LOCKDOWN activated by {interaction.user}: {reason}"
+                f"🚨 COMPLETE SERVER EMERGENCY LOCKDOWN activated by {interaction.user} ({interaction.user.id})\n"
+                f"   Reason: {reason}\n"
+                f"   Text channels locked: {len(locked_channels)}\n"
+                f"   Voice channels secured: {len(locked_voice_channels)}\n"
+                f"   Emergency broadcast: {'Success' if general_channel else 'Failed'}"
             )
 
         except Exception as e:
-            self.logger.error(f"Error in emergency_lockdown command: {e}")
-            await interaction.response.send_message(
-                "❌ An error occurred while activating emergency lockdown.",
-                ephemeral=True,
-            )
+            self.logger.error(f"CRITICAL ERROR in emergency_lockdown command: {e}")
+            try:
+                await interaction.followup.send(
+                    "❌ **CRITICAL ERROR**: Emergency lockdown failed to activate completely. Please check logs and take manual action immediately.",
+                    ephemeral=True,
+                )
+            except:
+                pass
 
     @app_commands.command(
         name="emergency_unlock",
-        description="🔓 Deactivate emergency lockdown (Owner only)",
+        description="🔓 RESTORE SERVER: Deactivate emergency lockdown + send all-clear notification",
     )
     async def emergency_unlock(self, interaction: discord.Interaction):
-        """Deactivate emergency lockdown - Owner only"""
+        """Deactivate emergency lockdown and restore server operations"""
         if not is_bot_owner(interaction.user.id):
             await interaction.response.send_message(
                 "❌ This command is restricted to the bot owner only.", ephemeral=True
@@ -1069,44 +1394,192 @@ class SecurityManager(commands.Cog):
                 )
                 return
 
-            lockdown_duration = time.time() - self.lockdown_timestamp
+            # Defer response as restoration will take time
+            await interaction.response.defer()
 
-            self.lockdown_active = False
+            guild = interaction.guild
+            if not guild:
+                await interaction.followup.send(
+                    "❌ This command must be used in a server.", ephemeral=True
+                )
+                return
+
+            # Calculate lockdown duration
+            lockdown_duration = time.time() - self.lockdown_timestamp
             previous_reason = self.lockdown_reason
+
+            # PHASE 1: Restore all channel permissions
+            self.logger.info(
+                f"🔓 EMERGENCY UNLOCK PHASE 1: Restoring channel permissions..."
+            )
+
+            restored_text = 0
+            restored_voice = 0
+
+            # Get all locked channels
+            locked_channels = getattr(self, "lockdown_channels", [])
+
+            for channel_id in locked_channels:
+                channel = guild.get_channel(channel_id)
+                if channel:
+                    try:
+                        # Reset permissions to default (None = inherit from category/server)
+                        overwrites = channel.overwrites_for(guild.default_role)
+
+                        if isinstance(channel, discord.TextChannel):
+                            # Restore text channel permissions
+                            overwrites.send_messages = None
+                            overwrites.add_reactions = None
+                            overwrites.attach_files = None
+                            overwrites.embed_links = None
+                            overwrites.use_external_emojis = None
+                            overwrites.mention_everyone = None
+                            overwrites.create_public_threads = None
+                            overwrites.create_private_threads = None
+                            overwrites.send_messages_in_threads = None
+                            restored_text += 1
+
+                        elif isinstance(channel, discord.VoiceChannel):
+                            # Restore voice channel permissions
+                            overwrites.connect = None
+                            overwrites.speak = None
+                            overwrites.stream = None
+                            overwrites.use_voice_activation = None
+                            overwrites.priority_speaker = None
+                            restored_voice += 1
+
+                        await channel.set_permissions(
+                            guild.default_role,
+                            overwrite=overwrites,
+                            reason=f"🔓 Emergency lockdown lifted - server restored",
+                        )
+
+                    except Exception as e:
+                        self.logger.error(
+                            f"Failed to restore channel {channel.name}: {e}"
+                        )
+
+            # PHASE 2: Send "all clear" broadcast to general channel
+            self.logger.info(
+                f"🔓 EMERGENCY UNLOCK PHASE 2: Broadcasting all-clear message..."
+            )
+
+            # Find general channel
+            general_channel_id = 1399956514176897178
+            general_channel = guild.get_channel(general_channel_id)
+
+            broadcast_success = False
+            if general_channel:
+                try:
+                    # Create all-clear broadcast embed
+                    all_clear_embed = discord.Embed(
+                        title="✅ SERVER RESTORED - ALL CLEAR",
+                        description="**🎉 The emergency situation has been resolved! 🎉**\n\n"
+                        "**The server is now safe and all normal operations have been restored.**\n\n"
+                        "🔓 **All channels are now accessible again**\n"
+                        "💬 **You can resume normal conversations**\n"
+                        "🎮 **Voice channels are available for use**\n"
+                        "✨ **All server features are fully operational**",
+                        color=0x00FF00,
+                        timestamp=datetime.now(timezone.utc),
+                    )
+
+                    all_clear_embed.add_field(
+                        name="🟢 Current Status",
+                        value="• All channels unlocked ✅\n• Voice channels restored ✅\n• Normal operations resumed ✅\n• Security monitoring active ✅",
+                        inline=True,
+                    )
+
+                    all_clear_embed.add_field(
+                        name="📊 Lockdown Summary",
+                        value=f"• **Duration:** {lockdown_duration/60:.1f} minutes\n• **Channels Restored:** {restored_text + restored_voice}\n• **Previous Issue:** Resolved ✅\n• **Server Status:** Fully Operational",
+                        inline=True,
+                    )
+
+                    all_clear_embed.add_field(
+                        name="💙 Thank You",
+                        value="**Thank you for your patience and understanding during the emergency lockdown. The server is now completely safe and secure.**",
+                        inline=False,
+                    )
+
+                    all_clear_embed.set_footer(
+                        text="Astra Security System • Server Fully Restored",
+                        icon_url=guild.me.display_avatar.url,
+                    )
+
+                    # Send all-clear broadcast with @everyone ping
+                    await general_channel.send(
+                        content="@everyone 🎉 **SERVER RESTORED - ALL CLEAR** 🎉",
+                        embed=all_clear_embed,
+                    )
+                    broadcast_success = True
+
+                except Exception as e:
+                    self.logger.error(f"Failed to send all-clear broadcast: {e}")
+
+            # PHASE 3: Reset lockdown state
+            self.lockdown_active = False
             self.lockdown_reason = ""
             self.lockdown_timestamp = 0
+            self.lockdown_channels = []
 
-            embed = discord.Embed(
-                title="🔓 EMERGENCY LOCKDOWN DEACTIVATED",
-                description=f"**Previous Reason:** {previous_reason}\n"
-                f"**Deactivated by:** {interaction.user.mention}\n"
-                f"**Duration:** {lockdown_duration/60:.1f} minutes",
+            # PHASE 4: Create admin response embed
+            response_embed = discord.Embed(
+                title="🔓 EMERGENCY LOCKDOWN SUCCESSFULLY DEACTIVATED",
+                description=f"**Server:** {guild.name}\n"
+                f"**Restored by:** {interaction.user.mention}\n"
+                f"**Lockdown Duration:** {lockdown_duration/60:.1f} minutes\n"
+                f"**Previous Reason:** {previous_reason}",
                 color=0x00FF00,
                 timestamp=datetime.now(timezone.utc),
             )
 
-            embed.add_field(
+            response_embed.add_field(
+                name="📊 Restoration Statistics",
+                value=f"**Text Channels Restored:** {restored_text}\n"
+                f"**Voice Channels Restored:** {restored_voice}\n"
+                f"**Total Channels Restored:** {restored_text + restored_voice}\n"
+                f"**All-Clear Broadcast:** {'✅ Sent' if broadcast_success else '❌ Failed'}",
+                inline=True,
+            )
+
+            response_embed.add_field(
                 name="✅ Server Status",
-                value="• Normal message flow restored\n"
-                "• Security system back to normal operation\n"
-                "• Automated moderation reactivated\n"
-                "• All systems operational",
+                value="• All channels fully operational\n• Normal messaging restored\n• Voice channels accessible\n• Security monitoring active\n• Community notified",
+                inline=True,
+            )
+
+            response_embed.add_field(
+                name="🎉 Community Response",
+                value="All server members have been notified that the server is safe and fully operational again. Thank you for maintaining security!",
                 inline=False,
             )
 
-            await interaction.response.send_message(embed=embed)
+            response_embed.set_footer(
+                text="SERVER FULLY RESTORED • Emergency protocol deactivated"
+            )
 
-            # Log the unlock
+            await interaction.followup.send(embed=response_embed)
+
+            # Log the successful restoration
             self.logger.info(
-                f"🔓 Emergency lockdown deactivated by {interaction.user} after {lockdown_duration/60:.1f} minutes"
+                f"🔓 COMPLETE SERVER RESTORATION by {interaction.user} ({interaction.user.id})\n"
+                f"   Lockdown duration: {lockdown_duration/60:.1f} minutes\n"
+                f"   Text channels restored: {restored_text}\n"
+                f"   Voice channels restored: {restored_voice}\n"
+                f"   All-clear broadcast: {'Success' if broadcast_success else 'Failed'}\n"
+                f"   Previous reason: {previous_reason}"
             )
 
         except Exception as e:
-            self.logger.error(f"Error in emergency_unlock command: {e}")
-            await interaction.response.send_message(
-                "❌ An error occurred while deactivating emergency lockdown.",
-                ephemeral=True,
-            )
+            self.logger.error(f"CRITICAL ERROR in emergency_unlock command: {e}")
+            try:
+                await interaction.followup.send(
+                    "❌ **CRITICAL ERROR**: Emergency unlock failed. Please take manual action to restore server.",
+                    ephemeral=True,
+                )
+            except:
+                pass
 
     @app_commands.command(
         name="manual_override", description="🔧 Manual override for security actions"

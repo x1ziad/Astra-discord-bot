@@ -455,8 +455,8 @@ class AICompanion(commands.Cog):
             )
 
             response = (
-                ai_response
-                if ai_response
+                ai_response.content
+                if ai_response and hasattr(ai_response, "content")
                 else "I'm having trouble thinking right now. Could you try again?"
             )
 

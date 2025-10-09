@@ -1208,9 +1208,7 @@ class UniversalAIClient:
                                 "timestamp": datetime.now(timezone.utc).isoformat(),
                             }
                         )
-                        await self.store_conversation_context_to_db(
-                            conversation_context
-                        )
+                        await self.save_conversation_context_to_db(conversation_context)
 
                     logger.info(f"✅ Google Gemini response generated successfully")
                     return ai_response
