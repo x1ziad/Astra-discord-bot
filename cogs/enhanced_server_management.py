@@ -514,6 +514,208 @@ Provide 3 bullet points with actionable recommendations (under 200 chars total).
         except Exception:
             return "• Host regular community events\n• Encourage member introductions\n• Create topic-specific channels"
 
+    async def _analyze_engagement(
+        self,
+        interaction: discord.Interaction,
+        guild: discord.Guild,
+        health: CommunityHealth,
+    ):
+        """Analyze community engagement patterns"""
+        # Calculate engagement metrics
+        total_members = guild.member_count
+        online_members = len([m for m in guild.members if m.status != discord.Status.offline])
+        active_ratio = online_members / total_members if total_members > 0 else 0
+
+        # Channel activity (simplified)
+        text_channels = len(guild.text_channels)
+        voice_channels = len(guild.voice_channels)
+        
+        embed = discord.Embed(
+            title="📊 Community Engagement Analysis",
+            description=f"Engagement metrics for **{guild.name}**",
+            color=0x00FF7F,
+            timestamp=datetime.now(timezone.utc),
+        )
+
+        embed.add_field(
+            name="👥 Member Engagement",
+            value=f"• Total Members: **{total_members}**\n"
+                  f"• Online Now: **{online_members}**\n"
+                  f"• Activity Rate: **{active_ratio:.1%}**\n"
+                  f"• Engagement Score: **{health.engagement_score}/100**",
+            inline=True,
+        )
+
+        embed.add_field(
+            name="💬 Channel Activity",
+            value=f"• Text Channels: **{text_channels}**\n"
+                  f"• Voice Channels: **{voice_channels}**\n"
+                  f"• Avg per Member: **{(text_channels + voice_channels) / total_members:.2f}**",
+            inline=True,
+        )
+
+        # Engagement recommendations
+        if active_ratio < 0.3:
+            embed.add_field(
+                name="🚀 Engagement Boost",
+                value="• Schedule interactive events\n• Create discussion prompts\n• Add reaction roles\n• Host voice activities",
+                inline=False,
+            )
+
+        await interaction.followup.send(embed=embed)
+
+    async def _analyze_trends(
+        self,
+        interaction: discord.Interaction,
+        guild: discord.Guild,
+        health: CommunityHealth,
+    ):
+        """Analyze community trends and patterns"""
+        # Trend analysis (simplified for now)
+        current_time = time.time()
+        time_since_assessment = current_time - health.last_assessment
+        hours_since = time_since_assessment / 3600
+
+        embed = discord.Embed(
+            title="📈 Community Trend Analysis",
+            description=f"Growth and activity trends for **{guild.name}**",
+            color=0xFF6B35,
+            timestamp=datetime.now(timezone.utc),
+        )
+
+        # Basic trend indicators
+        member_growth = "Stable" if guild.member_count > 10 else "Small Community"
+        activity_trend = "Active" if len([m for m in guild.members if m.status != discord.Status.offline]) > guild.member_count * 0.2 else "Quiet"
+        
+        embed.add_field(
+            name="📊 Growth Trends",
+            value=f"• Member Growth: **{member_growth}**\n"
+                  f"• Activity Trend: **{activity_trend}**\n"
+                  f"• Assessment Age: **{hours_since:.1f}h**\n"
+                  f"• Health Trend: **{health.engagement_score}/100**",
+            inline=True,
+        )
+
+        # Channel trends
+        channel_count = len(guild.channels)
+        channel_ratio = channel_count / guild.member_count if guild.member_count > 0 else 0
+        
+        embed.add_field(
+            name="🔄 Activity Patterns",
+            value=f"• Total Channels: **{channel_count}**\n"
+                  f"• Channel/Member Ratio: **{channel_ratio:.2f}**\n"
+                  f"• Recent Events: **{len(health.community_events)}**\n"
+                  f"• Positive Interactions: **{health.positive_interactions}**",
+            inline=True,
+        )
+
+        # Trend predictions
+        if channel_ratio > 1.0:
+            trend_note = "🔥 High channel engagement potential"
+        elif activity_trend == "Quiet":
+            trend_note = "💤 Community may need activation"
+        else:
+            trend_note = "✅ Healthy community balance"
+
+        embed.add_field(
+            name="🎯 Trend Insights",
+            value=f"• Current Status: **{trend_note}**\n"
+                  f"• Growth Potential: **{'High' if guild.member_count < 100 else 'Established'}**\n"
+                  f"• Engagement Focus: **{'Member retention' if activity_trend == 'Quiet' else 'Content creation'}**",
+            inline=False,
+        )
+
+        await interaction.followup.send(embed=embed)
+
+    async def _generate_ai_insights(
+        self,
+        interaction: discord.Interaction,
+        guild: discord.Guild,
+        health: CommunityHealth,
+    ):
+        """Generate AI-powered community insights"""
+        try:
+            # Gather comprehensive data for AI analysis
+            total_members = guild.member_count
+            online_members = len([m for m in guild.members if m.status != discord.Status.offline])
+            text_channels = len(guild.text_channels)
+            voice_channels = len(guild.voice_channels)
+            roles_count = len(guild.roles) - 1  # Exclude @everyone
+            
+            # Create AI prompt for insights
+            prompt = f"""As Astra, provide comprehensive community insights for this Discord server:
+
+Server: {guild.name}
+Members: {total_members}
+Online: {online_members}
+Text Channels: {text_channels}
+Voice Channels: {voice_channels}
+Roles: {roles_count}
+Health Score: {health.engagement_score}/100
+Events: {len(health.community_events)}
+
+Provide 4 key insights with specific recommendations (each under 100 chars):
+1. Community Strength
+2. Growth Opportunity  
+3. Engagement Strategy
+4. Action Priority"""
+
+            # Generate AI insights
+            try:
+                from ai.multi_provider_ai import MultiProviderAIManager
+                ai_manager = MultiProviderAIManager()
+                ai_response = await ai_manager.generate_response(prompt)
+                insights = ai_response.content if hasattr(ai_response, 'content') else str(ai_response)
+            except Exception as e:
+                self.logger.error(f"AI insights generation failed: {e}")
+                insights = self._generate_fallback_insights(guild, health)
+
+            embed = discord.Embed(
+                title="🤖 AI Community Insights",
+                description=f"Advanced analysis for **{guild.name}**",
+                color=0x7289DA,
+                timestamp=datetime.now(timezone.utc),
+            )
+
+            embed.add_field(
+                name="💡 Astra's Analysis",
+                value=insights[:1000] if len(insights) > 1000 else insights,
+                inline=False,
+            )
+
+            # Add current metrics
+            embed.add_field(
+                name="📊 Current Metrics",
+                value=f"• Health Score: **{health.engagement_score}/100**\n"
+                      f"• Activity Rate: **{(online_members/total_members)*100:.1f}%**\n"
+                      f"• Channel Diversity: **{text_channels + voice_channels}**\n"
+                      f"• Role Structure: **{roles_count} roles**",
+                inline=True,
+            )
+
+            embed.set_footer(text="💡 AI insights generated by Astra's community analysis engine")
+            
+        except Exception as e:
+            self.logger.error(f"AI insights generation error: {e}")
+            embed = discord.Embed(
+                title="🤖 AI Community Insights",
+                description="Analysis temporarily unavailable. Please try again.",
+                color=0xFF6B6B,
+            )
+
+        await interaction.followup.send(embed=embed)
+
+    def _generate_fallback_insights(self, guild: discord.Guild, health: CommunityHealth) -> str:
+        """Generate fallback insights when AI is unavailable"""
+        total_members = guild.member_count
+        
+        if total_members < 10:
+            return "🌱 Growing Community: Focus on member retention and welcoming new users.\n📢 Boost engagement with interactive content and regular events.\n🎯 Priority: Build core community foundation."
+        elif total_members < 100:
+            return "🚀 Expanding Server: Great foundation, time to scale engagement strategies.\n💬 Create specialized channels for different interests.\n🎯 Priority: Enhance member interaction systems."
+        else:
+            return "🏰 Established Community: Maintain quality while fostering deeper connections.\n📊 Use analytics to optimize channel structure and events.\n🎯 Priority: Community leadership and moderation excellence."
+
     @app_commands.command(
         name="roles", description="🎭 Advanced role management with AI optimization"
     )

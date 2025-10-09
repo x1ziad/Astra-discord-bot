@@ -450,7 +450,7 @@ class AstraBot(commands.Bot):
             permission_manager = setup_permissions(self)
 
             # Ensure owner ID is properly configured
-            owner_id = self.config.get_owner_id()
+            owner_id = unified_config.get_owner_id()
             if owner_id:
                 self.logger.info(f"🔐 Bot owner configured: {owner_id}")
             else:
