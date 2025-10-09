@@ -117,19 +117,19 @@ class ResponseCache:
     def get_stats(self) -> dict:
         """Get cache statistics"""
         current_size = len(self._cache)
-        
+
         # Calculate hit rate (simplified - would need proper tracking for accuracy)
         # For now, we'll provide a basic implementation
         hit_rate = 0.0
-        if hasattr(self, '_hits') and hasattr(self, '_misses'):
+        if hasattr(self, "_hits") and hasattr(self, "_misses"):
             total_requests = self._hits + self._misses
             hit_rate = self._hits / total_requests if total_requests > 0 else 0.0
-        
+
         return {
-            'size': current_size,
-            'max_size': self.max_size,
-            'hit_rate': hit_rate,
-            'ttl': self.default_ttl
+            "size": current_size,
+            "max_size": self.max_size,
+            "hit_rate": hit_rate,
+            "ttl": self.default_ttl,
         }
 
 
