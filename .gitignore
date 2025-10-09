@@ -76,3 +76,20 @@ PERFORMANCE_CHANNEL_FIX.md
 PERFORMANCE_MIGRATION_REPORT.md
 PROMPT_OPTIMIZATION.md
 OPTIMIZATION_SUCCESS.md
+
+# Test reports archive - do not sync to repository
+test_reports_archive/
+test_reports_archive/**
+**/test_reports_archive/
+**/test_reports_archive/**
+
+# Comprehensive testing files
+*_personality_simulation.py
+*_security_enhancement.py
+*_command_analysis*.md
+*_personality_report*.md
+*_command_data*.json
+*_personality_results*.json
+ASTRA_PERSONALITY_FINAL_APPROVAL.md
+COMPLETE_COMMAND_ANALYSIS.md
+PRODUCTION_READINESS_REPORT.md

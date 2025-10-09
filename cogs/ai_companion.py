@@ -441,9 +441,17 @@ class AICompanion(commands.Cog):
 
             # Generate AI response using universal client
             ai_response = await self.ai_client.generate_response(
-                prompt=message.content,
-                system_prompt=enhanced_prompt,
-                context=full_context,
+                message.content,  # First positional parameter: message
+                user_id=message.author.id,
+                guild_id=message.guild.id if message.guild else None,
+                channel_id=message.channel.id,
+                user_profile={
+                    "name": message.author.display_name,
+                    "interaction_count": len(
+                        self.conversation_contexts.get(message.author.id, [])
+                    )
+                    // 2,
+                },
             )
 
             response = (
