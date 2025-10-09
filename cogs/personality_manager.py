@@ -38,19 +38,14 @@ class ResetConfirmationView(discord.ui.View):
         await interaction.response.defer()
 
 
-class PersonalityManager(commands.Cog):
+class PersonalityManager(commands.GroupCog, name="astra"):
     """Personality configuration and management system"""
 
     def __init__(self, bot):
         self.bot = bot
         self.security_system = UnifiedSecuritySystem(bot)
 
-    # Create the main /astra command group
-    astra_group = app_commands.Group(
-        name="astra", description="Astra AI personality management"
-    )
-
-    @astra_group.command(
+    @app_commands.command(
         name="personality",
         description="🧠 View Astra's current personality configuration",
     )
@@ -110,7 +105,7 @@ class PersonalityManager(commands.Cog):
 
         await interaction.followup.send(embed=embed)
 
-    @astra_group.command(
+    @app_commands.command(
         name="set",
         description="⚙️ Adjust Astra's personality traits and behavioral settings",
     )
@@ -192,7 +187,7 @@ class PersonalityManager(commands.Cog):
 
         await interaction.followup.send(embed=embed)
 
-    @astra_group.command(
+    @app_commands.command(
         name="mode", description="🎭 Switch between pre-configured personality modes"
     )
     async def personality_mode(
@@ -239,7 +234,7 @@ class PersonalityManager(commands.Cog):
 
         await interaction.followup.send(embed=embed)
 
-    @astra_group.command(
+    @app_commands.command(
         name="reset",
         description="🔄 Reset Astra's personality traits to default values",
     )
@@ -313,7 +308,7 @@ class PersonalityManager(commands.Cog):
         except:
             await interaction.followup.send(embed=embed)
 
-    @astra_group.command(
+    @app_commands.command(
         name="test",
         description="🧪 Simulate a sample response using current personality settings",
     )
@@ -466,5 +461,3 @@ async def setup(bot):
     """Setup function for the cog"""
     cog = PersonalityManager(bot)
     await bot.add_cog(cog)
-    # Add the astra command group to the bot's command tree
-    bot.tree.add_command(cog.astra_group)
