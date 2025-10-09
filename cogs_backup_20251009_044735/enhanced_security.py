@@ -75,11 +75,7 @@ class EnhancedSecurity(commands.Cog):
         logger.info("✅ Enhanced Security System unloaded")
 
     @commands.Cog.listener()
-    # 🚀 DISABLED: Message processing moved to High-Performance Coordinator
-
-
-    @commands.Cog.listener()
-    # async def on_message(self, message: discord.Message):
+    async def on_message(self, message: discord.Message):
         """Monitor all messages for security violations"""
         # Skip bot messages and DMs
         if message.author.bot or not message.guild:

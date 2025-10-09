@@ -743,11 +743,7 @@ class SecurityCommands(commands.Cog):
         )
 
     @commands.Cog.listener()
-    # 🚀 DISABLED: Message processing moved to High-Performance Coordinator
-
-
-    @commands.Cog.listener()
-    # async def on_message(self, message: discord.Message):
+    async def on_message(self, message: discord.Message):
         """Monitor all messages for potential violations"""
         # Skip if not in a guild or if message is from a bot
         if not message.guild or message.author.bot:

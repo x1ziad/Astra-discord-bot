@@ -84,11 +84,7 @@ class Analytics(commands.GroupCog, name="analytics"):
         return {}
 
     @commands.Cog.listener()
-    # 🚀 DISABLED: Message processing moved to High-Performance Coordinator
-
-
-    @commands.Cog.listener()
-    # async def on_message(self, message):
+    async def on_message(self, message):
         """Track message activity and send to Discord channel"""
         if message.author.bot or not message.guild:
             return

@@ -129,11 +129,7 @@ class AIModeration(commands.Cog):
         return self.user_profiles[user_id]
 
     @commands.Cog.listener()
-    # 🚀 DISABLED: Message processing moved to High-Performance Coordinator
-
-
-    @commands.Cog.listener()
-    # async def on_message(self, message: discord.Message):
+    async def on_message(self, message: discord.Message):
         """Enhanced message monitoring with AI analysis"""
         if not message.guild or message.author.bot:
             return

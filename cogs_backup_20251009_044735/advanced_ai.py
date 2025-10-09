@@ -674,11 +674,7 @@ class AdvancedAICog(commands.Cog):
             )
 
     @commands.Cog.listener()
-    # 🚀 DISABLED: Message processing moved to High-Performance Coordinator
-
-
-    @commands.Cog.listener()
-    # async def on_message(self, message: discord.Message):
+    async def on_message(self, message: discord.Message):
         """🚀 DISABLED: Message handler moved to AI Companion for unified responses"""
         # This handler is disabled to prevent duplicate responses
         # AI Companion cog now handles all AI interactions

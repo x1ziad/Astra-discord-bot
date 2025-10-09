@@ -155,11 +155,7 @@ class AICompanion(commands.Cog):
         return self.user_moods[user_id]
 
     @commands.Cog.listener()
-    # 🚀 DISABLED: Message processing moved to High-Performance Coordinator
-
-
-    @commands.Cog.listener()
-    # async def on_message(self, message: discord.Message):
+    async def on_message(self, message: discord.Message):
         """Monitor messages for companion opportunities with personality integration"""
         if message.author.bot:
             return
