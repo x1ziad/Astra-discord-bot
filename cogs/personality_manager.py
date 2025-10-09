@@ -12,6 +12,7 @@ import random
 
 from utils.astra_personality import get_personality_core, AstraMode
 from core.unified_security_system import UnifiedSecuritySystem
+from utils.permissions import has_permission, PermissionLevel, check_user_permission
 
 
 class ResetConfirmationView(discord.ui.View):
@@ -127,8 +128,8 @@ class PersonalityManager(commands.GroupCog, name="astra"):
         await interaction.response.defer()
 
         # Security check
-        if not await self.security_system.check_permissions(
-            interaction.user, "administrator", interaction.guild
+        if not await check_user_permission(
+            interaction.user, PermissionLevel.ADMINISTRATOR, interaction.guild
         ):
             embed = discord.Embed(
                 title="🔒 Access Denied",
@@ -199,8 +200,8 @@ class PersonalityManager(commands.GroupCog, name="astra"):
         await interaction.response.defer()
 
         # Security check
-        if not await self.security_system.check_permissions(
-            interaction.user, "administrator", interaction.guild
+        if not await check_user_permission(
+            interaction.user, PermissionLevel.ADMINISTRATOR, interaction.guild
         ):
             embed = discord.Embed(
                 title="🔒 Access Denied",
@@ -243,8 +244,8 @@ class PersonalityManager(commands.GroupCog, name="astra"):
         await interaction.response.defer()
 
         # Security check
-        if not await self.security_system.check_permissions(
-            interaction.user, "administrator", interaction.guild
+        if not await check_user_permission(
+            interaction.user, PermissionLevel.ADMINISTRATOR, interaction.guild
         ):
             embed = discord.Embed(
                 title="🔒 Access Denied",

@@ -348,6 +348,10 @@ class AstraPersonalityCore:
             timestamp = datetime.now(timezone.utc).strftime("%H:%M")
             return f"[{timestamp}] I {action} because {reason}. Transparent operation as always."
 
+    def get_parameters(self) -> PersonalityParameters:
+        """Get current personality parameters object"""
+        return self.parameters
+
     def get_personality_summary(self) -> str:
         """Get a summary of current personality configuration"""
 
