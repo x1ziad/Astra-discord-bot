@@ -127,8 +127,8 @@ class AstraAICompanion(commands.Cog):
         self.db = db
         self.astra_personality = AstraPersonalityCore()
 
-        # Personality management
-        self.user_profiles: Dict[int, PersonalityProfile] = {}
+        # Personality management (key format: "user_id_guild_id")
+        self.user_profiles: Dict[str, PersonalityProfile] = {}
         self.conversation_contexts: Dict[int, List[Dict]] = {}
         self.last_responses = {}
 
@@ -149,10 +149,12 @@ class AstraAICompanion(commands.Cog):
         self, user_id: int, guild_id: int
     ) -> PersonalityProfile:
         """Get or create personality profile for user"""
-        if user_id not in self.user_profiles:
+        profile_key = f"{user_id}_{guild_id}"
+        
+        if profile_key not in self.user_profiles:
             # Load from database or create new
             stored_profile = await self.db.get(
-                f"personality_profile_{user_id}_{guild_id}"
+                "user_profiles", profile_key
             )
 
             if stored_profile:
@@ -171,9 +173,9 @@ class AstraAICompanion(commands.Cog):
                     base_personality=self.PERSONALITY_PRESETS["balanced"]
                 )
 
-            self.user_profiles[user_id] = profile
+            self.user_profiles[profile_key] = profile
 
-        return self.user_profiles[user_id]
+        return self.user_profiles[profile_key]
 
     def calculate_personality_vector(
         self, profile: PersonalityProfile, context: Dict[str, Any]
@@ -499,7 +501,7 @@ class AstraAICompanion(commands.Cog):
     async def personality_sync_task(self):
         """Sync personality profiles to database"""
         try:
-            for user_id, profile in self.user_profiles.items():
+            for profile_key, profile in self.user_profiles.items():
                 profile_data = {
                     "base_personality": profile.base_personality.to_dict(),
                     "modifiers": {
@@ -513,7 +515,7 @@ class AstraAICompanion(commands.Cog):
                     "updated_at": datetime.now().isoformat(),
                 }
 
-                await self.db.set(f"personality_profile_{user_id}", profile_data)
+                await self.db.set("user_profiles", profile_key, profile_data)
 
             self.logger.info(f"Synced {len(self.user_profiles)} personality profiles")
 
@@ -701,12 +703,9 @@ class AstraAICompanion(commands.Cog):
             profile = await self.get_personality_profile(
                 interaction.user.id, interaction.guild.id
             )
-            context = self.detect_context(mock_message)
-            current_personality = self.calculate_personality_vector(profile, context)
+            context = await self._analyze_message_context(mock_message)
 
-            response = await self.generate_astra_response(
-                mock_message, current_personality, context
-            )
+            response = await self.generate_astra_response(mock_message, profile, context)
 
             if response:
                 embed = discord.Embed(
