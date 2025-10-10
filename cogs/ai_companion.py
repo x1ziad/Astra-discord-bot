@@ -150,12 +150,10 @@ class AstraAICompanion(commands.Cog):
     ) -> PersonalityProfile:
         """Get or create personality profile for user"""
         profile_key = f"{user_id}_{guild_id}"
-        
+
         if profile_key not in self.user_profiles:
             # Load from database or create new
-            stored_profile = await self.db.get(
-                "user_profiles", profile_key
-            )
+            stored_profile = await self.db.get("user_profiles", profile_key)
 
             if stored_profile:
                 # Restore from stored data
@@ -705,7 +703,9 @@ class AstraAICompanion(commands.Cog):
             )
             context = await self._analyze_message_context(mock_message)
 
-            response = await self.generate_astra_response(mock_message, profile, context)
+            response = await self.generate_astra_response(
+                mock_message, profile, context
+            )
 
             if response:
                 embed = discord.Embed(
