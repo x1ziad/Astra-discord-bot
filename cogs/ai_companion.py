@@ -402,7 +402,8 @@ Message: "{message.content}"
 
     # Slash Commands
     @app_commands.command(
-        name="personality", description="🎭 View or adjust Astra's personality settings"
+        name="companion",
+        description="🎭 View or adjust Astra's companion personality settings",
     )
     @app_commands.describe(
         preset="Choose a personality preset",
@@ -422,7 +423,7 @@ Message: "{message.content}"
             ),
         ]
     )
-    async def personality_command(
+    async def companion_command(
         self,
         interaction: discord.Interaction,
         preset: Optional[str] = None,
@@ -441,7 +442,7 @@ Message: "{message.content}"
                 profile.updated_at = datetime.now()
 
                 embed = discord.Embed(
-                    title="🎭 Personality Updated",
+                    title="🎭 Companion Personality Updated",
                     description=f"Applied **{preset.title()}** personality preset for Astra!",
                     color=0x7289DA,
                 )
@@ -471,7 +472,7 @@ Message: "{message.content}"
                 profile.updated_at = datetime.now()
 
                 embed = discord.Embed(
-                    title="🎭 Trait Updated",
+                    title="🎭 Companion Trait Updated",
                     description=f"Set **{trait.title()}** to **{value:.1f}** for Astra!",
                     color=0x7289DA,
                 )
@@ -505,7 +506,7 @@ Message: "{message.content}"
 
             embed.add_field(
                 name="💡 Tips",
-                value="• Use `/personality preset:` to apply a preset\n• Adjust individual traits with trait and value parameters\n• Higher values mean stronger expression of that trait",
+                value="• Use `/companion preset:` to apply a preset\n• Adjust individual traits with trait and value parameters\n• Higher values mean stronger expression of that trait",
                 inline=False,
             )
 
@@ -553,10 +554,13 @@ Message: "{message.content}"
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @app_commands.command(
-        name="chat", description="💬 Have a direct conversation with Astra"
+        name="companion_chat",
+        description="💬 Have a direct conversation with Astra's companion system",
     )
     @app_commands.describe(message="What would you like to say to Astra?")
-    async def chat_command(self, interaction: discord.Interaction, message: str):
+    async def companion_chat_command(
+        self, interaction: discord.Interaction, message: str
+    ):
         """Direct chat with Astra"""
         await interaction.response.defer()
 

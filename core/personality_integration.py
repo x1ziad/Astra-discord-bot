@@ -25,15 +25,11 @@ import random
 import statistics
 import weakref
 
-# Performance imports with fallbacks
-try:
-    import orjson as fast_json
 
-    USE_FAST_JSON = True
-except ImportError:
-    import json as fast_json
+# Use standard json for compatibility
+import json as fast_json
 
-    USE_FAST_JSON = False
+USE_FAST_JSON = False
 
 # Import existing personality systems
 from ai.bot_personality_core import (
@@ -51,11 +47,7 @@ from utils.astra_personality import (
     AstraMode,
     AstraPersonalityCore,
 )
-from ai.tars_personality_engine import (
-    TARSPersonalityCore,
-    TARSPersonalityMode,
-    TARSHumorLevel,
-)
+
 
 logger = logging.getLogger("astra.personality_integration")
 
@@ -66,7 +58,7 @@ class PersonalityIntegrationMode(Enum):
     STANDARD = "standard"  # Balanced personality
     HIGH_PERFORMANCE = "performance"  # Optimized for speed
     FULL_ADAPTIVE = "adaptive"  # Maximum personality adaptation
-    TARS_MODE = "tars"  # TARS-inspired personality
+    # TARS_MODE removed
     DEVELOPMENT = "dev"  # Developer-focused mode
 
 
@@ -77,7 +69,7 @@ class PersonalityState:
     traits: PersonalityTraits = field(default_factory=PersonalityTraits)
     parameters: PersonalityParameters = field(default_factory=PersonalityParameters)
     current_mode: PersonalityIntegrationMode = PersonalityIntegrationMode.STANDARD
-    tars_mode: TARSPersonalityMode = TARSPersonalityMode.ADAPTIVE
+    # tars_mode removed (TARS personality is deprecated)
     context: Optional[ConversationContext] = None
     response_mode: ResponseMode = ResponseMode.CASUAL
     last_updated: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
@@ -209,7 +201,6 @@ class IntegratedPersonalityEngine:
         self.bot_identity = BotIdentity()
         self.adaptive_generator = AdaptiveResponseGenerator(self.bot_identity)
         self.astra_core = AstraPersonalityCore()
-        self.tars_core = TARSPersonalityCore()
 
         # State management
         self.user_states: Dict[int, PersonalityState] = {}
@@ -255,7 +246,6 @@ class IntegratedPersonalityEngine:
         self.astra_core.load_personality()
 
         # Setup TARS personality
-        self.tars_core.current_mode = TARSPersonalityMode.ADAPTIVE
 
         self.logger.info("🤖 Personality cores initialized")
 
@@ -302,81 +292,66 @@ class IntegratedPersonalityEngine:
         """Get or create personality state for user"""
         start_time = time.time()
 
-        try:
-            # Try cache first
-            cache_key = f"user_{user_id}"
-            if self.cache_enabled:
-                cached_state = self.personality_cache.get(cache_key)
-                if cached_state:
-                    self.logger.debug(f"🎯 Cache hit for user {user_id}")
-                    return cached_state
+        # Try cache first
+        cache_key = f"user_{user_id}"
+        if self.cache_enabled:
+            cached_state = self.personality_cache.get(cache_key)
+            if cached_state:
+                self.logger.debug(f"🎯 Cache hit for user {user_id}")
+                return cached_state
 
-            # Get or create user state
-            if user_id not in self.user_states:
-                # Create new state based on default
-                new_state = PersonalityState()
-                new_state.traits = PersonalityTraits(
-                    adaptability=self._default_state.traits.adaptability,
-                    curiosity=self._default_state.traits.curiosity,
-                    intellect=self._default_state.traits.intellect,
-                    empathy=self._default_state.traits.empathy,
-                    integrity=self._default_state.traits.integrity,
-                    humility=self._default_state.traits.humility,
-                )
-                new_state.parameters = PersonalityParameters()
-                new_state.parameters.from_dict(self._default_state.parameters.to_dict())
+        # Get or create user state
+        if user_id not in self.user_states:
+            # Create new state based on default
+            new_state = PersonalityState()
+            new_state.traits = PersonalityTraits(
+                adaptability=self._default_state.traits.adaptability,
+                curiosity=self._default_state.traits.curiosity,
+                intellect=self._default_state.traits.intellect,
+                empathy=self._default_state.traits.empathy,
+                integrity=self._default_state.traits.integrity,
+                humility=self._default_state.traits.humility,
+            )
+            new_state.parameters = PersonalityParameters()
+            new_state.parameters.from_dict(self._default_state.parameters.to_dict())
 
-                self.user_states[user_id] = new_state
-                self.logger.debug(
-                    f"🆕 Created new personality state for user {user_id}"
-                )
+            self.user_states[user_id] = new_state
+            self.logger.debug(f"🆕 Created new personality state for user {user_id}")
 
-            state = self.user_states[user_id]
+        state = self.user_states[user_id]
 
-            # Update context if provided
-            if context:
-                await self._update_context(state, context, user_id)
+        # Update context if provided
+        if context:
+            await self._update_context(state, context, user_id)
 
-            # Cache the state
-            if self.cache_enabled:
-                self.personality_cache.set(cache_key, state)
+        # Cache the state
+        if self.cache_enabled:
+            self.personality_cache.set(cache_key, state)
 
-            # Record performance
-            response_time = time.time() - start_time
-            self.response_times.append(response_time)
-            if len(self.response_times) > 100:  # Keep last 100 measurements
-                self.response_times = self.response_times[-100:]
+        # Record performance
+        response_time = time.time() - start_time
+        self.response_times.append(response_time)
+        if len(self.response_times) > 100:  # Keep last 100 measurements
+            self.response_times = self.response_times[-100:]
 
-            return state
-
-        except Exception as e:
-            self.logger.error(f"Error getting personality for user {user_id}: {e}")
-            return self._default_state
+        return state
 
     async def _update_context(
         self, state: PersonalityState, context: Dict[str, Any], user_id: int
     ):
         """Update personality state based on context"""
-        try:
-            # Create conversation context
-            conv_context = ConversationContext(
-                user_id=user_id,
-                user_tone=context.get("tone", "neutral"),
-                topic_category=context.get("topic", "general"),
-                complexity_level=IntellectualDepth(
-                    context.get("complexity", "moderate")
-                ),
-                interaction_history=context.get("history_count", 0),
-                emotional_context=context.get("emotion", "neutral"),
-            )
 
-            state.context = conv_context
+        # Create conversation context
+        conv_context = ConversationContext(
+            user_id=user_id,
+            user_tone=context.get("tone", "neutral"),
+            topic_category=context.get("topic", "general"),
+            complexity_level=IntellectualDepth(context.get("complexity", "moderate")),
+            interaction_history=context.get("history_count", 0),
+            emotional_context=context.get("emotion", "neutral"),
+        )
 
-            # Adapt personality based on context
-            await self._adapt_personality(state, context, user_id)
-
-        except Exception as e:
-            self.logger.error(f"Error updating context: {e}")
+        state.context = conv_context
 
     async def _adapt_personality(
         self, state: PersonalityState, context: Dict[str, Any], user_id: int
@@ -528,14 +503,9 @@ class IntegratedPersonalityEngine:
             personality_state = await self.get_personality_for_user(user_id, context)
 
             # Determine response approach based on current mode
-            if personality_state.current_mode == PersonalityIntegrationMode.TARS_MODE:
-                response_data = await self._generate_tars_response(
-                    message, personality_state, context
-                )
-            else:
-                response_data = await self._generate_astra_response(
-                    message, personality_state, context
-                )
+            response_data = await self._generate_astra_response(
+                message, personality_state, context
+            )
 
             # Add personality metadata
             response_data["personality_info"] = {
@@ -585,14 +555,6 @@ class IntegratedPersonalityEngine:
             # Apply personality parameters
             response = self._apply_personality_parameters(response, state.parameters)
 
-            # Apply TARS elements if in mixed mode
-            if random.random() < 0.3:  # 30% chance of TARS-style additions
-                tars_addition = self.tars_core.generate_tars_quote()
-                if (
-                    tars_addition and len(response) < 200
-                ):  # Don't make responses too long
-                    response += f" {tars_addition}"
-
             return {
                 "response": response,
                 "mode": "astra",
@@ -606,37 +568,6 @@ class IntegratedPersonalityEngine:
                 "response": "I'm here to help, though I'm having some processing challenges at the moment.",
                 "mode": "astra_fallback",
                 "confidence": 0.5,
-                "error": str(e),
-            }
-
-    async def _generate_tars_response(
-        self, message: str, state: PersonalityState, context: Dict[str, Any]
-    ) -> Dict[str, Any]:
-        """Generate TARS-style personality response"""
-        try:
-            # Get TARS-style response
-            tars_response = self.tars_core.generate_response(
-                message, context or {}, state.tars_mode
-            )
-
-            # Apply Astra's emotional intelligence
-            if state.traits.empathy > 0.7:
-                tars_response = self._add_empathetic_elements(tars_response, context)
-
-            return {
-                "response": tars_response,
-                "mode": "tars",
-                "confidence": 0.9,
-                "humor_level": self.tars_core.humor_setting,
-                "processing_time": time.time(),
-            }
-
-        except Exception as e:
-            self.logger.error(f"Error generating TARS response: {e}")
-            return {
-                "response": "That's odd. My humor setting seems to be malfunctioning. Let me try a different approach.",
-                "mode": "tars_fallback",
-                "confidence": 0.6,
                 "error": str(e),
             }
 
@@ -731,11 +662,7 @@ class IntegratedPersonalityEngine:
                 state.traits.adaptability = 1.0
                 state.traits.empathy = 0.95
 
-            elif mode == PersonalityIntegrationMode.TARS_MODE:
-                # TARS-inspired mode
-                state.tars_mode = TARSPersonalityMode.ANALYTICAL
-                state.traits.integrity = 1.0
-                state.traits.intellect = 0.95
+            # TARS mode removed
 
             elif mode == PersonalityIntegrationMode.DEVELOPMENT:
                 # Developer-focused
@@ -768,86 +695,73 @@ class IntegratedPersonalityEngine:
 
     def get_performance_report(self) -> Dict[str, Any]:
         """Get comprehensive performance report"""
-        try:
-            # Update cache stats
-            cache_stats = self.personality_cache.get_stats()
+        # Update cache stats
+        cache_stats = self.personality_cache.get_stats()
 
-            # Calculate adaptation success rate
-            adaptation_success_rate = (
-                (self.successful_adaptations / self.total_adaptations * 100)
-                if self.total_adaptations > 0
-                else 0
-            )
+        # Calculate adaptation success rate
+        adaptation_success_rate = (
+            (self.successful_adaptations / self.total_adaptations * 100)
+            if self.total_adaptations > 0
+            else 0
+        )
 
-            # Calculate average response time
-            avg_response_time = (
-                statistics.mean(self.response_times) if self.response_times else 0
-            )
+        # Calculate average response time
+        avg_response_time = (
+            statistics.mean(self.response_times) if self.response_times else 0
+        )
 
-            return {
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-                "system_uptime": time.time() - self.start_time,
-                "performance_metrics": {
-                    "total_responses": self.performance_metrics["total_responses"],
-                    "average_response_time": avg_response_time,
-                    "total_adaptations": self.total_adaptations,
-                    "successful_adaptations": self.successful_adaptations,
-                    "adaptation_success_rate": adaptation_success_rate,
-                },
-                "cache_performance": cache_stats,
-                "active_users": len(self.user_states),
-                "memory_usage": {
-                    "user_states": len(self.user_states),
-                    "adaptation_history": len(self.adaptation_history),
-                    "cache_entries": cache_stats["size"],
-                },
-                "personality_modes_active": {
-                    mode.value: sum(
-                        1
-                        for state in self.user_states.values()
-                        if state.current_mode == mode
-                    )
-                    for mode in PersonalityIntegrationMode
-                },
-            }
-
-        except Exception as e:
-            self.logger.error(f"Error generating performance report: {e}")
-            return {"error": str(e)}
+        return {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "system_uptime": time.time() - self.start_time,
+            "performance_metrics": {
+                "total_responses": self.performance_metrics["total_responses"],
+                "average_response_time": avg_response_time,
+                "total_adaptations": self.total_adaptations,
+                "successful_adaptations": self.successful_adaptations,
+                "adaptation_success_rate": adaptation_success_rate,
+            },
+            "cache_performance": cache_stats,
+            "active_users": len(self.user_states),
+            "memory_usage": {
+                "user_states": len(self.user_states),
+                "adaptation_history": len(self.adaptation_history),
+                "cache_entries": cache_stats["size"],
+            },
+            "personality_modes_active": {
+                mode.value: sum(
+                    1
+                    for state in self.user_states.values()
+                    if state.current_mode == mode
+                )
+                for mode in PersonalityIntegrationMode
+            },
+        }
 
     async def cleanup(self):
         """Cleanup and optimize personality system"""
-        try:
-            current_time = datetime.now(timezone.utc)
+        current_time = datetime.now(timezone.utc)
 
-            # Remove stale user states (inactive for 24 hours)
-            stale_users = []
-            for user_id, state in self.user_states.items():
-                if (
-                    current_time - state.last_updated
-                ).total_seconds() > 86400:  # 24 hours
-                    stale_users.append(user_id)
+        # Remove stale user states (inactive for 24 hours)
+        stale_users = []
+        for user_id, state in self.user_states.items():
+            if (current_time - state.last_updated).total_seconds() > 86400:  # 24 hours
+                stale_users.append(user_id)
 
-            for user_id in stale_users:
-                del self.user_states[user_id]
+        for user_id in stale_users:
+            del self.user_states[user_id]
 
-            # Trim adaptation history if too large
-            if len(self.adaptation_history) > self.max_history_size:
-                self.adaptation_history = self.adaptation_history[
-                    -self.max_history_size :
-                ]
+        # Trim adaptation history if too large
+        if len(self.adaptation_history) > self.max_history_size:
+            self.adaptation_history = self.adaptation_history[-self.max_history_size :]
 
-            # Reset performance counters if needed
-            if self.performance_metrics["total_responses"] > 1000000:  # 1M responses
-                self.performance_metrics["total_responses"] = 0
-                self.response_times = []
+        # Reset performance counters if needed
+        if self.performance_metrics["total_responses"] > 1000000:  # 1M responses
+            self.performance_metrics["total_responses"] = 0
+            self.response_times = []
 
-            self.logger.info(
-                f"🧹 Personality system cleanup completed. Removed {len(stale_users)} stale users"
-            )
-
-        except Exception as e:
-            self.logger.error(f"Error during personality cleanup: {e}")
+        self.logger.info(
+            f"🧹 Personality system cleanup completed. Removed {len(stale_users)} stale users"
+        )
 
 
 # Global instance
