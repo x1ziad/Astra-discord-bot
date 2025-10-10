@@ -1,0 +1,170 @@
+{
+  "start_time": "2025-10-10 02:37:45.156497+00:00",
+  "tests": [
+    {
+      "name": "File Structure",
+      "status": "PASSED",
+      "duration": 7.915496826171875e-05,
+      "timestamp": "2025-10-10T02:37:45.157041+00:00"
+    },
+    {
+      "name": "Python Syntax",
+      "status": "PASSED",
+      "duration": 0.03317403793334961,
+      "timestamp": "2025-10-10T02:37:45.190479+00:00"
+    },
+    {
+      "name": "Import Dependencies",
+      "status": "PASSED",
+      "duration": 0.9217820167541504,
+      "timestamp": "2025-10-10T02:37:46.112359+00:00"
+    },
+    {
+      "name": "Configuration",
+      "status": "FAILED",
+      "duration": 3.314018249511719e-05,
+      "timestamp": "2025-10-10T02:37:46.112424+00:00"
+    },
+    {
+      "name": "Process Start",
+      "status": "PASSED",
+      "duration": 3.314018249511719e-05,
+      "timestamp": "2025-10-10T02:37:56.119200+00:00"
+    },
+    {
+      "name": "Cog Loading",
+      "status": "PASSED",
+      "duration": 5.000566005706787,
+      "timestamp": "2025-10-10T02:38:01.120050+00:00"
+    },
+    {
+      "name": "Database Init",
+      "status": "PASSED",
+      "duration": 1.0013580322265625e-05,
+      "timestamp": "2025-10-10T02:38:01.120132+00:00"
+    },
+    {
+      "name": "Command Sync",
+      "status": "PASSED",
+      "duration": 4.0531158447265625e-06,
+      "timestamp": "2025-10-10T02:38:01.120171+00:00"
+    },
+    {
+      "name": "TARS Engine",
+      "status": "FAILED",
+      "duration": 0.00017309188842773438,
+      "timestamp": "2025-10-10T02:38:01.120479+00:00"
+    },
+    {
+      "name": "AI Responses",
+      "status": "FAILED",
+      "duration": 0.0006480216979980469,
+      "timestamp": "2025-10-10T02:38:01.121270+00:00"
+    },
+    {
+      "name": "Context Management",
+      "status": "PASSED",
+      "duration": 0.002768993377685547,
+      "timestamp": "2025-10-10T02:38:01.124171+00:00"
+    },
+    {
+      "name": "Multi-Provider",
+      "status": "PASSED",
+      "duration": 9.5367431640625e-07,
+      "timestamp": "2025-10-10T02:38:01.124224+00:00"
+    },
+    {
+      "name": "Message Processing",
+      "status": "PASSED",
+      "duration": 9.5367431640625e-07,
+      "timestamp": "2025-10-10T02:38:01.124326+00:00"
+    },
+    {
+      "name": "AI Companion",
+      "status": "PASSED",
+      "duration": 6.9141387939453125e-06,
+      "timestamp": "2025-10-10T02:38:01.124366+00:00"
+    },
+    {
+      "name": "Response Generation",
+      "status": "PASSED",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T02:38:01.124401+00:00"
+    },
+    {
+      "name": "Error Handling",
+      "status": "PASSED",
+      "duration": 9.5367431640625e-07,
+      "timestamp": "2025-10-10T02:38:01.124429+00:00"
+    },
+    {
+      "name": "Slash Commands",
+      "status": "PASSED",
+      "duration": 9.5367431640625e-07,
+      "timestamp": "2025-10-10T02:38:01.124517+00:00"
+    },
+    {
+      "name": "Permissions",
+      "status": "PASSED",
+      "duration": 1.1920928955078125e-06,
+      "timestamp": "2025-10-10T02:38:01.124547+00:00"
+    },
+    {
+      "name": "Command Registry",
+      "status": "PASSED",
+      "duration": 9.5367431640625e-07,
+      "timestamp": "2025-10-10T02:38:01.124574+00:00"
+    },
+    {
+      "name": "Response Times",
+      "status": "FAILED",
+      "duration": 2.002716064453125e-05,
+      "timestamp": "2025-10-10T02:38:01.124673+00:00"
+    },
+    {
+      "name": "Memory Usage",
+      "status": "PASSED",
+      "duration": 0.015306711196899414,
+      "timestamp": "2025-10-10T02:38:01.140058+00:00"
+    },
+    {
+      "name": "Concurrent Load",
+      "status": "PASSED",
+      "duration": 1.1920928955078125e-06,
+      "timestamp": "2025-10-10T02:38:01.140173+00:00"
+    },
+    {
+      "name": "Cog Interactions",
+      "status": "PASSED",
+      "duration": 9.5367431640625e-07,
+      "timestamp": "2025-10-10T02:38:01.140261+00:00"
+    },
+    {
+      "name": "Event Propagation",
+      "status": "PASSED",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T02:38:01.140283+00:00"
+    },
+    {
+      "name": "Data Consistency",
+      "status": "PASSED",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T02:38:01.140303+00:00"
+    }
+  ],
+  "errors": [],
+  "performance": {
+    "memory_usage_mb": 125.84375
+  },
+  "ai_tests": [],
+  "overall_status": "ACCEPTABLE",
+  "end_time": "2025-10-10 02:38:11.143819+00:00",
+  "duration": "0:00:25.987322",
+  "statistics": {
+    "total_tests": 25,
+    "passed_tests": 21,
+    "failed_tests": 4,
+    "error_tests": 0,
+    "success_rate": 84.0
+  }
+}

@@ -1,13 +1,13 @@
 {
   "parameters": {
-    "humor": 65,
-    "honesty": 90,
-    "formality": 40,
+    "humor": 40,
+    "honesty": 100,
+    "formality": 90,
     "empathy": 75,
     "strictness": 60,
     "initiative": 80,
-    "transparency": 95
+    "transparency": 100
   },
-  "mode": "adaptive",
-  "last_updated": "2025-10-08T13:36:14.439410+00:00"
+  "mode": "developer",
+  "last_updated": "2025-10-10T04:22:08.136006+00:00"
 }

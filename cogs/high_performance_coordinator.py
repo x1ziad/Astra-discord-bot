@@ -9,8 +9,8 @@ Optimized for 10+ simultaneous conversations:
 - Multitasking (seamless)
 
 Performance targets:
-- <100ms response time for security warnings
-- <500ms response time for AI conversations
+- Under 100ms response time for security warnings
+- Under 500ms response time for AI conversations
 - 50+ concurrent message processing
 - Zero message loss or delays
 """
@@ -136,8 +136,9 @@ class HighPerformanceCoordinator(commands.Cog):
 
         self.logger.info("📝 All message handlers registered")
 
-    @commands.Cog.listener()
-    async def on_message(self, message: discord.Message):
+    # 🚀 TEMPORARILY DISABLED: Allow AI Companion to handle messages directly
+    # @commands.Cog.listener()
+    async def on_message_disabled(self, message: discord.Message):
         """
         🚀 MAIN MESSAGE ENTRY POINT
         Routes all messages through the concurrent processor for optimal performance
@@ -387,8 +388,8 @@ class HighPerformanceCoordinator(commands.Cog):
 
             if should_respond:
                 # Use AI companion's response generation
-                if hasattr(self.ai_companion, "_generate_contextual_response"):
-                    response = await self.ai_companion._generate_contextual_response(
+                if hasattr(self.ai_companion, "generate_contextual_response"):
+                    response = await self.ai_companion.generate_contextual_response(
                         message
                     )
                     if response:

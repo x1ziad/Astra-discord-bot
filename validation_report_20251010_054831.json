@@ -1,0 +1,378 @@
+{
+  "timestamp": "2025-10-10T05:48:31.623879",
+  "report": {
+    "total_tests": 52,
+    "passed_tests": 46,
+    "failed_tests": 6,
+    "success_rate": 88.46153846153845,
+    "grade": "B",
+    "duration": 1.415858268737793,
+    "warnings": 1
+  },
+  "test_results": [
+    {
+      "name": "Import discord",
+      "success": true,
+      "message": "Successfully imported",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T05:48:30.450509"
+    },
+    {
+      "name": "Import discord.ext.commands",
+      "success": true,
+      "message": "Successfully imported",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T05:48:30.462403"
+    },
+    {
+      "name": "Import aiohttp",
+      "success": true,
+      "message": "Successfully imported",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T05:48:30.462442"
+    },
+    {
+      "name": "Import asyncio",
+      "success": true,
+      "message": "Successfully imported",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T05:48:30.462467"
+    },
+    {
+      "name": "Import logging",
+      "success": true,
+      "message": "Successfully imported",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T05:48:30.462478"
+    },
+    {
+      "name": "Import config.unified_config",
+      "success": true,
+      "message": "Successfully imported",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T05:48:30.466238"
+    },
+    {
+      "name": "Import utils.database",
+      "success": true,
+      "message": "Successfully imported",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T05:48:30.478237"
+    },
+    {
+      "name": "Import core.unified_security_system",
+      "success": true,
+      "message": "Successfully imported",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T05:48:30.486909"
+    },
+    {
+      "name": "Import ai.tars_personality_engine",
+      "success": true,
+      "message": "Successfully imported",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T05:48:31.203310"
+    },
+    {
+      "name": "Import ai.universal_ai_client",
+      "success": true,
+      "message": "Successfully imported",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T05:48:31.203345"
+    },
+    {
+      "name": "Import logger.enhanced_logger",
+      "success": true,
+      "message": "Successfully imported",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T05:48:31.207396"
+    },
+    {
+      "name": "TARS Engine Init",
+      "success": true,
+      "message": "TARS personality engine initialized",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T05:48:31.207435"
+    },
+    {
+      "name": "TARS Personality Config",
+      "success": true,
+      "message": "All personality settings present: {'humor_level': 90, 'honesty_level': 100, 'intelligence_level': 95, 'efficiency_level': 95, 'loyalty_level': 100, 'adaptability_level': 90, 'mode': 'TARS', 'description': 'TARS-level AI with humor, honesty, and intelligence'}",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T05:48:31.207449"
+    },
+    {
+      "name": "TARS Engine Test",
+      "success": false,
+      "message": "TARS engine error: 'TARSPersonalityCore' object has no attribute 'generate_tars_response'",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T05:48:31.207460"
+    },
+    {
+      "name": "AI Client Init",
+      "success": true,
+      "message": "Universal AI client initialized",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T05:48:31.209442"
+    },
+    {
+      "name": "AI Provider Mistral",
+      "success": true,
+      "message": "mistral provider configured",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T05:48:31.209458"
+    },
+    {
+      "name": "AI Provider Google",
+      "success": true,
+      "message": "google provider configured",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T05:48:31.209467"
+    },
+    {
+      "name": "AI Provider Groq",
+      "success": true,
+      "message": "groq provider configured",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T05:48:31.209474"
+    },
+    {
+      "name": "Cog advanced_ai",
+      "success": true,
+      "message": "Module imported with setup function",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T05:48:31.215619"
+    },
+    {
+      "name": "Cog quiz",
+      "success": true,
+      "message": "Module imported with setup function",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T05:48:31.218603"
+    },
+    {
+      "name": "Cog security_commands",
+      "success": true,
+      "message": "Module imported with setup function",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T05:48:31.222645"
+    },
+    {
+      "name": "Cog high_performance_coordinator",
+      "success": true,
+      "message": "Module imported with setup function",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T05:48:31.226437"
+    },
+    {
+      "name": "Cog roles",
+      "success": true,
+      "message": "Module imported with setup function",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T05:48:31.227562"
+    },
+    {
+      "name": "Cog bot_setup_enhanced",
+      "success": true,
+      "message": "Module imported with setup function",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T05:48:31.228860"
+    },
+    {
+      "name": "Cog bot_status",
+      "success": true,
+      "message": "Module imported with setup function",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T05:48:31.239992"
+    },
+    {
+      "name": "Cog security_manager",
+      "success": true,
+      "message": "Module imported with setup function",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T05:48:31.241767"
+    },
+    {
+      "name": "Cog enhanced_security",
+      "success": true,
+      "message": "Module imported with setup function",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T05:48:31.244913"
+    },
+    {
+      "name": "Cog admin_optimized",
+      "success": true,
+      "message": "Module imported with setup function",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T05:48:31.246241"
+    },
+    {
+      "name": "Cog ai_companion",
+      "success": true,
+      "message": "Module imported with setup function",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T05:48:31.248161"
+    },
+    {
+      "name": "Cog ai_moderation",
+      "success": true,
+      "message": "Module imported with setup function",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T05:48:31.249157"
+    },
+    {
+      "name": "Cog nexus",
+      "success": true,
+      "message": "Module imported with setup function",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T05:48:31.251372"
+    },
+    {
+      "name": "Cog personality_manager",
+      "success": true,
+      "message": "Module imported with setup function",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T05:48:31.252335"
+    },
+    {
+      "name": "Cog enhanced_server_management",
+      "success": true,
+      "message": "Module imported with setup function",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T05:48:31.253675"
+    },
+    {
+      "name": "Cog analytics",
+      "success": true,
+      "message": "Module imported with setup function",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T05:48:31.602771"
+    },
+    {
+      "name": "Cog notion",
+      "success": true,
+      "message": "Module imported with setup function",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T05:48:31.603934"
+    },
+    {
+      "name": "Cog space",
+      "success": true,
+      "message": "Module imported with setup function",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T05:48:31.605476"
+    },
+    {
+      "name": "Database System",
+      "success": false,
+      "message": "Database error: cannot import name 'DatabaseManager' from 'utils.database' (/Users/ziadmekawy/Developer/Discord-Stellaris/AstraBot/utils/database.py)",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T05:48:31.605554"
+    },
+    {
+      "name": "Security Database",
+      "success": false,
+      "message": "Security system error: UnifiedSecuritySystem.__init__() missing 1 required positional argument: 'bot'",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T05:48:31.605570"
+    },
+    {
+      "name": "Config Loading",
+      "success": true,
+      "message": "Unified config imported",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T05:48:31.605590"
+    },
+    {
+      "name": "Config File",
+      "success": true,
+      "message": "Config file loaded with 9 keys",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T05:48:31.605715"
+    },
+    {
+      "name": "Slash Commands Detection",
+      "success": true,
+      "message": "Found 103 slash commands",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T05:48:31.610583"
+    },
+    {
+      "name": "Text Commands Detection",
+      "success": true,
+      "message": "Found 1 text commands",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T05:48:31.612224"
+    },
+    {
+      "name": "Event Listeners Detection",
+      "success": true,
+      "message": "Found 20 event listeners",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T05:48:31.613801"
+    },
+    {
+      "name": "Security Systems",
+      "success": false,
+      "message": "Security error: UnifiedSecuritySystem.__init__() missing 1 required positional argument: 'bot'",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T05:48:31.613839"
+    },
+    {
+      "name": "uvloop Optimization",
+      "success": true,
+      "message": "uvloop available for async performance boost",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T05:48:31.622773"
+    },
+    {
+      "name": "orjson Optimization",
+      "success": true,
+      "message": "orjson available for fast JSON processing",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T05:48:31.622839"
+    },
+    {
+      "name": "System Monitoring",
+      "success": true,
+      "message": "psutil available for system monitoring",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T05:48:31.622860"
+    },
+    {
+      "name": "Concurrent Processor",
+      "success": true,
+      "message": "Concurrent message processor available",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T05:48:31.622873"
+    },
+    {
+      "name": "AI + TARS Integration",
+      "success": true,
+      "message": "Integration test passed",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T05:48:31.623018"
+    },
+    {
+      "name": "Security + AI Integration",
+      "success": false,
+      "message": "Integration test failed: UnifiedSecuritySystem.__init__() missing 1 required positional argument: 'bot'",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T05:48:31.623034"
+    },
+    {
+      "name": "Database + Config Integration",
+      "success": false,
+      "message": "Integration test failed: cannot import name 'DatabaseManager' from 'utils.database' (/Users/ziadmekawy/Developer/Discord-Stellaris/AstraBot/utils/database.py)",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T05:48:31.623049"
+    },
+    {
+      "name": "Cogs + Commands Integration",
+      "success": true,
+      "message": "Integration test passed",
+      "duration": 0.0,
+      "timestamp": "2025-10-10T05:48:31.623550"
+    }
+  ]
+}

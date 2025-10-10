@@ -23,6 +23,8 @@ class AstraMode(Enum):
     DEVELOPER = "developer"  # 🧩 Technical precision, verbose explanations
     MISSION_CONTROL = "mission_control"  # 📡 Event/task automation
     ADAPTIVE = "adaptive"  # 🧠 Context-aware mode switching
+    COMPANION = "companion"  # 💝 Warm, supportive, emotional connection
+    ANALYTICAL = "analytical"  # 📊 Data-driven, logical, detailed analysis
 
 
 class PersonalityParameters:

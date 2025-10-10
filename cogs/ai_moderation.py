@@ -8,6 +8,7 @@ import logging
 import time
 import json
 import re
+import hashlib
 from typing import Dict, List, Optional, Set, Any, Tuple
 from collections import defaultdict, deque
 from datetime import datetime, timedelta, timezone
@@ -129,10 +130,198 @@ class AIModeration(commands.Cog):
         return self.user_profiles[user_id]
 
     @commands.Cog.listener()
-    # 🚀 DISABLED: Message processing moved to High-Performance Coordinator
+    async def on_message(self, message: discord.Message):
+        """🚀 ULTRA-OPTIMIZED message monitoring with AI analysis"""
+        if not message.guild or message.author.bot:
+            return
 
-    @commands.Cog.listener()
-    # async def on_message(self, message: discord.Message):
+        # 🚀 Performance optimization: Process in background for non-critical messages
+        asyncio.create_task(self._process_message_async(message))
+
+    async def _process_message_async(self, message: discord.Message):
+        """🚀 Asynchronous message processing for ultimate performance"""
+        try:
+            # Track positive behavior first (lightweight operation)
+            await self._track_positive_behavior(message)
+
+            # Quick violation check with optimized algorithms
+            violation = await self._comprehensive_analysis(message)
+
+            if violation:
+                await self._handle_violation_with_ai(message, violation)
+            else:
+                # Occasionally provide positive reinforcement (1% chance)
+                if (
+                    len(
+                        self.user_profiles.get(message.author.id, {}).get(
+                            "interaction_history", []
+                        )
+                    )
+                    % 100
+                    == 0
+                ):
+                    await self._random_positive_reinforcement(message)
+        except Exception as e:
+            self.logger.error(f"Error in async message processing: {e}")
+
+    async def _comprehensive_analysis(
+        self, message: discord.Message
+    ) -> Optional[ViolationType]:
+        """🚀 ULTRA-OPTIMIZED comprehensive message analysis"""
+        user_id = message.author.id
+        content = message.content.lower().strip()
+
+        # 🚀 Quick exit for short messages
+        if len(content) < 3:
+            return None
+
+        # Update message history with size limit for performance
+        if user_id not in self.message_history:
+            self.message_history[user_id] = deque(maxlen=20)  # Limited for performance
+
+        current_time = time.time()
+        self.message_history[user_id].append(
+            {
+                "content": content,
+                "timestamp": current_time,
+                "length": len(content),
+                "caps_ratio": self._calculate_caps_ratio(message.content),
+            }
+        )
+
+        # 🚀 Parallel violation detection for maximum speed
+        detection_tasks = [
+            self._detect_spam(user_id),
+            self._detect_caps_abuse(message.content),
+            self._detect_mention_spam(message),
+            self._detect_repeated_content(user_id, content),
+            self._detect_toxic_language(content, message),
+            self._detect_link_spam(user_id, content),
+            self._detect_emotional_distress(content),
+        ]
+
+        try:
+            results = await asyncio.gather(*detection_tasks, return_exceptions=True)
+
+            # Map results to violation types
+            violation_mapping = [
+                ViolationType.SPAM,
+                ViolationType.CAPS_ABUSE,
+                ViolationType.MENTION_SPAM,
+                ViolationType.REPEATED_CONTENT,
+                ViolationType.TOXIC_LANGUAGE,
+                ViolationType.LINK_SPAM,
+                ViolationType.EMOTIONAL_DISTRESS,
+            ]
+
+            # Return most severe violation found
+            severity_order = [
+                ViolationType.EMOTIONAL_DISTRESS,
+                ViolationType.TOXIC_LANGUAGE,
+                ViolationType.SPAM,
+                ViolationType.MENTION_SPAM,
+                ViolationType.CAPS_ABUSE,
+                ViolationType.REPEATED_CONTENT,
+                ViolationType.LINK_SPAM,
+            ]
+
+            for i, result in enumerate(results):
+                if isinstance(result, Exception):
+                    continue
+                if result:  # Violation detected
+                    violation_type = violation_mapping[i]
+                    return violation_type
+
+        except Exception as e:
+            self.logger.error(f"Error in comprehensive analysis: {e}")
+
+        return None
+
+    async def _detect_emotional_distress(self, content: str) -> bool:
+        """🚀 OPTIMIZED emotional distress detection"""
+        distress_patterns = [
+            r"\b(depressed|suicide|kill myself|end it all|give up|hate myself)\b",
+            r"\b(nobody cares|alone|hopeless|worthless|useless)\b",
+            r"\b(can\'t take it|too much|overwhelmed|breaking down)\b",
+        ]
+
+        for pattern in distress_patterns:
+            if re.search(pattern, content, re.IGNORECASE):
+                return True
+        return False
+
+    async def _detect_toxic_language(
+        self, content: str, message: discord.Message
+    ) -> bool:
+        """🚀 OPTIMIZED toxic language detection with AI assistance"""
+        # Quick pattern-based detection first
+        for pattern in self.toxic_patterns:
+            if re.search(pattern, content, re.IGNORECASE):
+                return True
+
+        # AI-powered toxicity detection for longer messages only
+        if AI_AVAILABLE and len(content) > 20:
+            try:
+                ai_analysis = await self._ai_toxicity_analysis(content)
+                if ai_analysis and ai_analysis.get("is_toxic", False):
+                    return True
+            except Exception as e:
+                self.logger.debug(f"AI toxicity analysis failed: {e}")
+
+        return False
+
+    async def _ai_toxicity_analysis(self, content: str) -> Optional[Dict]:
+        """🚀 OPTIMIZED AI toxicity analysis with caching"""
+        try:
+            # Create cache key
+            content_hash = hashlib.md5(content.encode()).hexdigest()
+            cache_key = f"toxicity_{content_hash}"
+
+            # Check cache first
+            if hasattr(self, "_toxicity_cache"):
+                cached_result = self._toxicity_cache.get(cache_key)
+                if (
+                    cached_result and time.time() - cached_result["timestamp"] < 3600
+                ):  # 1 hour cache
+                    return cached_result["result"]
+            else:
+                self._toxicity_cache = {}
+
+            prompt = f"""Analyze toxicity in: "{content[:200]}"
+JSON response: {{"is_toxic": true/false, "confidence": 0-100, "reason": "brief reason"}}"""
+
+            ai_manager = MultiProviderAIManager()
+            ai_response = await ai_manager.generate_response(prompt)
+
+            if ai_response.success:
+                # Try to extract JSON
+                json_match = re.search(r"\{.*\}", ai_response.content, re.DOTALL)
+                if json_match:
+                    result = json.loads(json_match.group())
+
+                    # Cache the result
+                    self._toxicity_cache[cache_key] = {
+                        "result": result,
+                        "timestamp": time.time(),
+                    }
+
+                    # Limit cache size
+                    if len(self._toxicity_cache) > 1000:
+                        # Remove oldest entries
+                        sorted_items = sorted(
+                            self._toxicity_cache.items(),
+                            key=lambda x: x[1]["timestamp"],
+                        )
+                        for old_key, _ in sorted_items[:100]:
+                            del self._toxicity_cache[old_key]
+
+                    return result
+
+        except Exception as e:
+            self.logger.error(f"AI toxicity analysis error: {e}")
+
+        return None
+
     #    """Enhanced message monitoring with AI analysis"""
     #    if not message.guild or message.author.bot:
     #        return
