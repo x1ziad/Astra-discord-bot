@@ -2695,7 +2695,7 @@ class AdvancedAICog(commands.Cog):
             personality_core = get_personality_core(
                 interaction.guild.id if interaction.guild else None
             )
-            params = personality_core.get_parameters()
+            params = personality_core.get_parameters().to_dict()
             current_mode = personality_core.current_mode.value
 
             # Create personality status embed
