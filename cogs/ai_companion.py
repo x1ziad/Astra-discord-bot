@@ -302,11 +302,12 @@ Message: "{message.content}"
         if not message.guild or message.author.bot:
             return
 
-        # Check if bot is mentioned or if this is a DM
+        # Check if bot is mentioned, if this is a DM, or if Astra's name is mentioned
         bot_mentioned = self.bot.user.mentioned_in(message)
         is_dm = isinstance(message.channel, discord.DMChannel)
+        name_mentioned = any(name.lower() in message.content.lower() for name in ['astra', 'astrabot'])
 
-        if bot_mentioned or is_dm:
+        if bot_mentioned or is_dm or name_mentioned:
             await self.handle_companion_interaction(message)
 
     async def handle_companion_interaction(self, message: discord.Message):
