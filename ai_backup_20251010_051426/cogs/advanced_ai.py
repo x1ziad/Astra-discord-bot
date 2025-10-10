@@ -86,19 +86,13 @@ class AdvancedAICog(commands.Cog):
 
         # TARS-enhanced personality integration
         try:
-            from ai.tars_personality_engine import (
-                get_tars_personality,
-                get_tars_response,
-            )
-
+            from ai.tars_personality_engine import get_tars_personality, get_tars_response
             self.tars_personality = get_tars_personality()
             self.tars_enhanced = True
             self.logger.info("✅ TARS personality system integrated into Advanced AI")
         except ImportError:
             self.tars_enhanced = False
-            self.logger.warning(
-                "⚠️  TARS personality system not available in Advanced AI"
-            )
+            self.logger.warning("⚠️  TARS personality system not available in Advanced AI")
 
         # Start essential background tasks only
         if self.ai_client:
@@ -2796,7 +2790,7 @@ class AdvancedAICog(commands.Cog):
                     f"**Humor Setting:** {self.tars_personality.humor_setting}% \n"
                     f"**Intelligence Level:** {self.tars_personality.intelligence_level}%\n"
                     f"**Honesty Level:** {self.tars_personality.honesty_level}%",
-                    inline=False,
+                    inline=False
                 )
 
             embed.set_footer(
@@ -2812,44 +2806,39 @@ class AdvancedAICog(commands.Cog):
                 ephemeral=True,
             )
 
-    def enhance_response_with_tars_personality(
-        self, response: str, context: str, user_input: str, user_id: int
-    ) -> str:
+    def enhance_response_with_tars_personality(self, response: str, context: str, user_input: str, user_id: int) -> str:
         """Enhance AI response with TARS-like personality traits"""
         if not self.tars_enhanced:
             return response
-
+        
         try:
             from ai.tars_personality_engine import get_tars_response
-
+            
             # Get TARS personality enhancement
             tars_data = get_tars_response(context, user_input, user_id)
-
+            
             # Apply personality prefix if available
             if tars_data.get("personality_prefix"):
                 response = f"{tars_data['personality_prefix']}\n\n{response}"
-
-            # Apply personality suffix if available
+            
+            # Apply personality suffix if available  
             if tars_data.get("personality_suffix"):
                 response = f"{response}{tars_data['personality_suffix']}"
-
+            
             # Add humor elements based on setting
-            if (
-                tars_data.get("humor_level", 0) >= 70
-                and "joke" in user_input.lower()
-                or "funny" in user_input.lower()
-            ):
-
+            if (tars_data.get("humor_level", 0) >= 70 and 
+                "joke" in user_input.lower() or "funny" in user_input.lower()):
+                
                 humor_additions = [
                     "\n\n*My humor subroutines are working overtime today.*",
                     f"\n\n*Humor setting at {tars_data.get('humor_level', 90)}% - hope that lands.*",
                     "\n\n*TARS would be proud of that response.*",
-                    "\n\n*Even my circuits found that amusing.*",
+                    "\n\n*Even my circuits found that amusing.*"
                 ]
                 response += random.choice(humor_additions)
-
+            
             return response
-
+            
         except Exception as e:
             self.logger.error(f"TARS personality enhancement error: {e}")
             return response

@@ -87,50 +87,56 @@ class Analytics(commands.GroupCog, name="analytics"):
     # 🚀 DISABLED: Message processing moved to High-Performance Coordinator
 
 
-    @commands.Cog.listener()
+    # @commands.Cog.listener()
+
+
+
     # async def on_message(self, message):
-        """Track message activity and send to Discord channel"""
-        if message.author.bot or not message.guild:
-            return
 
-        # Send message activity directly to Discord analytics channel
-        if self.discord_reporter:
-            activity_data = {
-                "event": "message_activity",
-                "guild_id": message.guild.id,
-                "guild_name": message.guild.name,
-                "channel_id": message.channel.id,
-                "channel_name": getattr(message.channel, "name", "DM"),
-                "user_id": message.author.id,
-                "username": str(message.author),
-                "message_length": len(message.content),
-                "has_attachments": len(message.attachments) > 0,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-                "date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
-            }
 
-            await self.discord_reporter.send_analytics(activity_data, immediate=False)
 
-        # Keep minimal tracking in memory for current session analytics
-        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-        guild_id = str(message.guild.id)
-        user_id = str(message.author.id)
-        channel_id = str(message.channel.id)
+    #     """Track message activity and send to Discord channel"""
+    #    if message.author.bot or not message.guild:
+    #        return
 
-        # Lightweight tracking for real-time analytics
-        if guild_id not in self.daily_stats:
-            self.daily_stats[guild_id] = {}
-        if today not in self.daily_stats[guild_id]:
-            self.daily_stats[guild_id][today] = {
-                "total_messages": 0,
-                "active_users": set(),
-                "active_channels": set(),
-            }
+    #    # Send message activity directly to Discord analytics channel
+    #    if self.discord_reporter:
+    #        activity_data = {
+    #            "event": "message_activity",
+    #            "guild_id": message.guild.id,
+    #            "guild_name": message.guild.name,
+    #            "channel_id": message.channel.id,
+    #            "channel_name": getattr(message.channel, "name", "DM"),
+    #            "user_id": message.author.id,
+    #            "username": str(message.author),
+    #            "message_length": len(message.content),
+    #            "has_attachments": len(message.attachments) > 0,
+    #            "timestamp": datetime.now(timezone.utc).isoformat(),
+    #            "date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+    #        }
 
-        daily_data = self.daily_stats[guild_id][today]
-        daily_data["total_messages"] += 1
-        daily_data["active_users"].add(user_id)
-        daily_data["active_channels"].add(channel_id)
+    #        await self.discord_reporter.send_analytics(activity_data, immediate=False)
+
+    #    # Keep minimal tracking in memory for current session analytics
+    #    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    #    guild_id = str(message.guild.id)
+    #    user_id = str(message.author.id)
+    #    channel_id = str(message.channel.id)
+
+    #    # Lightweight tracking for real-time analytics
+    #    if guild_id not in self.daily_stats:
+    #        self.daily_stats[guild_id] = {}
+    #    if today not in self.daily_stats[guild_id]:
+    #        self.daily_stats[guild_id][today] = {
+    #            "total_messages": 0,
+    #            "active_users": set(),
+    #            "active_channels": set(),
+    #        }
+
+    #    daily_data = self.daily_stats[guild_id][today]
+    #    daily_data["total_messages"] += 1
+    #    daily_data["active_users"].add(user_id)
+    #    daily_data["active_channels"].add(channel_id)
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):

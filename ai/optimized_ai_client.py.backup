@@ -1,0 +1,103 @@
+"""
+Optimized AI Client - Stub Implementation
+This is a placeholder for advanced optimized AI features
+"""
+
+import logging
+from typing import Dict, Any, Optional
+
+# TARS Personality System Integration
+try:
+    from ai.tars_personality_engine import get_tars_personality, get_tars_response
+    TARS_AVAILABLE = True
+except ImportError:
+    TARS_AVAILABLE = False
+
+
+# Response Caching System for Performance
+import functools
+import hashlib
+from typing import Dict, Any
+import time
+
+_response_cache: Dict[str, Dict[str, Any]] = {}
+_cache_expiry = 300  # 5 minutes
+
+def cached_ai_response(func):
+    """Decorator for caching AI responses"""
+    @functools.wraps(func)
+    async def wrapper(*args, **kwargs):
+        # Create cache key
+        cache_key = hashlib.md5(str(args + tuple(kwargs.items())).encode()).hexdigest()
+        
+        # Check cache
+        if cache_key in _response_cache:
+            cached_data = _response_cache[cache_key]
+            if time.time() - cached_data['timestamp'] < _cache_expiry:
+                return cached_data['response']
+        
+        # Generate new response
+        response = await func(*args, **kwargs)
+        
+        # Cache response
+        _response_cache[cache_key] = {
+            'response': response,
+            'timestamp': time.time()
+        }
+        
+        # Clean old cache entries (simple cleanup)
+        if len(_response_cache) > 100:
+            oldest_key = min(_response_cache.keys(), key=lambda k: _response_cache[k]['timestamp'])
+            del _response_cache[oldest_key]
+        
+        return response
+    return wrapper
+
+def enhance_with_tars_personality(response: str, context: str = "", user_input: str = "", user_id: int = None) -> str:
+    """Enhance response with TARS-like personality"""
+    if not TARS_AVAILABLE:
+        return response
+    
+    try:
+        from ai.tars_personality_engine import get_tars_response
+        tars_data = get_tars_response(context, user_input, user_id)
+        
+        # Apply TARS enhancements
+        if tars_data.get("personality_prefix"):
+            response = f"{tars_data['personality_prefix']}\n\n{response}"
+        
+        if tars_data.get("personality_suffix"):
+            response = f"{response}{tars_data['personality_suffix']}"
+        
+        return response
+    except Exception:
+        return response
+
+
+logger = logging.getLogger("astra.optimized_ai_client")
+
+
+class OptimizedAIEngine:
+    """Placeholder for optimized AI engine"""
+
+    def __init__(self, config: Dict[str, Any]):
+        self.config = config
+        self.available = False
+
+    def is_available(self) -> bool:
+        """Check if the optimized engine is available"""
+        return self.available
+
+    async def generate_response(self, prompt: str, **kwargs) -> str:
+        """Placeholder response generation"""
+        return "Optimized engine not implemented yet"
+
+
+def get_fast_engine(config: Dict[str, Any]) -> OptimizedAIEngine:
+    """Get the fast optimized engine instance"""
+    return OptimizedAIEngine(config)
+
+
+def get_optimized_engine() -> OptimizedAIEngine:
+    """Get the optimized engine instance"""
+    return OptimizedAIEngine({})

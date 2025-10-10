@@ -137,61 +137,58 @@ class SecurityManager(commands.Cog):
         await self.security_system.shutdown()
         logger.info("✅ Security Manager unloaded")
 
-    @commands.Cog.listener()
     # 🚀 DISABLED: Message processing moved to High-Performance Coordinator
-
-
-    @commands.Cog.listener()
+    # @commands.Cog.listener()
     # async def on_message(self, message: discord.Message):
-        """Monitor all messages for security violations"""
-        # Skip bot messages and DMs
-        if message.author.bot or not message.guild:
-            return
-
-        # Skip if lockdown is active (emergency mode)
-        if self.lockdown_active:
-            if not is_bot_owner(message.author.id):
-                try:
-                    await message.delete()
-                    return
-                except:
-                    pass
-
-        # Check if security is enabled for this guild
-        guild_settings = self.get_guild_settings(message.guild.id)
-        if not guild_settings.get("security_enabled", True):
-            return
-
-        try:
-            self.performance_metrics["security_checks"] += 1
-
-            # Analyze message for security violations
-            should_act, violations = (
-                await self.security_system.analyze_message_security(message)
-            )
-
-            if should_act and violations:
-                # Handle the violations
-                result = await self.security_system.handle_violations(
-                    message, violations
-                )
-
-                self.performance_metrics["violations_handled"] += 1
-
-                # Log the action
-                self.logger.info(
-                    f"🛡️ Security action: User {message.author} ({message.author.id}) - "
-                    f"{result['violations_detected']} violations - {result['action_taken']}"
-                )
-
-                # Notify moderators if configured
-                if guild_settings.get("notify_moderators", True):
-                    await self.notify_moderators_violation(message, violations, result)
-
-        except Exception as e:
-            self.logger.error(
-                f"Security system error for message from {message.author}: {e}"
-            )
+    #     """Monitor all messages for security violations"""
+    #     # Skip bot messages and DMs
+    #     if message.author.bot or not message.guild:
+    #         return
+    #
+    #     # Skip if lockdown is active (emergency mode)
+    #     if self.lockdown_active:
+    #         if not is_bot_owner(message.author.id):
+    #             try:
+    #                 await message.delete()
+    #                 return
+    #             except:
+    #                 pass
+    #
+    #     # Check if security is enabled for this guild
+    #     guild_settings = self.get_guild_settings(message.guild.id)
+    #     if not guild_settings.get("security_enabled", True):
+    #         return
+    #
+    #     try:
+    #         self.performance_metrics["security_checks"] += 1
+    #
+    #         # Analyze message for security violations
+    #         should_act, violations = (
+    #             await self.security_system.analyze_message_security(message)
+    #         )
+    #
+    #         if should_act and violations:
+    #             # Handle the violations
+    #             result = await self.security_system.handle_violations(
+    #                 message, violations
+    #             )
+    #
+    #             self.performance_metrics["violations_handled"] += 1
+    #
+    #             # Log the action
+    #             self.logger.info(
+    #                 f"🛡️ Security action: User {message.author} ({message.author.id}) - "
+    #                 f"{result['violations_detected']} violations - {result['action_taken']}"
+    #             )
+    #
+    #             # Notify moderators if configured
+    #             if guild_settings.get("notify_moderators", True):
+    #                 await self.notify_moderators_violation(message, violations, result)
+    #
+    #     except Exception as e:
+    #         self.logger.error(
+    #             f"Security system error for message from {message.author}: {e}"
+    #         )
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):

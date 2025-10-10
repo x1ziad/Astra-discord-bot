@@ -748,23 +748,23 @@ class SecurityCommands(commands.Cog):
 
     @commands.Cog.listener()
     # async def on_message(self, message: discord.Message):
-        """Monitor all messages for potential violations"""
-        # Skip if not in a guild or if message is from a bot
-        if not message.guild or message.author.bot:
-            return
+    #    """Monitor all messages for potential violations"""
+    #    # Skip if not in a guild or if message is from a bot
+    #    if not message.guild or message.author.bot:
+    #        return
 
-        # Skip owner messages
-        if message.author.id == OWNER_ID:
-            return
+    #    # Skip owner messages
+    #    if message.author.id == OWNER_ID:
+    #        return
 
-        # Increment message analysis counter
-        self.security_stats["messages_analyzed"] += 1
+    #    # Increment message analysis counter
+    #    self.security_stats["messages_analyzed"] += 1
 
-        # Process message for violations
-        violation_event = await self.process_message_for_violations(message)
+    #    # Process message for violations
+    #    violation_event = await self.process_message_for_violations(message)
 
-        if violation_event:
-            self.security_stats["threats_detected"] += 1
+    #    if violation_event:
+    #        self.security_stats["threats_detected"] += 1
 
     @commands.Cog.listener()
     async def on_message_delete(self, message: discord.Message):

@@ -79,11 +79,7 @@ class AICompanion(commands.Cog):
         # Personality system integrated via get_personality_core
         # TARS-enhanced personality system
         try:
-            from ai.tars_personality_engine import (
-                get_tars_personality,
-                get_tars_response,
-            )
-
+            from ai.tars_personality_engine import get_tars_personality, get_tars_response
             self.tars_personality = get_tars_personality()
             self.tars_enhanced = True
             self.logger.info("✅ TARS personality system integrated")
@@ -994,7 +990,8 @@ Create a warm, caring message (under 100 words) that:
 
     # TARS-Enhanced Commands
     @app_commands.command(
-        name="tars_settings", description="🤖 View and adjust TARS personality settings"
+        name="tars_settings",
+        description="🤖 View and adjust TARS personality settings"
     )
     async def tars_settings_command(self, interaction: discord.Interaction):
         """Display TARS personality settings like in Interstellar"""
@@ -1003,23 +1000,24 @@ Create a warm, caring message (under 100 words) that:
                 "⚠️ TARS personality system not available.", ephemeral=True
             )
             return
-
+        
         await interaction.response.defer()
-
+        
         settings_display = self.tars_personality.get_current_settings_display()
-
+        
         embed = discord.Embed(
             title="🤖 TARS Personality Configuration",
             description=settings_display,
-            color=0x00FF88,
-            timestamp=datetime.now(timezone.utc),
+            color=0x00ff88,
+            timestamp=datetime.now(timezone.utc)
         )
         embed.set_footer(text="Just like the movie! • Astra AI System")
-
+        
         await interaction.followup.send(embed=embed)
 
     @app_commands.command(
-        name="humor_setting", description="🎭 Adjust TARS humor setting (0-100%)"
+        name="humor_setting", 
+        description="🎭 Adjust TARS humor setting (0-100%)"
     )
     @app_commands.describe(level="Humor level from 0 (serious) to 100 (maximum wit)")
     async def humor_setting_command(self, interaction: discord.Interaction, level: int):
@@ -1029,50 +1027,50 @@ Create a warm, caring message (under 100 words) that:
                 "⚠️ TARS personality system not available.", ephemeral=True
             )
             return
-
+        
         if not 0 <= level <= 100:
             await interaction.response.send_message(
                 "⚠️ Humor level must be between 0 and 100.", ephemeral=True
             )
             return
-
+        
         await interaction.response.defer()
-
+        
         from ai.tars_personality_engine import adjust_tars_humor
-
         result = adjust_tars_humor(level)
-
+        
         embed = discord.Embed(
             title="🎭 Humor Setting Adjusted",
             description=f"```{result}```",
-            color=0xFF6B35,
-            timestamp=datetime.now(timezone.utc),
+            color=0xff6b35,
+            timestamp=datetime.now(timezone.utc)
         )
-
+        
         if level == 90:
             embed.add_field(
                 name="🎬 Movie Reference",
                 value="*'TARS, what's your humor setting?' - 'That's 100%'*\n*'Let's make it 75%'*",
-                inline=False,
+                inline=False
             )
         elif level == 0:
             embed.add_field(
                 name="🤖 Serious Mode",
                 value="*No more jokes. Efficiency mode activated.*",
-                inline=False,
+                inline=False
             )
         elif level == 100:
             embed.add_field(
                 name="⚠️ Maximum Humor",
                 value="*Warning: Maximum wit levels detected. Proceed with caution.*",
-                inline=False,
+                inline=False
             )
-
+        
         embed.set_footer(text="TARS Personality Engine • Astra AI")
         await interaction.followup.send(embed=embed)
 
     @app_commands.command(
-        name="tars_quote", description="🎬 Get a TARS-style quote or response"
+        name="tars_quote",
+        description="🎬 Get a TARS-style quote or response"
     )
     async def tars_quote_command(self, interaction: discord.Interaction):
         """Get TARS-style quotes from Interstellar"""
@@ -1081,141 +1079,141 @@ Create a warm, caring message (under 100 words) that:
                 "⚠️ TARS personality system not available.", ephemeral=True
             )
             return
-
+        
         await interaction.response.defer()
-
+        
         from ai.tars_personality_engine import get_tars_quote
-
         quote = get_tars_quote()
-
+        
         embed = discord.Embed(
             title="🤖 TARS Wisdom",
-            description=f'*"{quote}"*',
-            color=0x1E88E5,
-            timestamp=datetime.now(timezone.utc),
+            description=f"*\"{quote}\"*",
+            color=0x1e88e5,
+            timestamp=datetime.now(timezone.utc)
         )
         embed.set_author(name="TARS", icon_url="🤖")
         embed.set_footer(text="Inspired by Interstellar • Astra AI System")
-
+        
         await interaction.followup.send(embed=embed)
 
     @app_commands.command(
         name="solve_problem",
-        description="🧠 Use TARS-level intelligence to solve a problem",
+        description="🧠 Use TARS-level intelligence to solve a problem"
     )
     @app_commands.describe(problem="Describe the problem you need help solving")
-    async def solve_problem_command(
-        self, interaction: discord.Interaction, problem: str
-    ):
+    async def solve_problem_command(self, interaction: discord.Interaction, problem: str):
         """Use TARS-like problem-solving approach"""
         if not self.tars_enhanced:
             await interaction.response.send_message(
                 "⚠️ TARS personality system not available.", ephemeral=True
             )
             return
-
+        
         await interaction.response.defer()
-
+        
         from ai.tars_personality_engine import solve_problem_tars_style
-
         analysis = solve_problem_tars_style(problem)
-
+        
         embed = discord.Embed(
             title="🧠 TARS Problem Analysis",
-            color=0x4CAF50,
-            timestamp=datetime.now(timezone.utc),
+            color=0x4caf50,
+            timestamp=datetime.now(timezone.utc)
         )
-
+        
         embed.add_field(
-            name="🔍 Problem Analysis", value=analysis["analysis_phase"], inline=False
+            name="🔍 Problem Analysis",
+            value=analysis["analysis_phase"],
+            inline=False
         )
-
+        
         embed.add_field(
-            name="⚡ Solution Generation",
+            name="⚡ Solution Generation", 
             value=analysis["solution_generation"],
-            inline=False,
+            inline=False
         )
-
+        
         embed.add_field(
-            name="📊 Assessment", value=analysis["risk_assessment"], inline=False
+            name="📊 Assessment",
+            value=analysis["risk_assessment"],
+            inline=False
         )
-
+        
         embed.add_field(
-            name="💡 Recommendation", value=analysis["recommendation"], inline=False
+            name="💡 Recommendation",
+            value=analysis["recommendation"],
+            inline=False
         )
-
+        
         embed.add_field(
             name="🎯 Confidence Level",
             value=f"{analysis['confidence_level']}%",
-            inline=True,
+            inline=True
         )
-
+        
         embed.add_field(
-            name="⚡ Efficiency Rating",
+            name="⚡ Efficiency Rating", 
             value=f"{analysis['efficiency_rating']}%",
-            inline=True,
+            inline=True
         )
-
+        
         embed.set_footer(text=f"TARS Wisdom: {analysis['tars_wisdom']}")
-
+        
         await interaction.followup.send(embed=embed)
 
     @app_commands.command(
         name="ai_personality",
-        description="🎭 Check current AI personality status and traits",
+        description="🎭 Check current AI personality status and traits"
     )
     async def ai_personality_command(self, interaction: discord.Interaction):
         """Display current AI personality status"""
         await interaction.response.defer()
-
+        
         embed = discord.Embed(
             title="🤖 Astra AI Personality Status",
-            color=0x9C27B0,
-            timestamp=datetime.now(timezone.utc),
+            color=0x9c27b0,
+            timestamp=datetime.now(timezone.utc)
         )
-
+        
         if self.tars_enhanced:
             traits = self.tars_personality.get_active_tars_traits()
             mode = self.tars_personality.current_mode.value
-
+            
             embed.add_field(
-                name="🎭 Personality Mode", value=f"**{mode.upper()}**", inline=True
+                name="🎭 Personality Mode",
+                value=f"**{mode.upper()}**",
+                inline=True
             )
-
+            
             embed.add_field(
                 name="🧠 Intelligence Level",
                 value=f"{self.tars_personality.intelligence_level}%",
-                inline=True,
+                inline=True
             )
-
+            
             embed.add_field(
                 name="😄 Humor Setting",
                 value=f"{self.tars_personality.humor_setting}%",
-                inline=True,
+                inline=True
             )
-
+            
             embed.add_field(
                 name="✅ Active Traits",
-                value=(
-                    "• " + "\n• ".join(traits)
-                    if traits
-                    else "Standard operational mode"
-                ),
-                inline=False,
+                value="• " + "\n• ".join(traits) if traits else "Standard operational mode",
+                inline=False
             )
-
+            
             embed.add_field(
                 name="🎬 TARS Compatibility",
                 value="✅ **TARS-Enhanced Personality Active**",
-                inline=False,
+                inline=False
             )
         else:
             embed.add_field(
                 name="⚠️ Status",
                 value="Basic personality system active.\nTARS enhancement not available.",
-                inline=False,
+                inline=False
             )
-
+        
         embed.set_footer(text="Astra AI Personality Engine")
         await interaction.followup.send(embed=embed)
 
