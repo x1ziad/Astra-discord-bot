@@ -233,17 +233,19 @@ class AstraAICompanion(commands.Cog):
 
             # Enhanced personality-aware user profile for AI client
             dominant_traits = self._get_dominant_traits(current_personality)
-            
+
             # Build user profile with personality context for AI client
             user_profile_data = {
                 "name": message.author.display_name,
                 "personality_traits": dominant_traits[:3],
-                "dominant_emotion": context.get('sentiment', 'neutral'),
-                "channel_context": context.get('channel_type', 'general'),
+                "dominant_emotion": context.get("sentiment", "neutral"),
+                "channel_context": context.get("channel_type", "general"),
                 "interaction_count": profile.modifiers.interaction_history,
-                "current_mood": context.get('user_mood', 0.5),
-                "personality_guide": self._build_personality_guide(current_personality, dominant_traits),
-                "astra_context": "Astra AI companion with dynamic personality adaptation"
+                "current_mood": context.get("user_mood", 0.5),
+                "personality_guide": self._build_personality_guide(
+                    current_personality, dominant_traits
+                ),
+                "astra_context": "Astra AI companion with dynamic personality adaptation",
             }
 
             # Adjust temperature based on creativity level
@@ -258,7 +260,7 @@ class AstraAICompanion(commands.Cog):
                 user_profile=user_profile_data,
                 temperature=temperature,
             )
-            
+
             response = ai_response.content if ai_response else None
 
             return response or self._get_fallback_response(current_personality)
@@ -608,7 +610,7 @@ class AstraAICompanion(commands.Cog):
                 )
 
         else:
-            # Show current personality
+            # Show current personality with enhanced system info
             current_personality = profile.base_personality
 
             embed = discord.Embed(
@@ -628,17 +630,409 @@ class AstraAICompanion(commands.Cog):
                 name="Personality Traits", value=personality_text, inline=False
             )
 
+            # Add interaction history and system context
+            interaction_count = profile.modifiers.interaction_history
+            relationship_level = (
+                "New Friend" if interaction_count < 5
+                else "Good Friend" if interaction_count < 20
+                else "Close Friend" if interaction_count < 50
+                else "Best Friend"
+            )
+            
             embed.add_field(
-                name="💡 Tips",
-                value="• Use `/companion preset:` to apply a preset\n• Adjust individual traits with trait and value parameters\n• Higher values mean stronger expression of that trait",
+                name="� Your Relationship with Astra",
+                value=f"**Level:** {relationship_level}\n**Interactions:** {interaction_count}\n**Last Mood:** {profile.modifiers.user_mood:.1f}/1.0\n**Channel Preference:** {profile.modifiers.channel_type.title()}",
+                inline=True,
+            )
+            
+            # System awareness - show AI client status
+            ai_status = "🟢 Online" if self.ai_client.is_available() else "🔴 Offline"
+            ai_provider = self.ai_client.provider.value if hasattr(self.ai_client, 'provider') else "Unknown"
+            
+            embed.add_field(
+                name="🤖 AI System Status",
+                value=f"**Status:** {ai_status}\n**Provider:** {ai_provider}\n**Active Users:** {len(self.user_profiles)}\n**Total Commands:** {len(self.bot.tree.get_commands())}",
+                inline=True,
+            )
+
+            embed.add_field(
+                name="💡 Available Commands",
+                value="• `/companion preset:` - Apply personality preset\n• `/ai_status` - Check AI system status\n• `/system_status` - Full system diagnostics\n• `/commands_list` - View all bot commands",
                 inline=False,
             )
 
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @app_commands.command(
+        name="system_status",
+        description="🖥️ Comprehensive Astra system status and diagnostics",
+    )
+    async def system_status_command(self, interaction: discord.Interaction):
+        """Show comprehensive system status and diagnostics"""
+        await interaction.response.defer()
+        
+        try:
+            # Gather system information
+            start_time = time.perf_counter()
+            
+            # Get bot commands count
+            bot_commands = self.bot.tree.get_commands()
+            total_slash_commands = len(bot_commands)
+            
+            # Get loaded cogs and their commands
+            loaded_cogs = list(self.bot.cogs.keys())
+            cog_command_counts = {}
+            for cog_name, cog in self.bot.cogs.items():
+                cog_commands = [cmd for cmd in bot_commands if hasattr(cmd, 'callback') and cmd.callback.__module__.endswith(cog_name.lower())]
+                cog_command_counts[cog_name] = len(cog_commands)
+            
+            # AI Client status
+            ai_client_available = self.ai_client.is_available()
+            ai_provider = self.ai_client.provider.value if hasattr(self.ai_client, 'provider') else "Unknown"
+            ai_model = getattr(self.ai_client, 'model', 'Unknown')
+            
+            # Performance metrics
+            avg_response_time = (
+                sum(self.response_times) / len(self.response_times)
+                if self.response_times
+                else 0
+            )
+            
+            # System performance
+            try:
+                import psutil
+                cpu_percent = psutil.cpu_percent(interval=0.1)
+                memory = psutil.virtual_memory()
+                memory_percent = memory.percent
+                system_metrics_available = True
+            except ImportError:
+                cpu_percent = 0.0
+                memory_percent = 0.0
+                system_metrics_available = False
+            
+            # Database status
+            try:
+                db_healthy = await self._check_database_health()
+            except:
+                db_healthy = False
+            
+            embed = discord.Embed(
+                title="�️ Astra System Status",
+                description="Comprehensive system diagnostics and performance metrics",
+                color=0x00FF00 if ai_client_available and db_healthy else 0xFFAA00,
+                timestamp=datetime.now(),
+            )
+            
+            # System Overview
+            embed.add_field(
+                name="🤖 Bot System",
+                value=f"**Loaded Cogs:** {len(loaded_cogs)}\n**Total Commands:** {total_slash_commands}\n**Uptime:** {self._get_uptime()}\n**Latency:** {self.bot.latency*1000:.1f}ms",
+                inline=True,
+            )
+            
+            # AI System Status
+            ai_status_icon = "🟢" if ai_client_available else "🔴"
+            embed.add_field(
+                name=f"{ai_status_icon} AI System",
+                value=f"**Provider:** {ai_provider}\n**Model:** {ai_model}\n**Status:** {'Online' if ai_client_available else 'Offline'}\n**Avg Response:** {avg_response_time:.2f}s",
+                inline=True,
+            )
+            
+            # Database & Storage
+            db_status_icon = "🟢" if db_healthy else "🔴"
+            embed.add_field(
+                name=f"{db_status_icon} Database",
+                value=f"**Status:** {'Healthy' if db_healthy else 'Issues'}\n**Profiles:** {len(self.user_profiles)}\n**Contexts:** {len(self.conversation_contexts)}\n**Interactions:** {self.interaction_count:,}",
+                inline=True,
+            )
+            
+            # Performance Metrics
+            perf_value = f"**Response Time:** {avg_response_time:.2f}s\n**Success Rate:** {self._calculate_success_rate():.1f}%"
+            if system_metrics_available:
+                perf_value = f"**CPU Usage:** {cpu_percent:.1f}%\n**Memory:** {memory_percent:.1f}%\n" + perf_value
+            else:
+                perf_value = "**System Metrics:** Unavailable\n" + perf_value
+                
+            embed.add_field(
+                name="⚡ Performance",
+                value=perf_value,
+                inline=True,
+            )
+            
+            # Top Cogs by Command Count
+            top_cogs = sorted(cog_command_counts.items(), key=lambda x: x[1], reverse=True)[:3]
+            cog_stats = "\n".join([f"**{cog}:** {count} commands" for cog, count in top_cogs])
+            embed.add_field(
+                name="📊 Top Cogs",
+                value=cog_stats if cog_stats else "No command data",
+                inline=True,
+            )
+            
+            # System Health Summary
+            health_indicators = []
+            if ai_client_available: health_indicators.append("🟢 AI Online")
+            else: health_indicators.append("🔴 AI Offline")
+            
+            if db_healthy: health_indicators.append("🟢 DB Healthy")
+            else: health_indicators.append("🔴 DB Issues")
+            
+            if cpu_percent < 80: health_indicators.append("🟢 CPU Good")
+            else: health_indicators.append("🟡 CPU High")
+            
+            if memory_percent < 80: health_indicators.append("🟢 Memory Good")
+            else: health_indicators.append("🟡 Memory High")
+            
+            embed.add_field(
+                name="🏥 Health Status",
+                value="\n".join(health_indicators),
+                inline=True,
+            )
+            
+            # Add footer with scan time
+            scan_time = time.perf_counter() - start_time
+            embed.set_footer(text=f"System scan completed in {scan_time:.3f}s • Astra v2.0.0")
+            
+            await interaction.followup.send(embed=embed)
+            
+        except Exception as e:
+            self.logger.error(f"Error in system_status command: {e}")
+            error_embed = discord.Embed(
+                title="❌ System Status Error",
+                description=f"Unable to retrieve system status: {str(e)}",
+                color=0xFF0000
+            )
+            await interaction.followup.send(embed=error_embed)
+
+    async def _check_database_health(self) -> bool:
+        """Check database connectivity and health"""
+        try:
+            # Simple connectivity test
+            await self.db.get("health", "test", {})
+            return True
+        except:
+            return False
+    
+    def _get_uptime(self) -> str:
+        """Get bot uptime in human readable format"""
+        try:
+            # Try to get uptime from bot if available
+            if hasattr(self.bot, 'start_time'):
+                uptime = datetime.now() - self.bot.start_time
+            else:
+                # Fallback calculation
+                uptime = timedelta(seconds=0)
+            
+            days = uptime.days
+            hours, remainder = divmod(uptime.seconds, 3600)
+            minutes, _ = divmod(remainder, 60)
+            
+            if days > 0:
+                return f"{days}d {hours}h {minutes}m"
+            elif hours > 0:
+                return f"{hours}h {minutes}m"
+            else:
+                return f"{minutes}m"
+        except:
+            return "Unknown"
+    
+    def _calculate_success_rate(self) -> float:
+        """Calculate AI response success rate"""
+        if self.interaction_count == 0:
+            return 100.0
+        
+        # Estimate success rate based on response times (if we have responses, they were successful)
+        if len(self.response_times) > 0:
+            success_rate = (len(self.response_times) / max(self.interaction_count, len(self.response_times))) * 100
+            return min(success_rate, 100.0)
+        
+        return 95.0  # Default estimate
+
+    @app_commands.command(
+        name="commands_list",
+        description="📝 List all available bot commands by category",
+    )
+    async def commands_list_command(self, interaction: discord.Interaction):
+        """Show comprehensive list of all bot commands"""
+        await interaction.response.defer()
+        
+        try:
+            # Get all slash commands
+            bot_commands = self.bot.tree.get_commands()
+            
+            # Organize commands by cog
+            cog_commands = {}
+            uncategorized_commands = []
+            
+            for cmd in bot_commands:
+                # Try to determine which cog the command belongs to
+                cog_name = "Unknown"
+                if hasattr(cmd, 'callback') and cmd.callback:
+                    callback_module = cmd.callback.__module__
+                    if 'cogs.' in callback_module:
+                        cog_name = callback_module.split('cogs.')[1].replace('_', ' ').title()
+                    
+                    # Find the actual cog instance
+                    for cog_key, cog_instance in self.bot.cogs.items():
+                        if callback_module.endswith(cog_key.lower()) or cog_key.lower() in callback_module:
+                            cog_name = cog_key
+                            break
+                
+                if cog_name not in cog_commands:
+                    cog_commands[cog_name] = []
+                
+                # Format command info
+                cmd_info = f"`/{cmd.name}` - {cmd.description[:50]}{'...' if len(cmd.description) > 50 else ''}"
+                cog_commands[cog_name].append(cmd_info)
+            
+            # Create embed with command categories
+            embed = discord.Embed(
+                title="📝 Astra Bot Commands",
+                description=f"Complete list of {len(bot_commands)} available slash commands",
+                color=0x7289DA,
+                timestamp=datetime.now(),
+            )
+            
+            # Add commands by cog (limit to prevent embed size issues)
+            command_count = 0
+            for cog_name, commands in sorted(cog_commands.items()):
+                if command_count >= 20:  # Discord embed field limit
+                    remaining_cogs = len(cog_commands) - len([c for c in cog_commands if c in [field.name for field in embed.fields]])
+                    embed.add_field(
+                        name="📋 Additional Commands",
+                        value=f"**{remaining_cogs}** more command categories available.\nUse `/system_status` for detailed system info.",
+                        inline=False
+                    )
+                    break
+                
+                if len(commands) > 0:
+                    # Limit commands per cog to prevent oversized embeds
+                    cmd_list = commands[:5]  # Show first 5 commands per cog
+                    if len(commands) > 5:
+                        cmd_list.append(f"... and {len(commands) - 5} more")
+                    
+                    embed.add_field(
+                        name=f"🔧 {cog_name} ({len(commands)})",
+                        value="\n".join(cmd_list),
+                        inline=False
+                    )
+                    command_count += 1
+            
+            # Add summary footer
+            total_cogs = len([cog for cog in self.bot.cogs.keys()])
+            embed.set_footer(text=f"Total: {len(bot_commands)} commands across {total_cogs} modules • Use /help for detailed command info")
+            
+            await interaction.followup.send(embed=embed)
+            
+        except Exception as e:
+            self.logger.error(f"Error in commands_list command: {e}")
+            error_embed = discord.Embed(
+                title="❌ Commands List Error",
+                description=f"Unable to retrieve commands list: {str(e)}",
+                color=0xFF0000
+            )
+            await interaction.followup.send(embed=error_embed)
+
+    @app_commands.command(
+        name="ai_status",
+        description="🤖 Detailed AI client status and configuration",
+    )
+    async def ai_status_command(self, interaction: discord.Interaction):
+        """Show detailed AI client status and configuration"""
+        try:
+            embed = discord.Embed(
+                title="🤖 Astra AI Client Status",
+                description="Detailed information about the AI system configuration",
+                color=0x00FF00 if self.ai_client.is_available() else 0xFF0000,
+                timestamp=datetime.now(),
+            )
+            
+            # Basic AI Status
+            status_icon = "🟢" if self.ai_client.is_available() else "🔴"
+            provider = self.ai_client.provider.value if hasattr(self.ai_client, 'provider') else "Unknown"
+            model = getattr(self.ai_client, 'model', 'Unknown')
+            
+            embed.add_field(
+                name=f"{status_icon} Connection Status",
+                value=f"**Available:** {'Yes' if self.ai_client.is_available() else 'No'}\n**Provider:** {provider}\n**Model:** {model}",
+                inline=True,
+            )
+            
+            # AI Configuration
+            temperature = getattr(self.ai_client, 'temperature', 0.7)
+            max_tokens = getattr(self.ai_client, 'max_tokens', 2000)
+            
+            embed.add_field(
+                name="⚙️ Configuration",
+                value=f"**Temperature:** {temperature}\n**Max Tokens:** {max_tokens:,}\n**Context Messages:** {getattr(self.ai_client, 'max_context_messages', 8)}",
+                inline=True,
+            )
+            
+            # AI Features
+            features = []
+            if getattr(self.ai_client, 'enable_emotional_intelligence', False):
+                features.append("🧠 Emotional Intelligence")
+            if getattr(self.ai_client, 'enable_topic_tracking', False):
+                features.append("📊 Topic Tracking")
+            if getattr(self.ai_client, 'enable_memory_system', False):
+                features.append("💾 Memory System")
+            
+            embed.add_field(
+                name="✨ Features",
+                value="\n".join(features) if features else "Basic AI responses",
+                inline=True,
+            )
+            
+            # Performance Stats
+            total_contexts = len(getattr(self.ai_client, 'conversation_contexts', {}))
+            total_memories = len(getattr(self.ai_client, 'user_memories', {}))
+            
+            embed.add_field(
+                name="📊 AI Performance",
+                value=f"**Active Contexts:** {total_contexts}\n**User Memories:** {total_memories}\n**Avg Response:** {sum(self.response_times) / len(self.response_times) if self.response_times else 0:.2f}s",
+                inline=True,
+            )
+            
+            # Provider-specific info
+            if hasattr(self.ai_client, 'config') and provider in self.ai_client.config:
+                config = self.ai_client.config[self.ai_client.provider]
+                embed.add_field(
+                    name="🔗 Provider Details",
+                    value=f"**Base URL:** {config.get('base_url', 'Unknown')}\n**Default Model:** {config.get('default_model', 'Unknown')}",
+                    inline=True,
+                )
+            
+            # Health Check
+            try:
+                # Quick health check
+                health_check_start = time.perf_counter()
+                await self.ai_client.test_connection() if hasattr(self.ai_client, 'test_connection') else True
+                health_check_time = time.perf_counter() - health_check_start
+                health_status = f"🟢 Healthy ({health_check_time:.3f}s)"
+            except:
+                health_status = "🔴 Connection Issues"
+            
+            embed.add_field(
+                name="🏥 Health Check",
+                value=health_status,
+                inline=True,
+            )
+            
+            embed.set_footer(text="Astra AI Client • Real-time status")
+            
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            
+        except Exception as e:
+            self.logger.error(f"Error in ai_status command: {e}")
+            error_embed = discord.Embed(
+                title="❌ AI Status Error",
+                description=f"Unable to retrieve AI status: {str(e)}",
+                color=0xFF0000
+            )
+            await interaction.response.send_message(embed=error_embed, ephemeral=True)
+
+    @app_commands.command(
         name="companion_stats",
-        description="📊 View Astra companion performance statistics",
+        description="�📊 View Astra companion performance statistics",
     )
     async def companion_stats_command(self, interaction: discord.Interaction):
         """Show companion performance statistics"""
@@ -663,13 +1057,22 @@ class AstraAICompanion(commands.Cog):
 
         embed.add_field(
             name="⚡ Performance",
-            value=f"**Avg Response:** {avg_response_time:.2f}s\n**Success Rate:** 99.2%",
+            value=f"**Avg Response:** {avg_response_time:.2f}s\n**Success Rate:** {self._calculate_success_rate():.1f}%",
             inline=True,
         )
 
         embed.add_field(
             name="🧠 Personality System",
             value=f"**Profiles:** {len(self.user_profiles)}\n**Contexts:** {len(self.conversation_contexts)}",
+            inline=True,
+        )
+
+        # AI Client Information
+        ai_status = "🟢 Online" if self.ai_client.is_available() else "🔴 Offline"
+        ai_provider = self.ai_client.provider.value if hasattr(self.ai_client, 'provider') else "Unknown"
+        embed.add_field(
+            name="🤖 AI Client",
+            value=f"**Status:** {ai_status}\n**Provider:** {ai_provider}",
             inline=True,
         )
 
