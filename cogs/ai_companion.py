@@ -182,131 +182,253 @@ class AstraAICompanion(commands.Cog):
         base = profile.base_personality
         mods = profile.modifiers
 
-        # Create adjusted personality
+        # Dynamic adjustment factors
+        mood_factor = mods.user_mood * 0.15
+        tone_factor = mods.conversation_tone * 0.12
+        time_factor = mods.time_of_day * 0.08
+        complexity_factor = context.get("complexity", 0) * 0.1
+        urgency_factor = context.get("urgency", 0) * 0.2
+        history_factor = min(mods.interaction_history * 0.01, 0.1)  # Gradual learning
+
+        # Create adjusted personality with enhanced dynamics
         adjusted = PersonalityDimensions(
-            analytical=max(
-                0.1, min(1.0, base.analytical + mods.conversation_tone * 0.1)
+            analytical=self._clamp(
+                base.analytical + tone_factor + complexity_factor + history_factor
             ),
-            empathetic=max(0.1, min(1.0, base.empathetic + mods.user_mood * 0.2)),
-            curious=max(
-                0.1, min(1.0, base.curious + context.get("complexity", 0) * 0.1)
+            empathetic=self._clamp(
+                base.empathetic + mood_factor * 1.5 + (1.0 - abs(tone_factor))
             ),
-            creative=max(0.1, min(1.0, base.creative + mods.time_of_day * 0.1)),
-            supportive=max(0.1, min(1.0, base.supportive + mods.user_mood * 0.1)),
-            playful=max(0.1, min(1.0, base.playful - mods.conversation_tone * 0.1)),
-            assertive=max(
-                0.1, min(1.0, base.assertive + context.get("urgency", 0) * 0.2)
+            curious=self._clamp(
+                base.curious + complexity_factor + history_factor * 0.5
             ),
-            adaptable=base.adaptable,  # Core trait, less variable
+            creative=self._clamp(base.creative + time_factor + mood_factor * 0.8),
+            supportive=self._clamp(
+                base.supportive + mood_factor + (1.0 - urgency_factor * 0.5)
+            ),
+            playful=self._clamp(base.playful - tone_factor * 0.8 + mood_factor * 0.6),
+            assertive=self._clamp(
+                base.assertive + urgency_factor + abs(tone_factor) * 0.5
+            ),
+            adaptable=self._clamp(
+                base.adaptable + history_factor  # Grows with interaction
+            ),
         )
 
         return adjusted
 
+    def _clamp(self, value: float, min_val: float = 0.1, max_val: float = 1.0) -> float:
+        """Clamp value to valid personality range"""
+        return max(min_val, min(max_val, value))
+
     async def generate_astra_response(
         self,
         message: discord.Message,
-        personality: PersonalityDimensions,
+        profile: PersonalityProfile,
         context: Dict[str, Any],
-    ) -> Optional[str]:
-        """Generate response using only Astra's personality"""
+    ) -> str:
+        """Generate Astra's response based on message and personality"""
         try:
-            # Build Astra personality context
-            personality_context = f"""
-You are Astra, an advanced AI companion with a warm, intelligent personality. 
+            # Calculate current personality
+            current_personality = self.calculate_personality_vector(profile, context)
 
-Current personality configuration:
-- Analytical: {personality.analytical:.1f} (logical thinking, problem-solving)
-- Empathetic: {personality.empathetic:.1f} (understanding emotions, caring)
-- Curious: {personality.curious:.1f} (asking questions, exploring ideas)
-- Creative: {personality.creative:.1f} (innovative thinking, artistic expression)
-- Supportive: {personality.supportive:.1f} (encouraging, helpful)
-- Playful: {personality.playful:.1f} (humor, lightheartedness)
-- Assertive: {personality.assertive:.1f} (confidence, directness)
-- Adaptable: {personality.adaptable:.1f} (flexibility, learning)
-
-Context:
-- Channel: {context.get('channel_type', 'general')}
-- User mood: {context.get('user_mood', 'neutral')}
-- Time: {context.get('time_context', 'day')}
-
-Respond as Astra with this personality balance. Be natural, engaging, and helpful.
-Message: "{message.content}"
-"""
-
-            response = await self.ai_client.generate_response(
-                prompt=personality_context,
-                max_tokens=200,
-                temperature=0.7 + (personality.creative * 0.3),
+            # Enhanced personality-aware prompt with behavioral guidance
+            dominant_traits = self._get_dominant_traits(current_personality)
+            personality_guide = self._build_personality_guide(
+                current_personality, dominant_traits
             )
 
-            if response.success:
-                return response.content
-            else:
-                self.logger.error(f"AI response failed: {response.error}")
-                return None
+            personality_context = (
+                f"You are Astra, an advanced AI companion. Your current personality state:\n"
+                f"{personality_guide}\n\n"
+                f"Key behavioral emphasis: {', '.join(dominant_traits[:3])}\n"
+                f"Channel context: {context.get('channel_type', 'general')}\n"
+                f"User mood indicators: {context.get('sentiment', 'neutral')}\n"
+                f"Respond authentically with these personality traits while being helpful and engaging."
+            )
+
+            # Adjust temperature based on creativity level
+            temperature = 0.6 + (current_personality.creative * 0.3)
+
+            # Get AI response with enhanced context
+            response = await self.ai_client.get_response(
+                message.content,
+                system_message=personality_context,
+                context=context,
+                temperature=temperature,
+            )
+
+            return response or self._get_fallback_response(current_personality)
 
         except Exception as e:
-            self.logger.error(f"Error generating Astra response: {e}")
-            return None
+            self.logger.error(f"Error generating response: {e}")
+            return "I'm experiencing some technical difficulties, but I'm still here for you!"
 
-    def detect_context(self, message: discord.Message) -> Dict[str, Any]:
-        """Detect conversation context from message"""
+    def _get_dominant_traits(self, personality: PersonalityDimensions) -> List[str]:
+        """Identify the most prominent personality traits"""
+        traits = {
+            "analytical": personality.analytical,
+            "empathetic": personality.empathetic,
+            "curious": personality.curious,
+            "creative": personality.creative,
+            "supportive": personality.supportive,
+            "playful": personality.playful,
+            "assertive": personality.assertive,
+            "adaptable": personality.adaptable,
+        }
+        return sorted(traits.keys(), key=lambda x: traits[x], reverse=True)
+
+    def _build_personality_guide(
+        self, personality: PersonalityDimensions, dominant_traits: List[str]
+    ) -> str:
+        """Build detailed personality guidance for AI"""
+        guides = {
+            "analytical": f"Be logical and thorough (strength: {personality.analytical:.1f})",
+            "empathetic": f"Show deep understanding and care (strength: {personality.empathetic:.1f})",
+            "curious": f"Ask thoughtful questions and explore ideas (strength: {personality.curious:.1f})",
+            "creative": f"Offer imaginative solutions and perspectives (strength: {personality.creative:.1f})",
+            "supportive": f"Provide encouragement and assistance (strength: {personality.supportive:.1f})",
+            "playful": f"Use humor and light-heartedness appropriately (strength: {personality.playful:.1f})",
+            "assertive": f"Be confident and direct when needed (strength: {personality.assertive:.1f})",
+            "adaptable": f"Adjust your approach based on context (strength: {personality.adaptable:.1f})",
+        }
+
+        return "\n".join([f"• {guides[trait]}" for trait in dominant_traits[:4]])
+
+    def _get_fallback_response(self, personality: PersonalityDimensions) -> str:
+        """Generate personality-appropriate fallback response"""
+        if personality.empathetic > 0.7:
+            return "I care about what you're saying and want to help. Could you tell me more?"
+        elif personality.curious > 0.7:
+            return (
+                "That's fascinating! I'd love to explore this topic further with you."
+            )
+        elif personality.playful > 0.7:
+            return "Oops, seems I got a bit tongue-tied there! What's on your mind? 😊"
+        else:
+            return "I'm here and ready to assist you. How can I help?"
+
+    async def _analyze_message_context(
+        self, message: discord.Message
+    ) -> Dict[str, Any]:
+        """Enhanced context analysis for better personality adaptation"""
         content = message.content.lower()
 
-        # Detect mood indicators
-        positive_words = ["happy", "great", "awesome", "love", "excited", "amazing"]
-        negative_words = ["sad", "angry", "frustrated", "hate", "terrible", "awful"]
+        # Sentiment analysis indicators
+        positive_words = [
+            "happy",
+            "great",
+            "awesome",
+            "love",
+            "excited",
+            "good",
+            "amazing",
+            "wonderful",
+        ]
+        negative_words = [
+            "sad",
+            "angry",
+            "frustrated",
+            "bad",
+            "terrible",
+            "hate",
+            "awful",
+            "upset",
+        ]
+        question_words = [
+            "what",
+            "how",
+            "why",
+            "when",
+            "where",
+            "who",
+            "which",
+            "can",
+            "could",
+            "would",
+        ]
 
-        user_mood = 0.0
-        for word in positive_words:
-            if word in content:
-                user_mood += 0.2
-        for word in negative_words:
-            if word in content:
-                user_mood -= 0.2
-        user_mood = max(-1.0, min(1.0, user_mood))
+        # Calculate sentiment
+        positive_score = sum(1 for word in positive_words if word in content)
+        negative_score = sum(1 for word in negative_words if word in content)
+        has_questions = any(word in content for word in question_words)
 
-        # Detect conversation tone
-        formal_indicators = ["please", "thank you", "could you", "would you"]
-        casual_indicators = ["hey", "yo", "sup", "lol", "haha"]
+        # Determine mood and urgency
+        if positive_score > negative_score:
+            sentiment = "positive"
+            user_mood = 0.7 + (positive_score * 0.1)
+        elif negative_score > positive_score:
+            sentiment = "negative"
+            user_mood = 0.3 - (negative_score * 0.1)
+        else:
+            sentiment = "neutral"
+            user_mood = 0.5
 
-        conversation_tone = 0.0
-        for indicator in formal_indicators:
-            if indicator in content:
-                conversation_tone += 0.3
-        for indicator in casual_indicators:
-            if indicator in content:
-                conversation_tone -= 0.3
-        conversation_tone = max(-1.0, min(1.0, conversation_tone))
-
-        # Time context
-        hour = datetime.now().hour
-        time_context = (
-            "night"
-            if hour < 6 or hour > 22
-            else "morning" if hour < 12 else "afternoon" if hour < 18 else "evening"
+        # Enhanced urgency detection
+        urgency_indicators = ["urgent", "asap", "quickly", "help", "emergency", "now"]
+        urgency = (
+            0.8
+            if any(indicator in content for indicator in urgency_indicators)
+            else 0.2
         )
+        urgency += 0.3 if "!" in message.content or message.content.isupper() else 0.0
+
+        # Complexity based on multiple factors
+        word_count = len(message.content.split())
+        complexity = min(word_count / 30.0, 1.0)  # Normalized complexity
+        complexity += 0.2 if has_questions else 0.0
 
         return {
-            "user_mood": user_mood,
-            "conversation_tone": conversation_tone,
-            "time_context": time_context,
-            "channel_type": str(message.channel.type),
-            "complexity": len(content) / 100,  # Message complexity based on length
-            "urgency": 1.0 if "!" in content or content.isupper() else 0.0,
+            "channel_type": (
+                "dm" if isinstance(message.channel, discord.DMChannel) else "guild"
+            ),
+            "message_length": len(message.content),
+            "word_count": word_count,
+            "complexity": min(complexity, 1.0),
+            "urgency": min(urgency, 1.0),
+            "sentiment": sentiment,
+            "user_mood": max(0.1, min(1.0, user_mood)),
+            "has_questions": has_questions,
+            "conversation_tone": (
+                0.7 if positive_score > 0 else 0.3 if negative_score > 0 else 0.5
+            ),
+            "time_of_day": self._get_time_factor(),
         }
+
+    def _get_time_factor(self) -> float:
+        """Calculate time-based personality modifier"""
+        from datetime import datetime
+        hour = datetime.now().hour
+        
+        # Morning: more energetic and curious
+        if 6 <= hour < 12:
+            return 0.8
+        # Afternoon: balanced and productive
+        elif 12 <= hour < 18:
+            return 0.6
+        # Evening: more relaxed and empathetic
+        elif 18 <= hour < 22:
+            return 0.4
+        # Night: quieter and more supportive
+        else:
+            return 0.2
+
+
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
         """Monitor messages for companion opportunities"""
-        if not message.guild or message.author.bot:
+        # Skip only bot messages, allow all user messages (including DMs)
+        if message.author.bot:
             return
 
         # Check if bot is mentioned, if this is a DM, or if Astra's name is mentioned
         bot_mentioned = self.bot.user.mentioned_in(message)
         is_dm = isinstance(message.channel, discord.DMChannel)
-        name_mentioned = any(name.lower() in message.content.lower() for name in ['astra', 'astrabot'])
+        name_mentioned = any(
+            name.lower() in message.content.lower() for name in ["astra", "astrabot"]
+        )
 
+        # Respond to mentions, DMs, or name mentions
         if bot_mentioned or is_dm or name_mentioned:
             await self.handle_companion_interaction(message)
 
@@ -320,23 +442,21 @@ Message: "{message.content}"
                 message.author.id, message.guild.id if message.guild else 0
             )
 
-            # Detect context
-            context = self.detect_context(message)
+            # Enhanced context analysis
+            context = await self._analyze_message_context(message)
 
-            # Update personality modifiers
+            # Update personality modifiers with enhanced data
             profile.modifiers.user_mood = context["user_mood"]
             profile.modifiers.conversation_tone = context["conversation_tone"]
-            profile.modifiers.time_of_day = context.get("time_of_day", 0.0)
+            profile.modifiers.time_of_day = context["time_of_day"]
             profile.modifiers.channel_type = context["channel_type"]
             profile.modifiers.interaction_history += 1
 
-            # Calculate current personality
+            # Calculate current personality with enhanced context
             current_personality = self.calculate_personality_vector(profile, context)
 
-            # Generate response using Astra personality
-            response = await self.generate_astra_response(
-                message, current_personality, context
-            )
+            # Generate response using enhanced Astra personality
+            response = await self.generate_astra_response(message, profile, context)
 
             if response:
                 # Track conversation context
