@@ -231,31 +231,35 @@ class AstraAICompanion(commands.Cog):
             # Calculate current personality
             current_personality = self.calculate_personality_vector(profile, context)
 
-            # Enhanced personality-aware prompt with behavioral guidance
+            # Enhanced personality-aware user profile for AI client
             dominant_traits = self._get_dominant_traits(current_personality)
-            personality_guide = self._build_personality_guide(
-                current_personality, dominant_traits
-            )
-
-            personality_context = (
-                f"You are Astra, an advanced AI companion. Your current personality state:\n"
-                f"{personality_guide}\n\n"
-                f"Key behavioral emphasis: {', '.join(dominant_traits[:3])}\n"
-                f"Channel context: {context.get('channel_type', 'general')}\n"
-                f"User mood indicators: {context.get('sentiment', 'neutral')}\n"
-                f"Respond authentically with these personality traits while being helpful and engaging."
-            )
+            
+            # Build user profile with personality context for AI client
+            user_profile_data = {
+                "name": message.author.display_name,
+                "personality_traits": dominant_traits[:3],
+                "dominant_emotion": context.get('sentiment', 'neutral'),
+                "channel_context": context.get('channel_type', 'general'),
+                "interaction_count": profile.modifiers.interaction_history,
+                "current_mood": context.get('user_mood', 0.5),
+                "personality_guide": self._build_personality_guide(current_personality, dominant_traits),
+                "astra_context": "Astra AI companion with dynamic personality adaptation"
+            }
 
             # Adjust temperature based on creativity level
             temperature = 0.6 + (current_personality.creative * 0.3)
 
-            # Get AI response with enhanced context
-            response = await self.ai_client.get_response(
+            # Get AI response with enhanced context using UniversalAIClient
+            ai_response = await self.ai_client.generate_response(
                 message.content,
-                system_message=personality_context,
-                context=context,
+                user_id=message.author.id,
+                guild_id=message.guild.id if message.guild else None,
+                channel_id=message.channel.id,
+                user_profile=user_profile_data,
                 temperature=temperature,
             )
+            
+            response = ai_response.content if ai_response else None
 
             return response or self._get_fallback_response(current_personality)
 
