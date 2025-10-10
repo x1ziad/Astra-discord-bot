@@ -27,7 +27,7 @@ from discord.ext import commands
 from core.concurrent_message_processor import (
     MessagePriority,
     initialize_processor,
-    message_processor,
+    ConcurrentMessageProcessor,
 )
 
 
@@ -415,7 +415,7 @@ class HighPerformanceCoordinator(commands.Cog):
     @app_commands.command(
         name="processing_performance", description="Show message processing performance"
     )
-    @commands.has_permissions(administrator=True)
+    @app_commands.default_permissions(administrator=True)
     async def performance_status(self, interaction: discord.Interaction):
         """Show comprehensive performance statistics"""
         try:
@@ -455,7 +455,7 @@ class HighPerformanceCoordinator(commands.Cog):
     @app_commands.command(
         name="test_concurrent", description="Test concurrent message processing"
     )
-    @commands.has_permissions(administrator=True)
+    @app_commands.default_permissions(administrator=True)
     async def test_concurrent_processing(
         self, interaction: discord.Interaction, count: int = 10
     ):

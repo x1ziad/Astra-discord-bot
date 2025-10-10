@@ -83,21 +83,12 @@ class Analytics(commands.GroupCog, name="analytics"):
         # Legacy file loading removed for performance - data now sent directly to Discord
         return {}
 
-    @commands.Cog.listener()
     # 🚀 DISABLED: Message processing moved to High-Performance Coordinator
-
-
     # @commands.Cog.listener()
-
-
-
     # async def on_message(self, message):
-
-
-
     #     """Track message activity and send to Discord channel"""
-    #    if message.author.bot or not message.guild:
-    #        return
+    #     if message.author.bot or not message.guild:
+    #         return
 
     #    # Send message activity directly to Discord analytics channel
     #    if self.discord_reporter:
