@@ -397,8 +397,9 @@ class AstraAICompanion(commands.Cog):
     def _get_time_factor(self) -> float:
         """Calculate time-based personality modifier"""
         from datetime import datetime
+
         hour = datetime.now().hour
-        
+
         # Morning: more energetic and curious
         if 6 <= hour < 12:
             return 0.8
@@ -411,8 +412,6 @@ class AstraAICompanion(commands.Cog):
         # Night: quieter and more supportive
         else:
             return 0.2
-
-
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
