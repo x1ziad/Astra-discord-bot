@@ -2263,10 +2263,10 @@ class AdvancedAICog(commands.Cog):
             pass
 
     @app_commands.command(
-        name="ai_status",
-        description="Check AI system status and lightning performance ⚡",
+        name="ai_performance",
+        description="Check AI system performance and lightning metrics ⚡",
     )
-    async def ai_status_command(self, interaction: discord.Interaction):
+    async def ai_performance_command(self, interaction: discord.Interaction):
         """Check AI system status with comprehensive performance metrics"""
         try:
             # Get lightning performance stats

@@ -432,7 +432,7 @@ class Quiz(commands.GroupCog, name="quiz"):
         view = QuizView(question_data, quiz_callback)
         await interaction.response.send_message(embed=embed, view=view)
 
-    @app_commands.command(name="leaderboard", description="View the quiz leaderboard")
+    @app_commands.command(name="quiz_leaderboard", description="View the quiz leaderboard")
     @app_commands.describe(sort_by="How to sort the leaderboard")
     @app_commands.choices(
         sort_by=[
