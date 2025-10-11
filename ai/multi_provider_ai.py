@@ -242,15 +242,17 @@ class MultiProviderAIManager:
         **kwargs,
     ) -> AIResponse:
         """Generate AI response with intelligent provider fallback and performance optimization"""
-        
+
         # PERFORMANCE: Check cache first for identical prompts
         cache_key = self._generate_cache_key(prompt, max_tokens, temperature, model)
         if cache_key in self._response_cache:
             cached_entry = self._response_cache[cache_key]
-            if time.time() - cached_entry['timestamp'] < self._cache_ttl:
-                logger.debug(f"⚡ Returning cached response for prompt: {prompt[:50]}...")
-                return cached_entry['response']
-        
+            if time.time() - cached_entry["timestamp"] < self._cache_ttl:
+                logger.debug(
+                    f"⚡ Returning cached response for prompt: {prompt[:50]}..."
+                )
+                return cached_entry["response"]
+
         # OPTIMIZATION: Use performance-optimized provider order
         provider_order = self._get_optimal_provider_order()
 
@@ -284,10 +286,10 @@ class MultiProviderAIManager:
 
                 # Set actual response time
                 response.response_time = response_time
-                
+
                 # PERFORMANCE: Cache successful response
                 self._cache_response(cache_key, response)
-                
+
                 return response
 
             except Exception as e:
@@ -406,18 +408,21 @@ class MultiProviderAIManager:
         except Exception as e:
             raise Exception(f"Mistral generation failed: {str(e)}")
 
-    def _generate_cache_key(self, prompt: str, max_tokens: int, temperature: float, model: Optional[str]) -> str:
+    def _generate_cache_key(
+        self, prompt: str, max_tokens: int, temperature: float, model: Optional[str]
+    ) -> str:
         """Generate cache key for response caching"""
         import hashlib
+
         key_data = f"{prompt}:{max_tokens}:{temperature}:{model}"
         return hashlib.md5(key_data.encode()).hexdigest()
-    
+
     def _get_optimal_provider_order(self) -> List[AIProvider]:
         """Get provider order optimized for performance"""
         if self._fast_provider_order and len(self._provider_performance_cache) > 0:
             # Use cached optimal order if available
             return self._fast_provider_order
-        
+
         # Sort providers by performance (response time + success rate)
         provider_scores = []
         for provider in self.fallback_order:
@@ -427,22 +432,22 @@ class MultiProviderAIManager:
                 # Lower response time + higher success rate = better score
                 score = status.avg_response_time / max(success_rate, 0.1)
                 provider_scores.append((provider, score))
-        
+
         if provider_scores:
             # Sort by score (lower is better)
             provider_scores.sort(key=lambda x: x[1])
             optimized_order = [provider for provider, _ in provider_scores]
-            
+
             # Add any remaining providers not in scores
             for provider in self.fallback_order:
                 if provider not in optimized_order:
                     optimized_order.append(provider)
-            
+
             self._fast_provider_order = optimized_order
             return optimized_order
-        
+
         return self.fallback_order
-    
+
     def _cache_response(self, cache_key: str, response: AIResponse) -> None:
         """Cache response with TTL management"""
         # Clean old cache entries if cache is full
@@ -450,24 +455,27 @@ class MultiProviderAIManager:
             current_time = time.time()
             # Remove expired entries
             expired_keys = [
-                key for key, entry in self._response_cache.items()
-                if current_time - entry['timestamp'] > self._cache_ttl
+                key
+                for key, entry in self._response_cache.items()
+                if current_time - entry["timestamp"] > self._cache_ttl
             ]
             for key in expired_keys:
                 del self._response_cache[key]
-            
+
             # If still full, remove oldest entries
             if len(self._response_cache) >= self._max_cache_size:
                 oldest_keys = sorted(
                     self._response_cache.keys(),
-                    key=lambda k: self._response_cache[k]['timestamp']
-                )[:10]  # Remove 10 oldest
+                    key=lambda k: self._response_cache[k]["timestamp"],
+                )[
+                    :10
+                ]  # Remove 10 oldest
                 for key in oldest_keys:
                     del self._response_cache[key]
-        
+
         self._response_cache[cache_key] = {
-            'response': response,
-            'timestamp': time.time()
+            "response": response,
+            "timestamp": time.time(),
         }
 
     def get_provider_status(self) -> Dict[str, Dict[str, Any]]:

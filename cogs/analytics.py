@@ -360,7 +360,9 @@ class Analytics(commands.GroupCog, name="analytics"):
 
         return stats
 
-    @app_commands.command(name="activity_leaderboard", description="Show most active users")
+    @app_commands.command(
+        name="activity_leaderboard", description="Show most active users"
+    )
     @app_commands.describe(
         timeframe="Time period to analyze", limit="Number of users to show"
     )

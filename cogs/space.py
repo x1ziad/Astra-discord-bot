@@ -978,7 +978,9 @@ class Space(commands.GroupCog, name="space"):
 
         await interaction.response.send_message(embed=overview_embed)
 
-    @app_commands.command(name="space_analyze", description="AI-powered space topic analysis")
+    @app_commands.command(
+        name="space_analyze", description="AI-powered space topic analysis"
+    )
     @app_commands.describe(
         topic="Space topic to analyze (e.g., 'Mars exploration', 'black holes', 'SpaceX missions')"
     )

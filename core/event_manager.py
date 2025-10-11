@@ -74,19 +74,25 @@ class EventManager:
         # 2. Check for AI interaction
         if "ai_handler" in self.systems:
             content_lower = message.content.lower()
-            
+
             # Check for various ways Astra should respond
             should_respond = (
-                self.bot.user.mentioned_in(message) or  # Direct mentions
-                "astra" in content_lower or  # Name mentioned anywhere
-                isinstance(message.channel, discord.DMChannel) or  # Direct messages
-                "?" in message.content or  # Questions
-                content_lower.startswith(("hey", "hi", "hello")) or  # Greetings
-                any(phrase in content_lower for phrase in [
-                    "who are you", "what are you", "help me", "can you help"
-                ])  # Identity/help requests
+                self.bot.user.mentioned_in(message)  # Direct mentions
+                or "astra" in content_lower  # Name mentioned anywhere
+                or isinstance(message.channel, discord.DMChannel)  # Direct messages
+                or "?" in message.content  # Questions
+                or content_lower.startswith(("hey", "hi", "hello"))  # Greetings
+                or any(
+                    phrase in content_lower
+                    for phrase in [
+                        "who are you",
+                        "what are you",
+                        "help me",
+                        "can you help",
+                    ]
+                )  # Identity/help requests
             )
-            
+
             if should_respond:
                 # Process the message and get a response
                 response = await self.systems["ai_handler"].process_message(message)
