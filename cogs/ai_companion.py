@@ -228,6 +228,8 @@ class AstraAICompanion(commands.Cog):
     ) -> str:
         """Generate Astra's response based on message and personality"""
         try:
+            self.logger.debug(f"🔧 Starting response generation for: '{message.content[:30]}...'")
+            
             # Calculate current personality
             current_personality = self.calculate_personality_vector(profile, context)
 
@@ -250,6 +252,8 @@ class AstraAICompanion(commands.Cog):
 
             # Adjust temperature based on creativity level
             temperature = 0.6 + (current_personality.creative * 0.3)
+            
+            self.logger.debug(f"🎯 Calling AI client with temperature={temperature:.2f}")
 
             # Get AI response with enhanced context using UniversalAIClient
             ai_response = await self.ai_client.generate_response(
@@ -260,13 +264,23 @@ class AstraAICompanion(commands.Cog):
                 user_profile=user_profile_data,
                 temperature=temperature,
             )
+            
+            self.logger.debug(f"🤖 AI response received: {ai_response is not None}")
+            if ai_response:
+                self.logger.debug(f"📝 AI response content length: {len(ai_response.content) if hasattr(ai_response, 'content') and ai_response.content else 0}")
 
-            response = ai_response.content if ai_response else None
+            response = ai_response.content if ai_response and hasattr(ai_response, 'content') else None
+            
+            if not response:
+                self.logger.warning(f"⚠️ AI client returned no response, using fallback")
+                response = self._get_fallback_response(current_personality)
 
-            return response or self._get_fallback_response(current_personality)
+            return response
 
         except Exception as e:
-            self.logger.error(f"Error generating response: {e}")
+            self.logger.error(f"❌ Error generating response: {e}")
+            import traceback
+            self.logger.error(f"📋 Traceback: {traceback.format_exc()}")
             return "I'm experiencing some technical difficulties, but I'm still here for you!"
 
     def _get_dominant_traits(self, personality: PersonalityDimensions) -> List[str]:
@@ -432,23 +446,39 @@ class AstraAICompanion(commands.Cog):
         name_mentioned = any(
             name.lower() in message.content.lower() for name in ["astra", "astrabot"]
         )
+        
+        # Enhanced trigger detection
+        content_lower = message.content.lower()
+        question_patterns = ["?", "who are you", "what are you", "help me", "can you help"]
+        greeting_patterns = ["hey", "hi", "hello", "what's up", "how are you"]
+        
+        has_question = any(pattern in content_lower for pattern in question_patterns)
+        has_greeting = any(content_lower.startswith(pattern) for pattern in greeting_patterns)
 
-        # Respond to mentions, DMs, or name mentions
-        if bot_mentioned or is_dm or name_mentioned:
+        # Debug logging
+        self.logger.debug(f"Message from {message.author}: '{message.content[:50]}...'")
+        self.logger.debug(f"Triggers - Mentioned: {bot_mentioned}, DM: {is_dm}, Name: {name_mentioned}, Question: {has_question}, Greeting: {has_greeting}")
+
+        # Respond to mentions, DMs, name mentions, questions, or greetings
+        if bot_mentioned or is_dm or name_mentioned or has_question or has_greeting:
+            self.logger.info(f"🤖 Astra responding to {message.author} in {message.guild.name if message.guild else 'DM'}")
             await self.handle_companion_interaction(message)
 
     async def handle_companion_interaction(self, message: discord.Message):
         """Handle companion interaction with Astra personality"""
         try:
             start_time = time.perf_counter()
+            self.logger.info(f"🎯 Processing companion interaction from {message.author}")
 
             # Get user personality profile
             profile = await self.get_personality_profile(
                 message.author.id, message.guild.id if message.guild else 0
             )
+            self.logger.debug(f"✅ Got personality profile for {message.author}")
 
             # Enhanced context analysis
             context = await self._analyze_message_context(message)
+            self.logger.debug(f"✅ Analyzed message context: mood={context.get('user_mood', 'unknown')}")
 
             # Update personality modifiers with enhanced data
             profile.modifiers.user_mood = context["user_mood"]
@@ -459,9 +489,16 @@ class AstraAICompanion(commands.Cog):
 
             # Calculate current personality with enhanced context
             current_personality = self.calculate_personality_vector(profile, context)
+            self.logger.debug(f"✅ Calculated personality vector")
 
             # Generate response using enhanced Astra personality
+            self.logger.info(f"🧠 Generating AI response for: '{message.content[:50]}...'")
             response = await self.generate_astra_response(message, profile, context)
+            
+            if response:
+                self.logger.info(f"✅ Generated response: '{response[:50]}...'")
+            else:
+                self.logger.warning(f"❌ No response generated for message from {message.author}")
 
             if response:
                 # Track conversation context
@@ -495,7 +532,9 @@ class AstraAICompanion(commands.Cog):
                 self.logger.info(f"Astra response sent in {response_time:.2f}s")
 
         except Exception as e:
-            self.logger.error(f"Error in companion interaction: {e}")
+            self.logger.error(f"❌ Error in companion interaction: {e}")
+            import traceback
+            self.logger.error(f"📋 Full traceback: {traceback.format_exc()}")
             await message.reply(
                 "I'm having a moment of confusion, but I'm here for you! 🤖",
                 mention_author=False,
@@ -527,6 +566,62 @@ class AstraAICompanion(commands.Cog):
             self.logger.error(f"Error syncing personality profiles: {e}")
 
     # Slash Commands
+    @app_commands.command(
+        name="test-astra",
+        description="🧪 Test Astra's response system (debug command)",
+    )
+    async def test_astra(self, interaction: discord.Interaction, message: str = "Hello Astra!"):
+        """Test Astra's AI response system"""
+        try:
+            await interaction.response.defer()
+            self.logger.info(f"🧪 Testing Astra response system with: '{message}'")
+            
+            # Create a mock message object
+            class MockMessage:
+                def __init__(self, content, author, guild, channel):
+                    self.content = content
+                    self.author = author
+                    self.guild = guild
+                    self.channel = channel
+            
+            mock_message = MockMessage(message, interaction.user, interaction.guild, interaction.channel)
+            
+            # Get personality profile
+            profile = await self.get_personality_profile(interaction.user.id, interaction.guild.id)
+            context = await self._analyze_message_context(mock_message)
+            
+            # Generate response
+            response = await self.generate_astra_response(mock_message, profile, context)
+            
+            embed = discord.Embed(
+                title="🧪 Astra Response Test",
+                color=0x7C4DFF,
+                timestamp=datetime.now()
+            )
+            embed.add_field(name="Input", value=f"```{message}```", inline=False)
+            embed.add_field(name="Output", value=f"```{response or 'No response generated'}```", inline=False)
+            
+            if response:
+                embed.color = 0x00FF00
+                embed.add_field(name="Status", value="✅ Success", inline=True)
+            else:
+                embed.color = 0xFF0000
+                embed.add_field(name="Status", value="❌ Failed", inline=True)
+                
+            await interaction.followup.send(embed=embed)
+            
+        except Exception as e:
+            self.logger.error(f"❌ Test command error: {e}")
+            import traceback
+            self.logger.error(f"📋 Traceback: {traceback.format_exc()}")
+            
+            embed = discord.Embed(
+                title="❌ Test Failed",
+                description=f"Error: {str(e)}",
+                color=0xFF0000
+            )
+            await interaction.followup.send(embed=embed)
+
     @app_commands.command(
         name="companion",
         description="🎭 View or adjust Astra's companion personality settings",
