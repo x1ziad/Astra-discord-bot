@@ -10,8 +10,7 @@ from datetime import datetime
 from discord.ext import commands
 import discord
 
-from core.ai_enhanced_security import AIEnhancedAutonomousProtection
-from cogs.security_commands import SecurityCommands
+# from cogs.security_commands import SecurityCommands  # Import as needed
 
 logger = logging.getLogger("astra.security.integration")
 
@@ -29,8 +28,8 @@ class SecuritySystemIntegration:
 
     def __init__(self, bot):
         self.bot = bot
-        self.ai_security: Optional[AIEnhancedAutonomousProtection] = None
-        self.manual_commands: Optional[SecurityCommands] = None
+        self.ai_security = None  # AI security system (if available)
+        self.manual_commands = None  # Manual security commands cog
         self.integration_active = False
 
     async def initialize(self):
