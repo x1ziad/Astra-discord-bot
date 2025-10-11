@@ -18,13 +18,29 @@ Features:
 - Production-ready logging and metrics
 """
 
+# Import warning suppression FIRST before any other imports
+try:
+    import suppress_warnings  # This sets up environment variables and suppresses warnings
+except ImportError:
+    # Fallback - set environment variables directly
+    import os
+    os.environ["GRPC_VERBOSITY"] = "ERROR"
+    os.environ["GLOG_minloglevel"] = "2"
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS_DISABLED"] = "true"
+    print("⚠️ Warning suppression module not found, using fallback configuration")
+
 # Suppress Google gRPC ALTS credentials warning for local development
 import os
 
+# Comprehensive environment configuration to suppress all warnings
 os.environ["GRPC_VERBOSITY"] = "ERROR"
 os.environ["GLOG_minloglevel"] = "2"
+os.environ["GOOGLE_APPLICATION_CREDENTIALS_DISABLED"] = "true"
 # Additional ABSL logging suppression (Google's internal logging)
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
+# Suppress gRPC and protobuf warnings
+os.environ["GRPC_ENABLE_FORK_SUPPORT"] = "0"
+os.environ["GRPC_POLL_STRATEGY"] = "poll"
 
 import asyncio
 import logging
@@ -1320,6 +1336,14 @@ def register_global_commands(bot: AstraBot):
 
 async def main():
     """Enhanced main function with comprehensive error handling and Railway support"""
+
+    # Initialize ABSL logging early to suppress warnings
+    try:
+        import absl.logging
+        absl.logging.set_verbosity(absl.logging.ERROR)
+        absl.logging.set_stderrthreshold(absl.logging.ERROR)
+    except ImportError:
+        pass  # ABSL not available, warnings will still appear but bot will work
 
     # Setup Railway logging if available
     if RAILWAY_ENABLED:
