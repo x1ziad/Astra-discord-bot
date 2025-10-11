@@ -1,6 +1,6 @@
 """
 Universal AI Client for Astra Bot
-Provides a unified interface for multiple AI providers
+Provides a unified interface for multiple AI providers with optimized performance and personality integration
 """
 
 import asyncio
@@ -13,6 +13,7 @@ from typing import Dict, Any, Optional, List, Union, Tuple
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
+from functools import lru_cache
 
 # Import error handler
 try:
@@ -190,12 +191,51 @@ class UniversalAIClient:
         self.user_memories: Dict[int, Dict[str, Any]] = {}
         self.important_facts: Dict[str, List[Dict[str, Any]]] = {}
 
+        # PERFORMANCE OPTIMIZATION: Enhanced caching and performance features
+        self._response_cache = {}
+        self._personality_cache = {}
+        self._performance_mode = kwargs.get('performance_mode', 'balanced')  # 'speed', 'balanced', 'quality'
+        self._cache_enabled = kwargs.get('cache_enabled', True)
+        self._max_cache_size = kwargs.get('max_cache_size', 1000)
+        self._astra_personality_optimized = True
+
         # HTTP session
         self.session = None
 
     def is_available(self) -> bool:
         """Check if the client is properly configured"""
         return bool(self.api_key) and self.provider in self.config
+
+    def _generate_cache_key(self, message: str, user_id: Optional[int] = None, guild_id: Optional[int] = None) -> str:
+        """Generate cache key for response caching"""
+        import hashlib
+        key_data = f"{message}:{user_id}:{guild_id}:{self._performance_mode}"
+        return hashlib.md5(key_data.encode()).hexdigest()
+
+    def configure_personality(self, personality_config: Dict[str, Any]) -> None:
+        """Configure AI personality for bot alignment"""
+        self._personality_config = personality_config
+        self._astra_personality_optimized = personality_config.get('primary_personality') == 'astra'
+        
+        # Cache personality prompts for performance
+        if self._cache_enabled:
+            self._personality_cache.update(personality_config)
+
+    def enable_caching(self, max_cache_size: int = 1000) -> None:
+        """Enable response caching for performance"""
+        self._cache_enabled = True
+        self._max_cache_size = max_cache_size
+        
+    def set_performance_mode(self, mode: str) -> None:
+        """Set performance mode: 'speed', 'balanced', 'quality'"""
+        if mode in ['speed', 'balanced', 'quality']:
+            self._performance_mode = mode
+            if mode == 'speed':
+                self.max_context_messages = 5  # Reduced context for speed
+                self.context_window_tokens = 2000
+            elif mode == 'quality':
+                self.max_context_messages = 15  # More context for quality
+                self.context_window_tokens = 8000
 
     async def __aenter__(self):
         """Async context manager entry"""
@@ -1062,14 +1102,25 @@ class UniversalAIClient:
         user_profile: Optional[Dict[str, Any]] = None,
         **kwargs,
     ) -> AIResponse:
-        """Generate enhanced AI response with deep context understanding"""
-
+        """Generate enhanced AI response with deep context understanding and performance optimization"""
+        
+        start_time = time.time()
+        
+        # PERFORMANCE: Fast path for session initialization
         await self._ensure_session()
 
         if not self.is_available():
             raise ValueError(
                 f"AI client not properly configured for {self.provider.value}"
             )
+
+        # OPTIMIZATION: Quick response cache check
+        cache_key = self._generate_cache_key(message, user_id, guild_id)
+        if hasattr(self, '_response_cache') and cache_key in self._response_cache:
+            cached_response = self._response_cache[cache_key]
+            if time.time() - cached_response['timestamp'] < 300:  # 5 minute cache
+                self.logger.debug(f"⚡ Returning cached response for: {message[:50]}...")
+                return cached_response['response']
 
         # Get or create conversation context if user info provided
         conversation_context = None

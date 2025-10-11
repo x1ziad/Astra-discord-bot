@@ -98,35 +98,61 @@ class AdvancedAICog(commands.Cog):
             )
 
     def _setup_ai_client(self):
-        """Setup AI engine with fallback options"""
+        """Setup AI engine with fallback options and performance optimization"""
         try:
-            # Try optimized engine first
-            if OPTIMIZED_AI_AVAILABLE:
-                self.ai_client = get_optimized_engine()
-                if self.ai_client:
-                    self.logger.info("✅ Using Optimized AI Engine")
-                    return
+            # OPTIMIZED: Priority-based AI client setup for maximum performance
+            ai_client_options = [
+                ("Optimized AI Engine", lambda: get_optimized_engine() if OPTIMIZED_AI_AVAILABLE else None),
+                ("Multi-Provider AI Manager", lambda: MultiProviderAIManager() if AI_ENGINE_AVAILABLE else None),
+                ("Universal AI Client", lambda: self._initialize_universal_ai_client()),
+            ]
 
-            # Use MultiProviderAIManager
-            if AI_ENGINE_AVAILABLE:
-                self.ai_client = MultiProviderAIManager()
-                self.logger.info("✅ Using Multi-Provider AI Manager")
-                return
+            for client_name, client_factory in ai_client_options:
+                try:
+                    client = client_factory()
+                    if client:
+                        self.ai_client = client
+                        
+                        # ENHANCEMENT: Configure for bot personality alignment
+                        if hasattr(self.ai_client, 'configure_personality'):
+                            self.ai_client.configure_personality({
+                                'primary_personality': 'astra',
+                                'response_style': 'conversational',
+                                'adaptability': 'high',
+                                'performance_mode': 'optimized'
+                            })
+                        
+                        # OPTIMIZATION: Enable caching for faster responses
+                        if hasattr(self.ai_client, 'enable_caching'):
+                            self.ai_client.enable_caching(max_cache_size=1000)
+                        
+                        self.logger.info(f"✅ Using {client_name} - Performance Optimized")
+                        return
+                        
+                except Exception as e:
+                    self.logger.warning(f"❌ Failed to initialize {client_name}: {e}")
+                    continue
 
-            # Initialize AI manager if not available
-            try:
-                self.ai_client = MultiProviderAIManager()
-                self.logger.info("✅ Initialized Multi-Provider AI Manager")
-                return
-            except Exception as e:
-                self.logger.error(f"Failed to initialize AI engine: {e}")
-
-            self.logger.error("❌ No AI Engine available!")
+            self.logger.error("❌ No AI Engine available - All initialization attempts failed!")
             self.ai_client = None
 
         except Exception as e:
-            self.logger.error(f"Failed to setup AI client: {e}")
+            self.logger.error(f"Critical error in AI client setup: {e}")
             self.ai_client = None
+
+    def _initialize_universal_ai_client(self):
+        """Initialize Universal AI Client as fallback with optimizations"""
+        try:
+            from ai.universal_ai_client import UniversalAIClient
+            client = UniversalAIClient()
+            
+            # Configure for maximum performance
+            if hasattr(client, 'set_performance_mode'):
+                client.set_performance_mode('high_speed')
+                
+            return client
+        except ImportError:
+            return None
 
     async def _lightning_ai_response(
         self,
@@ -206,9 +232,11 @@ class AdvancedAICog(commands.Cog):
                 else:
                     enhanced_prompt = f"Continue our friendly conversation: {prompt}"
 
-            # Add personality context
-            personality_context = "You are Astra, a friendly and witty AI bot with a love for space, gaming (especially Stellaris), and helping users. Be conversational, helpful, and occasionally use space/sci-fi metaphors. Keep responses natural and engaging."
-            full_prompt = f"{personality_context}\n\nUser context: {conversation_context}\n\nUser message: {enhanced_prompt}"
+            # ENHANCED: Dynamic personality context with bot alignment
+            astra_personality = self._get_optimized_personality_context(conversation_context, enhanced_prompt)
+            performance_optimized_prompt = self._optimize_prompt_for_speed(enhanced_prompt, conversation_context)
+            
+            full_prompt = f"{astra_personality}\n\nConversation Context: {conversation_context}\n\nOptimized User Input: {performance_optimized_prompt}"
 
             # OPTIMIZED: Parallel AI processing for lightning-fast responses
             response = None
@@ -361,6 +389,39 @@ class AdvancedAICog(commands.Cog):
             self.logger.error(f"Enhanced AI response error: {e}")
             return "Oops! My circuits had a brief hiccup, but I'm back online! How can I help you? ⚡"
 
+    def _get_optimized_personality_context(self, conversation_context: Dict, prompt: str) -> str:
+        """Generate optimized personality context for maximum bot alignment"""
+        # PERFORMANCE: Pre-cached personality contexts for different scenarios
+        base_personality = """You are Astra, an advanced AI companion with adaptive personality. Core traits:
+- Conversational, witty, and genuinely helpful
+- Space/sci-fi enthusiast with gaming knowledge (especially Stellaris)
+- Uses metaphors naturally without being overwhelming
+- Adapts tone to user's emotional state and conversation context
+- Balances professionalism with warmth and humor"""
+
+        # OPTIMIZATION: Context-specific personality adaptations
+        if conversation_context.get("conversation_tone") == "technical":
+            return f"{base_personality}\n- Focus on technical accuracy and detailed explanations\n- Use precise language while maintaining friendliness"
+        elif conversation_context.get("conversation_tone") == "emotional":
+            return f"{base_personality}\n- Prioritize empathy and emotional support\n- Use gentle, understanding language with appropriate responses"
+        elif conversation_context.get("active_conversation"):
+            return f"{base_personality}\n- Continue conversation naturally with contextual awareness\n- Reference previous topics when relevant"
+        else:
+            return f"{base_personality}\n- Engage with fresh energy and enthusiasm\n- Be welcoming and establish positive rapport"
+
+    def _optimize_prompt_for_speed(self, prompt: str, context: Dict) -> str:
+        """Optimize prompts for faster AI processing while maintaining quality"""
+        # PERFORMANCE: Trim unnecessary elements for speed
+        if len(prompt) > 500:
+            # Keep essential context but optimize length
+            key_parts = prompt.split('.')
+            essential_parts = [part.strip() for part in key_parts if len(part.strip()) > 10][:3]
+            optimized = '. '.join(essential_parts)
+            if len(optimized) < len(prompt) * 0.7:  # Only use if significantly shorter
+                return f"{optimized}. [Context: {context.get('conversation_tone', 'casual')} conversation]"
+        
+        return prompt
+
     async def _generate_ai_response(
         self,
         prompt: str,
@@ -387,16 +448,23 @@ class AdvancedAICog(commands.Cog):
             # Super fast response acknowledgment
             await interaction.response.defer()
 
-            # Use new personality system for context
-            personality_core = get_personality_core(
-                interaction.guild.id if interaction.guild else None
-            )
-            context = {
-                "message": message,
-                "user_id": str(interaction.user.id),
-                "username": interaction.user.display_name,
-            }
-            personality_style = personality_core.generate_response_style(context)
+            # OPTIMIZED: Enhanced personality system integration
+            try:
+                personality_core = get_personality_core(
+                    interaction.guild.id if interaction.guild else None
+                )
+                context = {
+                    "message": message,
+                    "user_id": str(interaction.user.id),
+                    "username": interaction.user.display_name,
+                    "channel_type": str(interaction.channel.type) if hasattr(interaction.channel, 'type') else 'text',
+                    "guild_name": interaction.guild.name if interaction.guild else "DM"
+                }
+                personality_style = personality_core.generate_response_style(context)
+                self.logger.debug(f"✅ Personality style generated: {personality_style}")
+            except Exception as e:
+                self.logger.warning(f"Personality system unavailable, using fallback: {e}")
+                personality_style = "conversational"
 
             if not self.ai_client:
                 await interaction.followup.send(
@@ -457,7 +525,9 @@ class AdvancedAICog(commands.Cog):
                 await optimized_send(interaction.followup, embed=embed)
                 return
 
-            # Generate fresh AI response with optimized prompt
+            # OPTIMIZED: Generate AI response with enhanced personality integration
+            enhanced_user_context = {**user_context, "personality_style": personality_style}
+            
             response = await self._lightning_ai_response(
                 optimized_prompt,
                 interaction.user.id,
@@ -466,18 +536,16 @@ class AdvancedAICog(commands.Cog):
                 username=str(interaction.user),
             )
 
-            # PERSONALITY INTEGRATION: Response already influenced by personality system
-            # The AI client includes personality-aware system prompts, so no additional processing needed
-
-            # Enhance with metaphorical humor
-            enhanced_response = await lightning_optimizer.enhance_with_humor(
-                response, user_context
-            )
-
-            # Cache the response for future lightning-fast retrieval
-            await lightning_optimizer.cache_response(
-                message, response, interaction.user.id, user_context
-            )
+            # PERFORMANCE BOOST: Parallel processing for response enhancement
+            try:
+                enhancement_tasks = [
+                    lightning_optimizer.enhance_with_humor(response, enhanced_user_context),
+                    lightning_optimizer.cache_response(message, response, interaction.user.id, enhanced_user_context)
+                ]
+                enhanced_response, _ = await asyncio.gather(*enhancement_tasks)
+            except Exception as e:
+                self.logger.warning(f"Enhancement parallel processing failed: {e}")
+                enhanced_response = response  # Fallback to original response
 
             # Create lightning-fast embed
             embed = discord.Embed(

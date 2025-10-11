@@ -202,11 +202,11 @@ class AstraAICompanion(commands.Cog):
     def calculate_personality_vector(
         self, profile: PersonalityProfile, context: Dict[str, Any]
     ) -> PersonalityDimensions:
-        """Calculate the current personality vector based on profile and context"""
+        """Calculate the current personality vector based on profile and context - OPTIMIZED"""
         base = profile.base_personality
         mods = profile.modifiers
 
-        # Dynamic adjustment factors
+        # PERFORMANCE: Pre-calculate common factors to avoid repeated operations
         mood_factor = mods.user_mood * 0.15
         tone_factor = mods.conversation_tone * 0.12
         time_factor = mods.time_of_day * 0.08
@@ -214,28 +214,21 @@ class AstraAICompanion(commands.Cog):
         urgency_factor = context.get("urgency", 0) * 0.2
         history_factor = min(mods.interaction_history * 0.01, 0.1)  # Gradual learning
 
-        # Create adjusted personality with enhanced dynamics
+        # OPTIMIZATION: Batch calculate adjustments for performance
+        mood_boost = mood_factor * 1.5
+        tone_abs = abs(tone_factor)
+        tone_dampened = tone_factor * 0.8
+
+        # Create adjusted personality with enhanced dynamics and optimized calculations
         adjusted = PersonalityDimensions(
-            analytical=self._clamp(
-                base.analytical + tone_factor + complexity_factor + history_factor
-            ),
-            empathetic=self._clamp(
-                base.empathetic + mood_factor * 1.5 + (1.0 - abs(tone_factor))
-            ),
-            curious=self._clamp(
-                base.curious + complexity_factor + history_factor * 0.5
-            ),
+            analytical=self._clamp(base.analytical + tone_factor + complexity_factor + history_factor),
+            empathetic=self._clamp(base.empathetic + mood_boost + (1.0 - tone_abs)),
+            curious=self._clamp(base.curious + complexity_factor + history_factor * 0.5),
             creative=self._clamp(base.creative + time_factor + mood_factor * 0.8),
-            supportive=self._clamp(
-                base.supportive + mood_factor + (1.0 - urgency_factor * 0.5)
-            ),
-            playful=self._clamp(base.playful - tone_factor * 0.8 + mood_factor * 0.6),
-            assertive=self._clamp(
-                base.assertive + urgency_factor + abs(tone_factor) * 0.5
-            ),
-            adaptable=self._clamp(
-                base.adaptable + history_factor  # Grows with interaction
-            ),
+            supportive=self._clamp(base.supportive + mood_factor + (1.0 - urgency_factor * 0.5)),
+            playful=self._clamp(base.playful - tone_dampened + mood_factor * 0.6),
+            assertive=self._clamp(base.assertive + urgency_factor + tone_abs * 0.5),
+            adaptable=self._clamp(base.adaptable + history_factor),  # Grows with interaction
         )
 
         return adjusted
@@ -279,7 +272,20 @@ class AstraAICompanion(commands.Cog):
             
             self.logger.debug(f"🎯 Calling AI client with temperature={temperature:.2f}")
 
-            # Get AI response with enhanced context using UniversalAIClient
+            # OPTIMIZED: Get AI response with enhanced personality alignment and performance
+            start_ai_time = time.perf_counter()
+            
+            # Configure AI client for optimal Astra personality if available
+            if hasattr(self.ai_client, 'configure_personality'):
+                personality_config = {
+                    'primary_personality': 'astra',
+                    'dominant_traits': dominant_traits[:3],
+                    'response_style': self._get_response_style_from_personality(current_personality),
+                    'adaptability': 'high',
+                    'performance_mode': 'balanced'
+                }
+                self.ai_client.configure_personality(personality_config)
+            
             ai_response = await self.ai_client.generate_response(
                 message.content,
                 user_id=message.author.id,
@@ -288,6 +294,9 @@ class AstraAICompanion(commands.Cog):
                 user_profile=user_profile_data,
                 temperature=temperature,
             )
+            
+            ai_response_time = time.perf_counter() - start_ai_time
+            self.logger.debug(f"⚡ AI response generated in {ai_response_time:.3f}s")
             
             self.logger.debug(f"🤖 AI response received: {ai_response is not None}")
             if ai_response:
@@ -311,6 +320,19 @@ class AstraAICompanion(commands.Cog):
             import traceback
             self.logger.error(f"📋 Traceback: {traceback.format_exc()}")
             return "I'm experiencing some technical difficulties, but I'm still here for you!"
+
+    def _get_response_style_from_personality(self, personality: PersonalityDimensions) -> str:
+        """Determine optimal response style based on personality dimensions"""
+        if personality.analytical > 0.7:
+            return "analytical_detailed"
+        elif personality.empathetic > 0.8:
+            return "warm_supportive"
+        elif personality.playful > 0.7:
+            return "witty_engaging"
+        elif personality.supportive > 0.8:
+            return "helpful_caring"
+        else:
+            return "balanced_conversational"
 
     def _get_dominant_traits(self, personality: PersonalityDimensions) -> List[str]:
         """Identify the most prominent personality traits"""
