@@ -3,6 +3,7 @@
 # ===== CRITICAL: SET ENVIRONMENT VARIABLES FIRST =====
 # These MUST be set before ANY imports to suppress Google Cloud warnings
 import os
+
 os.environ["GRPC_VERBOSITY"] = "ERROR"
 os.environ["GLOG_minloglevel"] = "2"
 os.environ["GOOGLE_APPLICATION_CREDENTIALS_DISABLED"] = "true"
@@ -744,10 +745,10 @@ class AstraBot(commands.Bot):
         @self.event
         async def on_message(message):
             """🚀 CONCURRENT MESSAGE PROCESSING - Routes through High-Performance Coordinator
-            
+
             This system handles 10+ simultaneous conversations with:
             - Instant security warnings (<100ms)
-            - Natural AI conversations (<500ms) 
+            - Natural AI conversations (<500ms)
             - Seamless multitasking (50+ concurrent)
             - Zero message loss or delays
             """
@@ -777,7 +778,7 @@ class AstraBot(commands.Bot):
             # - AI responses (HIGH priority for mentions/questions)
             # - Regular conversation (NORMAL priority)
             # - Analytics (LOW priority, background)
-            
+
             # The HighPerformanceCoordinator cog handles ALL message processing
             # through its concurrent processor for optimal performance
 
@@ -1348,6 +1349,7 @@ async def main():
     # Initialize ABSL logging early to suppress warnings
     try:
         import absl.logging
+
         absl.logging.set_verbosity(absl.logging.ERROR)
         absl.logging.set_stderrthreshold(absl.logging.ERROR)
     except ImportError:
