@@ -16,6 +16,7 @@ Version: 2.0.0 ASTRA PERSONALITY ONLY
 import asyncio
 import json
 import logging
+import os
 import random
 import time
 from datetime import datetime, timedelta
@@ -120,6 +121,11 @@ class AstraAICompanion(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
+        
+        # Configure environment to suppress Google Cloud ALTS warnings
+        os.environ.setdefault('GRPC_VERBOSITY', 'ERROR')
+        os.environ.setdefault('GLOG_minloglevel', '2')
+        
         self.logger = logging.getLogger("astra.ai_companion")
 
         # Core components
@@ -141,10 +147,13 @@ class AstraAICompanion(commands.Cog):
 
         self.logger.info("✅ Astra AI Companion initialized (Astra personality only)")
 
-    def truncate_response(self, response: str, max_length: int = 1900) -> str:
+    def truncate_response(self, response: str, max_length: int = 1950) -> str:
         """Truncate response to fit Discord's character limit with graceful cutoff"""
         if len(response) <= max_length:
             return response
+        
+        # Log when truncation occurs for monitoring
+        self.logger.warning(f"⚠️ Response being truncated: {len(response)} chars → {max_length} chars")
         
         # Try to cut at a sentence boundary first
         truncated = response[:max_length]
@@ -155,15 +164,79 @@ class AstraAICompanion(commands.Cog):
         )
         
         if last_sentence > max_length * 0.7:  # If we can keep at least 70% and end nicely
-            return truncated[:last_sentence + 1] + "\n\n*[Response truncated to fit Discord's character limit]*"
+            return truncated[:last_sentence + 1] + "\n\n*[Continued in next message...]*"
+        
+        # Try to cut at paragraph boundary
+        last_paragraph = truncated.rfind('\n\n')
+        if last_paragraph > max_length * 0.6:
+            return truncated[:last_paragraph] + "\n\n*[Continued in next message...]*"
         
         # Otherwise cut at word boundary
         last_space = truncated.rfind(' ')
         if last_space > max_length * 0.8:  # If we can keep at least 80% of text
-            return truncated[:last_space] + "...\n\n*[Response truncated to fit Discord's character limit]*"
+            return truncated[:last_space] + "...\n\n*[Continued in next message...]*"
         
         # Fallback: hard cut with indicator
-        return response[:max_length-50] + "...\n\n*[Response truncated to fit Discord's character limit]*"
+        return response[:max_length-50] + "...\n\n*[Response truncated - Discord character limit]*"
+
+    async def split_long_response(self, response: str, max_length: int = 1950) -> List[str]:
+        """Split very long responses into multiple messages"""
+        if len(response) <= max_length:
+            return [response]
+        
+        parts = []
+        remaining = response
+        part_number = 1
+        
+        while remaining:
+            if len(remaining) <= max_length:
+                # Last part
+                if len(parts) > 0:  # Add part indicator if this is a continuation
+                    parts.append(f"*[Part {part_number}]*\n\n{remaining}")
+                else:
+                    parts.append(remaining)
+                break
+            
+            # Find good split point
+            split_at = max_length
+            
+            # Try sentence boundary
+            sentence_split = max(
+                remaining[:max_length].rfind('.'),
+                remaining[:max_length].rfind('!'),
+                remaining[:max_length].rfind('?')
+            )
+            
+            if sentence_split > max_length * 0.7:
+                split_at = sentence_split + 1
+            else:
+                # Try paragraph boundary
+                para_split = remaining[:max_length].rfind('\n\n')
+                if para_split > max_length * 0.6:
+                    split_at = para_split + 2
+                else:
+                    # Use word boundary
+                    word_split = remaining[:max_length].rfind(' ')
+                    if word_split > max_length * 0.8:
+                        split_at = word_split
+            
+            # Extract this part
+            part = remaining[:split_at].strip()
+            if part_number == 1:
+                parts.append(f"{part}\n\n*[Continued...]*")
+            else:
+                parts.append(f"*[Part {part_number}]*\n\n{part}\n\n*[Continued...]*")
+            
+            # Move to next part
+            remaining = remaining[split_at:].strip()
+            part_number += 1
+            
+            # Safety check - don't create too many parts
+            if len(parts) >= 5:
+                parts.append(f"*[Part {part_number}]*\n\n{remaining[:max_length-100]}\n\n*[Response truncated - too long for Discord]*")
+                break
+        
+        return parts
 
     def cog_unload(self):
         """Cleanup when cog is unloaded"""
@@ -741,13 +814,27 @@ class AstraAICompanion(commands.Cog):
                 if len(self.conversation_contexts[message.author.id]) > 10:
                     self.conversation_contexts[message.author.id].pop(0)
 
-                # Truncate response to fit Discord's character limit
-                truncated_response = self.truncate_response(response)
-                if len(response) != len(truncated_response):
-                    self.logger.warning(f"⚠️ Response truncated from {len(response)} to {len(truncated_response)} characters")
+                # Handle long responses by splitting them
+                if len(response) > 1950:
+                    self.logger.info(f"📚 Splitting long response ({len(response)} chars) into multiple messages")
+                    response_parts = await self.split_long_response(response)
+                    
+                    # Send first part as reply
+                    await message.reply(response_parts[0], mention_author=False)
+                    
+                    # Send remaining parts as follow-up messages
+                    for part in response_parts[1:]:
+                        await asyncio.sleep(0.5)  # Brief delay between parts
+                        await message.channel.send(part)
+                        
+                else:
+                    # Single response - use normal truncation if needed
+                    truncated_response = self.truncate_response(response)
+                    if len(response) != len(truncated_response):
+                        self.logger.warning(f"⚠️ Response truncated from {len(response)} to {len(truncated_response)} characters")
 
-                # Send response
-                await message.reply(truncated_response, mention_author=False)
+                    # Send response
+                    await message.reply(truncated_response, mention_author=False)
 
                 # Track performance
                 response_time = time.perf_counter() - start_time
