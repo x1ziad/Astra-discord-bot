@@ -141,6 +141,30 @@ class AstraAICompanion(commands.Cog):
 
         self.logger.info("✅ Astra AI Companion initialized (Astra personality only)")
 
+    def truncate_response(self, response: str, max_length: int = 1900) -> str:
+        """Truncate response to fit Discord's character limit with graceful cutoff"""
+        if len(response) <= max_length:
+            return response
+        
+        # Try to cut at a sentence boundary first
+        truncated = response[:max_length]
+        last_sentence = max(
+            truncated.rfind('.'),
+            truncated.rfind('!'),
+            truncated.rfind('?')
+        )
+        
+        if last_sentence > max_length * 0.7:  # If we can keep at least 70% and end nicely
+            return truncated[:last_sentence + 1] + "\n\n*[Response truncated to fit Discord's character limit]*"
+        
+        # Otherwise cut at word boundary
+        last_space = truncated.rfind(' ')
+        if last_space > max_length * 0.8:  # If we can keep at least 80% of text
+            return truncated[:last_space] + "...\n\n*[Response truncated to fit Discord's character limit]*"
+        
+        # Fallback: hard cut with indicator
+        return response[:max_length-50] + "...\n\n*[Response truncated to fit Discord's character limit]*"
+
     def cog_unload(self):
         """Cleanup when cog is unloaded"""
         self.personality_sync_task.cancel()
@@ -274,6 +298,11 @@ class AstraAICompanion(commands.Cog):
             if not response:
                 self.logger.warning(f"⚠️ AI client returned no response, using fallback")
                 response = self._get_fallback_response(current_personality)
+            else:
+                # Log response length for monitoring
+                self.logger.info(f"📏 Generated response length: {len(response)} characters")
+                if len(response) > 1800:
+                    self.logger.warning(f"⚠️ Long response detected ({len(response)} chars) - will be truncated on send")
 
             return response
 
@@ -518,8 +547,13 @@ class AstraAICompanion(commands.Cog):
                 if len(self.conversation_contexts[message.author.id]) > 10:
                     self.conversation_contexts[message.author.id].pop(0)
 
+                # Truncate response to fit Discord's character limit
+                truncated_response = self.truncate_response(response)
+                if len(response) != len(truncated_response):
+                    self.logger.warning(f"⚠️ Response truncated from {len(response)} to {len(truncated_response)} characters")
+
                 # Send response
-                await message.reply(response, mention_author=False)
+                await message.reply(truncated_response, mention_author=False)
 
                 # Track performance
                 response_time = time.perf_counter() - start_time
@@ -598,13 +632,17 @@ class AstraAICompanion(commands.Cog):
                 color=0x7C4DFF,
                 timestamp=datetime.now()
             )
-            embed.add_field(name="Input", value=f"```{message}```", inline=False)
-            embed.add_field(name="Output", value=f"```{response or 'No response generated'}```", inline=False)
+            embed.add_field(name="Input", value=f"```{message[:500]}{'...' if len(message) > 500 else ''}```", inline=False)
             
+            # Truncate response for embed field (max 1000 chars to leave room for formatting)
             if response:
+                truncated_output = response[:900] + "..." if len(response) > 900 else response
+                embed.add_field(name="Output", value=f"```{truncated_output}```", inline=False)
                 embed.color = 0x00FF00
                 embed.add_field(name="Status", value="✅ Success", inline=True)
+                embed.add_field(name="Length", value=f"{len(response)} chars", inline=True)
             else:
+                embed.add_field(name="Output", value="```No response generated```", inline=False)
                 embed.color = 0xFF0000
                 embed.add_field(name="Status", value="❌ Failed", inline=True)
                 
@@ -1210,9 +1248,12 @@ class AstraAICompanion(commands.Cog):
             )
 
             if response:
+                # Truncate for embed description (max 4000 chars to be safe)
+                truncated_response = response[:3900] + "\n\n*[Response truncated for embed]*" if len(response) > 3900 else response
+                
                 embed = discord.Embed(
                     title="💬 Astra",
-                    description=response,
+                    description=truncated_response,
                     color=0x7289DA,
                     timestamp=datetime.now(),
                 )
@@ -1220,6 +1261,8 @@ class AstraAICompanion(commands.Cog):
                     name=f"Replying to {interaction.user.display_name}",
                     icon_url=interaction.user.display_avatar.url,
                 )
+                if len(response) > 3900:
+                    embed.set_footer(text=f"Full response: {len(response)} characters")
                 await interaction.followup.send(embed=embed)
             else:
                 await interaction.followup.send(
