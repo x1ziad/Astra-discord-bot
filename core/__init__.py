@@ -8,13 +8,17 @@ from .ai_handler import AIHandler
 from .interactive_menus import InteractiveMenus
 from .welcome_system import WelcomeSystem
 from .event_manager import EventManager
-from .concurrent_message_processor import ConcurrentMessageProcessor, MessagePriority, initialize_processor
+from .concurrent_message_processor import (
+    ConcurrentMessageProcessor,
+    MessagePriority,
+    initialize_processor,
+)
 from .personality_integration import IntegratedPersonalityEngine
 from .security_integration import SecuritySystemIntegration
 
 __all__ = [
     "AIHandler",
-    "InteractiveMenus", 
+    "InteractiveMenus",
     "WelcomeSystem",
     "EventManager",
     "ConcurrentMessageProcessor",

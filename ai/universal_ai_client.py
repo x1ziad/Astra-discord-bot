@@ -33,6 +33,16 @@ except ImportError:
     GOOGLE_GEMINI_AVAILABLE = False
     logging.warning("Google Gemini client not available")
 
+# Import performance optimizer
+try:
+    from ai.response_optimizer import ai_response_optimizer
+
+    PERFORMANCE_OPTIMIZER_AVAILABLE = True
+    logging.info("🚀 AI Response Optimizer loaded - Maximum performance mode active")
+except ImportError:
+    PERFORMANCE_OPTIMIZER_AVAILABLE = False
+    logging.warning("AI Response Optimizer not available - using standard performance")
+
 # Import model mapping
 try:
     from ai.model_mapping import normalize_model_id, get_model_display_name
@@ -1112,7 +1122,7 @@ class UniversalAIClient:
         user_profile: Optional[Dict[str, Any]] = None,
         **kwargs,
     ) -> AIResponse:
-        """Generate enhanced AI response with deep context understanding and performance optimization"""
+        """Generate enhanced AI response with deep context understanding and maximum performance optimization"""
 
         start_time = time.time()
 
@@ -1124,15 +1134,51 @@ class UniversalAIClient:
                 f"AI client not properly configured for {self.provider.value}"
             )
 
-        # OPTIMIZATION: Quick response cache check
-        cache_key = self._generate_cache_key(message, user_id, guild_id)
-        if hasattr(self, "_response_cache") and cache_key in self._response_cache:
-            cached_response = self._response_cache[cache_key]
-            if time.time() - cached_response["timestamp"] < 300:  # 5 minute cache
+        # 🚀 ULTRA PERFORMANCE: Advanced caching with optimization
+        cache_key = None
+        cached_response = None
+
+        if PERFORMANCE_OPTIMIZER_AVAILABLE:
+            # Generate context hash for better cache keys
+            context_hash = None
+            if context or user_profile:
+                context_data = str(context or []) + str(user_profile or {})
+                context_hash = str(hash(context_data))[:8]
+
+            cache_key = ai_response_optimizer.generate_cache_key(
+                message, user_id, context_hash
+            )
+            cached_response = ai_response_optimizer.get_cached_response(cache_key)
+
+            if cached_response:
                 self.logger.debug(
-                    f"⚡ Returning cached response for: {message[:50]}..."
+                    f"⚡ Returning optimized cached response for: {message[:50]}..."
                 )
-                return cached_response["response"]
+                ai_response_optimizer.track_response_time(time.time() - start_time)
+                return cached_response
+        else:
+            # Fallback caching
+            cache_key = self._generate_cache_key(message, user_id, guild_id)
+            if hasattr(self, "_response_cache") and cache_key in self._response_cache:
+                cached_response = self._response_cache[cache_key]
+                if time.time() - cached_response["timestamp"] < 300:  # 5 minute cache
+                    self.logger.debug(
+                        f"⚡ Returning cached response for: {message[:50]}..."
+                    )
+                    return cached_response["response"]
+
+        # 🚀 PERFORMANCE: Optimize message and context processing
+        optimized_message = message
+        optimization_info = {}
+
+        if PERFORMANCE_OPTIMIZER_AVAILABLE:
+            # Optimize the prompt for maximum AI performance
+            optimized_message, optimization_info = (
+                ai_response_optimizer.optimize_prompt(message, user_profile)
+            )
+            self.logger.debug(
+                f"🔧 Applied optimizations: {', '.join(optimization_info.get('optimizations_applied', []))}"
+            )
 
         # Get or create conversation context if user info provided
         conversation_context = None
@@ -1148,23 +1194,48 @@ class UniversalAIClient:
                     user_id, guild_id, channel_id
                 )
 
+            # 🚀 PERFORMANCE: Compress context for optimal processing
+            if PERFORMANCE_OPTIMIZER_AVAILABLE:
+                conversation_context = ai_response_optimizer.compress_context(
+                    conversation_context.__dict__
+                )
+
             # Update user profile if provided
             if user_profile:
-                conversation_context.user_profile.update(user_profile)
+                if hasattr(conversation_context, "user_profile"):
+                    conversation_context.user_profile.update(user_profile)
+                else:
+                    conversation_context["user_profile"] = user_profile
 
-            # Analyze current message for emotional context and topics
-            if self.enable_emotional_intelligence:
-                emotional_analysis = self._analyze_emotional_context(message)
-                conversation_context.emotional_context = emotional_analysis
+            # 🚀 OPTIMIZED: Fast emotional and topic analysis
+            if (
+                self.enable_emotional_intelligence
+                and optimization_info.get("priority_level") != "urgent"
+            ):
+                emotional_analysis = self._analyze_emotional_context(optimized_message)
+                if hasattr(conversation_context, "emotional_context"):
+                    conversation_context.emotional_context = emotional_analysis
+                else:
+                    conversation_context["emotional_context"] = emotional_analysis
 
-            if self.enable_topic_tracking:
-                topics = self._extract_topics(message)
+            if (
+                self.enable_topic_tracking and len(optimized_message) < 1000
+            ):  # Skip for very long messages
+                topics = self._extract_topics(optimized_message)
                 if topics:
                     # Add new topics and keep recent ones
-                    conversation_context.topics.extend(topics)
-                    conversation_context.topics = list(
-                        set(conversation_context.topics[-10:])
+                    current_topics = getattr(
+                        conversation_context, "topics", []
+                    ) or conversation_context.get("topics", [])
+                    current_topics.extend(topics)
+                    optimized_topics = list(
+                        set(current_topics[-10:])
                     )  # Keep last 10 unique topics
+
+                    if hasattr(conversation_context, "topics"):
+                        conversation_context.topics = optimized_topics
+                    else:
+                        conversation_context["topics"] = optimized_topics
 
             # Update conversation stage
             greeting_indicators = ["hello", "hi", "hey", "good morning", "good evening"]
@@ -1196,23 +1267,44 @@ class UniversalAIClient:
 
             conversation_context.last_interaction = datetime.now()
 
-        # Build messages with enhanced context
+        # 🚀 PERFORMANCE: Build optimized messages with enhanced context
         if conversation_context:
             messages = self._build_enhanced_context_messages(
-                conversation_context, message
+                conversation_context, optimized_message
             )
+
+            # 🚀 OPTIMIZATION: Use optimized system prompt based on response type
+            if PERFORMANCE_OPTIMIZER_AVAILABLE and optimization_info:
+                response_type = optimization_info.get("response_type", "conversational")
+                priority_level = optimization_info.get("priority_level", "normal")
+                optimized_system_prompt = (
+                    ai_response_optimizer.get_optimized_system_prompt(
+                        response_type, priority_level
+                    )
+                )
+
+                # Replace system message with optimized version
+                if messages and messages[0].get("role") == "system":
+                    messages[0]["content"] = optimized_system_prompt
+
         elif context:
             # Fallback to provided context
             messages = list(context)
-            messages.append({"role": "user", "content": message})
+            messages.append({"role": "user", "content": optimized_message})
         else:
-            # Basic message structure
+            # 🚀 OPTIMIZED: Basic message structure with performance-optimized system prompt
+            system_prompt = "You are Astra, a helpful and engaging AI assistant. Respond naturally and appropriately to the user's message."
+
+            if PERFORMANCE_OPTIMIZER_AVAILABLE and optimization_info:
+                response_type = optimization_info.get("response_type", "conversational")
+                priority_level = optimization_info.get("priority_level", "normal")
+                system_prompt = ai_response_optimizer.get_optimized_system_prompt(
+                    response_type, priority_level
+                )
+
             messages = [
-                {
-                    "role": "system",
-                    "content": "You are Astra, a helpful and engaging AI assistant. Respond naturally and appropriately to the user's message.",
-                },
-                {"role": "user", "content": message},
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": optimized_message},
             ]
 
         provider_config = self.config[self.provider]
@@ -1419,7 +1511,10 @@ class UniversalAIClient:
                             f"Failed to save conversation context to database: {e}"
                         )
 
-                return AIResponse(
+                # 🚀 PERFORMANCE: Track response time and cache result
+                response_time = time.time() - start_time
+
+                ai_response = AIResponse(
                     content=content,
                     model=payload["model"],
                     provider=current_provider,  # Use current provider (may be fallback)
@@ -1429,13 +1524,19 @@ class UniversalAIClient:
                         "finish_reason": result["choices"][0].get("finish_reason"),
                         "created": result.get("created"),
                         "context_messages_used": len(messages),
+                        "response_time": response_time,
+                        "optimizations_applied": optimization_info.get(
+                            "optimizations_applied", []
+                        ),
+                        "cache_key": cache_key,
                         "emotional_context": (
-                            conversation_context.emotional_context
+                            getattr(conversation_context, "emotional_context", None)
                             if conversation_context
                             else None
                         ),
                         "topics": (
-                            conversation_context.topics
+                            getattr(conversation_context, "topics", None)
+                            or conversation_context.get("topics", None)
                             if conversation_context
                             else None
                         ),
@@ -1446,6 +1547,38 @@ class UniversalAIClient:
                     context_used=conversation_context,
                     confidence_score=confidence_score,
                 )
+
+                # 🚀 PERFORMANCE: Cache the response and track metrics
+                if PERFORMANCE_OPTIMIZER_AVAILABLE:
+                    ai_response_optimizer.track_response_time(response_time)
+                    ai_response_optimizer.cache_response(cache_key, ai_response)
+
+                    # Track provider usage
+                    if (
+                        current_provider
+                        not in ai_response_optimizer.metrics.provider_usage
+                    ):
+                        ai_response_optimizer.metrics.provider_usage[
+                            current_provider
+                        ] = 0
+                    ai_response_optimizer.metrics.provider_usage[current_provider] += 1
+
+                    # Log performance info
+                    if response_time < 0.5:
+                        self.logger.debug(
+                            f"🚀 Ultra-fast response: {response_time:.3f}s"
+                        )
+                    elif response_time > 2.0:
+                        self.logger.warning(f"⚠️ Slow response: {response_time:.3f}s")
+                else:
+                    # Fallback caching
+                    if hasattr(self, "_response_cache"):
+                        self._response_cache[cache_key] = {
+                            "response": ai_response,
+                            "timestamp": time.time(),
+                        }
+
+                return ai_response
 
             except asyncio.TimeoutError as e:
                 logger.error(

@@ -37,7 +37,9 @@ class CoreSystem:
         # Register systems with event manager
         self.event_manager.register_system("ai_handler", self.ai_handler)
         self.event_manager.register_system("interactive_menus", self.interactive_menus)
-        self.event_manager.register_system("security_integration", self.security_integration)
+        self.event_manager.register_system(
+            "security_integration", self.security_integration
+        )
         self.event_manager.register_system("welcome_system", self.welcome_system)
 
         logger.info("🚀 Core System initialized - All modules loaded")

@@ -35,12 +35,14 @@ from discord.ext import commands, tasks
 from cogs.ai_moderation import ViolationType
 from core.security_integration import SecuritySystemIntegration
 
+
 # Define missing classes for backward compatibility
 class ViolationSeverity:
     LOW = "low"
-    MEDIUM = "medium" 
+    MEDIUM = "medium"
     HIGH = "high"
     CRITICAL = "critical"
+
 
 class ThreatLevel:
     NONE = 0
@@ -49,10 +51,12 @@ class ThreatLevel:
     HIGH = 3
     CRITICAL = 4
 
+
 class UserProfile:
     def __init__(self, user_id: int):
         self.user_id = user_id
         self.violations = []
+
 
 class ViolationRecord:
     def __init__(self, violation_type, severity, timestamp=None):
@@ -60,11 +64,14 @@ class ViolationRecord:
         self.severity = severity
         self.timestamp = timestamp or discord.utils.utcnow()
 
+
 class SecurityEvent:
     def __init__(self, event_type: str, details: dict):
         self.event_type = event_type
         self.details = details
         self.timestamp = discord.utils.utcnow()
+
+
 from utils.permissions import has_permission, PermissionLevel, check_user_permission
 from config.unified_config import unified_config
 
@@ -111,7 +118,7 @@ class SecurityManager(commands.Cog):
         self._cache = {}
         self._cache_expiry = {}
         self._last_cache_cleanup = time.time()
-        
+
         # Guild-specific settings with optimized storage
         self.guild_settings = defaultdict(dict)
 
@@ -170,11 +177,11 @@ class SecurityManager(commands.Cog):
         self.lockdown_timestamp = 0
         self.lockdown_level = 0  # 0=none, 1=partial, 2=full, 3=emergency
         self.lockdown_channels_affected = set()
-        
+
         # Real-time threat monitoring
         self.active_threats = {}
         self.threat_escalation_queue = asyncio.Queue()
-        
+
         # Performance optimization features
         self.batch_operations = []
         self.batch_timer = None
@@ -184,33 +191,35 @@ class SecurityManager(commands.Cog):
         self.threat_monitoring.start()
         self.performance_optimizer.start()
 
-        logger.info("🛡️ Enhanced Security Manager initialized - High-performance protection active")
+        logger.info(
+            "🛡️ Enhanced Security Manager initialized - High-performance protection active"
+        )
 
     async def cog_load(self):
         """Initialize security manager when cog loads"""
         logger.info("🔄 Loading Enhanced Security Manager...")
-        
+
         # Initialize advanced caching system
         await self._initialize_advanced_cache()
-        
+
         # Start real-time monitoring
         await self._start_real_time_monitoring()
-        
+
         logger.info("✅ Enhanced Security Manager loaded with optimization features")
 
     async def cog_unload(self):
         """Cleanup when cog unloads"""
         logger.info("🔄 Unloading Enhanced Security Manager...")
-        
+
         # Stop background tasks
         self.cleanup_cache.cancel()
         self.threat_monitoring.cancel()
         self.performance_optimizer.cancel()
-        
+
         # Cleanup resources
         await self._cleanup_resources()
         await self.security_system.shutdown()
-        
+
         logger.info("✅ Enhanced Security Manager unloaded and optimized")
 
     @tasks.loop(minutes=5)
@@ -220,21 +229,23 @@ class SecurityManager(commands.Cog):
             current_time = time.time()
             if current_time - self._last_cache_cleanup < 300:  # 5 minutes
                 return
-                
+
             expired_keys = []
             for key, expiry in self._cache_expiry.items():
                 if current_time > expiry:
                     expired_keys.append(key)
-            
+
             for key in expired_keys:
                 self._cache.pop(key, None)
                 self._cache_expiry.pop(key, None)
-            
+
             self._last_cache_cleanup = current_time
-            
+
             if expired_keys:
-                self.logger.debug(f"🧹 Cleaned {len(expired_keys)} expired cache entries")
-                
+                self.logger.debug(
+                    f"🧹 Cleaned {len(expired_keys)} expired cache entries"
+                )
+
         except Exception as e:
             self.logger.error(f"Cache cleanup error: {e}")
 
@@ -246,17 +257,18 @@ class SecurityManager(commands.Cog):
             while not self.threat_escalation_queue.empty():
                 threat = await self.threat_escalation_queue.get()
                 await self._process_threat_escalation(threat)
-            
+
             # Clean up expired active threats
             current_time = time.time()
             expired_threats = [
-                threat_id for threat_id, threat_data in self.active_threats.items()
-                if current_time - threat_data.get('timestamp', 0) > 3600  # 1 hour
+                threat_id
+                for threat_id, threat_data in self.active_threats.items()
+                if current_time - threat_data.get("timestamp", 0) > 3600  # 1 hour
             ]
-            
+
             for threat_id in expired_threats:
                 self.active_threats.pop(threat_id, None)
-                
+
         except Exception as e:
             self.logger.error(f"Threat monitoring error: {e}")
 
@@ -266,17 +278,24 @@ class SecurityManager(commands.Cog):
         try:
             # Calculate performance metrics
             if self.performance_metrics["security_checks"] > 0:
-                hit_rate = (self.performance_metrics["cache_hits"] / 
-                           (self.performance_metrics["cache_hits"] + self.performance_metrics["cache_misses"])) * 100
-                
+                hit_rate = (
+                    self.performance_metrics["cache_hits"]
+                    / (
+                        self.performance_metrics["cache_hits"]
+                        + self.performance_metrics["cache_misses"]
+                    )
+                ) * 100
+
                 # Log performance stats
-                self.logger.info(f"📊 Security Performance: {hit_rate:.1f}% cache hit rate, "
-                               f"{len(self.active_threats)} active threats")
-            
+                self.logger.info(
+                    f"📊 Security Performance: {hit_rate:.1f}% cache hit rate, "
+                    f"{len(self.active_threats)} active threats"
+                )
+
             # Optimize batch operations
             if self.batch_operations:
                 await self._process_batch_operations()
-                
+
         except Exception as e:
             self.logger.error(f"Performance optimizer error: {e}")
 
@@ -296,7 +315,7 @@ class SecurityManager(commands.Cog):
         self._cache.clear()
         self._cache_expiry.clear()
         self.active_threats.clear()
-        
+
         # Process any remaining batch operations
         if self.batch_operations:
             await self._process_batch_operations()
@@ -309,28 +328,30 @@ class SecurityManager(commands.Cog):
     async def _process_threat_escalation(self, threat_data: Dict[str, Any]):
         """Process threat escalation with intelligent decision making"""
         try:
-            threat_level = threat_data.get('level', 1)
-            guild_id = threat_data.get('guild_id')
-            
+            threat_level = threat_data.get("level", 1)
+            guild_id = threat_data.get("guild_id")
+
             if threat_level >= 4:  # High threat
                 # Add to escalated threats counter
                 self.performance_metrics["escalated_threats"] += 1
-                
+
                 # Consider automatic lockdown
                 if threat_level >= 5 and not self.lockdown_active:
                     guild = self.bot.get_guild(guild_id)
                     if guild:
                         await self._initiate_smart_lockdown(guild, threat_data)
-                        
+
         except Exception as e:
             self.logger.error(f"Threat escalation processing error: {e}")
 
-    async def _initiate_smart_lockdown(self, guild: discord.Guild, threat_data: Dict[str, Any]):
+    async def _initiate_smart_lockdown(
+        self, guild: discord.Guild, threat_data: Dict[str, Any]
+    ):
         """Intelligent lockdown system with graduated response"""
         try:
-            threat_type = threat_data.get('type', 'unknown')
-            threat_level = threat_data.get('level', 1)
-            
+            threat_type = threat_data.get("type", "unknown")
+            threat_level = threat_data.get("level", 1)
+
             # Determine lockdown level based on threat
             if threat_level >= 5:
                 lockdown_level = 3  # Emergency lockdown
@@ -338,13 +359,15 @@ class SecurityManager(commands.Cog):
                 lockdown_level = 2  # Full lockdown
             else:
                 lockdown_level = 1  # Partial lockdown
-            
+
             await self._execute_graduated_lockdown(guild, lockdown_level, threat_data)
-            
+
         except Exception as e:
             self.logger.error(f"Smart lockdown initiation error: {e}")
 
-    async def _execute_graduated_lockdown(self, guild: discord.Guild, level: int, threat_data: Dict[str, Any]):
+    async def _execute_graduated_lockdown(
+        self, guild: discord.Guild, level: int, threat_data: Dict[str, Any]
+    ):
         """Execute graduated lockdown response"""
         try:
             if level == 1:  # Partial lockdown - limit new user actions
@@ -353,16 +376,20 @@ class SecurityManager(commands.Cog):
                 await self._full_lockdown(guild, threat_data)
             elif level == 3:  # Emergency lockdown - complete lockdown
                 await self._emergency_lockdown(guild, threat_data)
-                
+
             self.lockdown_level = level
             self.lockdown_active = True
             self.lockdown_timestamp = time.time()
-            self.lockdown_reason = f"Smart lockdown L{level}: {threat_data.get('type', 'threat')}"
-            
+            self.lockdown_reason = (
+                f"Smart lockdown L{level}: {threat_data.get('type', 'threat')}"
+            )
+
         except Exception as e:
             self.logger.error(f"Graduated lockdown execution error: {e}")
 
-    async def _partial_lockdown(self, guild: discord.Guild, threat_data: Dict[str, Any]):
+    async def _partial_lockdown(
+        self, guild: discord.Guild, threat_data: Dict[str, Any]
+    ):
         """Partial lockdown - restrict new/untrusted users"""
         channels_affected = 0
         for channel in guild.text_channels:
@@ -372,27 +399,33 @@ class SecurityManager(commands.Cog):
                 if overwrites.send_messages is None:
                     overwrites.send_messages = False
                     await channel.set_permissions(
-                        guild.default_role, 
+                        guild.default_role,
                         overwrite=overwrites,
-                        reason=f"Partial lockdown: {threat_data.get('type', 'threat')}"
+                        reason=f"Partial lockdown: {threat_data.get('type', 'threat')}",
                     )
                     channels_affected += 1
                     self.lockdown_channels_affected.add(channel.id)
             except Exception as e:
-                self.logger.warning(f"Failed to partially lock channel {channel.name}: {e}")
-        
-        self.logger.warning(f"🟡 Partial lockdown activated: {channels_affected} channels restricted")
+                self.logger.warning(
+                    f"Failed to partially lock channel {channel.name}: {e}"
+                )
+
+        self.logger.warning(
+            f"🟡 Partial lockdown activated: {channels_affected} channels restricted"
+        )
 
     async def _full_lockdown(self, guild: discord.Guild, threat_data: Dict[str, Any]):
         """Full lockdown - lock most channels except essential"""
         essential_channels = {"rules", "announcements", "welcome", "general"}
         channels_affected = 0
-        
+
         for channel in guild.text_channels:
             # Skip essential channels
-            if any(essential in channel.name.lower() for essential in essential_channels):
+            if any(
+                essential in channel.name.lower() for essential in essential_channels
+            ):
                 continue
-                
+
             try:
                 overwrites = channel.overwrites_for(guild.default_role)
                 overwrites.send_messages = False
@@ -400,19 +433,23 @@ class SecurityManager(commands.Cog):
                 await channel.set_permissions(
                     guild.default_role,
                     overwrite=overwrites,
-                    reason=f"Full lockdown: {threat_data.get('type', 'threat')}"
+                    reason=f"Full lockdown: {threat_data.get('type', 'threat')}",
                 )
                 channels_affected += 1
                 self.lockdown_channels_affected.add(channel.id)
             except Exception as e:
                 self.logger.warning(f"Failed to fully lock channel {channel.name}: {e}")
-        
-        self.logger.error(f"🔴 Full lockdown activated: {channels_affected} channels locked")
 
-    async def _emergency_lockdown(self, guild: discord.Guild, threat_data: Dict[str, Any]):
+        self.logger.error(
+            f"🔴 Full lockdown activated: {channels_affected} channels locked"
+        )
+
+    async def _emergency_lockdown(
+        self, guild: discord.Guild, threat_data: Dict[str, Any]
+    ):
         """Emergency lockdown - complete server lockdown"""
         channels_affected = 0
-        
+
         for channel in guild.text_channels:
             try:
                 overwrites = channel.overwrites_for(guild.default_role)
@@ -422,33 +459,37 @@ class SecurityManager(commands.Cog):
                 await channel.set_permissions(
                     guild.default_role,
                     overwrite=overwrites,
-                    reason=f"Emergency lockdown: {threat_data.get('type', 'critical threat')}"
+                    reason=f"Emergency lockdown: {threat_data.get('type', 'critical threat')}",
                 )
                 channels_affected += 1
                 self.lockdown_channels_affected.add(channel.id)
             except Exception as e:
-                self.logger.warning(f"Failed to emergency lock channel {channel.name}: {e}")
-        
-        self.logger.critical(f"🚨 Emergency lockdown activated: {channels_affected} channels locked")
+                self.logger.warning(
+                    f"Failed to emergency lock channel {channel.name}: {e}"
+                )
+
+        self.logger.critical(
+            f"🚨 Emergency lockdown activated: {channels_affected} channels locked"
+        )
 
     async def _process_batch_operations(self):
         """Process batch operations for better performance"""
         if not self.batch_operations:
             return
-            
+
         operations = self.batch_operations.copy()
         self.batch_operations.clear()
-        
+
         # Group operations by type for efficiency
         operation_groups = defaultdict(list)
         for op in operations:
-            operation_groups[op['type']].append(op)
-        
+            operation_groups[op["type"]].append(op)
+
         # Process each group
         for op_type, ops in operation_groups.items():
-            if op_type == 'permission_update':
+            if op_type == "permission_update":
                 await self._batch_update_permissions(ops)
-            elif op_type == 'role_assignment':
+            elif op_type == "role_assignment":
                 await self._batch_update_roles(ops)
             # Add more batch operation types as needed
 
@@ -456,14 +497,16 @@ class SecurityManager(commands.Cog):
         """Batch update channel permissions"""
         for op in operations:
             try:
-                channel = op['channel']
-                target = op['target']
-                overwrite = op['overwrite']
-                reason = op['reason']
-                
-                await channel.set_permissions(target, overwrite=overwrite, reason=reason)
+                channel = op["channel"]
+                target = op["target"]
+                overwrite = op["overwrite"]
+                reason = op["reason"]
+
+                await channel.set_permissions(
+                    target, overwrite=overwrite, reason=reason
+                )
                 await asyncio.sleep(0.1)  # Rate limit protection
-                
+
             except Exception as e:
                 self.logger.warning(f"Batch permission update failed: {e}")
 
@@ -471,18 +514,18 @@ class SecurityManager(commands.Cog):
         """Batch update user roles"""
         for op in operations:
             try:
-                member = op['member']
-                roles = op['roles']
-                reason = op['reason']
-                action = op['action']  # 'add' or 'remove'
-                
-                if action == 'add':
+                member = op["member"]
+                roles = op["roles"]
+                reason = op["reason"]
+                action = op["action"]  # 'add' or 'remove'
+
+                if action == "add":
                     await member.add_roles(*roles, reason=reason)
-                elif action == 'remove':
+                elif action == "remove":
                     await member.remove_roles(*roles, reason=reason)
-                    
+
                 await asyncio.sleep(0.1)  # Rate limit protection
-                
+
             except Exception as e:
                 self.logger.warning(f"Batch role update failed: {e}")
 
@@ -501,45 +544,52 @@ class SecurityManager(commands.Cog):
             self.performance_metrics["cache_misses"] += 1
             return None
 
-    def log_security_event(self, event_type: str, severity: int, details: Dict[str, Any]):
+    def log_security_event(
+        self, event_type: str, severity: int, details: Dict[str, Any]
+    ):
         """Enhanced security event logging"""
         try:
-            event_id = hashlib.md5(f"{event_type}_{time.time()}_{severity}".encode()).hexdigest()[:8]
-            
+            event_id = hashlib.md5(
+                f"{event_type}_{time.time()}_{severity}".encode()
+            ).hexdigest()[:8]
+
             event_data = {
-                'id': event_id,
-                'type': event_type,
-                'severity': severity,
-                'timestamp': time.time(),
-                'details': details,
-                'handled': False
+                "id": event_id,
+                "type": event_type,
+                "severity": severity,
+                "timestamp": time.time(),
+                "details": details,
+                "handled": False,
             }
-            
+
             # Add to active threats if high severity
             if severity >= 3:
                 self.active_threats[event_id] = event_data
-                
+
                 # Queue for escalation if critical
                 if severity >= 4:
                     asyncio.create_task(self.threat_escalation_queue.put(event_data))
-            
+
             # Update performance metrics
             self.performance_metrics["violations_handled"] += 1
-            
+
             # Log based on severity
             if severity >= 4:
-                self.logger.critical(f"🚨 CRITICAL SECURITY EVENT: {event_type} - {details}")
+                self.logger.critical(
+                    f"🚨 CRITICAL SECURITY EVENT: {event_type} - {details}"
+                )
             elif severity >= 3:
                 self.logger.error(f"🔴 HIGH SECURITY EVENT: {event_type} - {details}")
             else:
                 self.logger.warning(f"🟡 SECURITY EVENT: {event_type} - {details}")
-                
+
         except Exception as e:
             self.logger.error(f"Security event logging failed: {e}")
 
     @wraps
     def performance_monitor(func):
         """Decorator for monitoring command performance"""
+
         async def wrapper(self, *args, **kwargs):
             start_time = time.perf_counter()
             try:
@@ -547,19 +597,21 @@ class SecurityManager(commands.Cog):
                 return result
             finally:
                 execution_time = time.perf_counter() - start_time
-                
+
                 # Update performance metrics
                 self.performance_metrics["avg_response_time"] = (
-                    (self.performance_metrics["avg_response_time"] * 0.9) + (execution_time * 0.1)
-                )
-                
+                    self.performance_metrics["avg_response_time"] * 0.9
+                ) + (execution_time * 0.1)
+
                 if execution_time > self.performance_metrics["peak_response_time"]:
                     self.performance_metrics["peak_response_time"] = execution_time
-                
+
                 # Log slow operations
                 if execution_time > 1.0:
-                    self.logger.warning(f"⚠️ Slow security operation: {func.__name__} took {execution_time:.3f}s")
-                    
+                    self.logger.warning(
+                        f"⚠️ Slow security operation: {func.__name__} took {execution_time:.3f}s"
+                    )
+
         return wrapper
 
     # 🚀 DISABLED: Message processing moved to High-Performance Coordinator
@@ -841,12 +893,17 @@ class SecurityManager(commands.Cog):
 
             # Get enhanced security statistics
             stats = self.security_system.get_security_stats()
-            
+
             # Calculate advanced metrics
             cache_hit_rate = 0.0
-            total_cache_ops = self.performance_metrics["cache_hits"] + self.performance_metrics["cache_misses"]
+            total_cache_ops = (
+                self.performance_metrics["cache_hits"]
+                + self.performance_metrics["cache_misses"]
+            )
             if total_cache_ops > 0:
-                cache_hit_rate = (self.performance_metrics["cache_hits"] / total_cache_ops) * 100
+                cache_hit_rate = (
+                    self.performance_metrics["cache_hits"] / total_cache_ops
+                ) * 100
 
             # Get guild settings with enhanced error handling
             try:
@@ -947,9 +1004,14 @@ class SecurityManager(commands.Cog):
             )
 
             # Real-time threat monitoring
-            recent_threats = len([t for t in self.active_threats.values() 
-                                if time.time() - t.get('timestamp', 0) < 3600])  # Last hour
-            
+            recent_threats = len(
+                [
+                    t
+                    for t in self.active_threats.values()
+                    if time.time() - t.get("timestamp", 0) < 3600
+                ]
+            )  # Last hour
+
             embed.add_field(
                 name="🚨 Real-Time Threat Intelligence",
                 value=f"**Active Threats:** {len(self.active_threats)}\n"
@@ -983,8 +1045,10 @@ class SecurityManager(commands.Cog):
 
             # System health indicators
             health_score = self._calculate_system_health()
-            health_emoji = "🟢" if health_score >= 90 else "🟡" if health_score >= 70 else "🔴"
-            
+            health_emoji = (
+                "🟢" if health_score >= 90 else "🟡" if health_score >= 70 else "🔴"
+            )
+
             embed.add_field(
                 name="💚 System Health Score",
                 value=f"{health_emoji} **{health_score:.1f}%**\n"
@@ -1005,7 +1069,8 @@ class SecurityManager(commands.Cog):
         except Exception as e:
             self.logger.error(f"Error in enhanced security_status command: {e}")
             await interaction.response.send_message(
-                "❌ An error occurred while retrieving enhanced security status.", ephemeral=True
+                "❌ An error occurred while retrieving enhanced security status.",
+                ephemeral=True,
             )
 
     def _get_status_color(self) -> int:
@@ -1026,43 +1091,50 @@ class SecurityManager(commands.Cog):
         """Get detailed lockdown status"""
         if not self.lockdown_active:
             return "🔓 **Inactive**\nStandby mode\nAll channels open\nNormal operations"
-        
+
         level_names = {0: "None", 1: "Partial", 2: "Full", 3: "Emergency"}
         level_name = level_names.get(self.lockdown_level, "Unknown")
-        
+
         duration = time.time() - self.lockdown_timestamp
         duration_str = f"{int(duration//60)}m {int(duration%60)}s"
-        
-        return (f"🔒 **Level {self.lockdown_level} ({level_name})**\n"
-               f"Duration: {duration_str}\n"
-               f"Channels: {len(self.lockdown_channels_affected)}\n"
-               f"Reason: {self.lockdown_reason[:20]}...")
+
+        return (
+            f"🔒 **Level {self.lockdown_level} ({level_name})**\n"
+            f"Duration: {duration_str}\n"
+            f"Channels: {len(self.lockdown_channels_affected)}\n"
+            f"Reason: {self.lockdown_reason[:20]}..."
+        )
 
     def _calculate_system_health(self) -> float:
         """Calculate overall system health score"""
         health_score = 100.0
-        
+
         # Reduce score based on active threats
         threat_penalty = min(len(self.active_threats) * 5, 30)
         health_score -= threat_penalty
-        
+
         # Reduce score for poor cache performance
-        total_cache_ops = self.performance_metrics["cache_hits"] + self.performance_metrics["cache_misses"]
+        total_cache_ops = (
+            self.performance_metrics["cache_hits"]
+            + self.performance_metrics["cache_misses"]
+        )
         if total_cache_ops > 0:
-            cache_hit_rate = (self.performance_metrics["cache_hits"] / total_cache_ops) * 100
+            cache_hit_rate = (
+                self.performance_metrics["cache_hits"] / total_cache_ops
+            ) * 100
             if cache_hit_rate < 70:
                 health_score -= (70 - cache_hit_rate) * 0.5
-        
+
         # Reduce score for slow response times
         if self.performance_metrics["avg_response_time"] > 0.5:
             health_score -= 20
         elif self.performance_metrics["avg_response_time"] > 0.2:
             health_score -= 10
-        
+
         # Reduce score if lockdown is active
         if self.lockdown_active:
             health_score -= self.lockdown_level * 10
-        
+
         return max(health_score, 0.0)
 
     @app_commands.command(

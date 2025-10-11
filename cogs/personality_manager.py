@@ -18,9 +18,9 @@ from utils.astra_personality import get_personality_core, AstraMode
 from utils.permissions import has_permission, PermissionLevel, check_user_permission
 
 
-
 def performance_monitor(func):
     """Monitor function performance"""
+
     @wraps(func)
     async def wrapper(*args, **kwargs):
         start_time = time.perf_counter()
@@ -34,7 +34,9 @@ def performance_monitor(func):
             duration = time.perf_counter() - start_time
             print(f"❌ Error in {func.__name__} after {duration:.3f}s: {e}")
             raise
+
     return wrapper
+
 
 class ResetConfirmationView(discord.ui.View):
     """View for confirming personality reset"""

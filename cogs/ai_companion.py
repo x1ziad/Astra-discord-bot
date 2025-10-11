@@ -319,81 +319,98 @@ class AstraAICompanion(commands.Cog):
         profile: PersonalityProfile,
         context: Dict[str, Any],
     ) -> str:
-        """Generate Astra's response based on message and personality"""
+        """Generate Astra's response with maximum performance optimization"""
+        response_start_time = time.perf_counter()
+        
         try:
-            self.logger.debug(f"🔧 Starting response generation for: '{message.content[:30]}...'")
+            self.logger.debug(f"� Ultra-fast response generation for: '{message.content[:30]}...'")
             
-            # Calculate current personality
-            current_personality = self.calculate_personality_vector(profile, context)
-
-            # Enhanced personality-aware user profile for AI client
-            dominant_traits = self._get_dominant_traits(current_personality)
-
-            # ENHANCED: Build comprehensive personality-driven context for immediate behavior reflection
-            personality_instructions = self._create_personality_instructions(current_personality, dominant_traits)
+            # 🚀 PERFORMANCE: Cache personality calculations
+            personality_cache_key = f"{message.author.id}_{hash(str(context))}"
             
+            if hasattr(self, '_personality_cache'):
+                if personality_cache_key in self._personality_cache:
+                    cached_data = self._personality_cache[personality_cache_key]
+                    if time.time() - cached_data['timestamp'] < 300:  # 5 minute cache
+                        current_personality = cached_data['personality']
+                        dominant_traits = cached_data['traits']
+                        self.logger.debug("⚡ Using cached personality calculation")
+                    else:
+                        del self._personality_cache[personality_cache_key]
+                        current_personality = self.calculate_personality_vector(profile, context)
+                        dominant_traits = self._get_dominant_traits(current_personality)
+                else:
+                    current_personality = self.calculate_personality_vector(profile, context)
+                    dominant_traits = self._get_dominant_traits(current_personality)
+                    # Cache for future use
+                    if not hasattr(self, '_personality_cache'):
+                        self._personality_cache = {}
+                    self._personality_cache[personality_cache_key] = {
+                        'personality': current_personality,
+                        'traits': dominant_traits,
+                        'timestamp': time.time()
+                    }
+            else:
+                self._personality_cache = {}
+                current_personality = self.calculate_personality_vector(profile, context)
+                dominant_traits = self._get_dominant_traits(current_personality)
+
+            # 🚀 OPTIMIZED: Streamlined user profile for maximum AI performance
             user_profile_data = {
                 "name": message.author.display_name,
                 "personality_traits": dominant_traits[:3],
                 "dominant_emotion": context.get("sentiment", "neutral"),
                 "channel_context": context.get("channel_type", "general"),
-                "interaction_count": profile.modifiers.interaction_history,
+                "interaction_count": min(profile.modifiers.interaction_history, 1000),  # Cap for performance
                 "current_mood": context.get("user_mood", 0.5),
-                "personality_guide": self._build_personality_guide(
-                    current_personality, dominant_traits
-                ),
-                "astra_context": "Astra AI companion with dynamic personality adaptation",
-                "personality_instructions": personality_instructions,  # Direct behavior instructions
-                "current_personality_values": current_personality.to_dict(),  # Real-time values
+                "astra_context": "Astra AI with dynamic personality",
+                "performance_mode": "ultra_fast",
             }
 
-            # Adjust temperature based on creativity level
-            temperature = 0.6 + (current_personality.creative * 0.3)
+            # 🚀 PERFORMANCE: Optimized temperature calculation
+            temperature = min(0.6 + (current_personality.creative * 0.3), 0.9)
             
-            self.logger.debug(f"🎯 Calling AI client with temperature={temperature:.2f}")
+            self.logger.debug(f"🎯 Ultra-fast AI call with temperature={temperature:.2f}")
 
-            # OPTIMIZED: Get AI response with enhanced personality alignment and performance
+            # 🚀 MAXIMUM PERFORMANCE: Streamlined AI response generation
             start_ai_time = time.perf_counter()
             
-            # ENHANCED: Configure AI client with dynamic personality that reflects real-time settings
-            if hasattr(self.ai_client, 'configure_personality'):
-                personality_config = {
-                    'primary_personality': 'astra',
-                    'dominant_traits': dominant_traits[:3],
-                    'response_style': self._get_response_style_from_personality(current_personality),
-                    'adaptability': 'high',
-                    'performance_mode': 'balanced',
-                    'dynamic_prompt': self._generate_dynamic_personality_prompt(current_personality, context),
-                    'personality_intensity': self._calculate_personality_intensity(current_personality)
-                }
-                self.ai_client.configure_personality(personality_config)
+            # Skip complex personality configuration for speed - use direct message enhancement
+            enhanced_message = message.content
             
-            # CRITICAL: Prepend personality-specific system message to ensure behavior changes
-            enhanced_message = self._enhance_message_with_personality_context(message.content, current_personality, dominant_traits)
+            # Add personality context only for complex interactions
+            if len(message.content) > 50 or any(trait in ['analytical', 'creative'] for trait in dominant_traits[:2]):
+                personality_hint = f"[Respond as Astra with {', '.join(dominant_traits[:2])} personality]"
+                enhanced_message = f"{personality_hint} {message.content}"
             
             ai_response = await self.ai_client.generate_response(
-                enhanced_message,  # Use personality-enhanced message
+                enhanced_message,
                 user_id=message.author.id,
                 guild_id=message.guild.id if message.guild else None,
                 channel_id=message.channel.id,
                 user_profile=user_profile_data,
                 temperature=temperature,
+                max_tokens=500,  # Optimize for faster responses
             )
             
             ai_response_time = time.perf_counter() - start_ai_time
-            self.logger.debug(f"⚡ AI response generated in {ai_response_time:.3f}s")
+            total_response_time = time.perf_counter() - response_start_time
             
-            self.logger.debug(f"🤖 AI response received: {ai_response is not None}")
-            if ai_response:
-                self.logger.debug(f"📝 AI response content length: {len(ai_response.content) if hasattr(ai_response, 'content') and ai_response.content else 0}")
+            # 🚀 PERFORMANCE: Log ultra-fast responses
+            if total_response_time < 0.5:
+                self.logger.debug(f"🚀 ULTRA-FAST response: {total_response_time:.3f}s (AI: {ai_response_time:.3f}s)")
+            elif total_response_time > 2.0:
+                self.logger.warning(f"⚠️ Slow response: {total_response_time:.3f}s")
+            else:
+                self.logger.debug(f"⚡ Fast response: {total_response_time:.3f}s")
 
             response = ai_response.content if ai_response and hasattr(ai_response, 'content') else None
             
             if not response:
-                self.logger.warning(f"⚠️ AI client returned no response, using fallback")
-                response = self._get_fallback_response(current_personality)
+                self.logger.warning(f"⚠️ AI client returned no response, using optimized fallback")
+                response = self._get_optimized_fallback_response(current_personality, dominant_traits)
             else:
-                # Log response length for monitoring
+                # 🚀 PERFORMANCE: Track successful responses
                 self.logger.info(f"📏 Generated response length: {len(response)} characters")
                 if len(response) > 1800:
                     self.logger.warning(f"⚠️ Long response detected ({len(response)} chars) - will be truncated on send")
@@ -612,6 +629,23 @@ class AstraAICompanion(commands.Cog):
         }
 
         return "\n".join([f"• {guides[trait]}" for trait in dominant_traits[:4]])
+
+    def _get_optimized_fallback_response(self, personality: PersonalityDimensions, dominant_traits: List[str]) -> str:
+        """Ultra-fast optimized fallback responses based on personality"""
+        base_responses = {
+            'analytical': "Let me analyze that for you.",
+            'empathetic': "I understand how you feel about this.",
+            'curious': "That's interesting! Tell me more.",
+            'creative': "What an intriguing perspective!",
+            'supportive': "I'm here to help you with that.",
+            'playful': "Haha, that's quite something!",
+            'assertive': "I have some thoughts on this.",
+            'adaptable': "I can work with that approach."
+        }
+        
+        # Use first dominant trait for fast response
+        primary_trait = dominant_traits[0] if dominant_traits else 'supportive'
+        return base_responses.get(primary_trait, "I'm here to help! How can I assist you?")
 
     def _get_fallback_response(self, personality: PersonalityDimensions) -> str:
         """Generate personality-appropriate fallback response"""
