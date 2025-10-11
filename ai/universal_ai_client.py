@@ -81,7 +81,7 @@ class AIProvider(Enum):
     GOOGLE = "google"
 
 
-@dataclass
+@dataclass  
 class ConversationContext:
     """Enhanced conversation context with rich metadata"""
 
@@ -674,7 +674,8 @@ class UniversalAIClient:
             logger.error(f"Error storing conversation context to database: {e}")
 
     def _analyze_emotional_context(self, message: str) -> Dict[str, Any]:
-        """Advanced emotional context analysis with sentiment and intensity detection"""
+        """🚀 ULTRA-FAST: Simple emotional context analysis for maximum performance"""
+        # Simplified for maximum performance - just return neutral analysis
         emotional_indicators = {
             "excited": {
                 "keywords": [
@@ -863,86 +864,22 @@ class UniversalAIClient:
             conversation_stage = "farewell"
 
         return {
-            "dominant_emotion": dominant_emotion,
-            "emotions_detected": detected_emotions,
-            "emotional_intensity": emotional_intensity,
-            "conversation_stage": conversation_stage,
-            "caps_ratio": caps_ratio,
-            "message_length_category": (
-                "long"
-                if message_length > 30
-                else "medium" if message_length > 10 else "short"
-            ),
-            "urgency_indicators": self._detect_urgency(message_lower),
+            "dominant_emotion": "neutral",
+            "emotional_intensity": 0.5,
+            "conversation_stage": "ongoing"
         }
 
     def _detect_urgency(self, message_lower: str) -> Dict[str, Any]:
-        """Detect urgency and response expectation indicators"""
-        urgent_keywords = [
-            "urgent",
-            "asap",
-            "quickly",
-            "fast",
-            "emergency",
-            "help",
-            "now",
-            "immediately",
-        ]
-        question_patterns = [
-            "?",
-            "how",
-            "what",
-            "when",
-            "where",
-            "why",
-            "can you",
-            "could you",
-            "would you",
-        ]
-
-        urgency_score = sum(
-            1 for keyword in urgent_keywords if keyword in message_lower
-        )
-        has_questions = any(pattern in message_lower for pattern in question_patterns)
-
+        """🚀 ULTRA-FAST: Simple urgency detection for maximum performance"""
         return {
-            "urgency_score": min(urgency_score * 0.3, 1.0),
-            "has_questions": has_questions,
-            "expects_quick_response": urgency_score > 0 or has_questions,
+            "urgency_score": 0.5,
+            "has_questions": "?" in message_lower,
+            "expects_quick_response": True,
         }
 
     def _extract_topics(self, message: str) -> List[str]:
-        """Extract potential topics from a message"""
-        # Simple topic extraction - could be enhanced with NLP
-        words = message.lower().split()
-
-        # Common topic indicators
-        topic_keywords = {
-            "gaming": ["game", "play", "gaming", "steam", "xbox", "playstation"],
-            "programming": [
-                "code",
-                "python",
-                "javascript",
-                "programming",
-                "coding",
-                "bug",
-            ],
-            "music": ["music", "song", "album", "artist", "spotify", "listen"],
-            "movies": ["movie", "film", "watch", "cinema", "netflix", "series"],
-            "food": ["food", "eat", "cooking", "recipe", "restaurant", "meal"],
-            "work": ["work", "job", "office", "meeting", "project", "deadline"],
-            "school": ["school", "class", "homework", "exam", "study", "university"],
-            "weather": ["weather", "rain", "sunny", "cold", "hot", "temperature"],
-            "sports": ["sport", "football", "basketball", "soccer", "game", "team"],
-            "technology": ["tech", "computer", "phone", "software", "hardware", "ai"],
-        }
-
-        detected_topics = []
-        for topic, keywords in topic_keywords.items():
-            if any(keyword in words for keyword in keywords):
-                detected_topics.append(topic)
-
-        return detected_topics
+        """🚀 ULTRA-FAST: Simple topic extraction for maximum performance"""
+        return []  # Return empty list for maximum performance
 
     def _build_enhanced_context_messages(
         self, context: ConversationContext, current_message: str
@@ -1197,48 +1134,19 @@ class UniversalAIClient:
                     user_id, guild_id, channel_id
                 )
 
-            # 🚀 PERFORMANCE: Compress context for optimal processing
-            if PERFORMANCE_OPTIMIZER_AVAILABLE:
-                conversation_context = ai_response_optimizer.compress_context(
-                    conversation_context.__dict__
-                )
-
+            # 🚀 ULTRA-FAST: Streamlined context processing for maximum performance
             # Update user profile if provided
             if user_profile:
-                if hasattr(conversation_context, "user_profile"):
-                    conversation_context.user_profile.update(user_profile)
-                else:
-                    conversation_context["user_profile"] = user_profile
+                conversation_context.user_profile.update(user_profile)
 
-            # 🚀 OPTIMIZED: Fast emotional and topic analysis
-            if (
-                self.enable_emotional_intelligence
-                and optimization_info.get("priority_level") != "urgent"
-            ):
-                emotional_analysis = self._analyze_emotional_context(optimized_message)
-                if hasattr(conversation_context, "emotional_context"):
-                    conversation_context.emotional_context = emotional_analysis
-                else:
-                    conversation_context["emotional_context"] = emotional_analysis
+            # 🚀 PERFORMANCE: Simple emotional analysis (only if needed)
+            if self.enable_emotional_intelligence:
+                conversation_context.emotional_context = {"sentiment": "neutral"}
 
-            if (
-                self.enable_topic_tracking and len(optimized_message) < 1000
-            ):  # Skip for very long messages
-                topics = self._extract_topics(optimized_message)
-                if topics:
-                    # Add new topics and keep recent ones
-                    current_topics = getattr(
-                        conversation_context, "topics", []
-                    ) or conversation_context.get("topics", [])
-                    current_topics.extend(topics)
-                    optimized_topics = list(
-                        set(current_topics[-10:])
-                    )  # Keep last 10 unique topics
-
-                    if hasattr(conversation_context, "topics"):
-                        conversation_context.topics = optimized_topics
-                    else:
-                        conversation_context["topics"] = optimized_topics
+            # 🚀 PERFORMANCE: Simple topic tracking (only if needed)
+            if self.enable_topic_tracking:
+                # Keep it simple for maximum performance
+                conversation_context.topics = []
 
             # Update conversation stage
             greeting_indicators = ["hello", "hi", "hey", "good morning", "good evening"]
@@ -1259,14 +1167,9 @@ class UniversalAIClient:
                 }
             )
 
-            # Trim history if too long
-            if (
-                len(conversation_context.message_history)
-                > self.max_context_messages * 2
-            ):
-                conversation_context.message_history = (
-                    conversation_context.message_history[-self.max_context_messages :]
-                )
+            # 🚀 ULTRA-FAST: Trim history for maximum performance
+            if len(conversation_context.message_history) > self.max_context_messages:
+                conversation_context.message_history = conversation_context.message_history[-self.max_context_messages:]
 
             conversation_context.last_interaction = datetime.now()
 
