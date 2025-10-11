@@ -213,6 +213,9 @@ class UniversalAIClient:
 
         # HTTP session
         self.session = None
+        
+        # Initialize logger
+        self.logger = logging.getLogger("astra.universal_ai_client")
 
     def is_available(self) -> bool:
         """Check if the client is properly configured"""
