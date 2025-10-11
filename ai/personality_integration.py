@@ -1,9 +1,10 @@
 """
-🔗 Personality Integration System
-Integrates AstraBot's self-aware personality core with existing AI systems
+🔗 AI Identity Response System
+Handles identity questions and basic personality integration for AI responses
 
-This module provides seamless integration between the personality core and
-existing AI chat systems, ensuring natural self-aware responses.
+This module provides simple integration for identity-related questions,
+ensuring natural self-aware responses when users ask about the bot.
+This is a lightweight system focused on identity responses only.
 """
 
 import asyncio
@@ -19,8 +20,8 @@ from ai.bot_personality_core import (
 logger = logging.getLogger("astra.personality_integration")
 
 
-class PersonalityIntegration:
-    """Manages integration between personality core and AI systems"""
+class AIIdentityHandler:
+    """Handles AI identity questions and basic personality responses"""
 
     def __init__(self):
         self.personality_core = None
@@ -317,19 +318,19 @@ class PersonalityIntegration:
         }
 
 
-# Global integration instance
-_personality_integration: Optional[PersonalityIntegration] = None
+# Global identity handler instance
+_identity_handler: Optional[AIIdentityHandler] = None
 
 
-async def get_personality_integration() -> PersonalityIntegration:
-    """Get or create personality integration instance"""
-    global _personality_integration
+async def get_identity_handler() -> AIIdentityHandler:
+    """Get or create AI identity handler instance"""
+    global _identity_handler
 
-    if _personality_integration is None:
-        _personality_integration = PersonalityIntegration()
-        await _personality_integration.initialize()
+    if _identity_handler is None:
+        _identity_handler = AIIdentityHandler()
+        await _identity_handler.initialize()
 
-    return _personality_integration
+    return _identity_handler
 
 
 async def check_for_identity_response(
@@ -340,12 +341,12 @@ async def check_for_identity_response(
     Use this in your existing AI chat systems
     """
 
-    integration = await get_personality_integration()
+    handler = await get_identity_handler()
 
-    if not integration.is_identity_question(message):
+    if not handler.is_identity_question(message):
         return None
 
-    return await integration.process_message_for_identity(
+    return await handler.process_message_for_identity(
         user_id=user_id,
         message=message,
         user_name=user_name,
@@ -361,7 +362,7 @@ async def enhance_ai_chat_response(
     Use this to wrap your existing AI responses
     """
 
-    integration = await get_personality_integration()
-    return await integration.enhance_regular_response(
+    handler = await get_identity_handler()
+    return await handler.enhance_regular_response(
         user_id=user_id, original_response=original_response, context=context
     )

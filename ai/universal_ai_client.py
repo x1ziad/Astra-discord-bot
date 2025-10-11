@@ -205,7 +205,7 @@ class UniversalAIClient:
         # Long-term memory system
         self.user_memories: Dict[int, Dict[str, Any]] = {}
         self.important_facts: Dict[str, List[Dict[str, Any]]] = {}
-        
+
         # Last performance log time for periodic reporting
         self._last_performance_log = time.time()
 
@@ -283,34 +283,48 @@ class UniversalAIClient:
         # Cache personality prompts for performance
         if self._cache_enabled:
             self._personality_cache.update(personality_config)
-    
+
     def get_performance_stats(self) -> Dict[str, Any]:
         """Get current performance statistics"""
         total_requests = self._performance_stats["total_requests"]
         if total_requests == 0:
             return self._performance_stats
-        
+
         return {
             **self._performance_stats,
-            "cache_hit_rate": (self._performance_stats["cache_hits"] / total_requests) * 100,
-            "timeout_rate": (self._performance_stats["timeout_fallbacks"] / total_requests) * 100,
-            "ultra_fast_rate": (self._performance_stats["ultra_fast_patterns"] / total_requests) * 100,
-            "ai_response_rate": (self._performance_stats["ai_responses"] / total_requests) * 100,
+            "cache_hit_rate": (self._performance_stats["cache_hits"] / total_requests)
+            * 100,
+            "timeout_rate": (
+                self._performance_stats["timeout_fallbacks"] / total_requests
+            )
+            * 100,
+            "ultra_fast_rate": (
+                self._performance_stats["ultra_fast_patterns"] / total_requests
+            )
+            * 100,
+            "ai_response_rate": (
+                self._performance_stats["ai_responses"] / total_requests
+            )
+            * 100,
         }
-    
+
     def log_performance_stats_if_needed(self):
         """Log performance stats every 100 requests or 5 minutes"""
         current_time = time.time()
         total_requests = self._performance_stats["total_requests"]
-        
+
         # Log every 100 requests or every 5 minutes
-        if (total_requests % 100 == 0 and total_requests > 0) or (current_time - self._last_performance_log > 300):
+        if (total_requests % 100 == 0 and total_requests > 0) or (
+            current_time - self._last_performance_log > 300
+        ):
             stats = self.get_performance_stats()
-            logger.info(f"🔥 AI Performance Stats: {total_requests} requests | "
-                       f"Cache: {stats['cache_hit_rate']:.1f}% | "
-                       f"Timeouts: {stats['timeout_rate']:.1f}% | "
-                       f"Ultra-fast: {stats['ultra_fast_rate']:.1f}% | "
-                       f"AI calls: {stats['ai_response_rate']:.1f}%")
+            logger.info(
+                f"🔥 AI Performance Stats: {total_requests} requests | "
+                f"Cache: {stats['cache_hit_rate']:.1f}% | "
+                f"Timeouts: {stats['timeout_rate']:.1f}% | "
+                f"Ultra-fast: {stats['ultra_fast_rate']:.1f}% | "
+                f"AI calls: {stats['ai_response_rate']:.1f}%"
+            )
             self._last_performance_log = current_time
 
     def enable_caching(self, max_cache_size: int = 1000) -> None:
@@ -1189,7 +1203,7 @@ class UniversalAIClient:
 
         start_time = time.time()
         self._performance_stats["total_requests"] += 1
-        
+
         # Log performance stats if needed
         self.log_performance_stats_if_needed()
 
@@ -1204,17 +1218,27 @@ class UniversalAIClient:
                     f"🚀 ULTRA-FAST: Returning cached response ({(time.time() - start_time)*1000:.1f}ms)"
                 )
                 return cached_response["response"]
-        
+
         # 🚀 PERFORMANCE: Check for similar patterns with fuzzy matching for common queries
         if self._cache_enabled and len(message) < 100:  # Only for shorter messages
             message_lower = message.lower().strip()
             for existing_key, cached_data in self._response_cache.items():
-                if abs(len(existing_key.split('|')[0]) - len(message_lower)) < 10:  # Similar length
-                    if (time.time() - cached_data["timestamp"]) < 300:  # 5 minutes for fuzzy matches
+                if (
+                    abs(len(existing_key.split("|")[0]) - len(message_lower)) < 10
+                ):  # Similar length
+                    if (
+                        time.time() - cached_data["timestamp"]
+                    ) < 300:  # 5 minutes for fuzzy matches
                         # Simple similarity check for common patterns
-                        existing_msg = existing_key.split('|')[0].lower()
-                        if any(word in message_lower for word in existing_msg.split() if len(word) > 3):
-                            self.logger.debug(f"🚀 PATTERN-MATCH: Using similar cached response ({(time.time() - start_time)*1000:.1f}ms)")
+                        existing_msg = existing_key.split("|")[0].lower()
+                        if any(
+                            word in message_lower
+                            for word in existing_msg.split()
+                            if len(word) > 3
+                        ):
+                            self.logger.debug(
+                                f"🚀 PATTERN-MATCH: Using similar cached response ({(time.time() - start_time)*1000:.1f}ms)"
+                            )
                             return cached_data["response"]
 
         # 🚀 PERFORMANCE: Cleanup cache periodically
@@ -1227,13 +1251,38 @@ class UniversalAIClient:
         # 🚀 PERFORMANCE: Enhanced ultra-fast pattern matching before expensive AI calls
         message_lower = message.lower().strip()
         ultra_fast_patterns = [
-            "hello", "hi", "hey", "thanks", "thank you", "ping", "test",
-            "how are you", "what's up", "good morning", "good afternoon", 
-            "good evening", "goodbye", "bye", "see you", "help", "ok", "okay",
-            "yes", "no", "maybe", "sure", "got it", "understood", "cool"
+            "hello",
+            "hi",
+            "hey",
+            "thanks",
+            "thank you",
+            "ping",
+            "test",
+            "how are you",
+            "what's up",
+            "good morning",
+            "good afternoon",
+            "good evening",
+            "goodbye",
+            "bye",
+            "see you",
+            "help",
+            "ok",
+            "okay",
+            "yes",
+            "no",
+            "maybe",
+            "sure",
+            "got it",
+            "understood",
+            "cool",
         ]
         # Check for exact matches first, then partial matches for efficiency
-        if message_lower in ultra_fast_patterns or any(pattern in message_lower for pattern in ultra_fast_patterns if len(pattern) > 3):
+        if message_lower in ultra_fast_patterns or any(
+            pattern in message_lower
+            for pattern in ultra_fast_patterns
+            if len(pattern) > 3
+        ):
             self._performance_stats["ultra_fast_patterns"] += 1
             fast_response = self._get_ultra_fast_fallback_response(message, None)
             # Cache the fast response
@@ -1425,8 +1474,12 @@ class UniversalAIClient:
                     gemini_response = await asyncio.wait_for(
                         google_gemini_client.chat_completion(
                             messages=messages,
-                            max_tokens=kwargs.get("max_tokens", min(self.max_tokens, 150)),  # Limit tokens for faster responses
-                            temperature=kwargs.get("temperature", min(self.temperature, 0.7)),  # Lower temp for faster generation
+                            max_tokens=kwargs.get(
+                                "max_tokens", min(self.max_tokens, 150)
+                            ),  # Limit tokens for faster responses
+                            temperature=kwargs.get(
+                                "temperature", min(self.temperature, 0.7)
+                            ),  # Lower temp for faster generation
                         ),
                         timeout=2.5,  # 2.5 second timeout for better reliability while maintaining speed
                     )

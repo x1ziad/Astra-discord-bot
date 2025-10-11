@@ -99,9 +99,13 @@ class GoogleGeminiClient:
             generation_config = genai.types.GenerationConfig(
                 max_output_tokens=actual_max_tokens,
                 temperature=temperature,
-                top_p=kwargs.get("top_p", 0.9),  # Slightly lower for faster, more focused responses
-                top_k=kwargs.get("top_k", 40),   # Lower for faster generation while maintaining quality
-                candidate_count=1,               # Single candidate for fastest response
+                top_p=kwargs.get(
+                    "top_p", 0.9
+                ),  # Slightly lower for faster, more focused responses
+                top_k=kwargs.get(
+                    "top_k", 40
+                ),  # Lower for faster generation while maintaining quality
+                candidate_count=1,  # Single candidate for fastest response
             )  # Build the full prompt with context if provided
             full_prompt = self._build_prompt_with_context(prompt, context)
 

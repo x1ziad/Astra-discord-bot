@@ -372,8 +372,8 @@ class AstraPersonalityCore:
 personality_cores = {}
 
 
-def get_personality_core(guild_id: int = None) -> AstraPersonalityCore:
-    """Get or create personality core for guild"""
+def get_astra_personality_core(guild_id: int = None) -> AstraPersonalityCore:
+    """Get or create TARS-style personality core for guild"""
     if guild_id not in personality_cores:
         personality_cores[guild_id] = AstraPersonalityCore(guild_id)
     return personality_cores[guild_id]

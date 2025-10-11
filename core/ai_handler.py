@@ -15,7 +15,7 @@ logger = logging.getLogger("astra.core.ai")
 
 # Import personality integration
 # New personality system imported directly
-from utils.astra_personality import get_personality_core
+from utils.astra_personality import get_astra_personality_core
 
 # Language detection patterns
 LANGUAGE_PATTERNS = {
@@ -176,7 +176,7 @@ class AIHandler:
     async def _generate_response(self, message: discord.Message) -> str:
         """Generate AI response using the new personality system"""
         # Use the new personality system
-        personality_core = get_personality_core(
+        personality_core = get_astra_personality_core(
             message.guild.id if message.guild else None
         )
 

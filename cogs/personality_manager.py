@@ -14,7 +14,7 @@ from functools import lru_cache, wraps
 import weakref
 import gc
 
-from utils.astra_personality import get_personality_core, AstraMode
+from utils.astra_personality import get_astra_personality_core, AstraMode
 from utils.permissions import has_permission, PermissionLevel, check_user_permission
 
 
@@ -76,7 +76,9 @@ class PersonalityManager(commands.GroupCog, name="astra"):
         """View current personality configuration"""
         await interaction.response.defer()
 
-        core = get_personality_core(interaction.guild.id if interaction.guild else None)
+        core = get_astra_personality_core(
+            interaction.guild.id if interaction.guild else None
+        )
 
         embed = discord.Embed(
             title="🧠 Astra Personality Core",
@@ -162,7 +164,9 @@ class PersonalityManager(commands.GroupCog, name="astra"):
             return
 
         # Set parameter
-        core = get_personality_core(interaction.guild.id if interaction.guild else None)
+        core = get_astra_personality_core(
+            interaction.guild.id if interaction.guild else None
+        )
         setattr(core.parameters, trait.lower(), value)
         core.save_personality()
 
@@ -235,7 +239,9 @@ class PersonalityManager(commands.GroupCog, name="astra"):
 
         # Set new mode
         new_mode = AstraMode(mode.lower().replace(" ", "_"))
-        core = get_personality_core(interaction.guild.id if interaction.guild else None)
+        core = get_astra_personality_core(
+            interaction.guild.id if interaction.guild else None
+        )
         response_message = core.set_mode(new_mode)
 
         embed = discord.Embed(
@@ -301,7 +307,7 @@ class PersonalityManager(commands.GroupCog, name="astra"):
 
         if view.confirmed:
             # Reset personality
-            core = get_personality_core(
+            core = get_astra_personality_core(
                 interaction.guild.id if interaction.guild else None
             )
             response_message = core.set_mode(
@@ -339,7 +345,9 @@ class PersonalityManager(commands.GroupCog, name="astra"):
         """Simulate a sample response using current personality settings"""
         await interaction.response.defer()
 
-        core = get_personality_core(interaction.guild.id if interaction.guild else None)
+        core = get_astra_personality_core(
+            interaction.guild.id if interaction.guild else None
+        )
         params = core.parameters.to_dict()
 
         # Generate test scenarios based on personality
@@ -445,7 +453,7 @@ class PersonalityManager(commands.GroupCog, name="astra"):
     async def astra_status(self, ctx):
         """Get Astra's current operational status"""
 
-        core = get_personality_core(ctx.guild.id if ctx.guild else None)
+        core = get_astra_personality_core(ctx.guild.id if ctx.guild else None)
         status_message = core.get_system_status_message()
 
         embed = discord.Embed(

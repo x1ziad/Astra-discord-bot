@@ -63,7 +63,7 @@ except ImportError as e:
     CONTEXT_MANAGER_AVAILABLE = False
 
 # New personality system
-from utils.astra_personality import get_personality_core
+from utils.astra_personality import get_astra_personality_core
 
 
 class AdvancedAICog(commands.Cog):
@@ -474,7 +474,7 @@ class AdvancedAICog(commands.Cog):
 
             # OPTIMIZED: Enhanced personality system integration
             try:
-                personality_core = get_personality_core(
+                personality_core = get_astra_personality_core(
                     interaction.guild.id if interaction.guild else None
                 )
                 context = {
@@ -2799,7 +2799,7 @@ class AdvancedAICog(commands.Cog):
         """View AstraBot's personality system status and self-awareness capabilities"""
         try:
             # Get personality status from new system
-            personality_core = get_personality_core(
+            personality_core = get_astra_personality_core(
                 interaction.guild.id if interaction.guild else None
             )
             params = personality_core.get_parameters().to_dict()
