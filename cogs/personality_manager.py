@@ -1,8 +1,4 @@
 """
-import time
-from functools import lru_cache, wraps
-import weakref
-import gc
 Astra Personality Management Commands
 User interface for configuring Astra's personality parameters and modes
 """
@@ -13,9 +9,12 @@ from discord import app_commands
 from typing import Optional, Literal
 import asyncio
 import random
+import time
+from functools import lru_cache, wraps
+import weakref
+import gc
 
 from utils.astra_personality import get_personality_core, AstraMode
-from core.unified_security_system import UnifiedSecuritySystem
 from utils.permissions import has_permission, PermissionLevel, check_user_permission
 
 
@@ -66,7 +65,6 @@ class PersonalityManager(commands.GroupCog, name="astra"):
 
     def __init__(self, bot):
         self.bot = bot
-        self.security_system = UnifiedSecuritySystem(bot)
 
     @app_commands.command(
         name="personality",

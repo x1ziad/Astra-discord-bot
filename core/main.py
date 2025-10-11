@@ -13,9 +13,9 @@ from discord.ext import commands
 # Import all core systems
 from .ai_handler import AIHandler
 from .interactive_menus import InteractiveMenus
-from .smart_moderation import SmartModerator
 from .welcome_system import WelcomeSystem
 from .event_manager import EventManager
+from .security_integration import SecuritySystemIntegration
 
 logger = logging.getLogger("astra.core")
 
@@ -30,14 +30,14 @@ class CoreSystem:
         # Initialize all core systems
         self.ai_handler = AIHandler(bot)
         self.interactive_menus = InteractiveMenus(bot)
-        self.smart_moderation = SmartModerator(bot)
+        self.security_integration = SecuritySystemIntegration(bot)
         self.welcome_system = WelcomeSystem(bot)
         self.event_manager = EventManager(bot)
 
         # Register systems with event manager
         self.event_manager.register_system("ai_handler", self.ai_handler)
         self.event_manager.register_system("interactive_menus", self.interactive_menus)
-        self.event_manager.register_system("smart_moderation", self.smart_moderation)
+        self.event_manager.register_system("security_integration", self.security_integration)
         self.event_manager.register_system("welcome_system", self.welcome_system)
 
         logger.info("🚀 Core System initialized - All modules loaded")
@@ -114,8 +114,8 @@ class CoreSystem:
     def get_interactive_menus(self) -> InteractiveMenus:
         return self.interactive_menus
 
-    def get_smart_moderation(self) -> SmartModerator:
-        return self.smart_moderation
+    def get_security_integration(self) -> SecuritySystemIntegration:
+        return self.security_integration
 
     def get_welcome_system(self) -> WelcomeSystem:
         return self.welcome_system

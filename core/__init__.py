@@ -6,33 +6,20 @@ All essential systems in one place - NO BLOAT
 # Import all core components
 from .ai_handler import AIHandler
 from .interactive_menus import InteractiveMenus
-from .smart_moderation import SmartModerator
 from .welcome_system import WelcomeSystem
 from .event_manager import EventManager
-from .main import CoreSystem, initialize_core, get_core, startup_core
+from .concurrent_message_processor import ConcurrentMessageProcessor, MessagePriority, initialize_processor
+from .personality_integration import PersonalityIntegration
+from .security_integration import SecuritySystemIntegration
 
 __all__ = [
     "AIHandler",
-    "InteractiveMenus",
-    "SmartModerator",
+    "InteractiveMenus", 
     "WelcomeSystem",
     "EventManager",
-    "CoreSystem",
-    "initialize_core",
-    "get_core",
-    "startup_core",
-]
-
-from .ai_handler import AIHandler
-from .interactive_menus import InteractiveMenus
-from .smart_moderation import SmartModerator
-from .welcome_system import WelcomeSystem
-from .event_manager import EventManager
-
-__all__ = [
-    "AIHandler",
-    "InteractiveMenus",
-    "SmartModerator",
-    "WelcomeSystem",
-    "EventManager",
+    "ConcurrentMessageProcessor",
+    "MessagePriority",
+    "initialize_processor",
+    "PersonalityIntegration",
+    "SecuritySystemIntegration",
 ]

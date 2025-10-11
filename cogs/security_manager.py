@@ -32,15 +32,39 @@ import discord
 from discord import app_commands
 from discord.ext import commands, tasks
 
-from core.unified_security_system import (
-    UnifiedSecuritySystem,
-    ViolationType,
-    ViolationSeverity,
-    ThreatLevel,
-    UserProfile,
-    ViolationRecord,
-    SecurityEvent,
-)
+from cogs.ai_moderation import ViolationType
+from core.security_integration import SecuritySystemIntegration
+
+# Define missing classes for backward compatibility
+class ViolationSeverity:
+    LOW = "low"
+    MEDIUM = "medium" 
+    HIGH = "high"
+    CRITICAL = "critical"
+
+class ThreatLevel:
+    NONE = 0
+    LOW = 1
+    MEDIUM = 2
+    HIGH = 3
+    CRITICAL = 4
+
+class UserProfile:
+    def __init__(self, user_id: int):
+        self.user_id = user_id
+        self.violations = []
+
+class ViolationRecord:
+    def __init__(self, violation_type, severity, timestamp=None):
+        self.violation_type = violation_type
+        self.severity = severity
+        self.timestamp = timestamp or discord.utils.utcnow()
+
+class SecurityEvent:
+    def __init__(self, event_type: str, details: dict):
+        self.event_type = event_type
+        self.details = details
+        self.timestamp = discord.utils.utcnow()
 from utils.permissions import has_permission, PermissionLevel, check_user_permission
 from config.unified_config import unified_config
 
@@ -81,7 +105,7 @@ class SecurityManager(commands.Cog):
         self.logger = bot.logger if hasattr(bot, "logger") else logger
 
         # Initialize the unified security system
-        self.security_system = UnifiedSecuritySystem(bot)
+        self.security_system = SecuritySystemIntegration(bot)
 
         # Advanced performance optimization
         self._cache = {}

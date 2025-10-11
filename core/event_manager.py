@@ -30,7 +30,7 @@ class EventManager:
         self.systems_ready = {
             "ai_handler": False,
             "interactive_menus": False,
-            "smart_moderation": False,
+            "security_integration": False,
             "welcome_system": False,
         }
 
@@ -62,14 +62,8 @@ class EventManager:
 
         self.event_stats["messages_processed"] += 1
 
-        # 1. Check moderation first (highest priority)
-        if "smart_moderation" in self.systems:
-            moderation_action = await self.systems["smart_moderation"].check_message(
-                message
-            )
-            if moderation_action:
-                self.event_stats["moderation_actions"] += 1
-                return  # Stop processing if moderated
+        # 1. Security integration is handled by the security_manager cog
+        # No need for direct message checking here
 
         # 2. Check for AI interaction
         if "ai_handler" in self.systems:
