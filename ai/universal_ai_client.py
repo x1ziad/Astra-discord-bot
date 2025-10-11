@@ -5,8 +5,9 @@ Provides a unified interface for multiple AI providers with optimized performanc
 
 # 🔇 SUPPRESS: Google ALTS credentials warning for cleaner logs
 import os
-os.environ.setdefault('GRPC_PYTHON_LOG_LEVEL', 'ERROR')
-os.environ.setdefault('GOOGLE_APPLICATION_CREDENTIALS_JSON', '{}')
+
+os.environ.setdefault("GRPC_PYTHON_LOG_LEVEL", "ERROR")
+os.environ.setdefault("GOOGLE_APPLICATION_CREDENTIALS_JSON", "{}")
 
 import asyncio
 import logging
@@ -241,25 +242,25 @@ class UniversalAIClient:
         """🚀 ULTRA-FAST: Clean up old cache entries for maximum performance"""
         if not self._cache_enabled or len(self._response_cache) <= self._max_cache_size:
             return
-            
+
         current_time = time.time()
         # Remove entries older than 5 minutes or if cache is too large
         expired_keys = [
-            key for key, data in self._response_cache.items()
-            if (current_time - data['timestamp']) > 300  # 5 minutes
+            key
+            for key, data in self._response_cache.items()
+            if (current_time - data["timestamp"]) > 300  # 5 minutes
         ]
-        
+
         for key in expired_keys:
             del self._response_cache[key]
-            
+
         # If still too large, remove oldest entries
         if len(self._response_cache) > self._max_cache_size:
             sorted_items = sorted(
-                self._response_cache.items(),
-                key=lambda x: x[1]['timestamp']
+                self._response_cache.items(), key=lambda x: x[1]["timestamp"]
             )
             # Keep only the newest entries
-            keep_items = sorted_items[-self._max_cache_size:]
+            keep_items = sorted_items[-self._max_cache_size :]
             self._response_cache = dict(keep_items)
 
     def configure_personality(self, personality_config: Dict[str, Any]) -> None:
@@ -910,24 +911,26 @@ class UniversalAIClient:
         """🚀 ULTRA-FAST: Simple topic extraction for maximum performance"""
         return []  # Return empty list for maximum performance
 
-    def _get_ultra_fast_fallback_response(self, message: str, conversation_context: Optional[object] = None) -> 'AIResponse':
+    def _get_ultra_fast_fallback_response(
+        self, message: str, conversation_context: Optional[object] = None
+    ) -> "AIResponse":
         """🚀 ULTRA-FAST FALLBACK: Generate immediate response when AI providers are slow/unavailable"""
         # Pattern-based instant responses for maximum speed
         message_lower = message.lower().strip()
-        
+
         # Ultra-fast pattern matching
         instant_responses = {
-            'hello': "Hello! How can I help you today?",
-            'hi': "Hi there! What can I do for you?",
-            'hey': "Hey! How's it going?",
-            'thanks': "You're welcome! Happy to help!",
-            'thank you': "My pleasure! Anything else I can do?",
-            'how are you': "I'm doing great! Thanks for asking. How are you?",
-            'what are you': "I'm Astra, your AI companion! How can I help?",
-            'help': "I'm here to help! What do you need assistance with?",
-            'ping': "Pong! ⚡ Ultra-fast response active.",
+            "hello": "Hello! How can I help you today?",
+            "hi": "Hi there! What can I do for you?",
+            "hey": "Hey! How's it going?",
+            "thanks": "You're welcome! Happy to help!",
+            "thank you": "My pleasure! Anything else I can do?",
+            "how are you": "I'm doing great! Thanks for asking. How are you?",
+            "what are you": "I'm Astra, your AI companion! How can I help?",
+            "help": "I'm here to help! What do you need assistance with?",
+            "ping": "Pong! ⚡ Ultra-fast response active.",
         }
-        
+
         # Check for exact matches first (fastest)
         if message_lower in instant_responses:
             response_content = instant_responses[message_lower]
@@ -940,7 +943,7 @@ class UniversalAIClient:
             else:
                 # Generic ultra-fast response
                 response_content = "I'm processing your message as quickly as possible! How can I help you today?"
-        
+
         # Create AIResponse object
         return AIResponse(
             content=response_content,
@@ -1137,30 +1140,43 @@ class UniversalAIClient:
         """Generate enhanced AI response with deep context understanding and maximum performance optimization"""
 
         start_time = time.time()
-        
+
         # 🚀 ULTRA-FAST: Request-level caching for immediate duplicate responses
         cache_key = self._generate_cache_key(message, user_id, guild_id)
         if self._cache_enabled and cache_key in self._response_cache:
             cached_response = self._response_cache[cache_key]
             # Return cached response if it's less than 5 minutes old
-            if (time.time() - cached_response['timestamp']) < 300:
-                self.logger.debug(f"🚀 ULTRA-FAST: Returning cached response ({(time.time() - start_time)*1000:.1f}ms)")
-                return cached_response['response']
-        
+            if (time.time() - cached_response["timestamp"]) < 300:
+                self.logger.debug(
+                    f"🚀 ULTRA-FAST: Returning cached response ({(time.time() - start_time)*1000:.1f}ms)"
+                )
+                return cached_response["response"]
+
         # 🚀 PERFORMANCE: Cleanup cache periodically
-        if self._cache_enabled and len(self._response_cache) > self._max_cache_size * 0.8:
+        if (
+            self._cache_enabled
+            and len(self._response_cache) > self._max_cache_size * 0.8
+        ):
             self._cleanup_cache()
 
         # 🚀 PERFORMANCE: Ultra-fast pattern matching before expensive AI calls
         message_lower = message.lower().strip()
-        ultra_fast_patterns = ['hello', 'hi', 'hey', 'thanks', 'thank you', 'ping', 'test']
+        ultra_fast_patterns = [
+            "hello",
+            "hi",
+            "hey",
+            "thanks",
+            "thank you",
+            "ping",
+            "test",
+        ]
         if any(pattern in message_lower for pattern in ultra_fast_patterns):
             fast_response = self._get_ultra_fast_fallback_response(message, None)
             # Cache the fast response
             if self._cache_enabled:
                 self._response_cache[cache_key] = {
-                    'response': fast_response,
-                    'timestamp': time.time()
+                    "response": fast_response,
+                    "timestamp": time.time(),
                 }
             return fast_response
 
@@ -1348,7 +1364,7 @@ class UniversalAIClient:
                             max_tokens=kwargs.get("max_tokens", self.max_tokens),
                             temperature=kwargs.get("temperature", self.temperature),
                         ),
-                        timeout=1.5  # 1.5 second timeout for ultra-fast responses
+                        timeout=1.5,  # 1.5 second timeout for ultra-fast responses
                     )
 
                     # Convert to AIResponse format
@@ -1375,27 +1391,37 @@ class UniversalAIClient:
                         await self.save_conversation_context_to_db(conversation_context)
 
                     logger.info(f"✅ Google Gemini response generated successfully")
-                    
+
                     # 🚀 PERFORMANCE: Cache successful response for ultra-fast future access
                     if self._cache_enabled:
                         self._response_cache[cache_key] = {
-                            'response': ai_response,
-                            'timestamp': time.time()
+                            "response": ai_response,
+                            "timestamp": time.time(),
                         }
-                    
+
                     return ai_response
 
                 except asyncio.TimeoutError:
-                    logger.warning(f"⚡ Google Gemini timeout (>1.5s), using ultra-fast fallback")
+                    logger.warning(
+                        f"⚡ Google Gemini timeout (>1.5s), using ultra-fast fallback"
+                    )
                     # Use ultra-fast local fallback for immediate response
-                    return self._get_ultra_fast_fallback_response(message, conversation_context)
+                    return self._get_ultra_fast_fallback_response(
+                        message, conversation_context
+                    )
                 except Exception as e:
                     logger.error(f"❌ Google Gemini failed: {e}")
                     # 🚀 PERFORMANCE: Ultra-fast fallback instead of complex provider switching
-                    return self._get_ultra_fast_fallback_response(message, conversation_context)
+                    return self._get_ultra_fast_fallback_response(
+                        message, conversation_context
+                    )
             else:
-                logger.warning("Google Gemini client not available, using ultra-fast fallback")
-                return self._get_ultra_fast_fallback_response(message, conversation_context)
+                logger.warning(
+                    "Google Gemini client not available, using ultra-fast fallback"
+                )
+                return self._get_ultra_fast_fallback_response(
+                    message, conversation_context
+                )
 
         # Enhanced error handling with fallback support for HTTP-based providers
         max_attempts = 3
