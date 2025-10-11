@@ -5,6 +5,7 @@ Import this module FIRST to suppress Google Cloud and gRPC warnings
 
 import os
 import warnings
+import sys
 
 # Suppress Google Cloud ALTS and gRPC warnings
 # These MUST be set before any Google Cloud libraries are imported
@@ -20,23 +21,59 @@ os.environ["ABSL_LOGGING_VERBOSITY"] = "1"
 os.environ["GRPC_ENABLE_FORK_SUPPORT"] = "0"
 os.environ["GRPC_POLL_STRATEGY"] = "poll"
 
-# Python warnings
-warnings.filterwarnings("ignore", category=UserWarning, module="google.*")
-warnings.filterwarnings("ignore", category=UserWarning, module="grpc.*")
+# Additional environment variables for comprehensive suppression
+os.environ["PYTHONWARNINGS"] = "ignore"
+os.environ["GRPC_TRACE"] = ""
+os.environ["GRPC_VERBOSITY"] = "ERROR"
 
-# Initialize ABSL logging if available
+# Python warnings - be very aggressive
+warnings.filterwarnings("ignore")
+warnings.filterwarnings("ignore", category=UserWarning)
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+warnings.filterwarnings("ignore", category=FutureWarning)
+warnings.filterwarnings("ignore", module="google.*")
+warnings.filterwarnings("ignore", module="grpc.*")
+warnings.filterwarnings("ignore", module="absl.*")
+
+# Redirect stderr temporarily to suppress ALTS warnings
+class SuppressOutput:
+    def __init__(self):
+        self.original_stderr = sys.stderr
+        self.suppressed = False
+    
+    def __enter__(self):
+        if not self.suppressed:
+            sys.stderr = open(os.devnull, 'w')
+            self.suppressed = True
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.suppressed:
+            sys.stderr.close()
+            sys.stderr = self.original_stderr
+            self.suppressed = False
+
+# Initialize ABSL logging with stderr suppression
 try:
-    import absl.logging
-    absl.logging.set_verbosity(absl.logging.ERROR)
-    absl.logging.set_stderrthreshold(absl.logging.ERROR)
-    # Try to initialize ABSL logging to prevent the "before InitializeLog" warning
-    try:
-        # This will initialize ABSL logging system
-        import absl.app
-        absl.app.parse_flags_with_usage([])
-    except:
-        pass
+    with SuppressOutput():
+        import absl.logging
+        absl.logging.set_verbosity(absl.logging.ERROR)
+        absl.logging.set_stderrthreshold(absl.logging.ERROR)
+        
+        # Try to initialize ABSL logging to prevent the "before InitializeLog" warning
+        try:
+            import absl.app
+            absl.app.parse_flags_with_usage([])
+        except:
+            pass
+            
+        # Force initialize ABSL logging system
+        try:
+            absl.logging._warn_preinit_stderr = False
+        except:
+            pass
+            
 except ImportError:
     pass
 
-print("🔇 Environment configured - Google Cloud warnings suppressed")
+print("🔇 Comprehensive warning suppression activated")

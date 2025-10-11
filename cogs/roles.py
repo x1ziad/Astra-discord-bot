@@ -58,7 +58,7 @@ class Roles(commands.GroupCog, name="empire"):
 
         # Load all data
         self.stellaris_lore = self.load_lore_data()
-        self.user_profiles = self.load_user_profiles()
+        self.user_profiles = {}  # Initialize empty, will be loaded asynchronously
         
         # Initialize analytics
         self.empire_analytics = self.load_analytics()
@@ -187,6 +187,14 @@ class Roles(commands.GroupCog, name="empire"):
         
         if expired_keys:
             self.logger.debug(f"Cleaned {len(expired_keys)} expired cache entries")
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        """Initialize async components when bot is ready"""
+        if not hasattr(self, '_initialized'):
+            self.user_profiles = await self.load_user_profiles()
+            self._initialized = True
+            self.logger.info("✅ Enhanced Roles cog async initialization completed")
 
     async def _update_guild_empire_stats(self, guild: discord.Guild):
         """Update empire statistics for a guild"""

@@ -1,3 +1,22 @@
+#!/usr/bin/env python3
+
+# ===== CRITICAL: SET ENVIRONMENT VARIABLES FIRST =====
+# These MUST be set before ANY imports to suppress Google Cloud warnings
+import os
+os.environ["GRPC_VERBOSITY"] = "ERROR"
+os.environ["GLOG_minloglevel"] = "2"
+os.environ["GOOGLE_APPLICATION_CREDENTIALS_DISABLED"] = "true"
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
+os.environ["ABSL_LOGGING_VERBOSITY"] = "1"
+os.environ["GRPC_ENABLE_FORK_SUPPORT"] = "0"
+os.environ["GRPC_POLL_STRATEGY"] = "poll"
+
+# Import warning suppression module for additional suppression
+try:
+    import suppress_warnings
+except ImportError:
+    pass  # Not critical if not available
+
 """
 Astra Discord Bot - Enhanced Main Application
 A comprehensive AI-powered Discord bot with adaptive personality and natural conversation
@@ -17,17 +36,6 @@ Features:
 - Hot-reloadable configuration system
 - Production-ready logging and metrics
 """
-
-# Import warning suppression FIRST before any other imports
-try:
-    import suppress_warnings  # This sets up environment variables and suppresses warnings
-except ImportError:
-    # Fallback - set environment variables directly
-    import os
-    os.environ["GRPC_VERBOSITY"] = "ERROR"
-    os.environ["GLOG_minloglevel"] = "2"
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS_DISABLED"] = "true"
-    print("⚠️ Warning suppression module not found, using fallback configuration")
 
 # Suppress Google gRPC ALTS credentials warning for local development
 import os
