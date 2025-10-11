@@ -15,6 +15,7 @@ import re
 import sqlite3
 from enum import Enum
 from dataclasses import dataclass, asdict
+import gc
 
 # Import rate limiter for Discord API protection
 try:

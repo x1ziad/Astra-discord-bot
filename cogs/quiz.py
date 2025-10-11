@@ -1,4 +1,7 @@
 """
+from functools import lru_cache, wraps
+import weakref
+import gc
 Quiz system for Astra Bot
 Provides interactive space and Stellaris quizzes with leaderboards
 """

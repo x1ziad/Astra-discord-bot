@@ -1,4 +1,7 @@
 """
+from functools import lru_cache, wraps
+import weakref
+import gc
 Advanced AI Cog for Astra Bot
 Implements modern AI features with LIGHTNING-FAST performance and metaphorical humor
 """

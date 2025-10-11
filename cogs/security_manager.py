@@ -1,4 +1,5 @@
 """
+import gc
 🛡️ SECURITY MANAGER COG - UNIFIED COMMAND INTERFACE
 Consolidated security commands combining all previous security cogs
 

@@ -1,4 +1,7 @@
 """
+from functools import lru_cache, wraps
+import weakref
+import gc
 🌌 NEXUS CONTROL SYSTEM - OPTIMIZED VERSION
 Streamlined AI-powered command and control interface with 10 essential commands
 """

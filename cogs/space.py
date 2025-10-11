@@ -1,4 +1,7 @@
 """
+from functools import lru_cache, wraps
+import weakref
+import gc
 Space-related commands and features for Astra
 Includes NASA APOD, space facts, and astronomy information
 """

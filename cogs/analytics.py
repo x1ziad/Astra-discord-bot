@@ -1,4 +1,7 @@
 """
+from functools import lru_cache, wraps
+import weakref
+import gc
 Server Analytics for Astra Bot
 Provides detailed analytics about server activity, user engagement, and trends
 """

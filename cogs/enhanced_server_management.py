@@ -1,4 +1,7 @@
 """
+from functools import lru_cache, wraps
+import weakref
+import gc
 Enhanced Server Management with Astra Intelligence
 Sophisticated server management with personalized responses and community building
 """

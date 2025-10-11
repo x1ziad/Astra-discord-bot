@@ -1,4 +1,8 @@
 """
+import time
+from functools import lru_cache, wraps
+import weakref
+import gc
 Astra Personality Management Commands
 User interface for configuring Astra's personality parameters and modes
 """
@@ -14,6 +18,24 @@ from utils.astra_personality import get_personality_core, AstraMode
 from core.unified_security_system import UnifiedSecuritySystem
 from utils.permissions import has_permission, PermissionLevel, check_user_permission
 
+
+
+def performance_monitor(func):
+    """Monitor function performance"""
+    @wraps(func)
+    async def wrapper(*args, **kwargs):
+        start_time = time.perf_counter()
+        try:
+            result = await func(*args, **kwargs)
+            duration = time.perf_counter() - start_time
+            if duration > 1.0:  # Log slow operations
+                print(f"⚠️ Slow operation {func.__name__}: {duration:.3f}s")
+            return result
+        except Exception as e:
+            duration = time.perf_counter() - start_time
+            print(f"❌ Error in {func.__name__} after {duration:.3f}s: {e}")
+            raise
+    return wrapper
 
 class ResetConfirmationView(discord.ui.View):
     """View for confirming personality reset"""

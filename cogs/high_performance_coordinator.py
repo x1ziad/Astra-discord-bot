@@ -20,6 +20,9 @@ import logging
 import time
 from typing import Dict, List, Optional, Any
 from datetime import datetime, timezone
+from functools import lru_cache, wraps
+import weakref
+import gc
 import discord
 from discord import app_commands
 from discord.ext import commands

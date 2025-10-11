@@ -1,30 +1,10 @@
 #!/usr/bin/env python3
-
-# ===== CRITICAL: SET ENVIRONMENT VARIABLES FIRST =====
-# These MUST be set before ANY imports to suppress Google Cloud warnings
-import os
-
-os.environ["GRPC_VERBOSITY"] = "ERROR"
-os.environ["GLOG_minloglevel"] = "2"
-os.environ["GOOGLE_APPLICATION_CREDENTIALS_DISABLED"] = "true"
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
-os.environ["ABSL_LOGGING_VERBOSITY"] = "1"
-os.environ["GRPC_ENABLE_FORK_SUPPORT"] = "0"
-os.environ["GRPC_POLL_STRATEGY"] = "poll"
-
-# Import warning suppression module for additional suppression
-try:
-    import suppress_warnings
-except ImportError:
-    pass  # Not critical if not available
-
 """
-Astra Discord Bot - Enhanced Main Application
-A comprehensive AI-powered Discord bot with adaptive personality and natural conversation
+Astra Discord Bot - High-Performance Main Application
+A comprehensive AI-powered Discord bot with maximum performance optimization
 
 Author: x1ziad
 Version: 2.0.0
-Release Date: 2025-08-02 10:53:48 UTC
 License: MIT
 
 Features:
@@ -33,22 +13,23 @@ Features:
 - Natural conversation flow and context understanding
 - Comprehensive server management and analytics
 - Real-time monitoring and health checks
-- Graceful error handling and recovery
-- Hot-reloadable configuration system
-- Production-ready logging and metrics
+- Production-ready logging and performance optimization
 """
 
-# Suppress Google gRPC ALTS credentials warning for local development
+# ===== CRITICAL: SET ENVIRONMENT VARIABLES FIRST =====
 import os
 
-# Comprehensive environment configuration to suppress all warnings
-os.environ["GRPC_VERBOSITY"] = "ERROR"
-os.environ["GLOG_minloglevel"] = "2"
-os.environ["GOOGLE_APPLICATION_CREDENTIALS_DISABLED"] = "true"
-# Additional ABSL logging suppression (Google's internal logging)
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
-# Suppress gRPC and protobuf warnings
-os.environ["GRPC_ENABLE_FORK_SUPPORT"] = "0"
+os.environ.update(
+    {
+        "GRPC_VERBOSITY": "ERROR",
+        "GLOG_minloglevel": "2",
+        "GOOGLE_APPLICATION_CREDENTIALS_DISABLED": "true",
+        "TF_CPP_MIN_LOG_LEVEL": "2",
+        "ABSL_LOGGING_VERBOSITY": "1",
+        "GRPC_ENABLE_FORK_SUPPORT": "0",
+        "GRPC_POLL_STRATEGY": "poll",
+    }
+)
 os.environ["GRPC_POLL_STRATEGY"] = "poll"
 
 import asyncio

@@ -1,4 +1,7 @@
 """
+from functools import lru_cache, wraps
+import weakref
+import gc
 Enhanced Stellaris empire roles system for Astra Bot
 Advanced empire selection, lore management, and roleplay features
 Optimized for performance, sophistication, and user engagement

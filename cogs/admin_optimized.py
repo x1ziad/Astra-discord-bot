@@ -1,4 +1,7 @@
 """
+from functools import lru_cache, wraps
+import weakref
+import gc
 Optimized Admin Cog for Astra Bot
 Consolidated administrative commands combining best features from admin.py and enhanced_admin.py
 Includes performance optimizations, caching, and enhanced system monitoring

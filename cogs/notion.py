@@ -3,6 +3,9 @@ Notion integration for Astra Bot
 Provides task management, reminders, and notes via Notion API
 """
 
+from functools import lru_cache, wraps
+import weakref
+import gc
 import discord
 from discord import app_commands
 from discord.ext import commands, tasks
@@ -279,6 +282,7 @@ class Notion(commands.GroupCog, name="notion"):
 
         return events
 
+    @lru_cache(maxsize=128)
     def get_notion_title(self, title_property):
         """Extract title from Notion property"""
         try:
@@ -290,6 +294,7 @@ class Notion(commands.GroupCog, name="notion"):
             pass
         return None
 
+    @lru_cache(maxsize=128)
     def get_notion_date(self, date_property):
         """Extract date from Notion property"""
         try:
@@ -301,6 +306,7 @@ class Notion(commands.GroupCog, name="notion"):
             pass
         return None
 
+    @lru_cache(maxsize=128)
     def get_notion_text(self, text_property):
         """Extract text from Notion property"""
         try:
@@ -312,6 +318,7 @@ class Notion(commands.GroupCog, name="notion"):
             pass
         return None
 
+    @lru_cache(maxsize=128)
     def get_notion_select(self, select_property):
         """Extract select value from Notion property"""
         try:

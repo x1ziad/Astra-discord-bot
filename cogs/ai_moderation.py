@@ -1,4 +1,7 @@
 """
+from functools import lru_cache, wraps
+import weakref
+import gc
 Advanced AI-Powered Moderation System for Astra Bot
 Sophisticated moderation with personalized AI responses and companion features
 """

@@ -1,4 +1,6 @@
 """
+from functools import lru_cache, wraps
+import weakref
 Bot Status Management Cog
 Provides enhanced bot status, performance monitoring, and utility commands
 """

@@ -1,4 +1,7 @@
 """
+from functools import lru_cache, wraps
+import weakref
+import gc
 🤖 AI Companion - Astra's Conversational Heart
 Enhanced companion system with authentic Astra personality
 

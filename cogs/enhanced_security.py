@@ -1,4 +1,7 @@
 """
+from functools import lru_cache, wraps
+import weakref
+import gc
 🛡️ ENHANCED SECURITY COG - TOP-NOTCH PROTECTION
 Advanced security and moderation cog with flawless protection capabilities
 
