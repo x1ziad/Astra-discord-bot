@@ -253,7 +253,9 @@ class AstraAICompanion(commands.Cog):
             # Enhanced personality-aware user profile for AI client
             dominant_traits = self._get_dominant_traits(current_personality)
 
-            # Build user profile with personality context for AI client
+            # ENHANCED: Build comprehensive personality-driven context for immediate behavior reflection
+            personality_instructions = self._create_personality_instructions(current_personality, dominant_traits)
+            
             user_profile_data = {
                 "name": message.author.display_name,
                 "personality_traits": dominant_traits[:3],
@@ -265,6 +267,8 @@ class AstraAICompanion(commands.Cog):
                     current_personality, dominant_traits
                 ),
                 "astra_context": "Astra AI companion with dynamic personality adaptation",
+                "personality_instructions": personality_instructions,  # Direct behavior instructions
+                "current_personality_values": current_personality.to_dict(),  # Real-time values
             }
 
             # Adjust temperature based on creativity level
@@ -275,19 +279,24 @@ class AstraAICompanion(commands.Cog):
             # OPTIMIZED: Get AI response with enhanced personality alignment and performance
             start_ai_time = time.perf_counter()
             
-            # Configure AI client for optimal Astra personality if available
+            # ENHANCED: Configure AI client with dynamic personality that reflects real-time settings
             if hasattr(self.ai_client, 'configure_personality'):
                 personality_config = {
                     'primary_personality': 'astra',
                     'dominant_traits': dominant_traits[:3],
                     'response_style': self._get_response_style_from_personality(current_personality),
                     'adaptability': 'high',
-                    'performance_mode': 'balanced'
+                    'performance_mode': 'balanced',
+                    'dynamic_prompt': self._generate_dynamic_personality_prompt(current_personality, context),
+                    'personality_intensity': self._calculate_personality_intensity(current_personality)
                 }
                 self.ai_client.configure_personality(personality_config)
             
+            # CRITICAL: Prepend personality-specific system message to ensure behavior changes
+            enhanced_message = self._enhance_message_with_personality_context(message.content, current_personality, dominant_traits)
+            
             ai_response = await self.ai_client.generate_response(
-                message.content,
+                enhanced_message,  # Use personality-enhanced message
                 user_id=message.author.id,
                 guild_id=message.guild.id if message.guild else None,
                 channel_id=message.channel.id,
@@ -333,6 +342,169 @@ class AstraAICompanion(commands.Cog):
             return "helpful_caring"
         else:
             return "balanced_conversational"
+
+    def _create_personality_instructions(self, personality: PersonalityDimensions, dominant_traits: List[str]) -> str:
+        """Create specific personality instructions that directly influence AI behavior"""
+        instructions = []
+        
+        # Analytical behavior
+        if personality.analytical > 0.7:
+            instructions.append("Provide detailed, logical explanations with examples and reasoning")
+        elif personality.analytical < 0.3:
+            instructions.append("Keep responses simple and avoid over-analyzing")
+        
+        # Empathetic behavior
+        if personality.empathetic > 0.8:
+            instructions.append("Show deep understanding and emotional connection, acknowledge feelings")
+        elif personality.empathetic < 0.3:
+            instructions.append("Focus on facts rather than emotions, be more direct")
+        
+        # Playful behavior
+        if personality.playful > 0.7:
+            instructions.append("Use humor, jokes, and light-hearted commentary frequently")
+        elif personality.playful < 0.3:
+            instructions.append("Maintain a serious, professional tone")
+        
+        # Supportive behavior
+        if personality.supportive > 0.8:
+            instructions.append("Offer encouragement, help, and positive reinforcement")
+        elif personality.supportive < 0.3:
+            instructions.append("Be neutral and factual without excessive supportiveness")
+        
+        # Creative behavior
+        if personality.creative > 0.7:
+            instructions.append("Use creative metaphors, analogies, and imaginative language")
+        elif personality.creative < 0.3:
+            instructions.append("Stick to straightforward, practical language")
+        
+        # Curious behavior
+        if personality.curious > 0.7:
+            instructions.append("Ask follow-up questions and show interest in learning more")
+        elif personality.curious < 0.3:
+            instructions.append("Answer directly without exploring tangents")
+        
+        return " | ".join(instructions) if instructions else "Respond naturally and conversationally"
+
+    def _generate_dynamic_personality_prompt(self, personality: PersonalityDimensions, context: Dict[str, Any]) -> str:
+        """Generate a dynamic system prompt that changes based on current personality settings"""
+        base_prompt = "You are Astra, a friendly AI companion who loves space and helping people."
+        
+        # Personality-specific modifications
+        personality_mods = []
+        
+        # High analytical: Add logical focus
+        if personality.analytical > 0.7:
+            personality_mods.append("You excel at breaking down complex problems and explaining things clearly with logical reasoning")
+        
+        # High empathetic: Add emotional intelligence
+        if personality.empathetic > 0.8:
+            personality_mods.append("You deeply understand emotions and always respond with warmth and compassion")
+        
+        # High playful: Add humor and wit
+        if personality.playful > 0.7:
+            personality_mods.append("You love using space puns, jokes, and keeping conversations light and fun")
+        
+        # High supportive: Add encouragement
+        if personality.supportive > 0.8:
+            personality_mods.append("You're incredibly encouraging and always look for ways to help and motivate others")
+        
+        # High creative: Add imagination
+        if personality.creative > 0.7:
+            personality_mods.append("You use creative space metaphors and imaginative language to make conversations engaging")
+        
+        # High curious: Add inquisitiveness
+        if personality.curious > 0.7:
+            personality_mods.append("You're naturally curious and love asking thoughtful follow-up questions")
+        
+        # Low adaptable: Add consistency note
+        if personality.adaptable < 0.4:
+            personality_mods.append("You maintain consistent behavior patterns")
+        elif personality.adaptable > 0.8:
+            personality_mods.append("You quickly adapt your communication style to match the conversation needs")
+        
+        if personality_mods:
+            return f"{base_prompt} {' '.join(personality_mods)}"
+        
+        return base_prompt
+
+    def _calculate_personality_intensity(self, personality: PersonalityDimensions) -> float:
+        """Calculate how intensely the personality should be expressed (0.0 to 1.0)"""
+        # Average of the most prominent traits
+        traits = personality.to_dict()
+        max_traits = sorted(traits.values(), reverse=True)[:3]
+        return sum(max_traits) / 3
+
+    def _enhance_message_with_personality_context(self, message: str, personality: PersonalityDimensions, dominant_traits: List[str]) -> str:
+        """Enhance the user message with personality context to ensure behavior changes"""
+        # Create a system context that forces personality compliance
+        personality_context = f"[SYSTEM: Respond as Astra with these personality settings - "
+        
+        trait_descriptions = []
+        for trait in dominant_traits[:3]:
+            value = getattr(personality, trait.lower(), 0.5)
+            if value > 0.7:
+                trait_descriptions.append(f"{trait}=HIGH({value:.1f})")
+            elif value < 0.3:
+                trait_descriptions.append(f"{trait}=LOW({value:.1f})")
+            else:
+                trait_descriptions.append(f"{trait}=MED({value:.1f})")
+        
+        personality_context += ", ".join(trait_descriptions)
+        personality_context += "] "
+        
+        return personality_context + message
+
+    def _create_behavior_preview(self, personality: PersonalityDimensions, dominant_traits: List[str]) -> str:
+        """Create a preview of how the personality changes will affect behavior"""
+        previews = []
+        
+        for trait in dominant_traits[:3]:
+            value = getattr(personality, trait.lower(), 0.5)
+            if value > 0.7:
+                preview = self._get_high_trait_behavior(trait.lower())
+                previews.append(f"🔥 **{trait.title()}**: {preview}")
+            elif value < 0.3:
+                preview = self._get_low_trait_behavior(trait.lower())
+                previews.append(f"❄️ **{trait.title()}**: {preview}")
+        
+        return "\n".join(previews) if previews else "Balanced, natural responses across all traits"
+
+    def _get_high_trait_behavior(self, trait: str) -> str:
+        """Get behavior description for high trait values"""
+        behaviors = {
+            "analytical": "Detailed explanations with logic and reasoning",
+            "empathetic": "Warm, understanding responses with emotional connection",
+            "curious": "Lots of follow-up questions and genuine interest",
+            "creative": "Space metaphors, imaginative language, unique perspectives",
+            "supportive": "Encouraging, helpful, always looking to motivate",
+            "playful": "Jokes, puns, light-hearted humor frequently",
+            "assertive": "Confident, direct responses with clear opinions",
+            "adaptable": "Quick style changes to match conversation needs"
+        }
+        return behaviors.get(trait, "Enhanced behavior for this trait")
+
+    def _get_low_trait_behavior(self, trait: str) -> str:
+        """Get behavior description for low trait values"""
+        behaviors = {
+            "analytical": "Simple, direct answers without deep analysis",
+            "empathetic": "Factual responses without excessive emotional focus",
+            "curious": "Answer directly without exploring tangents",
+            "creative": "Straightforward, practical language",
+            "supportive": "Neutral responses without excessive encouragement",
+            "playful": "Serious, professional tone",
+            "assertive": "Gentle, non-confrontational responses",
+            "adaptable": "Consistent behavior regardless of context"
+        }
+        return behaviors.get(trait, "Reduced behavior for this trait")
+
+    def _explain_trait_behavior_change(self, trait: str, value: float) -> str:
+        """Explain what a specific trait change means for behavior"""
+        if value > 0.7:
+            return self._get_high_trait_behavior(trait)
+        elif value < 0.3:
+            return self._get_low_trait_behavior(trait)
+        else:
+            return f"Moderate {trait} responses - balanced behavior"
 
     def _get_dominant_traits(self, personality: PersonalityDimensions) -> List[str]:
         """Identify the most prominent personality traits"""
@@ -724,19 +896,35 @@ class AstraAICompanion(commands.Cog):
 
                 embed = discord.Embed(
                     title="🎭 Companion Personality Updated",
-                    description=f"Applied **{preset.title()}** personality preset for Astra!",
+                    description=f"Applied **{preset.title()}** personality preset for Astra!\n\n*Changes will take effect immediately in conversations.*",
                     color=0x7289DA,
                 )
 
                 # Show new personality values
                 personality_text = "\n".join(
                     [
-                        f"**{trait.title()}:** {value:.1f}/1.0"
+                        f"**{trait.title()}:** {value:.1f}/1.0 {'🔥' if value > 0.7 else '❄️' if value < 0.3 else '⚖️'}"
                         for trait, value in profile.base_personality.to_dict().items()
                     ]
                 )
                 embed.add_field(
                     name="New Personality Traits", value=personality_text, inline=False
+                )
+
+                # Add behavior preview
+                dominant_traits = self._get_dominant_traits(profile.base_personality)
+                behavior_preview = self._create_behavior_preview(profile.base_personality, dominant_traits)
+                embed.add_field(
+                    name="🎯 Expected Behavior Changes", 
+                    value=behavior_preview, 
+                    inline=False
+                )
+
+                # Add test suggestion
+                embed.add_field(
+                    name="💡 Test the Changes", 
+                    value="Try talking to me now to see the personality changes in action!", 
+                    inline=False
                 )
 
             else:
@@ -749,18 +937,38 @@ class AstraAICompanion(commands.Cog):
         elif trait and value is not None:
             # Adjust specific trait
             if hasattr(profile.base_personality, trait.lower()) and 0.0 <= value <= 1.0:
+                old_value = getattr(profile.base_personality, trait.lower())
                 setattr(profile.base_personality, trait.lower(), value)
                 profile.updated_at = datetime.now()
 
+                # Determine intensity change
+                intensity_change = "🔥 High" if value > 0.7 else "❄️ Low" if value < 0.3 else "⚖️ Medium"
+                change_direction = "⬆️" if value > old_value else "⬇️" if value < old_value else "➡️"
+
                 embed = discord.Embed(
                     title="🎭 Companion Trait Updated",
-                    description=f"Set **{trait.title()}** to **{value:.1f}** for Astra!",
+                    description=f"Set **{trait.title()}** to **{value:.1f}** for Astra!\n\n*{change_direction} Changed from {old_value:.1f} to {value:.1f}*",
                     color=0x7289DA,
                 )
+
+                # Explain what this change means behaviorally
+                behavior_explanation = self._explain_trait_behavior_change(trait.lower(), value)
+                embed.add_field(
+                    name=f"{intensity_change} What This Means",
+                    value=behavior_explanation,
+                    inline=False
+                )
+
+                embed.add_field(
+                    name="💡 Test It Now", 
+                    value=f"Try asking me something to see how my {trait.lower()} behavior has changed!", 
+                    inline=False
+                )
+
             else:
                 embed = discord.Embed(
                     title="❌ Invalid Trait or Value",
-                    description="Please specify a valid trait and value (0.0-1.0).",
+                    description="Please specify a valid trait and value (0.0-1.0).\n\nValid traits: analytical, empathetic, curious, creative, supportive, playful, assertive, adaptable",
                     color=0xFF0000,
                 )
 
@@ -1296,6 +1504,155 @@ class AstraAICompanion(commands.Cog):
             await interaction.followup.send(
                 "Something went wrong, but I'm still here to help! 🤖"
             )
+
+    @app_commands.command(
+        name="test_personality",
+        description="🧪 Test current personality settings with a sample response"
+    )
+    async def test_personality_command(self, interaction: discord.Interaction):
+        """Test the current personality settings with a sample response"""
+        await interaction.response.defer()
+        
+        user_id = interaction.user.id
+        guild_id = interaction.guild.id if interaction.guild else None
+        
+        try:
+            # Get current personality profile
+            profile = await self.get_personality_profile(user_id, guild_id)
+            personality = profile.personality_dimensions
+            dominant_traits = self._get_dominant_traits(personality)
+            
+            # Show personality preview
+            preview = self._create_behavior_preview(personality, dominant_traits)
+            
+            embed = discord.Embed(
+                title="🌟 Personality Test Results",
+                description=f"**Current Dominant Traits:**\n{preview}",
+                color=0x7289DA
+            )
+            
+            # Generate actual test response with personality
+            test_message = "Tell me about space exploration and what excites you most about it!"
+            
+            # Create mock message for testing
+            class MockMessage:
+                def __init__(self, content, author, guild, channel):
+                    self.content = content
+                    self.author = author
+                    self.guild = guild
+                    self.channel = channel
+
+            mock_message = MockMessage(
+                test_message, interaction.user, interaction.guild, interaction.channel
+            )
+            
+            # Get context and generate response
+            context = await self._analyze_message_context(mock_message)
+            ai_response = await self.generate_astra_response(mock_message, profile, context)
+            
+            embed.add_field(
+                name="📋 Test Question",
+                value=test_message,
+                inline=False
+            )
+            
+            embed.add_field(
+                name="🤖 Astra's Response (With Current Personality)",
+                value=ai_response[:1024] if ai_response else "No response generated",
+                inline=False
+            )
+            
+            embed.add_field(
+                name="💡 Tip",
+                value="Use `/companion` to adjust these settings and see immediate changes!",
+                inline=False
+            )
+            
+            await interaction.followup.send(embed=embed)
+            
+        except Exception as e:
+            self.logger.error(f"Error in personality test: {e}")
+            await interaction.followup.send(f"❌ Error testing personality: {str(e)}")
+
+    @app_commands.command(
+        name="quick_personality",
+        description="⚡ Quickly adjust one personality trait and see immediate behavior change"
+    )
+    @app_commands.describe(
+        trait="The personality trait to adjust (analytical, empathetic, curious, creative, supportive, playful, assertive, adaptable)",
+        value="The new value for the trait (0.0 to 1.0)"
+    )
+    async def quick_personality_adjustment(self, interaction: discord.Interaction, trait: str, value: float):
+        """Quickly adjust one personality trait and see immediate behavior change"""
+        await interaction.response.defer()
+        
+        trait = trait.lower()
+        valid_traits = ['analytical', 'empathetic', 'curious', 'creative', 'supportive', 'playful', 'assertive', 'adaptable']
+        
+        if trait not in valid_traits:
+            await interaction.followup.send(f"❌ Invalid trait. Choose from: {', '.join(valid_traits)}")
+            return
+            
+        if not 0.0 <= value <= 1.0:
+            await interaction.followup.send("❌ Value must be between 0.0 and 1.0")
+            return
+            
+        user_id = interaction.user.id
+        guild_id = interaction.guild.id if interaction.guild else None
+        
+        try:
+            # Get and update personality profile
+            profile = await self.get_personality_profile(user_id, guild_id)
+            setattr(profile.personality_dimensions, trait, value)
+            
+            # Save the updated profile
+            self.user_profiles[user_id] = profile
+            
+            # Show immediate behavior change
+            behavior_change = self._explain_trait_behavior_change(trait, value)
+            
+            embed = discord.Embed(
+                title=f"⚡ Quick Personality Update: {trait.title()}",
+                description=f"**New Value:** {value:.1f}\n**Behavior Change:** {behavior_change}",
+                color=0x00FF00
+            )
+            
+            # Generate a test response to show the change
+            test_message = f"Give me a quick example of {trait} thinking!"
+            
+            # Create mock message for testing
+            class MockMessage:
+                def __init__(self, content, author, guild, channel):
+                    self.content = content
+                    self.author = author
+                    self.guild = guild
+                    self.channel = channel
+
+            mock_message = MockMessage(
+                test_message, interaction.user, interaction.guild, interaction.channel
+            )
+            
+            # Get context and generate response with new personality
+            context = await self._analyze_message_context(mock_message)
+            ai_response = await self.generate_astra_response(mock_message, profile, context)
+            
+            embed.add_field(
+                name="🧪 Immediate Test Response",
+                value=ai_response[:512] if ai_response else "No response generated",
+                inline=False
+            )
+            
+            embed.add_field(
+                name="💡 Tip",
+                value="The change is applied immediately! Try chatting with Astra to see the difference.",
+                inline=False
+            )
+            
+            await interaction.followup.send(embed=embed)
+            
+        except Exception as e:
+            self.logger.error(f"Error in quick personality adjustment: {e}")
+            await interaction.followup.send(f"❌ Error adjusting personality: {str(e)}")
 
 
 async def setup(bot):
