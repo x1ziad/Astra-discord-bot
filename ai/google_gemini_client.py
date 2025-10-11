@@ -99,8 +99,9 @@ class GoogleGeminiClient:
             generation_config = genai.types.GenerationConfig(
                 max_output_tokens=actual_max_tokens,
                 temperature=temperature,
-                top_p=kwargs.get("top_p", 0.95),
-                top_k=kwargs.get("top_k", 64),
+                top_p=kwargs.get("top_p", 0.9),  # Slightly lower for faster, more focused responses
+                top_k=kwargs.get("top_k", 40),   # Lower for faster generation while maintaining quality
+                candidate_count=1,               # Single candidate for fastest response
             )  # Build the full prompt with context if provided
             full_prompt = self._build_prompt_with_context(prompt, context)
 
@@ -108,13 +109,20 @@ class GoogleGeminiClient:
                 f"🧠 Generating Gemini response (max_tokens: {max_tokens}, temp: {temperature})"
             )
 
-            # Generate response using the model
-            response = await asyncio.get_event_loop().run_in_executor(
-                None,
-                lambda: self.model.generate_content(
-                    full_prompt, generation_config=generation_config
-                ),
-            )
+            # Generate response using the model with timeout
+            try:
+                response = await asyncio.wait_for(
+                    asyncio.get_event_loop().run_in_executor(
+                        None,
+                        lambda: self.model.generate_content(
+                            full_prompt, generation_config=generation_config
+                        ),
+                    ),
+                    timeout=2.0,  # 2 second timeout at the generation level
+                )
+            except asyncio.TimeoutError:
+                logger.warning("⚡ Google Gemini generation timeout at client level")
+                raise  # Re-raise to be handled by the universal client
 
             # Handle response based on candidates structure
             finish_reason_map = {
