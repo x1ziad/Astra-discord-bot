@@ -938,8 +938,9 @@ class AstraAICompanion(commands.Cog):
             
             mock_message = MockMessage(message, interaction.user, interaction.guild, interaction.channel)
             
-            # Get personality profile
-            profile = await self.get_personality_profile(interaction.user.id, interaction.guild.id)
+            # Get personality profile - handle DM case
+            guild_id = interaction.guild.id if interaction.guild else 0  # Use 0 for DMs
+            profile = await self.get_personality_profile(interaction.user.id, guild_id)
             context = await self._analyze_message_context(mock_message)
             
             # Generate response
@@ -1008,8 +1009,10 @@ class AstraAICompanion(commands.Cog):
         value: Optional[float] = None,
     ):
         """Manage Astra's personality settings"""
+        # Handle DM case where guild is None
+        guild_id = interaction.guild.id if interaction.guild else 0  # Use 0 for DMs
         profile = await self.get_personality_profile(
-            interaction.user.id, interaction.guild.id
+            interaction.user.id, guild_id
         )
 
         if preset:
@@ -1591,9 +1594,10 @@ class AstraAICompanion(commands.Cog):
                 message, interaction.user, interaction.guild, interaction.channel
             )
 
-            # Get personality and generate response
+            # Get personality and generate response - handle DM case
+            guild_id = interaction.guild.id if interaction.guild else 0  # Use 0 for DMs
             profile = await self.get_personality_profile(
-                interaction.user.id, interaction.guild.id
+                interaction.user.id, guild_id
             )
             context = await self._analyze_message_context(mock_message)
 
@@ -1638,7 +1642,7 @@ class AstraAICompanion(commands.Cog):
         await interaction.response.defer()
         
         user_id = interaction.user.id
-        guild_id = interaction.guild.id if interaction.guild else None
+        guild_id = interaction.guild.id if interaction.guild else 0  # Use 0 for DMs
         
         try:
             # Get current personality profile
@@ -1722,7 +1726,7 @@ class AstraAICompanion(commands.Cog):
             return
             
         user_id = interaction.user.id
-        guild_id = interaction.guild.id if interaction.guild else None
+        guild_id = interaction.guild.id if interaction.guild else 0  # Use 0 for DMs
         
         try:
             # Get and update personality profile

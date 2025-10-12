@@ -122,11 +122,11 @@ class GoogleGeminiClient:
                             full_prompt, generation_config=generation_config
                         ),
                     ),
-                    timeout=2.0,  # 2 second timeout at the generation level
+                    timeout=10.0,  # Increased to 10 second timeout at the generation level
                 )
             except asyncio.TimeoutError:
-                logger.warning("⚡ Google Gemini generation timeout at client level")
-                raise  # Re-raise to be handled by the universal client
+                logger.warning("⚡ Google Gemini generation timeout at client level (10s)")
+                raise Exception("Google Gemini request timed out after 10 seconds")  # More descriptive error
 
             # Handle response based on candidates structure
             finish_reason_map = {
@@ -267,6 +267,7 @@ class GoogleGeminiClient:
                 }
 
             logger.error(f"❌ Google Gemini API error: {e}")
+            logger.error(f"📋 Full error details: {repr(e)}")
             raise Exception(f"Google Gemini API error: {str(e)}")
 
     def _build_prompt_with_context(

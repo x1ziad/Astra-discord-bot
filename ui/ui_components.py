@@ -368,7 +368,7 @@ class SetupModal(discord.ui.Modal, title="Astra Bot Setup"):
     async def on_submit(self, interaction: discord.Interaction):
         """Process setup form submission"""
         # Import config manager here to avoid circular imports
-        from config.enhanced_config import config_manager
+        from config.unified_config import config_manager
         
         setup_data = {
             'guild_name': self.guild_name.value or interaction.guild.name,
@@ -612,7 +612,7 @@ class HomeworldSelect(discord.ui.Select):
         selected_world = self.values[0]
         
         # Import here to avoid circular imports
-        from config.enhanced_config import config_manager
+        from config.unified_config import config_manager
         
         # Get or create user data
         user_id = interaction.user.id
