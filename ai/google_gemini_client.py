@@ -45,9 +45,9 @@ class GoogleGeminiClient:
                 # Configure the API key
                 genai.configure(api_key=self.api_key)
 
-                # Initialize the model with safety settings
+                # Initialize the model with safety settings (using latest available model)
                 self.model = genai.GenerativeModel(
-                    model_name="models/gemini-2.5-flash",
+                    model_name="models/gemini-1.5-flash",  # Updated to stable model name
                     safety_settings={
                         HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
                         HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
@@ -57,9 +57,23 @@ class GoogleGeminiClient:
                 )
 
                 logger.info("✅ Google Gemini client initialized successfully")
+                
+                # Test API connectivity with a simple request
+                try:
+                    test_response = self.model.generate_content(
+                        "Hello", 
+                        generation_config=genai.types.GenerationConfig(
+                            max_output_tokens=10,
+                            temperature=0.1
+                        )
+                    )
+                    logger.info("✅ Google Gemini API connectivity test passed")
+                except Exception as test_error:
+                    logger.warning(f"⚠️ Google Gemini API connectivity test failed: {test_error}")
 
             except Exception as e:
                 logger.error(f"❌ Failed to initialize Google Gemini client: {e}")
+                logger.error(f"📋 Full initialization error: {repr(e)}")
                 self.available = False
         else:
             logger.warning(
@@ -115,13 +129,24 @@ class GoogleGeminiClient:
 
             # Generate response using the model with timeout
             try:
-                response = await asyncio.wait_for(
-                    asyncio.get_event_loop().run_in_executor(
-                        None,
-                        lambda: self.model.generate_content(
+                def generate_content_sync():
+                    try:
+                        return self.model.generate_content(
                             full_prompt, generation_config=generation_config
-                        ),
-                    ),
+                        )
+                    except Exception as api_error:
+                        # Log the actual API error details
+                        logger.error(f"🔍 Google Gemini API Exception: {type(api_error).__name__}: {str(api_error)}")
+                        if hasattr(api_error, 'code'):
+                            logger.error(f"📋 Error Code: {api_error.code}")
+                        if hasattr(api_error, 'details'):
+                            logger.error(f"📋 Error Details: {api_error.details}")
+                        if hasattr(api_error, 'reason'):
+                            logger.error(f"📋 Error Reason: {api_error.reason}")
+                        raise api_error
+                
+                response = await asyncio.wait_for(
+                    asyncio.get_event_loop().run_in_executor(None, generate_content_sync),
                     timeout=10.0,  # Increased to 10 second timeout at the generation level
                 )
             except asyncio.TimeoutError:
@@ -225,7 +250,7 @@ class GoogleGeminiClient:
             # Return a fallback response
             return {
                 "content": "I apologize, but I cannot provide a response to that request. Please try rephrasing your question.",
-                "model": "models/gemini-2.5-flash",
+                "model": "models/gemini-1.5-flash",
                 "provider": "google",
                 "usage": {
                     "prompt_tokens": 0,
@@ -250,7 +275,7 @@ class GoogleGeminiClient:
                 logger.warning(f"⚠️ Google Gemini quota exceeded: {error_str[:100]}...")
                 return {
                     "content": "I'm temporarily unable to process requests due to API quota limits. Please try again later or use an alternative AI provider.",
-                    "model": "models/gemini-2.5-flash",
+                    "model": "models/gemini-1.5-flash",
                     "provider": "google",
                     "usage": {
                         "prompt_tokens": 0,
@@ -378,8 +403,8 @@ class GoogleGeminiClient:
         except Exception as e:
             logger.warning(f"Could not fetch available models: {e}")
             return [
-                "models/gemini-2.5-flash",
-                "models/gemini-2.5-pro",
+                "models/gemini-1.5-flash",
+                "models/gemini-1.5-pro",
                 "models/gemini-flash-latest",
             ]
 
