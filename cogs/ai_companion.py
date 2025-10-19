@@ -22,7 +22,7 @@ import logging
 import os
 import random
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional, Tuple, Any, Union
 from dataclasses import dataclass, field
 
@@ -873,11 +873,565 @@ class AstraAICompanion(commands.Cog):
         else:
             return 0.2
 
+    async def _process_natural_admin_commands(self, message: discord.Message) -> bool:
+        """Process natural language administrative commands"""
+        if not message.guild:
+            return False
+
+        # Check permissions first
+        if not message.author.guild_permissions.manage_messages:
+            return False
+
+        content = message.content.lower().strip()
+
+        # Natural admin command patterns
+        admin_patterns = {
+            # Delete/Remove patterns
+            r"(?:astra|bot)?,?\s*(?:delete|remove|clear)\s+(?:that\s+)?(?:message|msg|post)": self._handle_delete_message,
+            r"(?:astra|bot)?,?\s*(?:delete|remove|clear)\s+(?:the\s+)?(?:last|recent)\s+(?:\d+\s+)?(?:messages?|msgs?)": self._handle_bulk_delete,
+            r"(?:astra|bot)?,?\s*(?:clean|clear)\s+(?:up\s+)?(?:here|this\s+channel)": self._handle_channel_cleanup,
+            # Kick patterns
+            r"(?:astra|bot)?,?\s*(?:kick|remove)\s+@?(\w+)": self._handle_kick_user,
+            r"(?:astra|bot)?,?\s*(?:kick|remove)\s+(?:that\s+)?(?:user|member|person)": self._handle_kick_mentioned,
+            # Timeout/Mute patterns
+            r"(?:astra|bot)?,?\s*(?:timeout|mute|silence)\s+@?(\w+)(?:\s+for\s+(\d+)\s*(minutes?|mins?|hours?|hrs?))?": self._handle_timeout_user,
+            r"(?:astra|bot)?,?\s*(?:timeout|mute|silence)\s+(?:that\s+)?(?:user|member|person)(?:\s+for\s+(\d+)\s*(minutes?|mins?|hours?|hrs?))?": self._handle_timeout_mentioned,
+            # Ban patterns
+            r"(?:astra|bot)?,?\s*(?:ban|block)\s+@?(\w+)(?:\s+for\s+(.+))?": self._handle_ban_user,
+            r"(?:astra|bot)?,?\s*(?:ban|block)\s+(?:that\s+)?(?:user|member|person)(?:\s+for\s+(.+))?": self._handle_ban_mentioned,
+            # Role management patterns
+            r"(?:astra|bot)?,?\s*(?:give|add|assign)\s+@?(\w+)\s+(?:the\s+)?(\w+)\s+role": self._handle_add_role,
+            r"(?:astra|bot)?,?\s*(?:remove|take)\s+(?:the\s+)?(\w+)\s+role\s+from\s+@?(\w+)": self._handle_remove_role,
+            # Lock/Unlock patterns
+            r"(?:astra|bot)?,?\s*(?:lock|disable)\s+(?:this\s+)?(?:channel|here)": self._handle_lock_channel,
+            r"(?:astra|bot)?,?\s*(?:unlock|enable)\s+(?:this\s+)?(?:channel|here)": self._handle_unlock_channel,
+        }
+
+        # Check if message matches any admin pattern
+        import re
+
+        for pattern, handler in admin_patterns.items():
+            match = re.search(pattern, content)
+            if match:
+                try:
+                    await handler(message, match)
+                    return True
+                except Exception as e:
+                    self.logger.error(f"Error handling natural admin command: {e}")
+                    await message.channel.send(
+                        f"❌ Sorry, I couldn't complete that action: {str(e)}"
+                    )
+                    return True
+
+        return False
+
+    async def _handle_delete_message(self, message: discord.Message, match):
+        """Handle natural delete message commands"""
+        # Get the message to delete (previous message or referenced message)
+        target_message = None
+
+        if message.reference and message.reference.message_id:
+            try:
+                target_message = await message.channel.fetch_message(
+                    message.reference.message_id
+                )
+            except:
+                pass
+
+        if not target_message:
+            # Get the message before this one
+            async for msg in message.channel.history(limit=2):
+                if msg.id != message.id and not msg.author.bot:
+                    target_message = msg
+                    break
+
+        if target_message and target_message.author != message.author:
+            if not message.author.guild_permissions.manage_messages:
+                await message.channel.send(
+                    "❌ You need manage messages permission to delete other users' messages."
+                )
+                return
+
+        if target_message:
+            await target_message.delete()
+            confirmation = await message.channel.send("✅ Message deleted!")
+            await asyncio.sleep(3)
+            await confirmation.delete()
+            await message.delete()
+        else:
+            await message.channel.send("❌ No message found to delete.")
+
+    async def _handle_bulk_delete(self, message: discord.Message, match):
+        """Handle bulk delete commands"""
+        if not message.author.guild_permissions.manage_messages:
+            await message.channel.send(
+                "❌ You need manage messages permission for bulk deletion."
+            )
+            return
+
+        # Extract number from message (default 5)
+        import re
+
+        numbers = re.findall(r"\d+", message.content)
+        count = int(numbers[0]) if numbers else 5
+        count = min(count, 100)  # Discord limit
+
+        deleted = await message.channel.purge(
+            limit=count + 1
+        )  # +1 for the command message
+        confirmation = await message.channel.send(
+            f"✅ Deleted {len(deleted)-1} messages!"
+        )
+        await asyncio.sleep(3)
+        await confirmation.delete()
+
+    async def _handle_channel_cleanup(self, message: discord.Message, match):
+        """Handle channel cleanup commands"""
+        if not message.author.guild_permissions.manage_messages:
+            await message.channel.send(
+                "❌ You need manage messages permission for channel cleanup."
+            )
+            return
+
+        deleted = await message.channel.purge(limit=50)
+        confirmation = await message.channel.send(
+            f"✅ Cleaned up {len(deleted)-1} messages from this channel!"
+        )
+        await asyncio.sleep(5)
+        await confirmation.delete()
+
+    async def _handle_kick_user(self, message: discord.Message, match):
+        """Handle kick user commands"""
+        if not message.author.guild_permissions.kick_members:
+            await message.channel.send("❌ You need kick members permission.")
+            return
+
+        username = match.group(1) if match.groups() else None
+        if not username:
+            await message.channel.send("❌ Please specify a user to kick.")
+            return
+
+        # Find member by name/display name
+        member = None
+        for m in message.guild.members:
+            if username.lower() in [m.name.lower(), m.display_name.lower(), str(m.id)]:
+                member = m
+                break
+
+        if not member:
+            await message.channel.send(f"❌ Could not find user '{username}'.")
+            return
+
+        if (
+            member.top_role >= message.author.top_role
+            and message.author != message.guild.owner
+        ):
+            await message.channel.send(
+                "❌ You cannot kick someone with equal or higher roles."
+            )
+            return
+
+        try:
+            await member.kick(reason=f"Natural language command by {message.author}")
+            await message.channel.send(f"✅ Kicked {member.mention} ({member.name})")
+            await self._log_admin_action(
+                "kick",
+                message.author,
+                str(member),
+                {"reason": "Natural language command"},
+            )
+        except discord.Forbidden:
+            await message.channel.send("❌ I don't have permission to kick this user.")
+
+    async def _handle_kick_mentioned(self, message: discord.Message, match):
+        """Handle kick mentioned user commands"""
+        if not message.author.guild_permissions.kick_members:
+            await message.channel.send("❌ You need kick members permission.")
+            return
+
+        if not message.mentions:
+            await message.channel.send("❌ Please mention the user you want to kick.")
+            return
+
+        member = message.mentions[0]
+        if (
+            member.top_role >= message.author.top_role
+            and message.author != message.guild.owner
+        ):
+            await message.channel.send(
+                "❌ You cannot kick someone with equal or higher roles."
+            )
+            return
+
+        try:
+            await member.kick(reason=f"Natural language command by {message.author}")
+            await message.channel.send(f"✅ Kicked {member.mention} ({member.name})")
+            await self._log_admin_action(
+                "kick",
+                message.author,
+                str(member),
+                {"reason": "Natural language command"},
+            )
+        except discord.Forbidden:
+            await message.channel.send("❌ I don't have permission to kick this user.")
+
+    async def _handle_timeout_user(self, message: discord.Message, match):
+        """Handle timeout user commands"""
+        if not message.author.guild_permissions.moderate_members:
+            await message.channel.send("❌ You need moderate members permission.")
+            return
+
+        groups = match.groups()
+        username = groups[0] if groups else None
+        duration_num = int(groups[1]) if len(groups) > 1 and groups[1] else 10
+        duration_unit = groups[2] if len(groups) > 2 and groups[2] else "minutes"
+
+        # Convert to minutes
+        if "hour" in duration_unit:
+            duration_minutes = duration_num * 60
+        else:
+            duration_minutes = duration_num
+
+        # Find member
+        member = None
+        for m in message.guild.members:
+            if username and username.lower() in [
+                m.name.lower(),
+                m.display_name.lower(),
+                str(m.id),
+            ]:
+                member = m
+                break
+
+        if not member:
+            await message.channel.send(f"❌ Could not find user '{username}'.")
+            return
+
+        if (
+            member.top_role >= message.author.top_role
+            and message.author != message.guild.owner
+        ):
+            await message.channel.send(
+                "❌ You cannot timeout someone with equal or higher roles."
+            )
+            return
+
+        try:
+            timeout_until = datetime.now(timezone.utc) + timedelta(
+                minutes=duration_minutes
+            )
+            await member.timeout(
+                timeout_until, reason=f"Natural language command by {message.author}"
+            )
+            await message.channel.send(
+                f"✅ Timed out {member.mention} for {duration_num} {duration_unit}"
+            )
+            await self._log_admin_action(
+                "timeout",
+                message.author,
+                str(member),
+                {"duration": f"{duration_num} {duration_unit}"},
+            )
+        except discord.Forbidden:
+            await message.channel.send(
+                "❌ I don't have permission to timeout this user."
+            )
+
+    async def _handle_timeout_mentioned(self, message: discord.Message, match):
+        """Handle timeout mentioned user commands"""
+        if not message.author.guild_permissions.moderate_members:
+            await message.channel.send("❌ You need moderate members permission.")
+            return
+
+        if not message.mentions:
+            await message.channel.send(
+                "❌ Please mention the user you want to timeout."
+            )
+            return
+
+        member = message.mentions[0]
+        groups = match.groups()
+        duration_num = int(groups[0]) if groups and groups[0] else 10
+        duration_unit = groups[1] if len(groups) > 1 and groups[1] else "minutes"
+
+        # Convert to minutes
+        if "hour" in duration_unit:
+            duration_minutes = duration_num * 60
+        else:
+            duration_minutes = duration_num
+
+        if (
+            member.top_role >= message.author.top_role
+            and message.author != message.guild.owner
+        ):
+            await message.channel.send(
+                "❌ You cannot timeout someone with equal or higher roles."
+            )
+            return
+
+        try:
+            timeout_until = datetime.now(timezone.utc) + timedelta(
+                minutes=duration_minutes
+            )
+            await member.timeout(
+                timeout_until, reason=f"Natural language command by {message.author}"
+            )
+            await message.channel.send(
+                f"✅ Timed out {member.mention} for {duration_num} {duration_unit}"
+            )
+        except discord.Forbidden:
+            await message.channel.send(
+                "❌ I don't have permission to timeout this user."
+            )
+
+    async def _handle_ban_user(self, message: discord.Message, match):
+        """Handle ban user commands"""
+        if not message.author.guild_permissions.ban_members:
+            await message.channel.send("❌ You need ban members permission.")
+            return
+
+        groups = match.groups()
+        username = groups[0] if groups else None
+        reason = (
+            groups[1]
+            if len(groups) > 1 and groups[1]
+            else "Natural language ban command"
+        )
+
+        # Find member
+        member = None
+        for m in message.guild.members:
+            if username and username.lower() in [
+                m.name.lower(),
+                m.display_name.lower(),
+                str(m.id),
+            ]:
+                member = m
+                break
+
+        if not member:
+            await message.channel.send(f"❌ Could not find user '{username}'.")
+            return
+
+        if (
+            member.top_role >= message.author.top_role
+            and message.author != message.guild.owner
+        ):
+            await message.channel.send(
+                "❌ You cannot ban someone with equal or higher roles."
+            )
+            return
+
+        try:
+            await member.ban(reason=f"{reason} - Command by {message.author}")
+            await message.channel.send(f"✅ Banned {member.mention} ({member.name})")
+            await self._log_admin_action(
+                "ban", message.author, str(member), {"reason": reason}
+            )
+        except discord.Forbidden:
+            await message.channel.send("❌ I don't have permission to ban this user.")
+
+    async def _handle_ban_mentioned(self, message: discord.Message, match):
+        """Handle ban mentioned user commands"""
+        if not message.author.guild_permissions.ban_members:
+            await message.channel.send("❌ You need ban members permission.")
+            return
+
+        if not message.mentions:
+            await message.channel.send("❌ Please mention the user you want to ban.")
+            return
+
+        member = message.mentions[0]
+        groups = match.groups()
+        reason = groups[0] if groups and groups[0] else "Natural language ban command"
+
+        if (
+            member.top_role >= message.author.top_role
+            and message.author != message.guild.owner
+        ):
+            await message.channel.send(
+                "❌ You cannot ban someone with equal or higher roles."
+            )
+            return
+
+        try:
+            await member.ban(reason=f"{reason} - Command by {message.author}")
+            await message.channel.send(f"✅ Banned {member.mention} ({member.name})")
+        except discord.Forbidden:
+            await message.channel.send("❌ I don't have permission to ban this user.")
+
+    async def _handle_add_role(self, message: discord.Message, match):
+        """Handle add role commands"""
+        if not message.author.guild_permissions.manage_roles:
+            await message.channel.send("❌ You need manage roles permission.")
+            return
+
+        groups = match.groups()
+        username = groups[0] if groups else None
+        role_name = groups[1] if len(groups) > 1 and groups[1] else None
+
+        # Find member and role
+        member = None
+        for m in message.guild.members:
+            if username and username.lower() in [
+                m.name.lower(),
+                m.display_name.lower(),
+                str(m.id),
+            ]:
+                member = m
+                break
+
+        role = discord.utils.get(message.guild.roles, name=role_name)
+        if not role:
+            # Try case-insensitive search
+            role = discord.utils.find(
+                lambda r: r.name.lower() == role_name.lower(), message.guild.roles
+            )
+
+        if not member:
+            await message.channel.send(f"❌ Could not find user '{username}'.")
+            return
+
+        if not role:
+            await message.channel.send(f"❌ Could not find role '{role_name}'.")
+            return
+
+        if role >= message.author.top_role and message.author != message.guild.owner:
+            await message.channel.send(
+                "❌ You cannot assign roles equal to or higher than your own."
+            )
+            return
+
+        try:
+            await member.add_roles(
+                role, reason=f"Natural language command by {message.author}"
+            )
+            await message.channel.send(f"✅ Gave {member.mention} the {role.name} role")
+        except discord.Forbidden:
+            await message.channel.send(
+                "❌ I don't have permission to manage this role."
+            )
+
+    async def _handle_remove_role(self, message: discord.Message, match):
+        """Handle remove role commands"""
+        if not message.author.guild_permissions.manage_roles:
+            await message.channel.send("❌ You need manage roles permission.")
+            return
+
+        groups = match.groups()
+        role_name = groups[0] if groups else None
+        username = groups[1] if len(groups) > 1 and groups[1] else None
+
+        # Find member and role
+        member = None
+        for m in message.guild.members:
+            if username and username.lower() in [
+                m.name.lower(),
+                m.display_name.lower(),
+                str(m.id),
+            ]:
+                member = m
+                break
+
+        role = discord.utils.get(message.guild.roles, name=role_name)
+        if not role:
+            role = discord.utils.find(
+                lambda r: r.name.lower() == role_name.lower(), message.guild.roles
+            )
+
+        if not member:
+            await message.channel.send(f"❌ Could not find user '{username}'.")
+            return
+
+        if not role:
+            await message.channel.send(f"❌ Could not find role '{role_name}'.")
+            return
+
+        if role >= message.author.top_role and message.author != message.guild.owner:
+            await message.channel.send(
+                "❌ You cannot manage roles equal to or higher than your own."
+            )
+            return
+
+        try:
+            await member.remove_roles(
+                role, reason=f"Natural language command by {message.author}"
+            )
+            await message.channel.send(
+                f"✅ Removed the {role.name} role from {member.mention}"
+            )
+        except discord.Forbidden:
+            await message.channel.send(
+                "❌ I don't have permission to manage this role."
+            )
+
+    async def _handle_lock_channel(self, message: discord.Message, match):
+        """Handle lock channel commands"""
+        if not message.author.guild_permissions.manage_channels:
+            await message.channel.send("❌ You need manage channels permission.")
+            return
+
+        try:
+            overwrites = message.channel.overwrites_for(message.guild.default_role)
+            overwrites.send_messages = False
+            await message.channel.set_permissions(
+                message.guild.default_role,
+                overwrite=overwrites,
+                reason=f"Channel locked by {message.author}",
+            )
+            await message.channel.send(f"🔒 Channel locked by {message.author.mention}")
+        except discord.Forbidden:
+            await message.channel.send(
+                "❌ I don't have permission to manage this channel."
+            )
+
+    async def _handle_unlock_channel(self, message: discord.Message, match):
+        """Handle unlock channel commands"""
+        if not message.author.guild_permissions.manage_channels:
+            await message.channel.send("❌ You need manage channels permission.")
+            return
+
+        try:
+            overwrites = message.channel.overwrites_for(message.guild.default_role)
+            overwrites.send_messages = None  # Reset to default
+            await message.channel.set_permissions(
+                message.guild.default_role,
+                overwrite=overwrites,
+                reason=f"Channel unlocked by {message.author}",
+            )
+            await message.channel.send(
+                f"🔓 Channel unlocked by {message.author.mention}"
+            )
+        except discord.Forbidden:
+            await message.channel.send(
+                "❌ I don't have permission to manage this channel."
+            )
+
+    async def _log_admin_action(
+        self,
+        action_type: str,
+        user: discord.User,
+        target: str,
+        details: Dict[str, Any] = None,
+    ):
+        """Log administrative actions to security manager if available"""
+        try:
+            security_manager = self.bot.get_cog("SecurityManager")
+            if security_manager and hasattr(security_manager, "log_admin_action"):
+                security_manager.log_admin_action(action_type, user, target, details)
+        except Exception as e:
+            self.logger.error(f"Error logging admin action: {e}")
+
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
-        """Monitor messages for companion opportunities"""
+        """Monitor messages for companion opportunities and natural admin commands"""
         # Skip only bot messages, allow all user messages (including DMs)
         if message.author.bot:
+            return
+
+        # Check for natural language admin commands first (before AI processing)
+        admin_handled = await self._process_natural_admin_commands(message)
+        if admin_handled:
             return
 
         # Check if bot is mentioned, if this is a DM, or if Astra's name is mentioned
@@ -1050,6 +1604,91 @@ class AstraAICompanion(commands.Cog):
             self.logger.error(f"Error syncing personality profiles: {e}")
 
     # Slash Commands
+    @app_commands.command(
+        name="admin_help", description="📖 Learn about natural language admin commands"
+    )
+    async def admin_help(self, interaction: discord.Interaction):
+        """Show help for natural language administrative commands"""
+        if not interaction.user.guild_permissions.manage_messages:
+            await interaction.response.send_message(
+                "❌ You need manage messages permission to use admin commands.",
+                ephemeral=True,
+            )
+            return
+
+        embed = discord.Embed(
+            title="🤖 Natural Language Admin Commands",
+            description="You can now use natural language to perform admin actions! Just type commands like you're talking to Astra.",
+            color=0x00BFFF,
+            timestamp=datetime.now(timezone.utc),
+        )
+
+        # Message Management
+        embed.add_field(
+            name="💬 Message Management",
+            value="• `Astra, delete that message`\n"
+            "• `Delete the last 5 messages`\n"
+            "• `Clean up this channel`\n"
+            "• `Clear the recent messages`",
+            inline=False,
+        )
+
+        # User Moderation
+        embed.add_field(
+            name="👤 User Moderation",
+            value="• `Kick @username` or `Kick that user`\n"
+            "• `Timeout @username for 10 minutes`\n"
+            "• `Mute that person for 1 hour`\n"
+            "• `Ban @username for spamming`",
+            inline=False,
+        )
+
+        # Role Management
+        embed.add_field(
+            name="🎭 Role Management",
+            value="• `Give @username the Member role`\n"
+            "• `Add the VIP role to @username`\n"
+            "• `Remove the Muted role from @username`\n"
+            "• `Take the Guest role from that user`",
+            inline=False,
+        )
+
+        # Channel Management
+        embed.add_field(
+            name="🔒 Channel Management",
+            value="• `Lock this channel`\n"
+            "• `Unlock here`\n"
+            "• `Disable this channel`\n"
+            "• `Enable channel`",
+            inline=False,
+        )
+
+        embed.add_field(
+            name="✨ Smart Features",
+            value="• **Flexible phrasing**: Use natural language\n"
+            "• **Context aware**: Reference users and roles naturally\n"
+            "• **Permission checking**: Automatic permission validation\n"
+            "• **Safety checks**: Can't affect higher-ranked users",
+            inline=False,
+        )
+
+        embed.add_field(
+            name="🛡️ Required Permissions",
+            value="• **Manage Messages**: For message deletion and bulk actions\n"
+            "• **Kick Members**: For kick commands\n"
+            "• **Ban Members**: For ban commands\n"
+            "• **Moderate Members**: For timeout/mute commands\n"
+            "• **Manage Roles**: For role assignment commands\n"
+            "• **Manage Channels**: For lock/unlock commands",
+            inline=False,
+        )
+
+        embed.set_footer(
+            text="💡 Tip: You can also mention users or reply to messages for context!"
+        )
+
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
     @app_commands.command(
         name="test-astra",
         description="🧪 Test Astra's response system (debug command)",

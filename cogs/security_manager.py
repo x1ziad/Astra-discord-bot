@@ -547,6 +547,40 @@ class SecurityManager(commands.Cog):
             self.performance_metrics["cache_misses"] += 1
             return None
 
+    def log_admin_action(
+        self,
+        action_type: str,
+        user: discord.User,
+        target: str,
+        details: Dict[str, Any] = None,
+    ):
+        """Log natural language administrative actions"""
+        try:
+            details = details or {}
+            self.logger.info(
+                f"🛠️ Natural Admin Command: {action_type} by {user} ({user.id}) on {target} - {details}"
+            )
+
+            # Add to performance metrics
+            self.performance_metrics["manual_overrides"] += 1
+
+            # Create security event for significant admin actions
+            if action_type in ["kick", "ban", "timeout"]:
+                self.log_security_event(
+                    f"admin_{action_type}",
+                    2,  # Medium severity for admin actions
+                    {
+                        "admin_user": str(user),
+                        "admin_id": user.id,
+                        "target": target,
+                        "action": action_type,
+                        "natural_language": True,
+                        **details,
+                    },
+                )
+        except Exception as e:
+            self.logger.error(f"Error logging admin action: {e}")
+
     def log_security_event(
         self, event_type: str, severity: int, details: Dict[str, Any]
     ):
