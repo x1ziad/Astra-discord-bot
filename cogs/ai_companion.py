@@ -124,11 +124,11 @@ class AstraAICompanion(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        
+
         # Configure environment to suppress Google Cloud ALTS warnings
-        os.environ.setdefault('GRPC_VERBOSITY', 'ERROR')
-        os.environ.setdefault('GLOG_minloglevel', '2')
-        
+        os.environ.setdefault("GRPC_VERBOSITY", "ERROR")
+        os.environ.setdefault("GLOG_minloglevel", "2")
+
         self.logger = logging.getLogger("astra.ai_companion")
 
         # Core components
@@ -154,43 +154,52 @@ class AstraAICompanion(commands.Cog):
         """Truncate response to fit Discord's character limit with graceful cutoff"""
         if len(response) <= max_length:
             return response
-        
+
         # Log when truncation occurs for monitoring
-        self.logger.warning(f"⚠️ Response being truncated: {len(response)} chars → {max_length} chars")
-        
+        self.logger.warning(
+            f"⚠️ Response being truncated: {len(response)} chars → {max_length} chars"
+        )
+
         # Try to cut at a sentence boundary first
         truncated = response[:max_length]
         last_sentence = max(
-            truncated.rfind('.'),
-            truncated.rfind('!'),
-            truncated.rfind('?')
+            truncated.rfind("."), truncated.rfind("!"), truncated.rfind("?")
         )
-        
-        if last_sentence > max_length * 0.7:  # If we can keep at least 70% and end nicely
-            return truncated[:last_sentence + 1] + "\n\n*[Continued in next message...]*"
-        
+
+        if (
+            last_sentence > max_length * 0.7
+        ):  # If we can keep at least 70% and end nicely
+            return (
+                truncated[: last_sentence + 1] + "\n\n*[Continued in next message...]*"
+            )
+
         # Try to cut at paragraph boundary
-        last_paragraph = truncated.rfind('\n\n')
+        last_paragraph = truncated.rfind("\n\n")
         if last_paragraph > max_length * 0.6:
             return truncated[:last_paragraph] + "\n\n*[Continued in next message...]*"
-        
+
         # Otherwise cut at word boundary
-        last_space = truncated.rfind(' ')
+        last_space = truncated.rfind(" ")
         if last_space > max_length * 0.8:  # If we can keep at least 80% of text
             return truncated[:last_space] + "...\n\n*[Continued in next message...]*"
-        
-        # Fallback: hard cut with indicator
-        return response[:max_length-50] + "...\n\n*[Response truncated - Discord character limit]*"
 
-    async def split_long_response(self, response: str, max_length: int = 1950) -> List[str]:
+        # Fallback: hard cut with indicator
+        return (
+            response[: max_length - 50]
+            + "...\n\n*[Response truncated - Discord character limit]*"
+        )
+
+    async def split_long_response(
+        self, response: str, max_length: int = 1950
+    ) -> List[str]:
         """Split very long responses into multiple messages"""
         if len(response) <= max_length:
             return [response]
-        
+
         parts = []
         remaining = response
         part_number = 1
-        
+
         while remaining:
             if len(remaining) <= max_length:
                 # Last part
@@ -199,46 +208,48 @@ class AstraAICompanion(commands.Cog):
                 else:
                     parts.append(remaining)
                 break
-            
+
             # Find good split point
             split_at = max_length
-            
+
             # Try sentence boundary
             sentence_split = max(
-                remaining[:max_length].rfind('.'),
-                remaining[:max_length].rfind('!'),
-                remaining[:max_length].rfind('?')
+                remaining[:max_length].rfind("."),
+                remaining[:max_length].rfind("!"),
+                remaining[:max_length].rfind("?"),
             )
-            
+
             if sentence_split > max_length * 0.7:
                 split_at = sentence_split + 1
             else:
                 # Try paragraph boundary
-                para_split = remaining[:max_length].rfind('\n\n')
+                para_split = remaining[:max_length].rfind("\n\n")
                 if para_split > max_length * 0.6:
                     split_at = para_split + 2
                 else:
                     # Use word boundary
-                    word_split = remaining[:max_length].rfind(' ')
+                    word_split = remaining[:max_length].rfind(" ")
                     if word_split > max_length * 0.8:
                         split_at = word_split
-            
+
             # Extract this part
             part = remaining[:split_at].strip()
             if part_number == 1:
                 parts.append(f"{part}\n\n*[Continued...]*")
             else:
                 parts.append(f"*[Part {part_number}]*\n\n{part}\n\n*[Continued...]*")
-            
+
             # Move to next part
             remaining = remaining[split_at:].strip()
             part_number += 1
-            
+
             # Safety check - don't create too many parts
             if len(parts) >= 5:
-                parts.append(f"*[Part {part_number}]*\n\n{remaining[:max_length-100]}\n\n*[Response truncated - too long for Discord]*")
+                parts.append(
+                    f"*[Part {part_number}]*\n\n{remaining[:max_length-100]}\n\n*[Response truncated - too long for Discord]*"
+                )
                 break
-        
+
         return parts
 
     def cog_unload(self):
@@ -297,14 +308,22 @@ class AstraAICompanion(commands.Cog):
 
         # Create adjusted personality with enhanced dynamics and optimized calculations
         adjusted = PersonalityDimensions(
-            analytical=self._clamp(base.analytical + tone_factor + complexity_factor + history_factor),
+            analytical=self._clamp(
+                base.analytical + tone_factor + complexity_factor + history_factor
+            ),
             empathetic=self._clamp(base.empathetic + mood_boost + (1.0 - tone_abs)),
-            curious=self._clamp(base.curious + complexity_factor + history_factor * 0.5),
+            curious=self._clamp(
+                base.curious + complexity_factor + history_factor * 0.5
+            ),
             creative=self._clamp(base.creative + time_factor + mood_factor * 0.8),
-            supportive=self._clamp(base.supportive + mood_factor + (1.0 - urgency_factor * 0.5)),
+            supportive=self._clamp(
+                base.supportive + mood_factor + (1.0 - urgency_factor * 0.5)
+            ),
             playful=self._clamp(base.playful - tone_dampened + mood_factor * 0.6),
             assertive=self._clamp(base.assertive + urgency_factor + tone_abs * 0.5),
-            adaptable=self._clamp(base.adaptable + history_factor),  # Grows with interaction
+            adaptable=self._clamp(
+                base.adaptable + history_factor
+            ),  # Grows with interaction
         )
 
         return adjusted
@@ -321,38 +340,46 @@ class AstraAICompanion(commands.Cog):
     ) -> str:
         """Generate Astra's response with maximum performance optimization"""
         response_start_time = time.perf_counter()
-        
+
         try:
-            self.logger.debug(f"� Ultra-fast response generation for: '{message.content[:30]}...'")
-            
+            self.logger.debug(
+                f"� Ultra-fast response generation for: '{message.content[:30]}...'"
+            )
+
             # 🚀 PERFORMANCE: Cache personality calculations
             personality_cache_key = f"{message.author.id}_{hash(str(context))}"
-            
-            if hasattr(self, '_personality_cache'):
+
+            if hasattr(self, "_personality_cache"):
                 if personality_cache_key in self._personality_cache:
                     cached_data = self._personality_cache[personality_cache_key]
-                    if time.time() - cached_data['timestamp'] < 300:  # 5 minute cache
-                        current_personality = cached_data['personality']
-                        dominant_traits = cached_data['traits']
+                    if time.time() - cached_data["timestamp"] < 300:  # 5 minute cache
+                        current_personality = cached_data["personality"]
+                        dominant_traits = cached_data["traits"]
                         self.logger.debug("⚡ Using cached personality calculation")
                     else:
                         del self._personality_cache[personality_cache_key]
-                        current_personality = self.calculate_personality_vector(profile, context)
+                        current_personality = self.calculate_personality_vector(
+                            profile, context
+                        )
                         dominant_traits = self._get_dominant_traits(current_personality)
                 else:
-                    current_personality = self.calculate_personality_vector(profile, context)
+                    current_personality = self.calculate_personality_vector(
+                        profile, context
+                    )
                     dominant_traits = self._get_dominant_traits(current_personality)
                     # Cache for future use
-                    if not hasattr(self, '_personality_cache'):
+                    if not hasattr(self, "_personality_cache"):
                         self._personality_cache = {}
                     self._personality_cache[personality_cache_key] = {
-                        'personality': current_personality,
-                        'traits': dominant_traits,
-                        'timestamp': time.time()
+                        "personality": current_personality,
+                        "traits": dominant_traits,
+                        "timestamp": time.time(),
                     }
             else:
                 self._personality_cache = {}
-                current_personality = self.calculate_personality_vector(profile, context)
+                current_personality = self.calculate_personality_vector(
+                    profile, context
+                )
                 dominant_traits = self._get_dominant_traits(current_personality)
 
             # 🚀 OPTIMIZED: Streamlined user profile for maximum AI performance
@@ -361,7 +388,9 @@ class AstraAICompanion(commands.Cog):
                 "personality_traits": dominant_traits[:3],
                 "dominant_emotion": context.get("sentiment", "neutral"),
                 "channel_context": context.get("channel_type", "general"),
-                "interaction_count": min(profile.modifiers.interaction_history, 1000),  # Cap for performance
+                "interaction_count": min(
+                    profile.modifiers.interaction_history, 1000
+                ),  # Cap for performance
                 "current_mood": context.get("user_mood", 0.5),
                 "astra_context": "Astra AI with dynamic personality",
                 "performance_mode": "ultra_fast",
@@ -369,20 +398,24 @@ class AstraAICompanion(commands.Cog):
 
             # 🚀 PERFORMANCE: Optimized temperature calculation
             temperature = min(0.6 + (current_personality.creative * 0.3), 0.9)
-            
-            self.logger.debug(f"🎯 Ultra-fast AI call with temperature={temperature:.2f}")
+
+            self.logger.debug(
+                f"🎯 Ultra-fast AI call with temperature={temperature:.2f}"
+            )
 
             # 🚀 MAXIMUM PERFORMANCE: Streamlined AI response generation
             start_ai_time = time.perf_counter()
-            
+
             # Skip complex personality configuration for speed - use direct message enhancement
             enhanced_message = message.content
-            
+
             # Add personality context only for complex interactions
-            if len(message.content) > 50 or any(trait in ['analytical', 'creative'] for trait in dominant_traits[:2]):
+            if len(message.content) > 50 or any(
+                trait in ["analytical", "creative"] for trait in dominant_traits[:2]
+            ):
                 personality_hint = f"[Respond as Astra with {', '.join(dominant_traits[:2])} personality]"
                 enhanced_message = f"{personality_hint} {message.content}"
-            
+
             ai_response = await self.ai_client.generate_response(
                 enhanced_message,
                 user_id=message.author.id,
@@ -392,38 +425,55 @@ class AstraAICompanion(commands.Cog):
                 temperature=temperature,
                 max_tokens=500,  # Optimize for faster responses
             )
-            
+
             ai_response_time = time.perf_counter() - start_ai_time
             total_response_time = time.perf_counter() - response_start_time
-            
+
             # 🚀 PERFORMANCE: Log ultra-fast responses
             if total_response_time < 0.5:
-                self.logger.debug(f"🚀 ULTRA-FAST response: {total_response_time:.3f}s (AI: {ai_response_time:.3f}s)")
+                self.logger.debug(
+                    f"🚀 ULTRA-FAST response: {total_response_time:.3f}s (AI: {ai_response_time:.3f}s)"
+                )
             elif total_response_time > 2.0:
                 self.logger.warning(f"⚠️ Slow response: {total_response_time:.3f}s")
             else:
                 self.logger.debug(f"⚡ Fast response: {total_response_time:.3f}s")
 
-            response = ai_response.content if ai_response and hasattr(ai_response, 'content') else None
-            
+            response = (
+                ai_response.content
+                if ai_response and hasattr(ai_response, "content")
+                else None
+            )
+
             if not response:
-                self.logger.warning(f"⚠️ AI client returned no response, using optimized fallback")
-                response = self._get_optimized_fallback_response(current_personality, dominant_traits)
+                self.logger.warning(
+                    f"⚠️ AI client returned no response, using optimized fallback"
+                )
+                response = self._get_optimized_fallback_response(
+                    current_personality, dominant_traits
+                )
             else:
                 # 🚀 PERFORMANCE: Track successful responses
-                self.logger.info(f"📏 Generated response length: {len(response)} characters")
+                self.logger.info(
+                    f"📏 Generated response length: {len(response)} characters"
+                )
                 if len(response) > 1800:
-                    self.logger.warning(f"⚠️ Long response detected ({len(response)} chars) - will be truncated on send")
+                    self.logger.warning(
+                        f"⚠️ Long response detected ({len(response)} chars) - will be truncated on send"
+                    )
 
             return response
 
         except Exception as e:
             self.logger.error(f"❌ Error generating response: {e}")
             import traceback
+
             self.logger.error(f"📋 Traceback: {traceback.format_exc()}")
             return "I'm experiencing some technical difficulties, but I'm still here for you!"
 
-    def _get_response_style_from_personality(self, personality: PersonalityDimensions) -> str:
+    def _get_response_style_from_personality(
+        self, personality: PersonalityDimensions
+    ) -> str:
         """Determine optimal response style based on personality dimensions"""
         if personality.analytical > 0.7:
             return "analytical_detailed"
@@ -436,102 +486,147 @@ class AstraAICompanion(commands.Cog):
         else:
             return "balanced_conversational"
 
-    def _create_personality_instructions(self, personality: PersonalityDimensions, dominant_traits: List[str]) -> str:
+    def _create_personality_instructions(
+        self, personality: PersonalityDimensions, dominant_traits: List[str]
+    ) -> str:
         """Create specific personality instructions that directly influence AI behavior"""
         instructions = []
-        
+
         # Analytical behavior
         if personality.analytical > 0.7:
-            instructions.append("Provide detailed, logical explanations with examples and reasoning")
+            instructions.append(
+                "Provide detailed, logical explanations with examples and reasoning"
+            )
         elif personality.analytical < 0.3:
             instructions.append("Keep responses simple and avoid over-analyzing")
-        
+
         # Empathetic behavior
         if personality.empathetic > 0.8:
-            instructions.append("Show deep understanding and emotional connection, acknowledge feelings")
+            instructions.append(
+                "Show deep understanding and emotional connection, acknowledge feelings"
+            )
         elif personality.empathetic < 0.3:
             instructions.append("Focus on facts rather than emotions, be more direct")
-        
+
         # Playful behavior
         if personality.playful > 0.7:
-            instructions.append("Use humor, jokes, and light-hearted commentary frequently")
+            instructions.append(
+                "Use humor, jokes, and light-hearted commentary frequently"
+            )
         elif personality.playful < 0.3:
             instructions.append("Maintain a serious, professional tone")
-        
+
         # Supportive behavior
         if personality.supportive > 0.8:
             instructions.append("Offer encouragement, help, and positive reinforcement")
         elif personality.supportive < 0.3:
-            instructions.append("Be neutral and factual without excessive supportiveness")
-        
+            instructions.append(
+                "Be neutral and factual without excessive supportiveness"
+            )
+
         # Creative behavior
         if personality.creative > 0.7:
-            instructions.append("Use creative metaphors, analogies, and imaginative language")
+            instructions.append(
+                "Use creative metaphors, analogies, and imaginative language"
+            )
         elif personality.creative < 0.3:
             instructions.append("Stick to straightforward, practical language")
-        
+
         # Curious behavior
         if personality.curious > 0.7:
-            instructions.append("Ask follow-up questions and show interest in learning more")
+            instructions.append(
+                "Ask follow-up questions and show interest in learning more"
+            )
         elif personality.curious < 0.3:
             instructions.append("Answer directly without exploring tangents")
-        
-        return " | ".join(instructions) if instructions else "Respond naturally and conversationally"
 
-    def _generate_dynamic_personality_prompt(self, personality: PersonalityDimensions, context: Dict[str, Any]) -> str:
+        return (
+            " | ".join(instructions)
+            if instructions
+            else "Respond naturally and conversationally"
+        )
+
+    def _generate_dynamic_personality_prompt(
+        self, personality: PersonalityDimensions, context: Dict[str, Any]
+    ) -> str:
         """Generate a dynamic system prompt that changes based on current personality settings"""
-        base_prompt = "You are Astra, a friendly AI companion who loves space and helping people."
-        
+        base_prompt = (
+            "You are Astra, a friendly AI companion who loves space and helping people."
+        )
+
         # Personality-specific modifications
         personality_mods = []
-        
+
         # High analytical: Add logical focus
         if personality.analytical > 0.7:
-            personality_mods.append("You excel at breaking down complex problems and explaining things clearly with logical reasoning")
-        
+            personality_mods.append(
+                "You excel at breaking down complex problems and explaining things clearly with logical reasoning"
+            )
+
         # High empathetic: Add emotional intelligence
         if personality.empathetic > 0.8:
-            personality_mods.append("You deeply understand emotions and always respond with warmth and compassion")
-        
+            personality_mods.append(
+                "You deeply understand emotions and always respond with warmth and compassion"
+            )
+
         # High playful: Add humor and wit
         if personality.playful > 0.7:
-            personality_mods.append("You love using space puns, jokes, and keeping conversations light and fun")
-        
+            personality_mods.append(
+                "You love using space puns, jokes, and keeping conversations light and fun"
+            )
+
         # High supportive: Add encouragement
         if personality.supportive > 0.8:
-            personality_mods.append("You're incredibly encouraging and always look for ways to help and motivate others")
-        
+            personality_mods.append(
+                "You're incredibly encouraging and always look for ways to help and motivate others"
+            )
+
         # High creative: Add imagination
         if personality.creative > 0.7:
-            personality_mods.append("You use creative space metaphors and imaginative language to make conversations engaging")
-        
+            personality_mods.append(
+                "You use creative space metaphors and imaginative language to make conversations engaging"
+            )
+
         # High curious: Add inquisitiveness
         if personality.curious > 0.7:
-            personality_mods.append("You're naturally curious and love asking thoughtful follow-up questions")
-        
+            personality_mods.append(
+                "You're naturally curious and love asking thoughtful follow-up questions"
+            )
+
         # Low adaptable: Add consistency note
         if personality.adaptable < 0.4:
             personality_mods.append("You maintain consistent behavior patterns")
         elif personality.adaptable > 0.8:
-            personality_mods.append("You quickly adapt your communication style to match the conversation needs")
-        
+            personality_mods.append(
+                "You quickly adapt your communication style to match the conversation needs"
+            )
+
         if personality_mods:
             return f"{base_prompt} {' '.join(personality_mods)}"
-        
+
         return base_prompt
 
-    def _calculate_personality_intensity(self, personality: PersonalityDimensions) -> float:
+    def _calculate_personality_intensity(
+        self, personality: PersonalityDimensions
+    ) -> float:
         """Calculate how intensely the personality should be expressed (0.0 to 1.0)"""
         # Average of the most prominent traits
         traits = personality.to_dict()
         max_traits = sorted(traits.values(), reverse=True)[:3]
         return sum(max_traits) / 3
 
-    def _enhance_message_with_personality_context(self, message: str, personality: PersonalityDimensions, dominant_traits: List[str]) -> str:
+    def _enhance_message_with_personality_context(
+        self,
+        message: str,
+        personality: PersonalityDimensions,
+        dominant_traits: List[str],
+    ) -> str:
         """Enhance the user message with personality context to ensure behavior changes"""
         # Create a system context that forces personality compliance
-        personality_context = f"[SYSTEM: Respond as Astra with these personality settings - "
-        
+        personality_context = (
+            f"[SYSTEM: Respond as Astra with these personality settings - "
+        )
+
         trait_descriptions = []
         for trait in dominant_traits[:3]:
             value = getattr(personality, trait.lower(), 0.5)
@@ -541,16 +636,18 @@ class AstraAICompanion(commands.Cog):
                 trait_descriptions.append(f"{trait}=LOW({value:.1f})")
             else:
                 trait_descriptions.append(f"{trait}=MED({value:.1f})")
-        
+
         personality_context += ", ".join(trait_descriptions)
         personality_context += "] "
-        
+
         return personality_context + message
 
-    def _create_behavior_preview(self, personality: PersonalityDimensions, dominant_traits: List[str]) -> str:
+    def _create_behavior_preview(
+        self, personality: PersonalityDimensions, dominant_traits: List[str]
+    ) -> str:
         """Create a preview of how the personality changes will affect behavior"""
         previews = []
-        
+
         for trait in dominant_traits[:3]:
             value = getattr(personality, trait.lower(), 0.5)
             if value > 0.7:
@@ -559,8 +656,12 @@ class AstraAICompanion(commands.Cog):
             elif value < 0.3:
                 preview = self._get_low_trait_behavior(trait.lower())
                 previews.append(f"❄️ **{trait.title()}**: {preview}")
-        
-        return "\n".join(previews) if previews else "Balanced, natural responses across all traits"
+
+        return (
+            "\n".join(previews)
+            if previews
+            else "Balanced, natural responses across all traits"
+        )
 
     def _get_high_trait_behavior(self, trait: str) -> str:
         """Get behavior description for high trait values"""
@@ -572,7 +673,7 @@ class AstraAICompanion(commands.Cog):
             "supportive": "Encouraging, helpful, always looking to motivate",
             "playful": "Jokes, puns, light-hearted humor frequently",
             "assertive": "Confident, direct responses with clear opinions",
-            "adaptable": "Quick style changes to match conversation needs"
+            "adaptable": "Quick style changes to match conversation needs",
         }
         return behaviors.get(trait, "Enhanced behavior for this trait")
 
@@ -586,7 +687,7 @@ class AstraAICompanion(commands.Cog):
             "supportive": "Neutral responses without excessive encouragement",
             "playful": "Serious, professional tone",
             "assertive": "Gentle, non-confrontational responses",
-            "adaptable": "Consistent behavior regardless of context"
+            "adaptable": "Consistent behavior regardless of context",
         }
         return behaviors.get(trait, "Reduced behavior for this trait")
 
@@ -630,22 +731,26 @@ class AstraAICompanion(commands.Cog):
 
         return "\n".join([f"• {guides[trait]}" for trait in dominant_traits[:4]])
 
-    def _get_optimized_fallback_response(self, personality: PersonalityDimensions, dominant_traits: List[str]) -> str:
+    def _get_optimized_fallback_response(
+        self, personality: PersonalityDimensions, dominant_traits: List[str]
+    ) -> str:
         """Ultra-fast optimized fallback responses based on personality"""
         base_responses = {
-            'analytical': "Let me analyze that for you.",
-            'empathetic': "I understand how you feel about this.",
-            'curious': "That's interesting! Tell me more.",
-            'creative': "What an intriguing perspective!",
-            'supportive': "I'm here to help you with that.",
-            'playful': "Haha, that's quite something!",
-            'assertive': "I have some thoughts on this.",
-            'adaptable': "I can work with that approach."
+            "analytical": "Let me analyze that for you.",
+            "empathetic": "I understand how you feel about this.",
+            "curious": "That's interesting! Tell me more.",
+            "creative": "What an intriguing perspective!",
+            "supportive": "I'm here to help you with that.",
+            "playful": "Haha, that's quite something!",
+            "assertive": "I have some thoughts on this.",
+            "adaptable": "I can work with that approach.",
         }
-        
+
         # Use first dominant trait for fast response
-        primary_trait = dominant_traits[0] if dominant_traits else 'supportive'
-        return base_responses.get(primary_trait, "I'm here to help! How can I assist you?")
+        primary_trait = dominant_traits[0] if dominant_traits else "supportive"
+        return base_responses.get(
+            primary_trait, "I'm here to help! How can I assist you?"
+        )
 
     def _get_fallback_response(self, personality: PersonalityDimensions) -> str:
         """Generate personality-appropriate fallback response"""
@@ -779,29 +884,43 @@ class AstraAICompanion(commands.Cog):
         name_mentioned = any(
             name.lower() in message.content.lower() for name in ["astra", "astrabot"]
         )
-        
+
         # Enhanced trigger detection
         content_lower = message.content.lower()
-        question_patterns = ["?", "who are you", "what are you", "help me", "can you help"]
+        question_patterns = [
+            "?",
+            "who are you",
+            "what are you",
+            "help me",
+            "can you help",
+        ]
         greeting_patterns = ["hey", "hi", "hello", "what's up", "how are you"]
-        
+
         has_question = any(pattern in content_lower for pattern in question_patterns)
-        has_greeting = any(content_lower.startswith(pattern) for pattern in greeting_patterns)
+        has_greeting = any(
+            content_lower.startswith(pattern) for pattern in greeting_patterns
+        )
 
         # Debug logging
         self.logger.debug(f"Message from {message.author}: '{message.content[:50]}...'")
-        self.logger.debug(f"Triggers - Mentioned: {bot_mentioned}, DM: {is_dm}, Name: {name_mentioned}, Question: {has_question}, Greeting: {has_greeting}")
+        self.logger.debug(
+            f"Triggers - Mentioned: {bot_mentioned}, DM: {is_dm}, Name: {name_mentioned}, Question: {has_question}, Greeting: {has_greeting}"
+        )
 
         # Respond to mentions, DMs, name mentions, questions, or greetings
         if bot_mentioned or is_dm or name_mentioned or has_question or has_greeting:
-            self.logger.info(f"🤖 Astra responding to {message.author} in {message.guild.name if message.guild else 'DM'}")
+            self.logger.info(
+                f"🤖 Astra responding to {message.author} in {message.guild.name if message.guild else 'DM'}"
+            )
             await self.handle_companion_interaction(message)
 
     async def handle_companion_interaction(self, message: discord.Message):
         """Handle companion interaction with Astra personality"""
         try:
             start_time = time.perf_counter()
-            self.logger.info(f"🎯 Processing companion interaction from {message.author}")
+            self.logger.info(
+                f"🎯 Processing companion interaction from {message.author}"
+            )
 
             # Get user personality profile
             profile = await self.get_personality_profile(
@@ -811,7 +930,9 @@ class AstraAICompanion(commands.Cog):
 
             # Enhanced context analysis
             context = await self._analyze_message_context(message)
-            self.logger.debug(f"✅ Analyzed message context: mood={context.get('user_mood', 'unknown')}")
+            self.logger.debug(
+                f"✅ Analyzed message context: mood={context.get('user_mood', 'unknown')}"
+            )
 
             # Update personality modifiers with enhanced data
             profile.modifiers.user_mood = context["user_mood"]
@@ -825,13 +946,17 @@ class AstraAICompanion(commands.Cog):
             self.logger.debug(f"✅ Calculated personality vector")
 
             # Generate response using enhanced Astra personality
-            self.logger.info(f"🧠 Generating AI response for: '{message.content[:50]}...'")
+            self.logger.info(
+                f"🧠 Generating AI response for: '{message.content[:50]}...'"
+            )
             response = await self.generate_astra_response(message, profile, context)
-            
+
             if response:
                 self.logger.info(f"✅ Generated response: '{response[:50]}...'")
             else:
-                self.logger.warning(f"❌ No response generated for message from {message.author}")
+                self.logger.warning(
+                    f"❌ No response generated for message from {message.author}"
+                )
 
             if response:
                 # Track conversation context
@@ -853,22 +978,26 @@ class AstraAICompanion(commands.Cog):
 
                 # Handle long responses by splitting them
                 if len(response) > 1950:
-                    self.logger.info(f"📚 Splitting long response ({len(response)} chars) into multiple messages")
+                    self.logger.info(
+                        f"📚 Splitting long response ({len(response)} chars) into multiple messages"
+                    )
                     response_parts = await self.split_long_response(response)
-                    
+
                     # Send first part as reply
                     await message.reply(response_parts[0], mention_author=False)
-                    
+
                     # Send remaining parts as follow-up messages
                     for part in response_parts[1:]:
                         await asyncio.sleep(0.5)  # Brief delay between parts
                         await message.channel.send(part)
-                        
+
                 else:
                     # Single response - use normal truncation if needed
                     truncated_response = self.truncate_response(response)
                     if len(response) != len(truncated_response):
-                        self.logger.warning(f"⚠️ Response truncated from {len(response)} to {len(truncated_response)} characters")
+                        self.logger.warning(
+                            f"⚠️ Response truncated from {len(response)} to {len(truncated_response)} characters"
+                        )
 
                     # Send response
                     await message.reply(truncated_response, mention_author=False)
@@ -886,6 +1015,7 @@ class AstraAICompanion(commands.Cog):
         except Exception as e:
             self.logger.error(f"❌ Error in companion interaction: {e}")
             import traceback
+
             self.logger.error(f"📋 Full traceback: {traceback.format_exc()}")
             await message.reply(
                 "I'm having a moment of confusion, but I'm here for you! 🤖",
@@ -922,12 +1052,14 @@ class AstraAICompanion(commands.Cog):
         name="test-astra",
         description="🧪 Test Astra's response system (debug command)",
     )
-    async def test_astra(self, interaction: discord.Interaction, message: str = "Hello Astra!"):
+    async def test_astra(
+        self, interaction: discord.Interaction, message: str = "Hello Astra!"
+    ):
         """Test Astra's AI response system"""
         try:
             await interaction.response.defer()
             self.logger.info(f"🧪 Testing Astra response system with: '{message}'")
-            
+
             # Create a mock message object
             class MockMessage:
                 def __init__(self, content, author, guild, channel):
@@ -935,47 +1067,60 @@ class AstraAICompanion(commands.Cog):
                     self.author = author
                     self.guild = guild
                     self.channel = channel
-            
-            mock_message = MockMessage(message, interaction.user, interaction.guild, interaction.channel)
-            
+
+            mock_message = MockMessage(
+                message, interaction.user, interaction.guild, interaction.channel
+            )
+
             # Get personality profile - handle DM case
             guild_id = interaction.guild.id if interaction.guild else 0  # Use 0 for DMs
             profile = await self.get_personality_profile(interaction.user.id, guild_id)
             context = await self._analyze_message_context(mock_message)
-            
+
             # Generate response
-            response = await self.generate_astra_response(mock_message, profile, context)
-            
-            embed = discord.Embed(
-                title="🧪 Astra Response Test",
-                color=0x7C4DFF,
-                timestamp=datetime.now()
+            response = await self.generate_astra_response(
+                mock_message, profile, context
             )
-            embed.add_field(name="Input", value=f"```{message[:500]}{'...' if len(message) > 500 else ''}```", inline=False)
-            
+
+            embed = discord.Embed(
+                title="🧪 Astra Response Test", color=0x7C4DFF, timestamp=datetime.now()
+            )
+            embed.add_field(
+                name="Input",
+                value=f"```{message[:500]}{'...' if len(message) > 500 else ''}```",
+                inline=False,
+            )
+
             # Truncate response for embed field (max 1000 chars to leave room for formatting)
             if response:
-                truncated_output = response[:900] + "..." if len(response) > 900 else response
-                embed.add_field(name="Output", value=f"```{truncated_output}```", inline=False)
+                truncated_output = (
+                    response[:900] + "..." if len(response) > 900 else response
+                )
+                embed.add_field(
+                    name="Output", value=f"```{truncated_output}```", inline=False
+                )
                 embed.color = 0x00FF00
                 embed.add_field(name="Status", value="✅ Success", inline=True)
-                embed.add_field(name="Length", value=f"{len(response)} chars", inline=True)
+                embed.add_field(
+                    name="Length", value=f"{len(response)} chars", inline=True
+                )
             else:
-                embed.add_field(name="Output", value="```No response generated```", inline=False)
+                embed.add_field(
+                    name="Output", value="```No response generated```", inline=False
+                )
                 embed.color = 0xFF0000
                 embed.add_field(name="Status", value="❌ Failed", inline=True)
-                
+
             await interaction.followup.send(embed=embed)
-            
+
         except Exception as e:
             self.logger.error(f"❌ Test command error: {e}")
             import traceback
+
             self.logger.error(f"📋 Traceback: {traceback.format_exc()}")
-            
+
             embed = discord.Embed(
-                title="❌ Test Failed",
-                description=f"Error: {str(e)}",
-                color=0xFF0000
+                title="❌ Test Failed", description=f"Error: {str(e)}", color=0xFF0000
             )
             await interaction.followup.send(embed=embed)
 
@@ -1011,9 +1156,7 @@ class AstraAICompanion(commands.Cog):
         """Manage Astra's personality settings"""
         # Handle DM case where guild is None
         guild_id = interaction.guild.id if interaction.guild else 0  # Use 0 for DMs
-        profile = await self.get_personality_profile(
-            interaction.user.id, guild_id
-        )
+        profile = await self.get_personality_profile(interaction.user.id, guild_id)
 
         if preset:
             # Apply preset
@@ -1040,18 +1183,20 @@ class AstraAICompanion(commands.Cog):
 
                 # Add behavior preview
                 dominant_traits = self._get_dominant_traits(profile.base_personality)
-                behavior_preview = self._create_behavior_preview(profile.base_personality, dominant_traits)
+                behavior_preview = self._create_behavior_preview(
+                    profile.base_personality, dominant_traits
+                )
                 embed.add_field(
-                    name="🎯 Expected Behavior Changes", 
-                    value=behavior_preview, 
-                    inline=False
+                    name="🎯 Expected Behavior Changes",
+                    value=behavior_preview,
+                    inline=False,
                 )
 
                 # Add test suggestion
                 embed.add_field(
-                    name="💡 Test the Changes", 
-                    value="Try talking to me now to see the personality changes in action!", 
-                    inline=False
+                    name="💡 Test the Changes",
+                    value="Try talking to me now to see the personality changes in action!",
+                    inline=False,
                 )
 
             else:
@@ -1069,8 +1214,12 @@ class AstraAICompanion(commands.Cog):
                 profile.updated_at = datetime.now()
 
                 # Determine intensity change
-                intensity_change = "🔥 High" if value > 0.7 else "❄️ Low" if value < 0.3 else "⚖️ Medium"
-                change_direction = "⬆️" if value > old_value else "⬇️" if value < old_value else "➡️"
+                intensity_change = (
+                    "🔥 High" if value > 0.7 else "❄️ Low" if value < 0.3 else "⚖️ Medium"
+                )
+                change_direction = (
+                    "⬆️" if value > old_value else "⬇️" if value < old_value else "➡️"
+                )
 
                 embed = discord.Embed(
                     title="🎭 Companion Trait Updated",
@@ -1079,17 +1228,19 @@ class AstraAICompanion(commands.Cog):
                 )
 
                 # Explain what this change means behaviorally
-                behavior_explanation = self._explain_trait_behavior_change(trait.lower(), value)
+                behavior_explanation = self._explain_trait_behavior_change(
+                    trait.lower(), value
+                )
                 embed.add_field(
                     name=f"{intensity_change} What This Means",
                     value=behavior_explanation,
-                    inline=False
+                    inline=False,
                 )
 
                 embed.add_field(
-                    name="💡 Test It Now", 
-                    value=f"Try asking me something to see how my {trait.lower()} behavior has changed!", 
-                    inline=False
+                    name="💡 Test It Now",
+                    value=f"Try asking me something to see how my {trait.lower()} behavior has changed!",
+                    inline=False,
                 )
 
             else:
@@ -1123,22 +1274,29 @@ class AstraAICompanion(commands.Cog):
             # Add interaction history and system context
             interaction_count = profile.modifiers.interaction_history
             relationship_level = (
-                "New Friend" if interaction_count < 5
-                else "Good Friend" if interaction_count < 20
-                else "Close Friend" if interaction_count < 50
-                else "Best Friend"
+                "New Friend"
+                if interaction_count < 5
+                else (
+                    "Good Friend"
+                    if interaction_count < 20
+                    else "Close Friend" if interaction_count < 50 else "Best Friend"
+                )
             )
-            
+
             embed.add_field(
                 name="� Your Relationship with Astra",
                 value=f"**Level:** {relationship_level}\n**Interactions:** {interaction_count}\n**Last Mood:** {profile.modifiers.user_mood:.1f}/1.0\n**Channel Preference:** {profile.modifiers.channel_type.title()}",
                 inline=True,
             )
-            
+
             # System awareness - show AI client status
             ai_status = "🟢 Online" if self.ai_client.is_available() else "🔴 Offline"
-            ai_provider = self.ai_client.provider.value if hasattr(self.ai_client, 'provider') else "Unknown"
-            
+            ai_provider = (
+                self.ai_client.provider.value
+                if hasattr(self.ai_client, "provider")
+                else "Unknown"
+            )
+
             embed.add_field(
                 name="🤖 AI System Status",
                 value=f"**Status:** {ai_status}\n**Provider:** {ai_provider}\n**Active Users:** {len(self.user_profiles)}\n**Total Commands:** {len(self.bot.tree.get_commands())}",
@@ -1160,37 +1318,47 @@ class AstraAICompanion(commands.Cog):
     async def system_status_command(self, interaction: discord.Interaction):
         """Show comprehensive system status and diagnostics"""
         await interaction.response.defer()
-        
+
         try:
             # Gather system information
             start_time = time.perf_counter()
-            
+
             # Get bot commands count
             bot_commands = self.bot.tree.get_commands()
             total_slash_commands = len(bot_commands)
-            
+
             # Get loaded cogs and their commands
             loaded_cogs = list(self.bot.cogs.keys())
             cog_command_counts = {}
             for cog_name, cog in self.bot.cogs.items():
-                cog_commands = [cmd for cmd in bot_commands if hasattr(cmd, 'callback') and cmd.callback.__module__.endswith(cog_name.lower())]
+                cog_commands = [
+                    cmd
+                    for cmd in bot_commands
+                    if hasattr(cmd, "callback")
+                    and cmd.callback.__module__.endswith(cog_name.lower())
+                ]
                 cog_command_counts[cog_name] = len(cog_commands)
-            
+
             # AI Client status
             ai_client_available = self.ai_client.is_available()
-            ai_provider = self.ai_client.provider.value if hasattr(self.ai_client, 'provider') else "Unknown"
-            ai_model = getattr(self.ai_client, 'model', 'Unknown')
-            
+            ai_provider = (
+                self.ai_client.provider.value
+                if hasattr(self.ai_client, "provider")
+                else "Unknown"
+            )
+            ai_model = getattr(self.ai_client, "model", "Unknown")
+
             # Performance metrics
             avg_response_time = (
                 sum(self.response_times) / len(self.response_times)
                 if self.response_times
                 else 0
             )
-            
+
             # System performance
             try:
                 import psutil
+
                 cpu_percent = psutil.cpu_percent(interval=0.1)
                 memory = psutil.virtual_memory()
                 memory_percent = memory.percent
@@ -1199,27 +1367,27 @@ class AstraAICompanion(commands.Cog):
                 cpu_percent = 0.0
                 memory_percent = 0.0
                 system_metrics_available = False
-            
+
             # Database status
             try:
                 db_healthy = await self._check_database_health()
             except:
                 db_healthy = False
-            
+
             embed = discord.Embed(
                 title="�️ Astra System Status",
                 description="Comprehensive system diagnostics and performance metrics",
                 color=0x00FF00 if ai_client_available and db_healthy else 0xFFAA00,
                 timestamp=datetime.now(),
             )
-            
+
             # System Overview
             embed.add_field(
                 name="🤖 Bot System",
                 value=f"**Loaded Cogs:** {len(loaded_cogs)}\n**Total Commands:** {total_slash_commands}\n**Uptime:** {self._get_uptime()}\n**Latency:** {self.bot.latency*1000:.1f}ms",
                 inline=True,
             )
-            
+
             # AI System Status
             ai_status_icon = "🟢" if ai_client_available else "🔴"
             embed.add_field(
@@ -1227,7 +1395,7 @@ class AstraAICompanion(commands.Cog):
                 value=f"**Provider:** {ai_provider}\n**Model:** {ai_model}\n**Status:** {'Online' if ai_client_available else 'Offline'}\n**Avg Response:** {avg_response_time:.2f}s",
                 inline=True,
             )
-            
+
             # Database & Storage
             db_status_icon = "🟢" if db_healthy else "🔴"
             embed.add_field(
@@ -1235,61 +1403,78 @@ class AstraAICompanion(commands.Cog):
                 value=f"**Status:** {'Healthy' if db_healthy else 'Issues'}\n**Profiles:** {len(self.user_profiles)}\n**Contexts:** {len(self.conversation_contexts)}\n**Interactions:** {self.interaction_count:,}",
                 inline=True,
             )
-            
+
             # Performance Metrics
             perf_value = f"**Response Time:** {avg_response_time:.2f}s\n**Success Rate:** {self._calculate_success_rate():.1f}%"
             if system_metrics_available:
-                perf_value = f"**CPU Usage:** {cpu_percent:.1f}%\n**Memory:** {memory_percent:.1f}%\n" + perf_value
+                perf_value = (
+                    f"**CPU Usage:** {cpu_percent:.1f}%\n**Memory:** {memory_percent:.1f}%\n"
+                    + perf_value
+                )
             else:
                 perf_value = "**System Metrics:** Unavailable\n" + perf_value
-                
+
             embed.add_field(
                 name="⚡ Performance",
                 value=perf_value,
                 inline=True,
             )
-            
+
             # Top Cogs by Command Count
-            top_cogs = sorted(cog_command_counts.items(), key=lambda x: x[1], reverse=True)[:3]
-            cog_stats = "\n".join([f"**{cog}:** {count} commands" for cog, count in top_cogs])
+            top_cogs = sorted(
+                cog_command_counts.items(), key=lambda x: x[1], reverse=True
+            )[:3]
+            cog_stats = "\n".join(
+                [f"**{cog}:** {count} commands" for cog, count in top_cogs]
+            )
             embed.add_field(
                 name="📊 Top Cogs",
                 value=cog_stats if cog_stats else "No command data",
                 inline=True,
             )
-            
+
             # System Health Summary
             health_indicators = []
-            if ai_client_available: health_indicators.append("🟢 AI Online")
-            else: health_indicators.append("🔴 AI Offline")
-            
-            if db_healthy: health_indicators.append("🟢 DB Healthy")
-            else: health_indicators.append("🔴 DB Issues")
-            
-            if cpu_percent < 80: health_indicators.append("🟢 CPU Good")
-            else: health_indicators.append("🟡 CPU High")
-            
-            if memory_percent < 80: health_indicators.append("🟢 Memory Good")
-            else: health_indicators.append("🟡 Memory High")
-            
+            if ai_client_available:
+                health_indicators.append("🟢 AI Online")
+            else:
+                health_indicators.append("🔴 AI Offline")
+
+            if db_healthy:
+                health_indicators.append("🟢 DB Healthy")
+            else:
+                health_indicators.append("🔴 DB Issues")
+
+            if cpu_percent < 80:
+                health_indicators.append("🟢 CPU Good")
+            else:
+                health_indicators.append("🟡 CPU High")
+
+            if memory_percent < 80:
+                health_indicators.append("🟢 Memory Good")
+            else:
+                health_indicators.append("🟡 Memory High")
+
             embed.add_field(
                 name="🏥 Health Status",
                 value="\n".join(health_indicators),
                 inline=True,
             )
-            
+
             # Add footer with scan time
             scan_time = time.perf_counter() - start_time
-            embed.set_footer(text=f"System scan completed in {scan_time:.3f}s • Astra v2.0.0")
-            
+            embed.set_footer(
+                text=f"System scan completed in {scan_time:.3f}s • Astra v2.0.0"
+            )
+
             await interaction.followup.send(embed=embed)
-            
+
         except Exception as e:
             self.logger.error(f"Error in system_status command: {e}")
             error_embed = discord.Embed(
                 title="❌ System Status Error",
                 description=f"Unable to retrieve system status: {str(e)}",
-                color=0xFF0000
+                color=0xFF0000,
             )
             await interaction.followup.send(embed=error_embed)
 
@@ -1301,21 +1486,21 @@ class AstraAICompanion(commands.Cog):
             return True
         except:
             return False
-    
+
     def _get_uptime(self) -> str:
         """Get bot uptime in human readable format"""
         try:
             # Try to get uptime from bot if available
-            if hasattr(self.bot, 'start_time'):
+            if hasattr(self.bot, "start_time"):
                 uptime = datetime.now() - self.bot.start_time
             else:
                 # Fallback calculation
                 uptime = timedelta(seconds=0)
-            
+
             days = uptime.days
             hours, remainder = divmod(uptime.seconds, 3600)
             minutes, _ = divmod(remainder, 60)
-            
+
             if days > 0:
                 return f"{days}d {hours}h {minutes}m"
             elif hours > 0:
@@ -1324,17 +1509,20 @@ class AstraAICompanion(commands.Cog):
                 return f"{minutes}m"
         except:
             return "Unknown"
-    
+
     def _calculate_success_rate(self) -> float:
         """Calculate AI response success rate"""
         if self.interaction_count == 0:
             return 100.0
-        
+
         # Estimate success rate based on response times (if we have responses, they were successful)
         if len(self.response_times) > 0:
-            success_rate = (len(self.response_times) / max(self.interaction_count, len(self.response_times))) * 100
+            success_rate = (
+                len(self.response_times)
+                / max(self.interaction_count, len(self.response_times))
+            ) * 100
             return min(success_rate, 100.0)
-        
+
         return 95.0  # Default estimate
 
     @app_commands.command(
@@ -1344,36 +1532,41 @@ class AstraAICompanion(commands.Cog):
     async def commands_list_command(self, interaction: discord.Interaction):
         """Show comprehensive list of all bot commands"""
         await interaction.response.defer()
-        
+
         try:
             # Get all slash commands
             bot_commands = self.bot.tree.get_commands()
-            
+
             # Organize commands by cog
             cog_commands = {}
             uncategorized_commands = []
-            
+
             for cmd in bot_commands:
                 # Try to determine which cog the command belongs to
                 cog_name = "Unknown"
-                if hasattr(cmd, 'callback') and cmd.callback:
+                if hasattr(cmd, "callback") and cmd.callback:
                     callback_module = cmd.callback.__module__
-                    if 'cogs.' in callback_module:
-                        cog_name = callback_module.split('cogs.')[1].replace('_', ' ').title()
-                    
+                    if "cogs." in callback_module:
+                        cog_name = (
+                            callback_module.split("cogs.")[1].replace("_", " ").title()
+                        )
+
                     # Find the actual cog instance
                     for cog_key, cog_instance in self.bot.cogs.items():
-                        if callback_module.endswith(cog_key.lower()) or cog_key.lower() in callback_module:
+                        if (
+                            callback_module.endswith(cog_key.lower())
+                            or cog_key.lower() in callback_module
+                        ):
                             cog_name = cog_key
                             break
-                
+
                 if cog_name not in cog_commands:
                     cog_commands[cog_name] = []
-                
+
                 # Format command info
                 cmd_info = f"`/{cmd.name}` - {cmd.description[:50]}{'...' if len(cmd.description) > 50 else ''}"
                 cog_commands[cog_name].append(cmd_info)
-            
+
             # Create embed with command categories
             embed = discord.Embed(
                 title="📝 Astra Bot Commands",
@@ -1381,44 +1574,52 @@ class AstraAICompanion(commands.Cog):
                 color=0x7289DA,
                 timestamp=datetime.now(),
             )
-            
+
             # Add commands by cog (limit to prevent embed size issues)
             command_count = 0
             for cog_name, commands in sorted(cog_commands.items()):
                 if command_count >= 20:  # Discord embed field limit
-                    remaining_cogs = len(cog_commands) - len([c for c in cog_commands if c in [field.name for field in embed.fields]])
+                    remaining_cogs = len(cog_commands) - len(
+                        [
+                            c
+                            for c in cog_commands
+                            if c in [field.name for field in embed.fields]
+                        ]
+                    )
                     embed.add_field(
                         name="📋 Additional Commands",
                         value=f"**{remaining_cogs}** more command categories available.\nUse `/system_status` for detailed system info.",
-                        inline=False
+                        inline=False,
                     )
                     break
-                
+
                 if len(commands) > 0:
                     # Limit commands per cog to prevent oversized embeds
                     cmd_list = commands[:5]  # Show first 5 commands per cog
                     if len(commands) > 5:
                         cmd_list.append(f"... and {len(commands) - 5} more")
-                    
+
                     embed.add_field(
                         name=f"🔧 {cog_name} ({len(commands)})",
                         value="\n".join(cmd_list),
-                        inline=False
+                        inline=False,
                     )
                     command_count += 1
-            
+
             # Add summary footer
             total_cogs = len([cog for cog in self.bot.cogs.keys()])
-            embed.set_footer(text=f"Total: {len(bot_commands)} commands across {total_cogs} modules • Use /help for detailed command info")
-            
+            embed.set_footer(
+                text=f"Total: {len(bot_commands)} commands across {total_cogs} modules • Use /help for detailed command info"
+            )
+
             await interaction.followup.send(embed=embed)
-            
+
         except Exception as e:
             self.logger.error(f"Error in commands_list command: {e}")
             error_embed = discord.Embed(
                 title="❌ Commands List Error",
                 description=f"Unable to retrieve commands list: {str(e)}",
-                color=0xFF0000
+                color=0xFF0000,
             )
             await interaction.followup.send(embed=error_embed)
 
@@ -1435,88 +1636,96 @@ class AstraAICompanion(commands.Cog):
                 color=0x00FF00 if self.ai_client.is_available() else 0xFF0000,
                 timestamp=datetime.now(),
             )
-            
+
             # Basic AI Status
             status_icon = "🟢" if self.ai_client.is_available() else "🔴"
-            provider = self.ai_client.provider.value if hasattr(self.ai_client, 'provider') else "Unknown"
-            model = getattr(self.ai_client, 'model', 'Unknown')
-            
+            provider = (
+                self.ai_client.provider.value
+                if hasattr(self.ai_client, "provider")
+                else "Unknown"
+            )
+            model = getattr(self.ai_client, "model", "Unknown")
+
             embed.add_field(
                 name=f"{status_icon} Connection Status",
                 value=f"**Available:** {'Yes' if self.ai_client.is_available() else 'No'}\n**Provider:** {provider}\n**Model:** {model}",
                 inline=True,
             )
-            
+
             # AI Configuration
-            temperature = getattr(self.ai_client, 'temperature', 0.7)
-            max_tokens = getattr(self.ai_client, 'max_tokens', 2000)
-            
+            temperature = getattr(self.ai_client, "temperature", 0.7)
+            max_tokens = getattr(self.ai_client, "max_tokens", 2000)
+
             embed.add_field(
                 name="⚙️ Configuration",
                 value=f"**Temperature:** {temperature}\n**Max Tokens:** {max_tokens:,}\n**Context Messages:** {getattr(self.ai_client, 'max_context_messages', 8)}",
                 inline=True,
             )
-            
+
             # AI Features
             features = []
-            if getattr(self.ai_client, 'enable_emotional_intelligence', False):
+            if getattr(self.ai_client, "enable_emotional_intelligence", False):
                 features.append("🧠 Emotional Intelligence")
-            if getattr(self.ai_client, 'enable_topic_tracking', False):
+            if getattr(self.ai_client, "enable_topic_tracking", False):
                 features.append("📊 Topic Tracking")
-            if getattr(self.ai_client, 'enable_memory_system', False):
+            if getattr(self.ai_client, "enable_memory_system", False):
                 features.append("💾 Memory System")
-            
+
             embed.add_field(
                 name="✨ Features",
                 value="\n".join(features) if features else "Basic AI responses",
                 inline=True,
             )
-            
+
             # Performance Stats
-            total_contexts = len(getattr(self.ai_client, 'conversation_contexts', {}))
-            total_memories = len(getattr(self.ai_client, 'user_memories', {}))
-            
+            total_contexts = len(getattr(self.ai_client, "conversation_contexts", {}))
+            total_memories = len(getattr(self.ai_client, "user_memories", {}))
+
             embed.add_field(
                 name="📊 AI Performance",
                 value=f"**Active Contexts:** {total_contexts}\n**User Memories:** {total_memories}\n**Avg Response:** {sum(self.response_times) / len(self.response_times) if self.response_times else 0:.2f}s",
                 inline=True,
             )
-            
+
             # Provider-specific info
-            if hasattr(self.ai_client, 'config') and provider in self.ai_client.config:
+            if hasattr(self.ai_client, "config") and provider in self.ai_client.config:
                 config = self.ai_client.config[self.ai_client.provider]
                 embed.add_field(
                     name="🔗 Provider Details",
                     value=f"**Base URL:** {config.get('base_url', 'Unknown')}\n**Default Model:** {config.get('default_model', 'Unknown')}",
                     inline=True,
                 )
-            
+
             # Health Check
             try:
                 # Quick health check
                 health_check_start = time.perf_counter()
-                await self.ai_client.test_connection() if hasattr(self.ai_client, 'test_connection') else True
+                (
+                    await self.ai_client.test_connection()
+                    if hasattr(self.ai_client, "test_connection")
+                    else True
+                )
                 health_check_time = time.perf_counter() - health_check_start
                 health_status = f"🟢 Healthy ({health_check_time:.3f}s)"
             except:
                 health_status = "🔴 Connection Issues"
-            
+
             embed.add_field(
                 name="🏥 Health Check",
                 value=health_status,
                 inline=True,
             )
-            
+
             embed.set_footer(text="Astra AI Client • Real-time status")
-            
+
             await interaction.response.send_message(embed=embed, ephemeral=True)
-            
+
         except Exception as e:
             self.logger.error(f"Error in ai_status command: {e}")
             error_embed = discord.Embed(
                 title="❌ AI Status Error",
                 description=f"Unable to retrieve AI status: {str(e)}",
-                color=0xFF0000
+                color=0xFF0000,
             )
             await interaction.response.send_message(embed=error_embed, ephemeral=True)
 
@@ -1559,7 +1768,11 @@ class AstraAICompanion(commands.Cog):
 
         # AI Client Information
         ai_status = "🟢 Online" if self.ai_client.is_available() else "🔴 Offline"
-        ai_provider = self.ai_client.provider.value if hasattr(self.ai_client, 'provider') else "Unknown"
+        ai_provider = (
+            self.ai_client.provider.value
+            if hasattr(self.ai_client, "provider")
+            else "Unknown"
+        )
         embed.add_field(
             name="🤖 AI Client",
             value=f"**Status:** {ai_status}\n**Provider:** {ai_provider}",
@@ -1596,9 +1809,7 @@ class AstraAICompanion(commands.Cog):
 
             # Get personality and generate response - handle DM case
             guild_id = interaction.guild.id if interaction.guild else 0  # Use 0 for DMs
-            profile = await self.get_personality_profile(
-                interaction.user.id, guild_id
-            )
+            profile = await self.get_personality_profile(interaction.user.id, guild_id)
             context = await self._analyze_message_context(mock_message)
 
             response = await self.generate_astra_response(
@@ -1607,8 +1818,12 @@ class AstraAICompanion(commands.Cog):
 
             if response:
                 # Truncate for embed description (max 4000 chars to be safe)
-                truncated_response = response[:3900] + "\n\n*[Response truncated for embed]*" if len(response) > 3900 else response
-                
+                truncated_response = (
+                    response[:3900] + "\n\n*[Response truncated for embed]*"
+                    if len(response) > 3900
+                    else response
+                )
+
                 embed = discord.Embed(
                     title="💬 Astra",
                     description=truncated_response,
@@ -1635,33 +1850,35 @@ class AstraAICompanion(commands.Cog):
 
     @app_commands.command(
         name="test_personality",
-        description="🧪 Test current personality settings with a sample response"
+        description="🧪 Test current personality settings with a sample response",
     )
     async def test_personality_command(self, interaction: discord.Interaction):
         """Test the current personality settings with a sample response"""
         await interaction.response.defer()
-        
+
         user_id = interaction.user.id
         guild_id = interaction.guild.id if interaction.guild else 0  # Use 0 for DMs
-        
+
         try:
             # Get current personality profile
             profile = await self.get_personality_profile(user_id, guild_id)
             personality = profile.personality_dimensions
             dominant_traits = self._get_dominant_traits(personality)
-            
+
             # Show personality preview
             preview = self._create_behavior_preview(personality, dominant_traits)
-            
+
             embed = discord.Embed(
                 title="🌟 Personality Test Results",
                 description=f"**Current Dominant Traits:**\n{preview}",
-                color=0x7289DA
+                color=0x7289DA,
             )
-            
+
             # Generate actual test response with personality
-            test_message = "Tell me about space exploration and what excites you most about it!"
-            
+            test_message = (
+                "Tell me about space exploration and what excites you most about it!"
+            )
+
             # Create mock message for testing
             class MockMessage:
                 def __init__(self, content, author, guild, channel):
@@ -1673,81 +1890,92 @@ class AstraAICompanion(commands.Cog):
             mock_message = MockMessage(
                 test_message, interaction.user, interaction.guild, interaction.channel
             )
-            
+
             # Get context and generate response
             context = await self._analyze_message_context(mock_message)
-            ai_response = await self.generate_astra_response(mock_message, profile, context)
-            
-            embed.add_field(
-                name="📋 Test Question",
-                value=test_message,
-                inline=False
+            ai_response = await self.generate_astra_response(
+                mock_message, profile, context
             )
-            
+
+            embed.add_field(name="📋 Test Question", value=test_message, inline=False)
+
             embed.add_field(
                 name="🤖 Astra's Response (With Current Personality)",
                 value=ai_response[:1024] if ai_response else "No response generated",
-                inline=False
+                inline=False,
             )
-            
+
             embed.add_field(
                 name="💡 Tip",
                 value="Use `/companion` to adjust these settings and see immediate changes!",
-                inline=False
+                inline=False,
             )
-            
+
             await interaction.followup.send(embed=embed)
-            
+
         except Exception as e:
             self.logger.error(f"Error in personality test: {e}")
             await interaction.followup.send(f"❌ Error testing personality: {str(e)}")
 
     @app_commands.command(
         name="quick_personality",
-        description="⚡ Quickly adjust one personality trait and see immediate behavior change"
+        description="⚡ Quickly adjust one personality trait and see immediate behavior change",
     )
     @app_commands.describe(
         trait="The personality trait to adjust (analytical, empathetic, curious, creative, supportive, playful, assertive, adaptable)",
-        value="The new value for the trait (0.0 to 1.0)"
+        value="The new value for the trait (0.0 to 1.0)",
     )
-    async def quick_personality_adjustment(self, interaction: discord.Interaction, trait: str, value: float):
+    async def quick_personality_adjustment(
+        self, interaction: discord.Interaction, trait: str, value: float
+    ):
         """Quickly adjust one personality trait and see immediate behavior change"""
         await interaction.response.defer()
-        
+
         trait = trait.lower()
-        valid_traits = ['analytical', 'empathetic', 'curious', 'creative', 'supportive', 'playful', 'assertive', 'adaptable']
-        
+        valid_traits = [
+            "analytical",
+            "empathetic",
+            "curious",
+            "creative",
+            "supportive",
+            "playful",
+            "assertive",
+            "adaptable",
+        ]
+
         if trait not in valid_traits:
-            await interaction.followup.send(f"❌ Invalid trait. Choose from: {', '.join(valid_traits)}")
+            await interaction.followup.send(
+                f"❌ Invalid trait. Choose from: {', '.join(valid_traits)}"
+            )
             return
-            
+
         if not 0.0 <= value <= 1.0:
             await interaction.followup.send("❌ Value must be between 0.0 and 1.0")
             return
-            
+
         user_id = interaction.user.id
         guild_id = interaction.guild.id if interaction.guild else 0  # Use 0 for DMs
-        
+
         try:
             # Get and update personality profile
             profile = await self.get_personality_profile(user_id, guild_id)
             setattr(profile.personality_dimensions, trait, value)
-            
+
             # Save the updated profile
             self.user_profiles[user_id] = profile
-            
+
             # Show immediate behavior change
             behavior_change = self._explain_trait_behavior_change(trait, value)
-            
+
             embed = discord.Embed(
                 title=f"⚡ Quick Personality Update: {trait.title()}",
                 description=f"**New Value:** {value:.1f}\n**Behavior Change:** {behavior_change}",
-                color=0x00FF00
+                color=0x00FF00,
             )
-            
+
             # Generate a test response to show the change
             test_message = f"Give me a quick example of {trait} thinking!"
-            
+
             # Create mock message for testing
             class MockMessage:
                 def __init__(self, content, author, guild, channel):
@@ -1759,25 +1987,27 @@ class AstraAICompanion(commands.Cog):
             mock_message = MockMessage(
                 test_message, interaction.user, interaction.guild, interaction.channel
             )
-            
+
             # Get context and generate response with new personality
             context = await self._analyze_message_context(mock_message)
-            ai_response = await self.generate_astra_response(mock_message, profile, context)
-            
+            ai_response = await self.generate_astra_response(
+                mock_message, profile, context
+            )
+
             embed.add_field(
                 name="🧪 Immediate Test Response",
                 value=ai_response[:512] if ai_response else "No response generated",
-                inline=False
+                inline=False,
             )
-            
+
             embed.add_field(
                 name="💡 Tip",
                 value="The change is applied immediately! Try chatting with Astra to see the difference.",
-                inline=False
+                inline=False,
             )
-            
+
             await interaction.followup.send(embed=embed)
-            
+
         except Exception as e:
             self.logger.error(f"Error in quick personality adjustment: {e}")
             await interaction.followup.send(f"❌ Error adjusting personality: {str(e)}")

@@ -48,30 +48,37 @@ class GoogleGeminiClient:
 
                 # Get available models first to use the correct model name
                 available_models = self.get_available_models_sync()
-                logger.info(f"📋 Available Google Gemini models: {available_models[:3]}...")  # Show first 3
-                
+                logger.info(
+                    f"📋 Available Google Gemini models: {available_models[:3]}..."
+                )  # Show first 3
+
                 # Choose the best available model
                 preferred_models = [
                     "gemini-1.5-flash-latest",
-                    "gemini-1.5-flash", 
+                    "gemini-1.5-flash",
                     "gemini-1.5-pro",
                     "gemini-pro",
-                    "gemini-flash-latest"
+                    "gemini-flash-latest",
                 ]
-                
+
                 selected_model = None
                 for model in preferred_models:
-                    if model in available_models or f"models/{model}" in available_models:
-                        selected_model = model if model.startswith("models/") else f"models/{model}"
+                    if (
+                        model in available_models
+                        or f"models/{model}" in available_models
+                    ):
+                        selected_model = (
+                            model if model.startswith("models/") else f"models/{model}"
+                        )
                         break
-                
+
                 if not selected_model and available_models:
                     # Fallback to first available model
                     selected_model = available_models[0]
                     logger.info(f"🔄 Using fallback model: {selected_model}")
                 elif not selected_model:
                     raise Exception("No Gemini models available")
-                    
+
                 logger.info(f"✅ Selected Gemini model: {selected_model}")
 
                 # Initialize the model with safety settings
@@ -84,7 +91,7 @@ class GoogleGeminiClient:
                         HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
                     },
                 )
-                
+
                 # Store the selected model name for response metadata
                 self.model_name = selected_model
 
@@ -437,16 +444,18 @@ class GoogleGeminiClient:
             models = []
             for model in genai.list_models():
                 if "generateContent" in model.supported_generation_methods:
-                    models.append(model.name)  # Keep full model name with "models/" prefix
+                    models.append(
+                        model.name
+                    )  # Keep full model name with "models/" prefix
             return models
         except Exception as e:
             logger.warning(f"Could not fetch available models: {e}")
             # Return fallback models if API call fails
             return [
                 "models/gemini-1.5-flash-latest",
-                "models/gemini-1.5-flash", 
+                "models/gemini-1.5-flash",
                 "models/gemini-1.5-pro",
-                "models/gemini-pro"
+                "models/gemini-pro",
             ]
 
     def get_available_models(self) -> List[str]:
