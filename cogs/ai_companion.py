@@ -521,11 +521,11 @@ class AstraAICompanion(commands.Cog):
                     f"🚀 ULTRA-FAST response: {total_response_time:.3f}s (AI: {ai_response_time:.3f}s)"
                 )
             elif (
-                total_response_time > 1.5
-            ):  # Reduced threshold from 2.0s to 1.5s for better performance monitoring
-                self.logger.warning(f"⚠️ Slow response: {total_response_time:.3f}s")
+                total_response_time > 3.0
+            ):  # Increased threshold from 1.5s to 3.0s to reduce noise
+                self.logger.info(f"📈 Response time: {total_response_time:.3f}s")  # Changed from warning to info
             else:
-                self.logger.debug(f"⚡ Fast response: {total_response_time:.3f}s")
+                self.logger.debug(f"⚡ Good response: {total_response_time:.3f}s")
 
             response = (
                 ai_response.content
@@ -1707,154 +1707,135 @@ class AstraAICompanion(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
-        """Monitor messages for companion opportunities and natural admin commands"""
+        """Enhanced message monitoring for natural conversation and admin commands"""
         # Skip only bot messages, allow all user messages (including DMs)
         if message.author.bot:
             return
 
-        # Check for natural language admin commands first (before AI processing)
+        # Quick admin command check first (high priority)
         admin_handled = await self._process_natural_admin_commands(message)
         if admin_handled:
             return
 
-        # Check if bot is mentioned, if this is a DM, or if Astra's name is mentioned
+        # Enhanced natural conversation triggers (more responsive)
         bot_mentioned = self.bot.user.mentioned_in(message)
         is_dm = isinstance(message.channel, discord.DMChannel)
-        name_mentioned = any(
-            name.lower() in message.content.lower() for name in ["astra", "astrabot"]
-        )
-
-        # Enhanced trigger detection
         content_lower = message.content.lower()
-        question_patterns = [
-            "?",
-            "who are you",
-            "what are you",
-            "help me",
-            "can you help",
-        ]
-        greeting_patterns = ["hey", "hi", "hello", "what's up", "how are you"]
-
+        
+        # Direct name mentions (more flexible)
+        name_mentioned = any(
+            name in content_lower for name in ["astra", "bot", "@astra"]
+        )
+        
+        # Enhanced conversation patterns (more inclusive)
+        question_patterns = ["?", "how", "what", "why", "when", "where", "who", "help", "can you"]
+        greeting_patterns = ["hey", "hi", "hello", "good morning", "good evening", "thanks", "thank you"]
+        
         has_question = any(pattern in content_lower for pattern in question_patterns)
-        has_greeting = any(
-            content_lower.startswith(pattern) for pattern in greeting_patterns
+        has_greeting = any(pattern in content_lower for pattern in greeting_patterns)
+        
+        # Message length check for meaningful conversations
+        is_meaningful = len(message.content.strip()) > 3
+        
+        # Conversation context (check if replying to Astra)
+        is_reply_to_astra = (
+            message.reference and 
+            message.reference.message_id and 
+            hasattr(message.reference, 'resolved') and
+            message.reference.resolved and
+            message.reference.resolved.author == self.bot.user
         )
 
-        # Debug logging
-        self.logger.debug(f"Message from {message.author}: '{message.content[:50]}...'")
-        self.logger.debug(
-            f"Triggers - Mentioned: {bot_mentioned}, DM: {is_dm}, Name: {name_mentioned}, Question: {has_question}, Greeting: {has_greeting}"
+        # Enhanced trigger logic - more responsive to natural conversation
+        should_respond = (
+            bot_mentioned or 
+            is_dm or 
+            name_mentioned or 
+            is_reply_to_astra or
+            (is_meaningful and (has_question or has_greeting))
         )
 
-        # Respond to mentions, DMs, name mentions, questions, or greetings
-        if bot_mentioned or is_dm or name_mentioned or has_question or has_greeting:
+        # Respond with enhanced triggers
+        if should_respond:
             self.logger.info(
-                f"🤖 Astra responding to {message.author} in {message.guild.name if message.guild else 'DM'}"
+                f"💬 Natural conversation with {message.author.display_name} "
+                f"{'in DM' if is_dm else f'in {message.guild.name}'}"
             )
-            await self.handle_companion_interaction(message)
+            # Use asyncio.create_task for non-blocking response
+            asyncio.create_task(self.handle_companion_interaction(message))
 
     async def handle_companion_interaction(self, message: discord.Message):
-        """Handle companion interaction with Astra personality"""
+        """Enhanced companion interaction with optimized performance"""
         try:
             start_time = time.perf_counter()
-            self.logger.info(
-                f"🎯 Processing companion interaction from {message.author}"
-            )
+            
+            # Show typing indicator for better UX
+            async with message.channel.typing():
+                self.logger.debug(f"💬 Processing message from {message.author.display_name}")
 
-            # Get user personality profile
-            profile = await self.get_personality_profile(
-                message.author.id, message.guild.id if message.guild else 0
-            )
-            self.logger.debug(f"✅ Got personality profile for {message.author}")
-
-            # Enhanced context analysis
-            context = await self._analyze_message_context(message)
-            self.logger.debug(
-                f"✅ Analyzed message context: mood={context.get('user_mood', 'unknown')}"
-            )
-
-            # Update personality modifiers with enhanced data
-            profile.modifiers.user_mood = context["user_mood"]
-            profile.modifiers.conversation_tone = context["conversation_tone"]
-            profile.modifiers.time_of_day = context["time_of_day"]
-            profile.modifiers.channel_type = context["channel_type"]
-            profile.modifiers.interaction_history += 1
-
-            # Calculate current personality with enhanced context
-            current_personality = self.calculate_personality_vector(profile, context)
-            self.logger.debug(f"✅ Calculated personality vector")
-
-            # Generate response using enhanced Astra personality
-            self.logger.info(
-                f"🧠 Generating AI response for: '{message.content[:50]}...'"
-            )
-            response = await self.generate_astra_response(message, profile, context)
-
-            if response:
-                self.logger.info(f"✅ Generated response: '{response[:50]}...'")
-            else:
-                self.logger.warning(
-                    f"❌ No response generated for message from {message.author}"
+                # Get user personality profile (cached for performance)
+                profile = await self.get_personality_profile(
+                    message.author.id, message.guild.id if message.guild else 0
                 )
 
-            if response:
-                # Track conversation context
-                if message.author.id not in self.conversation_contexts:
-                    self.conversation_contexts[message.author.id] = []
+                # Quick context analysis (optimized)
+                context = await self._analyze_message_context(message)
 
-                self.conversation_contexts[message.author.id].append(
-                    {
-                        "message": message.content,
-                        "response": response,
-                        "personality": current_personality.to_dict(),
+                # Update personality with minimal processing
+                profile.modifiers.user_mood = context["user_mood"]
+                profile.modifiers.conversation_tone = context["conversation_tone"]
+                profile.modifiers.interaction_history += 1
+
+                # Generate response with enhanced Astra personality
+                response = await self.generate_astra_response(message, profile, context)
+
+                if response:
+                    # Enhanced conversation tracking (lightweight)
+                    if message.author.id not in self.conversation_contexts:
+                        self.conversation_contexts[message.author.id] = []
+
+                    # Store minimal conversation context (last 5 for performance)
+                    self.conversation_contexts[message.author.id].append({
+                        "message": message.content[:100],  # Truncated for memory efficiency
+                        "response": response[:100],
                         "timestamp": datetime.now().isoformat(),
-                    }
-                )
+                    })
+                    
+                    # Keep only last 5 interactions (reduced from 10 for better performance)
+                    if len(self.conversation_contexts[message.author.id]) > 5:
+                        self.conversation_contexts[message.author.id].pop(0)
 
-                # Keep only last 10 interactions
-                if len(self.conversation_contexts[message.author.id]) > 10:
-                    self.conversation_contexts[message.author.id].pop(0)
+                    # Smart response handling - prefer single message
+                    if len(response) > 1950:
+                        # Split only if absolutely necessary
+                        response_parts = await self.split_long_response(response)
+                        await message.reply(response_parts[0], mention_author=False)
+                        
+                        # Send remaining parts with minimal delay
+                        for part in response_parts[1:]:
+                            await asyncio.sleep(0.5)  # Reduced delay for faster delivery
+                            await message.channel.send(part)
+                    else:
+                        # Direct reply for optimal user experience
+                        await message.reply(response, mention_author=False)
 
-                # Handle long responses by splitting them
-                if len(response) > 1950:
-                    self.logger.info(
-                        f"📚 Splitting long response ({len(response)} chars) into multiple messages"
-                    )
-                    response_parts = await self.split_long_response(response)
-
-                    # Send first part as reply
-                    await message.reply(response_parts[0], mention_author=False)
-
-                    # Send remaining parts as follow-up messages
-                    for part in response_parts[1:]:
-                        await asyncio.sleep(0.5)  # Brief delay between parts
-                        await message.channel.send(part)
-
+                    # Performance logging (only for slow responses)
+                    total_time = time.perf_counter() - start_time
+                    if total_time > 2.0:  # Only log if slower than 2 seconds
+                        self.logger.info(f"⏱️ Response time: {total_time:.2f}s")
+                        
                 else:
-                    # Single response - use normal truncation if needed
-                    truncated_response = self.truncate_response(response)
-                    if len(response) != len(truncated_response):
-                        self.logger.warning(
-                            f"⚠️ Response truncated from {len(response)} to {len(truncated_response)} characters"
-                        )
-
-                    # Send response
-                    await message.reply(truncated_response, mention_author=False)
-
-                # Track performance
-                response_time = time.perf_counter() - start_time
-                self.response_times.append(response_time)
-                if len(self.response_times) > 100:
-                    self.response_times.pop(0)
-
-                self.interaction_count += 1
-
-                self.logger.info(f"Astra response sent in {response_time:.2f}s")
+                    # Fallback response for better UX
+                    fallback_responses = [
+                        "I'm here! Though my thoughts are a bit scattered right now. 🤖",
+                        "Hi there! Give me a moment to gather my digital thoughts! ✨",
+                        "Hey! I'm processing... sometimes my circuits need a quick refresh! 🔄"
+                    ]
+                    await message.reply(random.choice(fallback_responses), mention_author=False)
 
         except Exception as e:
             self.logger.error(f"❌ Error in companion interaction: {e}")
             import traceback
-
             self.logger.error(f"📋 Full traceback: {traceback.format_exc()}")
             await message.reply(
                 "I'm having a moment of confusion, but I'm here for you! 🤖",
@@ -2707,70 +2688,8 @@ class AstraAICompanion(commands.Cog):
 
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
-    @app_commands.command(
-        name="companion_chat",
-        description="💬 Have a direct conversation with Astra's companion system",
-    )
-    @app_commands.describe(message="What would you like to say to Astra?")
-    async def companion_chat_command(
-        self, interaction: discord.Interaction, message: str
-    ):
-        """Direct chat with Astra"""
-        await interaction.response.defer()
-
-        try:
-            # Create a mock message object for processing
-            class MockMessage:
-                def __init__(self, content, author, guild, channel):
-                    self.content = content
-                    self.author = author
-                    self.guild = guild
-                    self.channel = channel
-
-            mock_message = MockMessage(
-                message, interaction.user, interaction.guild, interaction.channel
-            )
-
-            # Get personality and generate response - handle DM case
-            guild_id = interaction.guild.id if interaction.guild else 0  # Use 0 for DMs
-            profile = await self.get_personality_profile(interaction.user.id, guild_id)
-            context = await self._analyze_message_context(mock_message)
-
-            response = await self.generate_astra_response(
-                mock_message, profile, context
-            )
-
-            if response:
-                # Truncate for embed description (max 4000 chars to be safe)
-                truncated_response = (
-                    response[:3900] + "\n\n*[Response truncated for embed]*"
-                    if len(response) > 3900
-                    else response
-                )
-
-                embed = discord.Embed(
-                    title="💬 Astra",
-                    description=truncated_response,
-                    color=0x7289DA,
-                    timestamp=datetime.now(),
-                )
-                embed.set_author(
-                    name=f"Replying to {interaction.user.display_name}",
-                    icon_url=interaction.user.display_avatar.url,
-                )
-                if len(response) > 3900:
-                    embed.set_footer(text=f"Full response: {len(response)} characters")
-                await interaction.followup.send(embed=embed)
-            else:
-                await interaction.followup.send(
-                    "I'm having some trouble right now, but I'm here for you! 🤖"
-                )
-
-        except Exception as e:
-            self.logger.error(f"Error in chat command: {e}")
-            await interaction.followup.send(
-                "Something went wrong, but I'm still here to help! 🤖"
-            )
+    # /companion_chat command removed - Focus on natural conversation!
+    # Users can now simply mention @Astra or talk naturally for better interaction
 
     @app_commands.command(
         name="test_personality",

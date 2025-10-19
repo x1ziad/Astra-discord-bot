@@ -1481,7 +1481,7 @@ class UniversalAIClient:
                                 "temperature", min(self.temperature, 0.7)
                             ),  # Lower temp for faster generation
                         ),
-                        timeout=2.5,  # 2.5 second timeout for better reliability while maintaining speed
+                        timeout=4.0,  # Increased timeout from 2.5s to 4.0s for better reliability
                     )
 
                     # Convert to AIResponse format
@@ -1521,8 +1521,8 @@ class UniversalAIClient:
 
                 except asyncio.TimeoutError:
                     self._performance_stats["timeout_fallbacks"] += 1
-                    logger.warning(
-                        f"⚡ Google Gemini timeout (>2.5s), using ultra-fast fallback (#{self._performance_stats['timeout_fallbacks']})"
+                    logger.info(
+                        f"🔄 Google Gemini timeout (>4.0s), using fallback (#{self._performance_stats['timeout_fallbacks']})"
                     )
                     # Use ultra-fast local fallback for immediate response
                     return self._get_ultra_fast_fallback_response(
