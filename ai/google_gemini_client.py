@@ -39,15 +39,44 @@ class GoogleGeminiClient:
         )
         self.available = GOOGLE_GENAI_AVAILABLE and bool(self.api_key)
         self.model = None
+        self.model_name = "models/gemini-1.5-flash"  # Default fallback
 
         if self.available:
             try:
                 # Configure the API key
                 genai.configure(api_key=self.api_key)
 
-                # Initialize the model with safety settings (using latest available model)
+                # Get available models first to use the correct model name
+                available_models = self.get_available_models_sync()
+                logger.info(f"📋 Available Google Gemini models: {available_models[:3]}...")  # Show first 3
+                
+                # Choose the best available model
+                preferred_models = [
+                    "gemini-1.5-flash-latest",
+                    "gemini-1.5-flash", 
+                    "gemini-1.5-pro",
+                    "gemini-pro",
+                    "gemini-flash-latest"
+                ]
+                
+                selected_model = None
+                for model in preferred_models:
+                    if model in available_models or f"models/{model}" in available_models:
+                        selected_model = model if model.startswith("models/") else f"models/{model}"
+                        break
+                
+                if not selected_model and available_models:
+                    # Fallback to first available model
+                    selected_model = available_models[0]
+                    logger.info(f"🔄 Using fallback model: {selected_model}")
+                elif not selected_model:
+                    raise Exception("No Gemini models available")
+                    
+                logger.info(f"✅ Selected Gemini model: {selected_model}")
+
+                # Initialize the model with safety settings
                 self.model = genai.GenerativeModel(
-                    model_name="models/gemini-1.5-flash",  # Updated to stable model name
+                    model_name=selected_model,
                     safety_settings={
                         HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
                         HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
@@ -55,21 +84,25 @@ class GoogleGeminiClient:
                         HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
                     },
                 )
+                
+                # Store the selected model name for response metadata
+                self.model_name = selected_model
 
                 logger.info("✅ Google Gemini client initialized successfully")
-                
+
                 # Test API connectivity with a simple request
                 try:
                     test_response = self.model.generate_content(
-                        "Hello", 
+                        "Hello",
                         generation_config=genai.types.GenerationConfig(
-                            max_output_tokens=10,
-                            temperature=0.1
-                        )
+                            max_output_tokens=10, temperature=0.1
+                        ),
                     )
                     logger.info("✅ Google Gemini API connectivity test passed")
                 except Exception as test_error:
-                    logger.warning(f"⚠️ Google Gemini API connectivity test failed: {test_error}")
+                    logger.warning(
+                        f"⚠️ Google Gemini API connectivity test failed: {test_error}"
+                    )
 
             except Exception as e:
                 logger.error(f"❌ Failed to initialize Google Gemini client: {e}")
@@ -129,6 +162,7 @@ class GoogleGeminiClient:
 
             # Generate response using the model with timeout
             try:
+
                 def generate_content_sync():
                     try:
                         return self.model.generate_content(
@@ -136,22 +170,30 @@ class GoogleGeminiClient:
                         )
                     except Exception as api_error:
                         # Log the actual API error details
-                        logger.error(f"🔍 Google Gemini API Exception: {type(api_error).__name__}: {str(api_error)}")
-                        if hasattr(api_error, 'code'):
+                        logger.error(
+                            f"🔍 Google Gemini API Exception: {type(api_error).__name__}: {str(api_error)}"
+                        )
+                        if hasattr(api_error, "code"):
                             logger.error(f"📋 Error Code: {api_error.code}")
-                        if hasattr(api_error, 'details'):
+                        if hasattr(api_error, "details"):
                             logger.error(f"📋 Error Details: {api_error.details}")
-                        if hasattr(api_error, 'reason'):
+                        if hasattr(api_error, "reason"):
                             logger.error(f"📋 Error Reason: {api_error.reason}")
                         raise api_error
-                
+
                 response = await asyncio.wait_for(
-                    asyncio.get_event_loop().run_in_executor(None, generate_content_sync),
+                    asyncio.get_event_loop().run_in_executor(
+                        None, generate_content_sync
+                    ),
                     timeout=10.0,  # Increased to 10 second timeout at the generation level
                 )
             except asyncio.TimeoutError:
-                logger.warning("⚡ Google Gemini generation timeout at client level (10s)")
-                raise Exception("Google Gemini request timed out after 10 seconds")  # More descriptive error
+                logger.warning(
+                    "⚡ Google Gemini generation timeout at client level (10s)"
+                )
+                raise Exception(
+                    "Google Gemini request timed out after 10 seconds"
+                )  # More descriptive error
 
             # Handle response based on candidates structure
             finish_reason_map = {
@@ -227,7 +269,7 @@ class GoogleGeminiClient:
                 if True:  # Always return response with content
                     result = {
                         "content": content,
-                        "model": "models/gemini-1.5-flash",
+                        "model": self.model_name,
                         "provider": "google",
                         "usage": usage_metadata,
                         "metadata": {
@@ -250,7 +292,7 @@ class GoogleGeminiClient:
             # Return a fallback response
             return {
                 "content": "I apologize, but I cannot provide a response to that request. Please try rephrasing your question.",
-                "model": "models/gemini-1.5-flash",
+                "model": self.model_name,
                 "provider": "google",
                 "usage": {
                     "prompt_tokens": 0,
@@ -275,7 +317,7 @@ class GoogleGeminiClient:
                 logger.warning(f"⚠️ Google Gemini quota exceeded: {error_str[:100]}...")
                 return {
                     "content": "I'm temporarily unable to process requests due to API quota limits. Please try again later or use an alternative AI provider.",
-                    "model": "models/gemini-1.5-flash",
+                    "model": self.model_name,
                     "provider": "google",
                     "usage": {
                         "prompt_tokens": 0,
@@ -387,6 +429,25 @@ class GoogleGeminiClient:
         except Exception as e:
             logger.error(f"❌ Google Gemini chat completion error: {e}")
             raise Exception(f"Google Gemini chat completion error: {str(e)}")
+
+    def get_available_models_sync(self) -> List[str]:
+        """Get list of available Gemini models synchronously (for initialization)"""
+        try:
+            # List available models
+            models = []
+            for model in genai.list_models():
+                if "generateContent" in model.supported_generation_methods:
+                    models.append(model.name)  # Keep full model name with "models/" prefix
+            return models
+        except Exception as e:
+            logger.warning(f"Could not fetch available models: {e}")
+            # Return fallback models if API call fails
+            return [
+                "models/gemini-1.5-flash-latest",
+                "models/gemini-1.5-flash", 
+                "models/gemini-1.5-pro",
+                "models/gemini-pro"
+            ]
 
     def get_available_models(self) -> List[str]:
         """Get list of available Gemini models"""
