@@ -56,6 +56,9 @@ class UserProfile:
     def __init__(self, user_id: int):
         self.user_id = user_id
         self.violations = []
+        self.trust_score = 50.0  # Default trust score (0-100)
+        self.is_trusted = True  # Default trusted status
+        self.is_quarantined = False  # Default not quarantined
 
 
 class ViolationRecord:

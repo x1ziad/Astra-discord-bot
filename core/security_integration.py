@@ -54,6 +54,40 @@ class SecuritySystemIntegration:
         except Exception as e:
             logger.error(f"❌ Failed to initialize security integration: {e}")
 
+    async def get_user_profile(self, user_id: int):
+        """
+        Get user security profile - bridge method for compatibility
+
+        This method ensures compatibility with security components that expect
+        a get_user_profile method on the SecuritySystemIntegration class.
+        """
+        try:
+            # Try to get profile from AI security system first
+            if self.ai_security and hasattr(self.ai_security, "get_user_profile"):
+                return await self.ai_security.get_user_profile(user_id)
+
+            # Fallback to manual security commands if available
+            if self.manual_commands and hasattr(
+                self.manual_commands, "get_user_profile"
+            ):
+                return await self.manual_commands.get_user_profile(user_id)
+
+            # Last resort: create a basic profile with minimal security info
+            from cogs.security_manager import UserProfile
+
+            profile = UserProfile(user_id)
+            profile.trust_score = 50  # Default neutral trust score
+            return profile
+
+        except Exception as e:
+            logger.error(f"Error getting user profile for {user_id}: {e}")
+            # Return minimal profile to prevent crashes
+            from cogs.security_manager import UserProfile
+
+            profile = UserProfile(user_id)
+            profile.trust_score = 50
+            return profile
+
     async def _connect_systems(self):
         """Connect autonomous AI security with manual commands"""
 

@@ -429,12 +429,14 @@ class AstraAICompanion(commands.Cog):
             ai_response_time = time.perf_counter() - start_ai_time
             total_response_time = time.perf_counter() - response_start_time
 
-            # 🚀 PERFORMANCE: Log ultra-fast responses
+            # 🚀 PERFORMANCE: Log ultra-fast responses and optimize thresholds
             if total_response_time < 0.5:
                 self.logger.debug(
                     f"🚀 ULTRA-FAST response: {total_response_time:.3f}s (AI: {ai_response_time:.3f}s)"
                 )
-            elif total_response_time > 2.0:
+            elif (
+                total_response_time > 1.5
+            ):  # Reduced threshold from 2.0s to 1.5s for better performance monitoring
                 self.logger.warning(f"⚠️ Slow response: {total_response_time:.3f}s")
             else:
                 self.logger.debug(f"⚡ Fast response: {total_response_time:.3f}s")
