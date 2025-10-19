@@ -145,10 +145,96 @@ class AstraAICompanion(commands.Cog):
         self.response_times = []
         self.interaction_count = 0
 
+        # Pre-compiled regex patterns for admin commands (performance optimization)
+        self._admin_patterns = self._compile_admin_patterns()
+
         # Background tasks
         self.personality_sync_task.start()
 
         self.logger.info("✅ Astra AI Companion initialized (Astra personality only)")
+
+    def _compile_admin_patterns(self):
+        """Pre-compile regex patterns for better performance"""
+        import re
+
+        patterns = {
+            # Delete/Remove patterns
+            "delete_message": re.compile(
+                r"(?:astra|bot)?,?\s*(?:delete|remove|clear)\s+(?:that\s+)?(?:message|msg|post)",
+                re.IGNORECASE,
+            ),
+            "bulk_delete": re.compile(
+                r"(?:astra|bot)?,?\s*(?:delete|remove|clear)\s+(?:the\s+)?(?:last|recent)\s+(?:\d+\s+)?(?:messages?|msgs?)",
+                re.IGNORECASE,
+            ),
+            "channel_cleanup": re.compile(
+                r"(?:astra|bot)?,?\s*(?:clean|clear)\s+(?:up\s+)?(?:here|this\s+channel)",
+                re.IGNORECASE,
+            ),
+            # Kick patterns
+            "kick_user": re.compile(
+                r"(?:astra|bot)?,?\s*(?:kick|remove)\s+@?(\w+)", re.IGNORECASE
+            ),
+            "kick_mentioned": re.compile(
+                r"(?:astra|bot)?,?\s*(?:kick|remove)\s+(?:that\s+)?(?:user|member|person)",
+                re.IGNORECASE,
+            ),
+            # Timeout/Mute patterns
+            "timeout_user": re.compile(
+                r"(?:astra|bot)?,?\s*(?:timeout|mute|silence)\s+@?(\w+)(?:\s+for\s+(\d+)\s*(minutes?|mins?|hours?|hrs?))?",
+                re.IGNORECASE,
+            ),
+            "timeout_mentioned": re.compile(
+                r"(?:astra|bot)?,?\s*(?:timeout|mute|silence)\s+(?:that\s+)?(?:user|member|person)(?:\s+for\s+(\d+)\s*(minutes?|mins?|hours?|hrs?))?",
+                re.IGNORECASE,
+            ),
+            # Ban patterns
+            "ban_user": re.compile(
+                r"(?:astra|bot)?,?\s*(?:ban|block)\s+@?(\w+)(?:\s+for\s+(.+))?",
+                re.IGNORECASE,
+            ),
+            "ban_mentioned": re.compile(
+                r"(?:astra|bot)?,?\s*(?:ban|block)\s+(?:that\s+)?(?:user|member|person)(?:\s+for\s+(.+))?",
+                re.IGNORECASE,
+            ),
+            # Role management patterns
+            "add_role": re.compile(
+                r"(?:astra|bot)?,?\s*(?:give|add|assign)\s+@?(\w+)\s+(?:the\s+)?(\w+)\s+role",
+                re.IGNORECASE,
+            ),
+            "remove_role": re.compile(
+                r"(?:astra|bot)?,?\s*(?:remove|take)\s+(?:the\s+)?(\w+)\s+role\s+from\s+@?(\w+)",
+                re.IGNORECASE,
+            ),
+            # Lock/Unlock patterns
+            "lock_channel": re.compile(
+                r"(?:astra|bot)?,?\s*(?:lock|disable)\s+(?:this\s+)?(?:channel|here)",
+                re.IGNORECASE,
+            ),
+            "unlock_channel": re.compile(
+                r"(?:astra|bot)?,?\s*(?:unlock|enable)\s+(?:this\s+)?(?:channel|here)",
+                re.IGNORECASE,
+            ),
+        }
+
+        # Map patterns to handlers
+        pattern_handlers = {
+            "delete_message": self._handle_delete_message,
+            "bulk_delete": self._handle_bulk_delete,
+            "channel_cleanup": self._handle_channel_cleanup,
+            "kick_user": self._handle_kick_user,
+            "kick_mentioned": self._handle_kick_mentioned,
+            "timeout_user": self._handle_timeout_user,
+            "timeout_mentioned": self._handle_timeout_mentioned,
+            "ban_user": self._handle_ban_user,
+            "ban_mentioned": self._handle_ban_mentioned,
+            "add_role": self._handle_add_role,
+            "remove_role": self._handle_remove_role,
+            "lock_channel": self._handle_lock_channel,
+            "unlock_channel": self._handle_unlock_channel,
+        }
+
+        return [(pattern, pattern_handlers[name]) for name, pattern in patterns.items()]
 
     def truncate_response(self, response: str, max_length: int = 1950) -> str:
         """Truncate response to fit Discord's character limit with graceful cutoff"""
@@ -874,44 +960,41 @@ class AstraAICompanion(commands.Cog):
             return 0.2
 
     async def _process_natural_admin_commands(self, message: discord.Message) -> bool:
-        """Process natural language administrative commands"""
+        """Process natural language administrative commands with optimized pattern matching"""
         if not message.guild:
             return False
 
-        # Check permissions first
+        # Quick permission check first
         if not message.author.guild_permissions.manage_messages:
             return False
 
         content = message.content.lower().strip()
 
-        # Natural admin command patterns
-        admin_patterns = {
-            # Delete/Remove patterns
-            r"(?:astra|bot)?,?\s*(?:delete|remove|clear)\s+(?:that\s+)?(?:message|msg|post)": self._handle_delete_message,
-            r"(?:astra|bot)?,?\s*(?:delete|remove|clear)\s+(?:the\s+)?(?:last|recent)\s+(?:\d+\s+)?(?:messages?|msgs?)": self._handle_bulk_delete,
-            r"(?:astra|bot)?,?\s*(?:clean|clear)\s+(?:up\s+)?(?:here|this\s+channel)": self._handle_channel_cleanup,
-            # Kick patterns
-            r"(?:astra|bot)?,?\s*(?:kick|remove)\s+@?(\w+)": self._handle_kick_user,
-            r"(?:astra|bot)?,?\s*(?:kick|remove)\s+(?:that\s+)?(?:user|member|person)": self._handle_kick_mentioned,
-            # Timeout/Mute patterns
-            r"(?:astra|bot)?,?\s*(?:timeout|mute|silence)\s+@?(\w+)(?:\s+for\s+(\d+)\s*(minutes?|mins?|hours?|hrs?))?": self._handle_timeout_user,
-            r"(?:astra|bot)?,?\s*(?:timeout|mute|silence)\s+(?:that\s+)?(?:user|member|person)(?:\s+for\s+(\d+)\s*(minutes?|mins?|hours?|hrs?))?": self._handle_timeout_mentioned,
-            # Ban patterns
-            r"(?:astra|bot)?,?\s*(?:ban|block)\s+@?(\w+)(?:\s+for\s+(.+))?": self._handle_ban_user,
-            r"(?:astra|bot)?,?\s*(?:ban|block)\s+(?:that\s+)?(?:user|member|person)(?:\s+for\s+(.+))?": self._handle_ban_mentioned,
-            # Role management patterns
-            r"(?:astra|bot)?,?\s*(?:give|add|assign)\s+@?(\w+)\s+(?:the\s+)?(\w+)\s+role": self._handle_add_role,
-            r"(?:astra|bot)?,?\s*(?:remove|take)\s+(?:the\s+)?(\w+)\s+role\s+from\s+@?(\w+)": self._handle_remove_role,
-            # Lock/Unlock patterns
-            r"(?:astra|bot)?,?\s*(?:lock|disable)\s+(?:this\s+)?(?:channel|here)": self._handle_lock_channel,
-            r"(?:astra|bot)?,?\s*(?:unlock|enable)\s+(?:this\s+)?(?:channel|here)": self._handle_unlock_channel,
-        }
+        # Early exit for obviously non-admin messages (performance optimization)
+        admin_keywords = [
+            "delete",
+            "remove",
+            "clear",
+            "kick",
+            "ban",
+            "timeout",
+            "mute",
+            "silence",
+            "give",
+            "add",
+            "assign",
+            "take",
+            "lock",
+            "unlock",
+            "disable",
+            "enable",
+        ]
+        if not any(keyword in content for keyword in admin_keywords):
+            return False
 
-        # Check if message matches any admin pattern
-        import re
-
-        for pattern, handler in admin_patterns.items():
-            match = re.search(pattern, content)
+        # Use pre-compiled patterns for better performance
+        for pattern, handler in self._admin_patterns:
+            match = pattern.search(content)
             if match:
                 try:
                     await handler(message, match)
@@ -926,40 +1009,82 @@ class AstraAICompanion(commands.Cog):
         return False
 
     async def _handle_delete_message(self, message: discord.Message, match):
-        """Handle natural delete message commands"""
+        """Handle natural delete message commands with enhanced safety checks"""
         # Get the message to delete (previous message or referenced message)
         target_message = None
 
+        # First try to get referenced message
         if message.reference and message.reference.message_id:
             try:
                 target_message = await message.channel.fetch_message(
                     message.reference.message_id
                 )
-            except:
+            except discord.NotFound:
                 pass
+            except discord.Forbidden:
+                await message.channel.send(
+                    "❌ I don't have permission to access that message."
+                )
+                return
 
         if not target_message:
-            # Get the message before this one
-            async for msg in message.channel.history(limit=2):
+            # Get the message before this one (skip bot messages)
+            async for msg in message.channel.history(limit=10):
                 if msg.id != message.id and not msg.author.bot:
                     target_message = msg
                     break
 
-        if target_message and target_message.author != message.author:
+        if not target_message:
+            await message.channel.send("❌ No message found to delete.")
+            return
+
+        # Enhanced permission checking
+        if target_message.author != message.author:
             if not message.author.guild_permissions.manage_messages:
                 await message.channel.send(
                     "❌ You need manage messages permission to delete other users' messages."
                 )
                 return
 
-        if target_message:
+            # Additional safety: can't delete messages from users with higher roles
+            if (
+                target_message.author.top_role >= message.author.top_role
+                and message.author != message.guild.owner
+            ):
+                await message.channel.send(
+                    "❌ You cannot delete messages from users with equal or higher roles."
+                )
+                return
+
+        try:
             await target_message.delete()
             confirmation = await message.channel.send("✅ Message deleted!")
+
+            # Log the action
+            await self._log_admin_action(
+                "delete_message",
+                message.author,
+                f"Message by {target_message.author}",
+                {"channel": str(message.channel)},
+            )
+
+            # Auto-cleanup
             await asyncio.sleep(3)
-            await confirmation.delete()
-            await message.delete()
-        else:
-            await message.channel.send("❌ No message found to delete.")
+            try:
+                await confirmation.delete()
+                await message.delete()
+            except:
+                pass  # Ignore cleanup errors
+
+        except discord.Forbidden:
+            await message.channel.send(
+                "❌ I don't have permission to delete that message."
+            )
+        except discord.NotFound:
+            await message.channel.send("❌ Message has already been deleted.")
+        except Exception as e:
+            await message.channel.send(f"❌ Error deleting message: {str(e)}")
+            self.logger.error(f"Error in delete message handler: {e}")
 
     async def _handle_bulk_delete(self, message: discord.Message, match):
         """Handle bulk delete commands"""
@@ -969,21 +1094,57 @@ class AstraAICompanion(commands.Cog):
             )
             return
 
-        # Extract number from message (default 5)
+        # Extract number from message (default 5, max 100)
         import re
 
         numbers = re.findall(r"\d+", message.content)
         count = int(numbers[0]) if numbers else 5
-        count = min(count, 100)  # Discord limit
+        count = min(max(count, 1), 100)  # Clamp between 1 and 100
 
-        deleted = await message.channel.purge(
-            limit=count + 1
-        )  # +1 for the command message
-        confirmation = await message.channel.send(
-            f"✅ Deleted {len(deleted)-1} messages!"
-        )
-        await asyncio.sleep(3)
-        await confirmation.delete()
+        try:
+            # More efficient bulk delete with better error handling
+            deleted = await message.channel.purge(
+                limit=count + 1,  # +1 for the command message
+                check=lambda m: m.created_at
+                > (discord.utils.utcnow() - timedelta(days=14)),  # Discord 14-day limit
+            )
+
+            actual_deleted = len(deleted) - 1  # Subtract command message
+            confirmation = await message.channel.send(
+                f"✅ Deleted {actual_deleted} message{'s' if actual_deleted != 1 else ''}!"
+            )
+
+            # Log the action
+            await self._log_admin_action(
+                "bulk_delete",
+                message.author,
+                f"{actual_deleted} messages",
+                {"channel": str(message.channel), "requested_count": count},
+            )
+
+            # Auto-cleanup
+            await asyncio.sleep(5)
+            try:
+                await confirmation.delete()
+            except:
+                pass
+
+        except discord.Forbidden:
+            await message.channel.send(
+                "❌ I don't have permission to delete messages in this channel."
+            )
+        except discord.HTTPException as e:
+            if "You can only bulk delete messages that are under 14 days old" in str(e):
+                await message.channel.send(
+                    "❌ Can only bulk delete messages under 14 days old. Try a smaller number."
+                )
+            else:
+                await message.channel.send(f"❌ Error during bulk delete: {str(e)}")
+        except Exception as e:
+            await message.channel.send(
+                f"❌ Unexpected error during bulk delete: {str(e)}"
+            )
+            self.logger.error(f"Error in bulk delete handler: {e}")
 
     async def _handle_channel_cleanup(self, message: discord.Message, match):
         """Handle channel cleanup commands"""
@@ -1076,37 +1237,82 @@ class AstraAICompanion(commands.Cog):
             await message.channel.send("❌ I don't have permission to kick this user.")
 
     async def _handle_timeout_user(self, message: discord.Message, match):
-        """Handle timeout user commands"""
+        """Handle timeout user commands with enhanced validation and error handling"""
         if not message.author.guild_permissions.moderate_members:
             await message.channel.send("❌ You need moderate members permission.")
             return
 
         groups = match.groups()
         username = groups[0] if groups else None
-        duration_num = int(groups[1]) if len(groups) > 1 and groups[1] else 10
-        duration_unit = groups[2] if len(groups) > 2 and groups[2] else "minutes"
 
-        # Convert to minutes
-        if "hour" in duration_unit:
-            duration_minutes = duration_num * 60
-        else:
-            duration_minutes = duration_num
+        # Enhanced duration parsing with validation
+        try:
+            duration_num = int(groups[1]) if len(groups) > 1 and groups[1] else 10
+            duration_unit = groups[2] if len(groups) > 2 and groups[2] else "minutes"
 
-        # Find member
-        member = None
-        for m in message.guild.members:
-            if username and username.lower() in [
-                m.name.lower(),
-                m.display_name.lower(),
-                str(m.id),
-            ]:
-                member = m
-                break
+            # Validate duration limits (Discord max: 28 days)
+            if "hour" in duration_unit:
+                duration_minutes = duration_num * 60
+                max_hours = 28 * 24  # 28 days in hours
+                if duration_num > max_hours:
+                    await message.channel.send(
+                        f"❌ Maximum timeout duration is {max_hours} hours (28 days)."
+                    )
+                    return
+            elif "day" in duration_unit:
+                duration_minutes = duration_num * 60 * 24
+                if duration_num > 28:
+                    await message.channel.send(
+                        "❌ Maximum timeout duration is 28 days."
+                    )
+                    return
+            else:  # minutes
+                duration_minutes = duration_num
+                if duration_minutes > 28 * 24 * 60:  # 28 days in minutes
+                    await message.channel.send(
+                        "❌ Maximum timeout duration is 28 days."
+                    )
+                    return
 
-        if not member:
-            await message.channel.send(f"❌ Could not find user '{username}'.")
+            # Minimum timeout validation
+            if duration_minutes < 1:
+                await message.channel.send("❌ Minimum timeout duration is 1 minute.")
+                return
+
+        except ValueError:
+            await message.channel.send(
+                "❌ Invalid duration format. Please use a valid number."
+            )
             return
 
+        # Enhanced member search with better error handling
+        member = None
+        if username:
+            # Try exact username match first
+            member = discord.utils.get(message.guild.members, name=username)
+
+            # Try display name match
+            if not member:
+                member = discord.utils.get(message.guild.members, display_name=username)
+
+            # Try case-insensitive search
+            if not member:
+                for m in message.guild.members:
+                    if username.lower() in [
+                        m.name.lower(),
+                        m.display_name.lower(),
+                        str(m.id),
+                    ]:
+                        member = m
+                        break
+
+        if not member:
+            await message.channel.send(
+                f"❌ Could not find user '{username}'. Please check the username."
+            )
+            return
+
+        # Enhanced role hierarchy check
         if (
             member.top_role >= message.author.top_role
             and message.author != message.guild.owner
@@ -1116,26 +1322,48 @@ class AstraAICompanion(commands.Cog):
             )
             return
 
+        # Check if user is bot owner or has admin
+        if (
+            member.guild_permissions.administrator
+            and message.author != message.guild.owner
+        ):
+            await message.channel.send("❌ Cannot timeout administrators.")
+            return
+
         try:
             timeout_until = datetime.now(timezone.utc) + timedelta(
                 minutes=duration_minutes
             )
             await member.timeout(
-                timeout_until, reason=f"Natural language command by {message.author}"
+                timeout_until,
+                reason=f"Natural language command by {message.author} ({message.author.id})",
             )
+
             await message.channel.send(
                 f"✅ Timed out {member.mention} for {duration_num} {duration_unit}"
             )
+
+            # Log the action with more details
             await self._log_admin_action(
                 "timeout",
                 message.author,
                 str(member),
-                {"duration": f"{duration_num} {duration_unit}"},
+                {
+                    "duration": f"{duration_num} {duration_unit}",
+                    "duration_minutes": duration_minutes,
+                    "timeout_until": timeout_until.isoformat(),
+                },
             )
+
         except discord.Forbidden:
             await message.channel.send(
                 "❌ I don't have permission to timeout this user."
             )
+        except discord.HTTPException as e:
+            await message.channel.send(f"❌ Failed to timeout user: {str(e)}")
+        except Exception as e:
+            await message.channel.send(f"❌ Unexpected error during timeout: {str(e)}")
+            self.logger.error(f"Error in timeout handler: {e}")
 
     async def _handle_timeout_mentioned(self, message: discord.Message, match):
         """Handle timeout mentioned user commands"""
@@ -1185,7 +1413,7 @@ class AstraAICompanion(commands.Cog):
             )
 
     async def _handle_ban_user(self, message: discord.Message, match):
-        """Handle ban user commands"""
+        """Handle ban user commands with enhanced validation and safety checks"""
         if not message.author.guild_permissions.ban_members:
             await message.channel.send("❌ You need ban members permission.")
             return
@@ -1198,21 +1426,38 @@ class AstraAICompanion(commands.Cog):
             else "Natural language ban command"
         )
 
-        # Find member
+        # Validate reason length (Discord limit is 512 characters)
+        if len(reason) > 500:
+            reason = reason[:500] + "..."
+
+        # Enhanced member search
         member = None
-        for m in message.guild.members:
-            if username and username.lower() in [
-                m.name.lower(),
-                m.display_name.lower(),
-                str(m.id),
-            ]:
-                member = m
-                break
+        if username:
+            # Try exact username match first
+            member = discord.utils.get(message.guild.members, name=username)
+
+            # Try display name match
+            if not member:
+                member = discord.utils.get(message.guild.members, display_name=username)
+
+            # Try case-insensitive search
+            if not member:
+                for m in message.guild.members:
+                    if username.lower() in [
+                        m.name.lower(),
+                        m.display_name.lower(),
+                        str(m.id),
+                    ]:
+                        member = m
+                        break
 
         if not member:
-            await message.channel.send(f"❌ Could not find user '{username}'.")
+            await message.channel.send(
+                f"❌ Could not find user '{username}'. Please check the username."
+            )
             return
 
+        # Enhanced role hierarchy and safety checks
         if (
             member.top_role >= message.author.top_role
             and message.author != message.guild.owner
@@ -1222,14 +1467,52 @@ class AstraAICompanion(commands.Cog):
             )
             return
 
-        try:
-            await member.ban(reason=f"{reason} - Command by {message.author}")
-            await message.channel.send(f"✅ Banned {member.mention} ({member.name})")
-            await self._log_admin_action(
-                "ban", message.author, str(member), {"reason": reason}
+        # Prevent banning server owner
+        if member == message.guild.owner:
+            await message.channel.send("❌ Cannot ban the server owner.")
+            return
+
+        # Check if user is administrator
+        if (
+            member.guild_permissions.administrator
+            and message.author != message.guild.owner
+        ):
+            await message.channel.send(
+                "❌ Cannot ban administrators unless you're the server owner."
             )
+            return
+
+        # Prevent self-ban
+        if member == message.author:
+            await message.channel.send("❌ You cannot ban yourself.")
+            return
+
+        # Confirmation for serious action
+        try:
+            await member.ban(
+                reason=f"{reason} - Command by {message.author} ({message.author.id})",
+                delete_message_days=1,  # Delete 1 day of messages
+            )
+
+            await message.channel.send(
+                f"✅ Banned {member.mention} ({member.name})\n📝 Reason: {reason}"
+            )
+
+            # Enhanced logging
+            await self._log_admin_action(
+                "ban",
+                message.author,
+                str(member),
+                {"reason": reason, "user_id": member.id, "deleted_message_days": 1},
+            )
+
         except discord.Forbidden:
             await message.channel.send("❌ I don't have permission to ban this user.")
+        except discord.HTTPException as e:
+            await message.channel.send(f"❌ Failed to ban user: {str(e)}")
+        except Exception as e:
+            await message.channel.send(f"❌ Unexpected error during ban: {str(e)}")
+            self.logger.error(f"Error in ban handler: {e}")
 
     async def _handle_ban_mentioned(self, message: discord.Message, match):
         """Handle ban mentioned user commands"""
