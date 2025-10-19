@@ -468,40 +468,91 @@ class AstraAICompanion(commands.Cog):
                 )
                 dominant_traits = self._get_dominant_traits(current_personality)
 
-            # 🚀 OPTIMIZED: Streamlined user profile for maximum AI performance
+            # 🚀 ENHANCED: Advanced user profile with conversation context
             user_profile_data = {
                 "name": message.author.display_name,
                 "personality_traits": dominant_traits[:3],
                 "dominant_emotion": context.get("sentiment", "neutral"),
                 "channel_context": context.get("channel_type", "general"),
-                "interaction_count": min(
-                    profile.modifiers.interaction_history, 1000
-                ),  # Cap for performance
+                "interaction_count": min(profile.modifiers.interaction_history, 1000),
                 "current_mood": context.get("user_mood", 0.5),
-                "astra_context": "Astra AI with dynamic personality",
-                "performance_mode": "ultra_fast",
+                "conversation_tone": context.get("conversation_tone", "friendly"),
+                "time_context": context.get("time_of_day", "general"),
+                "conversation_flow": context.get("conversation_flow", "new"),
+                "user_engagement": context.get("user_engagement", 0.5),
+                "recent_topics": context.get("recent_topics", []),
+                "astra_context": "Astra AI - Intelligent, adaptive companion with dynamic personality",
+                "performance_mode": "conversation_optimized",
+                "response_style": self._get_response_style_from_personality(
+                    current_personality
+                ),
             }
 
-            # 🚀 PERFORMANCE: Optimized temperature calculation
-            temperature = min(0.6 + (current_personality.creative * 0.3), 0.9)
+            # 🚀 ENHANCED: Dynamic temperature based on conversation context
+            has_question = "?" in message.content or any(
+                q in message.content.lower()
+                for q in ["how", "what", "why", "when", "where", "who"]
+            )
+            base_temperature = 0.6 + (current_personality.creative * 0.3)
+            conversation_factor = (
+                0.1 if has_question else 0.05
+            )  # More creative for questions
+            mood_factor = context.get("user_mood", 0.5) * 0.1
+            temperature = min(base_temperature + conversation_factor + mood_factor, 0.9)
 
             self.logger.debug(
-                f"🎯 Ultra-fast AI call with temperature={temperature:.2f}"
+                f"🎯 Enhanced AI call with temperature={temperature:.2f}, style={user_profile_data['response_style']}"
             )
 
-            # 🚀 MAXIMUM PERFORMANCE: Streamlined AI response generation
-            start_ai_time = time.perf_counter()
-
-            # Skip complex personality configuration for speed - use direct message enhancement
+            # 🚀 ENHANCED: Advanced message processing with conversation context
             enhanced_message = message.content
 
-            # Add personality context only for complex interactions
-            if len(message.content) > 50 or any(
-                trait in ["analytical", "creative"] for trait in dominant_traits[:2]
-            ):
-                personality_hint = f"[Respond as Astra with {', '.join(dominant_traits[:2])} personality]"
-                enhanced_message = f"{personality_hint} {message.content}"
+            # Get enhanced conversation context for better responses
+            enhanced_context = await self._get_enhanced_conversation_context(
+                message.author.id, message.channel.id
+            )
 
+            # Update context with enhanced conversation data
+            context.update(
+                {
+                    "conversation_flow": enhanced_context["conversation_flow"],
+                    "user_engagement": enhanced_context["user_engagement"],
+                    "recent_topics": enhanced_context["recent_topics"],
+                }
+            )
+
+            # Enhanced personality integration based on message type and context
+            message_type = self._analyze_message_type(message.content)
+            personality_prompt = self._create_enhanced_personality_prompt(
+                dominant_traits, current_personality, message_type, context
+            )
+
+            # Smart message enhancement based on complexity, type, and conversation flow
+            if (
+                len(message.content) > 30
+                or message_type in ["question", "complex", "emotional"]
+                or any(
+                    trait in ["analytical", "creative", "empathetic"]
+                    for trait in dominant_traits[:3]
+                )
+            ):
+
+                enhanced_message = f"{personality_prompt}\n\nUser: {message.content}"
+
+                # Add conversation context for established conversations
+                if enhanced_context["conversation_flow"] in [
+                    "developing",
+                    "established",
+                ]:
+                    context_summary = enhanced_context["context_summary"]
+                    enhanced_message = f"{personality_prompt}\n\n{context_summary}\n\nUser: {message.content}"
+
+            # Adaptive token allocation based on message complexity
+            max_tokens = self._calculate_optimal_tokens(
+                message.content, message_type, context
+            )
+
+            start_ai_time = time.perf_counter()
             ai_response = await self.ai_client.generate_response(
                 enhanced_message,
                 user_id=message.author.id,
@@ -509,7 +560,7 @@ class AstraAICompanion(commands.Cog):
                 channel_id=message.channel.id,
                 user_profile=user_profile_data,
                 temperature=temperature,
-                max_tokens=500,  # Optimize for faster responses
+                max_tokens=max_tokens,
             )
 
             ai_response_time = time.perf_counter() - start_ai_time
@@ -523,7 +574,9 @@ class AstraAICompanion(commands.Cog):
             elif (
                 total_response_time > 3.0
             ):  # Increased threshold from 1.5s to 3.0s to reduce noise
-                self.logger.info(f"📈 Response time: {total_response_time:.3f}s")  # Changed from warning to info
+                self.logger.info(
+                    f"📈 Response time: {total_response_time:.3f}s"
+                )  # Changed from warning to info
             else:
                 self.logger.debug(f"⚡ Good response: {total_response_time:.3f}s")
 
@@ -958,6 +1011,211 @@ class AstraAICompanion(commands.Cog):
         # Night: quieter and more supportive
         else:
             return 0.2
+
+    def _analyze_message_type(self, content: str) -> str:
+        """Analyze message type for enhanced response generation"""
+        content_lower = content.lower()
+
+        # Question types
+        if "?" in content or any(
+            q in content_lower for q in ["how", "what", "why", "when", "where", "who"]
+        ):
+            return "question"
+
+        # Emotional content
+        emotional_indicators = [
+            "feel",
+            "emotion",
+            "sad",
+            "happy",
+            "angry",
+            "excited",
+            "worried",
+            "stressed",
+        ]
+        if any(word in content_lower for word in emotional_indicators):
+            return "emotional"
+
+        # Complex/analytical content
+        if len(content) > 100 or any(
+            word in content_lower
+            for word in ["analyze", "explain", "details", "complex", "system"]
+        ):
+            return "complex"
+
+        # Greeting/social
+        if any(
+            word in content_lower
+            for word in ["hi", "hello", "hey", "thanks", "thank you", "goodbye"]
+        ):
+            return "social"
+
+        # Default
+        return "general"
+
+    def _create_enhanced_personality_prompt(
+        self,
+        dominant_traits: List[str],
+        personality: PersonalityDimensions,
+        message_type: str,
+        context: Dict[str, Any],
+    ) -> str:
+        """Create an enhanced personality prompt based on conversation context"""
+
+        # Base personality description
+        trait_descriptions = {
+            "analytical": "thoughtful and detail-oriented, providing logical explanations",
+            "empathetic": "caring and emotionally aware, understanding user feelings",
+            "creative": "imaginative and innovative, offering unique perspectives",
+            "playful": "witty and humorous, using jokes and light-hearted responses",
+            "supportive": "encouraging and helpful, always ready to assist",
+            "curious": "inquisitive and engaging, asking follow-up questions",
+            "assertive": "confident and direct, providing clear answers",
+            "adaptable": "flexible and responsive, adjusting to user needs",
+        }
+
+        # Build personality description
+        personality_desc = []
+        for trait in dominant_traits[:3]:  # Use top 3 traits
+            if trait in trait_descriptions:
+                personality_desc.append(trait_descriptions[trait])
+
+        personality_str = ", ".join(personality_desc)
+
+        # Message type specific instructions
+        type_instructions = {
+            "question": "Focus on providing clear, helpful answers with explanations",
+            "emotional": "Be especially empathetic and supportive, acknowledge feelings",
+            "complex": "Provide detailed, well-structured responses with examples",
+            "social": "Be warm and conversational, match the user's social energy",
+            "general": "Respond naturally and appropriately to the context",
+        }
+
+        instruction = type_instructions.get(message_type, type_instructions["general"])
+
+        # Context awareness
+        mood = context.get("user_mood", 0.5)
+        mood_desc = "cheerful" if mood > 0.7 else "neutral" if mood > 0.3 else "gentle"
+
+        return (
+            f"You are Astra, an AI companion who is {personality_str}. "
+            f"The user seems {mood_desc} today. {instruction}. "
+            f"Respond as Astra with your authentic personality, keeping responses "
+            f"conversational and engaging while being helpful."
+        )
+
+    def _calculate_optimal_tokens(
+        self, content: str, message_type: str, context: Dict[str, Any]
+    ) -> int:
+        """Calculate optimal token allocation based on message complexity"""
+        base_tokens = 400
+
+        # Adjust based on message type
+        type_multipliers = {
+            "question": 1.3,  # More detailed answers
+            "complex": 1.5,  # Comprehensive responses
+            "emotional": 1.2,  # Thoughtful, supportive responses
+            "social": 0.8,  # Shorter, conversational responses
+            "general": 1.0,  # Standard length
+        }
+
+        # Adjust based on content length
+        if len(content) > 200:
+            length_multiplier = 1.4
+        elif len(content) > 100:
+            length_multiplier = 1.2
+        elif len(content) < 30:
+            length_multiplier = 0.8
+        else:
+            length_multiplier = 1.0
+
+        # Calculate final token count
+        optimal_tokens = int(
+            base_tokens * type_multipliers.get(message_type, 1.0) * length_multiplier
+        )
+
+        # Ensure reasonable bounds
+        return max(200, min(optimal_tokens, 800))
+
+    async def _get_enhanced_conversation_context(
+        self, user_id: int, channel_id: int
+    ) -> Dict[str, Any]:
+        """Get enhanced conversation context with recent message analysis"""
+        try:
+            # Get recent messages from conversation history
+            conversation_history = self.conversation_manager.get_conversation_history(
+                user_id, channel_id, limit=5
+            )
+
+            if not conversation_history:
+                return {
+                    "recent_topics": [],
+                    "conversation_flow": "new",
+                    "user_engagement": 0.5,
+                    "context_summary": "Starting new conversation",
+                }
+
+            # Analyze recent topics
+            recent_topics = []
+            user_messages = [
+                msg for msg in conversation_history if msg.get("role") == "user"
+            ]
+
+            for msg in user_messages[-3:]:  # Last 3 user messages
+                content = msg.get("content", "").lower()
+                if len(content) > 10:  # Ignore very short messages
+                    # Extract potential topics (simple keyword extraction)
+                    words = content.split()
+                    meaningful_words = [w for w in words if len(w) > 3 and w.isalpha()]
+                    recent_topics.extend(
+                        meaningful_words[:3]
+                    )  # Take up to 3 words per message
+
+            # Determine conversation flow
+            if len(conversation_history) < 3:
+                conversation_flow = "beginning"
+            elif len(conversation_history) < 10:
+                conversation_flow = "developing"
+            else:
+                conversation_flow = "established"
+
+            # Calculate user engagement based on message length and frequency
+            if user_messages:
+                avg_length = sum(
+                    len(msg.get("content", "")) for msg in user_messages
+                ) / len(user_messages)
+                engagement = min(1.0, avg_length / 100)  # Normalize to 0-1 scale
+            else:
+                engagement = 0.5
+
+            # Create context summary
+            unique_topics = list(set(recent_topics))[
+                :5
+            ]  # Remove duplicates, keep top 5
+            topic_str = (
+                ", ".join(unique_topics) if unique_topics else "general conversation"
+            )
+
+            context_summary = (
+                f"Ongoing {conversation_flow} conversation about {topic_str}"
+            )
+
+            return {
+                "recent_topics": unique_topics,
+                "conversation_flow": conversation_flow,
+                "user_engagement": engagement,
+                "context_summary": context_summary,
+                "message_count": len(conversation_history),
+            }
+
+        except Exception as e:
+            self.logger.error(f"Error getting enhanced conversation context: {e}")
+            return {
+                "recent_topics": [],
+                "conversation_flow": "unknown",
+                "user_engagement": 0.5,
+                "context_summary": "Unable to load conversation context",
+            }
 
     async def _process_natural_admin_commands(self, message: discord.Message) -> bool:
         """Process natural language administrative commands with optimized pattern matching"""
@@ -1721,38 +1979,56 @@ class AstraAICompanion(commands.Cog):
         bot_mentioned = self.bot.user.mentioned_in(message)
         is_dm = isinstance(message.channel, discord.DMChannel)
         content_lower = message.content.lower()
-        
+
         # Direct name mentions (more flexible)
         name_mentioned = any(
             name in content_lower for name in ["astra", "bot", "@astra"]
         )
-        
+
         # Enhanced conversation patterns (more inclusive)
-        question_patterns = ["?", "how", "what", "why", "when", "where", "who", "help", "can you"]
-        greeting_patterns = ["hey", "hi", "hello", "good morning", "good evening", "thanks", "thank you"]
-        
+        question_patterns = [
+            "?",
+            "how",
+            "what",
+            "why",
+            "when",
+            "where",
+            "who",
+            "help",
+            "can you",
+        ]
+        greeting_patterns = [
+            "hey",
+            "hi",
+            "hello",
+            "good morning",
+            "good evening",
+            "thanks",
+            "thank you",
+        ]
+
         has_question = any(pattern in content_lower for pattern in question_patterns)
         has_greeting = any(pattern in content_lower for pattern in greeting_patterns)
-        
+
         # Message length check for meaningful conversations
         is_meaningful = len(message.content.strip()) > 3
-        
+
         # Conversation context (check if replying to Astra)
         is_reply_to_astra = (
-            message.reference and 
-            message.reference.message_id and 
-            hasattr(message.reference, 'resolved') and
-            message.reference.resolved and
-            message.reference.resolved.author == self.bot.user
+            message.reference
+            and message.reference.message_id
+            and hasattr(message.reference, "resolved")
+            and message.reference.resolved
+            and message.reference.resolved.author == self.bot.user
         )
 
         # Enhanced trigger logic - more responsive to natural conversation
         should_respond = (
-            bot_mentioned or 
-            is_dm or 
-            name_mentioned or 
-            is_reply_to_astra or
-            (is_meaningful and (has_question or has_greeting))
+            bot_mentioned
+            or is_dm
+            or name_mentioned
+            or is_reply_to_astra
+            or (is_meaningful and (has_question or has_greeting))
         )
 
         # Respond with enhanced triggers
@@ -1768,10 +2044,12 @@ class AstraAICompanion(commands.Cog):
         """Enhanced companion interaction with optimized performance"""
         try:
             start_time = time.perf_counter()
-            
+
             # Show typing indicator for better UX
             async with message.channel.typing():
-                self.logger.debug(f"💬 Processing message from {message.author.display_name}")
+                self.logger.debug(
+                    f"💬 Processing message from {message.author.display_name}"
+                )
 
                 # Get user personality profile (cached for performance)
                 profile = await self.get_personality_profile(
@@ -1795,12 +2073,16 @@ class AstraAICompanion(commands.Cog):
                         self.conversation_contexts[message.author.id] = []
 
                     # Store minimal conversation context (last 5 for performance)
-                    self.conversation_contexts[message.author.id].append({
-                        "message": message.content[:100],  # Truncated for memory efficiency
-                        "response": response[:100],
-                        "timestamp": datetime.now().isoformat(),
-                    })
-                    
+                    self.conversation_contexts[message.author.id].append(
+                        {
+                            "message": message.content[
+                                :100
+                            ],  # Truncated for memory efficiency
+                            "response": response[:100],
+                            "timestamp": datetime.now().isoformat(),
+                        }
+                    )
+
                     # Keep only last 5 interactions (reduced from 10 for better performance)
                     if len(self.conversation_contexts[message.author.id]) > 5:
                         self.conversation_contexts[message.author.id].pop(0)
@@ -1810,10 +2092,12 @@ class AstraAICompanion(commands.Cog):
                         # Split only if absolutely necessary
                         response_parts = await self.split_long_response(response)
                         await message.reply(response_parts[0], mention_author=False)
-                        
+
                         # Send remaining parts with minimal delay
                         for part in response_parts[1:]:
-                            await asyncio.sleep(0.5)  # Reduced delay for faster delivery
+                            await asyncio.sleep(
+                                0.5
+                            )  # Reduced delay for faster delivery
                             await message.channel.send(part)
                     else:
                         # Direct reply for optimal user experience
@@ -1823,19 +2107,22 @@ class AstraAICompanion(commands.Cog):
                     total_time = time.perf_counter() - start_time
                     if total_time > 2.0:  # Only log if slower than 2 seconds
                         self.logger.info(f"⏱️ Response time: {total_time:.2f}s")
-                        
+
                 else:
                     # Fallback response for better UX
                     fallback_responses = [
                         "I'm here! Though my thoughts are a bit scattered right now. 🤖",
                         "Hi there! Give me a moment to gather my digital thoughts! ✨",
-                        "Hey! I'm processing... sometimes my circuits need a quick refresh! 🔄"
+                        "Hey! I'm processing... sometimes my circuits need a quick refresh! 🔄",
                     ]
-                    await message.reply(random.choice(fallback_responses), mention_author=False)
+                    await message.reply(
+                        random.choice(fallback_responses), mention_author=False
+                    )
 
         except Exception as e:
             self.logger.error(f"❌ Error in companion interaction: {e}")
             import traceback
+
             self.logger.error(f"📋 Full traceback: {traceback.format_exc()}")
             await message.reply(
                 "I'm having a moment of confusion, but I'm here for you! 🤖",
