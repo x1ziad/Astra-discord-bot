@@ -135,15 +135,28 @@ class AIModeration(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
         """🚀 ULTRA-OPTIMIZED message monitoring with AI analysis"""
+        # DEBUG: Log every message received
+        self.logger.info(
+            f"🔍 AI_MOD on_message triggered: {message.author} in #{message.channel}: {message.content[:50]}"
+        )
+
         if not message.guild or message.author.bot:
+            self.logger.info(
+                f"⏭️ Skipping message: guild={message.guild is not None}, bot={message.author.bot}"
+            )
             return
 
         # 🚀 Performance optimization: Process in background for non-critical messages
+        self.logger.info(f"🚀 Creating async task for message processing")
         asyncio.create_task(self._process_message_async(message))
 
     async def _process_message_async(self, message: discord.Message):
         """🚀 Asynchronous message processing for ultimate performance"""
         try:
+            self.logger.info(
+                f"📝 Processing message async for {message.author}: {message.content[:30]}"
+            )
+
             # Track positive behavior first (lightweight operation)
             await self._track_positive_behavior(message)
 
@@ -151,8 +164,12 @@ class AIModeration(commands.Cog):
             violation = await self._comprehensive_analysis(message)
 
             if violation:
+                self.logger.info(
+                    f"🚨 VIOLATION DETECTED: {violation} for {message.author}"
+                )
                 await self._handle_violation_with_ai(message, violation)
             else:
+                self.logger.info(f"✅ No violations detected for {message.author}")
                 # Occasionally provide positive reinforcement (1% chance)
                 if (
                     len(
@@ -881,7 +898,11 @@ Create a warm, appreciative message (under 100 words) with appropriate emojis.""
             for msg in self.message_history[user_id]
             if time.time() - msg["timestamp"] <= self.settings["spam_timeframe"]
         ]
-        return len(recent_messages) >= self.settings["spam_threshold"]
+        result = len(recent_messages) >= self.settings["spam_threshold"]
+        self.logger.info(
+            f"🔍 SPAM CHECK: User {user_id} has {len(recent_messages)} messages in {self.settings['spam_timeframe']}s (threshold: {self.settings['spam_threshold']}) = {'SPAM' if result else 'OK'}"
+        )
+        return result
 
     async def _detect_caps_abuse(self, content: str) -> bool:
         if len(content) < 10:

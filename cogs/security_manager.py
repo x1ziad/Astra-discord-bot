@@ -117,6 +117,9 @@ class SecurityManager(commands.Cog):
         # Initialize the unified security system
         self.security_system = SecuritySystemIntegration(bot)
 
+        # Initialize start time for performance tracking
+        self.start_time = time.perf_counter()
+
         # Advanced performance optimization
         self._cache = {}
         self._cache_expiry = {}
@@ -185,6 +188,9 @@ class SecurityManager(commands.Cog):
         self.active_threats = {}
         self.threat_escalation_queue = asyncio.Queue()
 
+        # User profile management
+        self.user_profiles = {}
+
         # Performance optimization features
         self.batch_operations = []
         self.batch_timer = None
@@ -201,6 +207,9 @@ class SecurityManager(commands.Cog):
     async def cog_load(self):
         """Initialize security manager when cog loads"""
         logger.info("🔄 Loading Enhanced Security Manager...")
+
+        # Initialize the security integration system
+        await self.security_system.initialize()
 
         # Initialize advanced caching system
         await self._initialize_advanced_cache()
@@ -221,7 +230,12 @@ class SecurityManager(commands.Cog):
 
         # Cleanup resources
         await self._cleanup_resources()
-        await self.security_system.shutdown()
+
+        # Check if security system has shutdown method before calling
+        if hasattr(self.security_system, "shutdown"):
+            await self.security_system.shutdown()
+        else:
+            logger.debug("Security system does not have shutdown method - skipping")
 
         logger.info("✅ Enhanced Security Manager unloaded and optimized")
 
@@ -904,6 +918,12 @@ class SecurityManager(commands.Cog):
             self.guild_settings[guild_id] = self.default_settings.copy()
         return self.guild_settings[guild_id]
 
+    async def get_user_profile(self, user_id: int) -> UserProfile:
+        """Get or create user security profile"""
+        if user_id not in self.user_profiles:
+            self.user_profiles[user_id] = UserProfile(user_id)
+        return self.user_profiles[user_id]
+
     # ═══════════════════════════════════════════════════════════════════════════════
     # SECURITY MONITORING COMMANDS
     # ═══════════════════════════════════════════════════════════════════════════════
@@ -928,8 +948,24 @@ class SecurityManager(commands.Cog):
             start_time = time.perf_counter()
             self.performance_metrics["commands_executed"] += 1
 
-            # Get enhanced security statistics
-            stats = self.security_system.get_security_stats()
+            # Get enhanced security statistics with error handling
+            try:
+                stats = self.security_system.get_security_stats()
+            except AttributeError:
+                # Fallback if method doesn't exist
+                stats = {
+                    "threats_detected": len(self.active_threats),
+                    "messages_analyzed": self.performance_metrics.get(
+                        "messages_processed", 0
+                    ),
+                    "users_monitored": len(getattr(self, "user_profiles", {})),
+                    "actions_taken": self.performance_metrics.get("actions_taken", 0),
+                    "uptime": time.perf_counter() - self.start_time,
+                    "integration_active": True,
+                }
+            except Exception as e:
+                self.logger.error(f"Error getting security stats: {e}")
+                stats = {"error": "Unable to retrieve statistics"}
 
             # Calculate advanced metrics
             cache_hit_rate = 0.0
@@ -1192,11 +1228,32 @@ class SecurityManager(commands.Cog):
             )
             return
 
+        # Defer the response to prevent timeout (gives us 15 minutes instead of 3 seconds)
+        await interaction.response.defer()
+
         try:
-            # Get user security report
-            report = await self.security_system.get_user_security_report(
-                user.id, interaction.guild.id
-            )
+            # Get user security report with error handling
+            try:
+                report = await self.security_system.get_user_security_report(
+                    user.id, interaction.guild.id
+                )
+            except AttributeError:
+                # Fallback if method doesn't exist
+                user_profile = await self.get_user_profile(user.id)
+                report = {
+                    "trust_score": user_profile.trust_score,
+                    "violation_count": len(user_profile.violations),
+                    "last_violation": user_profile.last_violation,
+                    "status": "clean" if user_profile.trust_score >= 50 else "flagged",
+                    "risk_level": (
+                        "low"
+                        if user_profile.trust_score >= 80
+                        else "medium" if user_profile.trust_score >= 50 else "high"
+                    ),
+                }
+            except Exception as e:
+                self.logger.error(f"Error getting user security report: {e}")
+                report = {"error": f"Unable to retrieve user report: {str(e)}"}
 
             if "error" in report:
                 embed = discord.Embed(
@@ -1260,14 +1317,19 @@ class SecurityManager(commands.Cog):
             embed.set_thumbnail(url=user.display_avatar.url)
             embed.set_footer(text=f"User ID: {user.id} • 🛡️ Unified Security System")
 
-            await interaction.response.send_message(embed=embed)
+            await interaction.followup.send(embed=embed)
 
         except Exception as e:
             self.logger.error(f"Error in user_security command: {e}")
-            await interaction.response.send_message(
-                "❌ An error occurred while retrieving user security profile.",
-                ephemeral=True,
-            )
+
+            # Since we deferred, always use followup
+            try:
+                await interaction.followup.send(
+                    "❌ An error occurred while retrieving user security profile.",
+                    ephemeral=True,
+                )
+            except Exception as followup_error:
+                self.logger.error(f"Failed to send error followup: {followup_error}")
 
     # ═══════════════════════════════════════════════════════════════════════════════
     # SECURITY CONFIGURATION COMMANDS
@@ -1319,9 +1381,21 @@ class SecurityManager(commands.Cog):
             old_value = guild_settings.get(setting, False)
             guild_settings[setting] = value
 
-            # Update security system configuration
-            if setting in self.security_system.config:
-                self.security_system.config[setting.replace("_enabled", "")] = value
+            # Update security system configuration with error handling
+            try:
+                if (
+                    hasattr(self.security_system, "config")
+                    and setting in self.security_system.config
+                ):
+                    self.security_system.config[setting.replace("_enabled", "")] = value
+                elif hasattr(self.security_system, "update_config"):
+                    self.security_system.update_config(
+                        setting.replace("_enabled", ""), value
+                    )
+            except AttributeError as e:
+                self.logger.warning(f"Security system config update not available: {e}")
+            except Exception as e:
+                self.logger.error(f"Error updating security system config: {e}")
 
             # Create response embed
             embed = discord.Embed(
