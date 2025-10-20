@@ -30,7 +30,7 @@ import discord
 from discord.ext import commands, tasks
 from discord import app_commands
 
-from ai.universal_ai_client import UniversalAIClient
+# Core AI and personality components
 from utils.database import db
 from utils.astra_personality import AstraPersonalityCore
 from config.unified_config import unified_config
@@ -132,9 +132,15 @@ class AstraAICompanion(commands.Cog):
         self.logger = logging.getLogger("astra.ai_companion")
 
         # Core components
-        self.ai_client = UniversalAIClient()
+        # AI manager will be available after bot setup_hook completes
+        self.ai_client = None  # Will be set dynamically when needed
         self.db = db
         self.astra_personality = AstraPersonalityCore()
+
+        # Note: AI manager is initialized after cog loading, so we'll check for it during actual usage
+        self.logger.info(
+            "✅ AI companion initialized - AI manager will be available after bot startup"
+        )
 
         # Personality management (key format: "user_id_guild_id")
         self.user_profiles: Dict[str, PersonalityProfile] = {}
@@ -152,6 +158,30 @@ class AstraAICompanion(commands.Cog):
         self.personality_sync_task.start()
 
         self.logger.info("✅ Astra AI Companion initialized (Astra personality only)")
+
+    def _is_ai_available(self) -> bool:
+        """Check if AI client is available and ready"""
+        # Dynamically get AI manager if not already set
+        if not self.ai_client:
+            self.ai_client = getattr(self.bot, "ai_manager", None)
+
+        if not self.ai_client:
+            return False
+
+        # Try different methods that might exist on the AI manager
+        try:
+            if hasattr(self.ai_client, "is_available"):
+                return self.ai_client.is_available()
+            elif hasattr(self.ai_client, "available_providers"):
+                return len(self.ai_client.available_providers) > 0
+            elif hasattr(self.ai_client, "providers"):
+                return len(self.ai_client.providers) > 0
+            else:
+                # Assume available if we have a client
+                return True
+        except Exception as e:
+            self.logger.error(f"Error checking AI availability: {e}")
+            return False
 
     def _compile_admin_patterns(self):
         """Pre-compile regex patterns for better performance"""
@@ -428,6 +458,18 @@ class AstraAICompanion(commands.Cog):
         response_start_time = time.perf_counter()
 
         try:
+            # Check if AI is available first
+            if not self._is_ai_available():
+                self.logger.warning("⚠️ AI client unavailable for response generation")
+                fallback_responses = [
+                    "I'm here! Though my AI thoughts are temporarily offline. 🤖",
+                    "Hi there! My AI processing is taking a break - let me try a simple response! ✨",
+                    "Hey! My neural networks are restarting. Give me a moment! 🔄",
+                ]
+                return fallback_responses[
+                    hash(message.content) % len(fallback_responses)
+                ]
+
             self.logger.debug(
                 f"� Ultra-fast response generation for: '{message.content[:30]}...'"
             )
@@ -553,15 +595,24 @@ class AstraAICompanion(commands.Cog):
             )
 
             start_ai_time = time.perf_counter()
-            ai_response = await self.ai_client.generate_response(
-                enhanced_message,
-                user_id=message.author.id,
-                guild_id=message.guild.id if message.guild else None,
-                channel_id=message.channel.id,
-                user_profile=user_profile_data,
-                temperature=temperature,
-                max_tokens=max_tokens,
-            )
+
+            # Call AI manager with correct interface
+            try:
+                # Ensure we have the AI client
+                if not self.ai_client:
+                    self.ai_client = getattr(self.bot, "ai_manager", None)
+
+                if not self.ai_client:
+                    raise Exception("AI manager not available")
+
+                ai_response = await self.ai_client.generate_response(
+                    prompt=enhanced_message,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                )
+            except Exception as e:
+                self.logger.error(f"AI generation error: {e}")
+                ai_response = None
 
             ai_response_time = time.perf_counter() - start_ai_time
             total_response_time = time.perf_counter() - response_start_time
@@ -1142,10 +1193,8 @@ class AstraAICompanion(commands.Cog):
     ) -> Dict[str, Any]:
         """Get enhanced conversation context with recent message analysis"""
         try:
-            # Get recent messages from conversation history
-            conversation_history = self.conversation_manager.get_conversation_history(
-                user_id, channel_id, limit=5
-            )
+            # Get recent messages from conversation contexts
+            conversation_history = self.conversation_contexts.get(user_id, [])
 
             if not conversation_history:
                 return {
@@ -1158,14 +1207,13 @@ class AstraAICompanion(commands.Cog):
             # Analyze recent topics
             recent_topics = []
             user_messages = [
-                msg for msg in conversation_history if msg.get("role") == "user"
+                msg.get("message", "") for msg in conversation_history[-3:]
             ]
 
-            for msg in user_messages[-3:]:  # Last 3 user messages
-                content = msg.get("content", "").lower()
-                if len(content) > 10:  # Ignore very short messages
+            for msg_content in user_messages:  # Last 3 user messages
+                if len(msg_content) > 10:  # Ignore very short messages
                     # Extract potential topics (simple keyword extraction)
-                    words = content.split()
+                    words = msg_content.lower().split()
                     meaningful_words = [w for w in words if len(w) > 3 and w.isalpha()]
                     recent_topics.extend(
                         meaningful_words[:3]
@@ -1181,9 +1229,9 @@ class AstraAICompanion(commands.Cog):
 
             # Calculate user engagement based on message length and frequency
             if user_messages:
-                avg_length = sum(
-                    len(msg.get("content", "")) for msg in user_messages
-                ) / len(user_messages)
+                avg_length = sum(len(msg) for msg in user_messages if msg) / len(
+                    [msg for msg in user_messages if msg]
+                )
                 engagement = min(1.0, avg_length / 100)  # Normalize to 0-1 scale
             else:
                 engagement = 0.5
@@ -2041,7 +2089,7 @@ class AstraAICompanion(commands.Cog):
             asyncio.create_task(self.handle_companion_interaction(message))
 
     async def handle_companion_interaction(self, message: discord.Message):
-        """Enhanced companion interaction with optimized performance"""
+        """Enhanced companion interaction with optimized performance and error handling"""
         try:
             start_time = time.perf_counter()
 
@@ -2052,17 +2100,113 @@ class AstraAICompanion(commands.Cog):
                 )
 
                 # Get user personality profile (cached for performance)
-                profile = await self.get_personality_profile(
-                    message.author.id, message.guild.id if message.guild else 0
-                )
+                try:
+                    profile = await self.get_personality_profile(
+                        message.author.id, message.guild.id if message.guild else 0
+                    )
+                except Exception as e:
+                    self.logger.error(f"Error getting personality profile: {e}")
+                    # Use default profile on error
+                    profile = PersonalityProfile()
 
                 # Quick context analysis (optimized)
-                context = await self._analyze_message_context(message)
+                try:
+                    context = await self._analyze_message_context(message)
+                except Exception as e:
+                    self.logger.error(f"Error analyzing message context: {e}")
+                    # Use minimal context on error
+                    context = {
+                        "channel_type": "guild" if message.guild else "dm",
+                        "message_length": len(message.content),
+                        "complexity": 0.5,
+                        "urgency": 0.2,
+                        "sentiment": "neutral",
+                        "user_mood": 0.5,
+                        "has_questions": "?" in message.content,
+                        "conversation_tone": 0.5,
+                        "time_of_day": 0.5,
+                    }
 
                 # Update personality with minimal processing
-                profile.modifiers.user_mood = context["user_mood"]
-                profile.modifiers.conversation_tone = context["conversation_tone"]
-                profile.modifiers.interaction_history += 1
+                try:
+                    profile.modifiers.user_mood = context["user_mood"]
+                    profile.modifiers.conversation_tone = context["conversation_tone"]
+                    profile.modifiers.interaction_history += 1
+                except Exception as e:
+                    self.logger.error(f"Error updating personality modifiers: {e}")
+
+                # Store conversation context for continuity (inline for performance)
+                try:
+                    if message.author.id not in self.conversation_contexts:
+                        self.conversation_contexts[message.author.id] = []
+
+                    # Store minimal conversation context (last 5 for performance)
+                    self.conversation_contexts[message.author.id].append(
+                        {
+                            "message": message.content[
+                                :100
+                            ],  # Truncated for memory efficiency
+                            "timestamp": datetime.now().isoformat(),
+                            "sentiment": context.get("sentiment", "neutral"),
+                        }
+                    )
+
+                    # Keep only last 5 interactions for memory efficiency
+                    if len(self.conversation_contexts[message.author.id]) > 5:
+                        self.conversation_contexts[message.author.id].pop(0)
+                except Exception as e:
+                    self.logger.error(f"Error updating conversation context: {e}")
+
+                # Generate Astra's response with comprehensive error handling
+                try:
+                    response = await self.generate_astra_response(
+                        message, profile, context
+                    )
+                except Exception as e:
+                    self.logger.error(f"Error generating AI response: {e}")
+                    # Use emergency fallback
+                    response = "I'm having some technical difficulties, but I'm still here for you! 🤖"
+
+                # Send response with error handling
+                try:
+                    # Ensure response isn't empty and fits Discord limits
+                    if response and len(response.strip()) > 0:
+                        truncated_response = self.truncate_response(response)
+                        await message.reply(truncated_response, mention_author=False)
+                    else:
+                        await message.reply(
+                            "I'm here! Let me know what you need. ✨",
+                            mention_author=False,
+                        )
+                except discord.errors.Forbidden:
+                    self.logger.warning(f"No permission to reply in {message.channel}")
+                except discord.errors.HTTPException as e:
+                    self.logger.error(f"Discord API error: {e}")
+                except Exception as e:
+                    self.logger.error(f"Error sending response: {e}")
+
+                # Performance tracking
+                total_time = time.perf_counter() - start_time
+                self.response_times.append(total_time)
+                self.interaction_count += 1
+
+                # Keep only last 100 response times for memory efficiency
+                if len(self.response_times) > 100:
+                    self.response_times = self.response_times[-50:]
+
+                if total_time > 5.0:
+                    self.logger.warning(f"⚠️ Slow response: {total_time:.2f}s")
+                else:
+                    self.logger.debug(f"⚡ Response completed in {total_time:.2f}s")
+
+        except Exception as e:
+            self.logger.error(f"❌ Critical error in companion interaction: {e}")
+            try:
+                await message.reply(
+                    "Something went wrong, but I'm still here! 🔧", mention_author=False
+                )
+            except:
+                pass  # If we can't even send this fallback, just log it
 
                 # Generate response with enhanced Astra personality
                 response = await self.generate_astra_response(message, profile, context)
@@ -2482,7 +2626,7 @@ class AstraAICompanion(commands.Cog):
             )
 
             # System awareness - show AI client status
-            ai_status = "🟢 Online" if self.ai_client.is_available() else "🔴 Offline"
+            ai_status = "🟢 Online" if self._is_ai_available() else "🔴 Offline"
             ai_provider = (
                 self.ai_client.provider.value
                 if hasattr(self.ai_client, "provider")
@@ -2532,7 +2676,7 @@ class AstraAICompanion(commands.Cog):
                 cog_command_counts[cog_name] = len(cog_commands)
 
             # AI Client status
-            ai_client_available = self.ai_client.is_available()
+            ai_client_available = self._is_ai_available()
             ai_provider = (
                 self.ai_client.provider.value
                 if hasattr(self.ai_client, "provider")
@@ -2825,12 +2969,12 @@ class AstraAICompanion(commands.Cog):
             embed = discord.Embed(
                 title="🤖 Astra AI Client Status",
                 description="Detailed information about the AI system configuration",
-                color=0x00FF00 if self.ai_client.is_available() else 0xFF0000,
+                color=0x00FF00 if self._is_ai_available() else 0xFF0000,
                 timestamp=datetime.now(),
             )
 
             # Basic AI Status
-            status_icon = "🟢" if self.ai_client.is_available() else "🔴"
+            status_icon = "🟢" if self._is_ai_available() else "🔴"
             provider = (
                 self.ai_client.provider.value
                 if hasattr(self.ai_client, "provider")
@@ -2840,7 +2984,7 @@ class AstraAICompanion(commands.Cog):
 
             embed.add_field(
                 name=f"{status_icon} Connection Status",
-                value=f"**Available:** {'Yes' if self.ai_client.is_available() else 'No'}\n**Provider:** {provider}\n**Model:** {model}",
+                value=f"**Available:** {'Yes' if self._is_ai_available() else 'No'}\n**Provider:** {provider}\n**Model:** {model}",
                 inline=True,
             )
 
@@ -2959,7 +3103,7 @@ class AstraAICompanion(commands.Cog):
         )
 
         # AI Client Information
-        ai_status = "🟢 Online" if self.ai_client.is_available() else "🔴 Offline"
+        ai_status = "🟢 Online" if self._is_ai_available() else "🔴 Offline"
         ai_provider = (
             self.ai_client.provider.value
             if hasattr(self.ai_client, "provider")

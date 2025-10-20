@@ -495,6 +495,7 @@ class AstraBot(commands.Bot):
             # AI and enhanced features (depend on core)
             [
                 "cogs.advanced_ai",
+                "cogs.ai_moderation",  # 🤖 AI-powered spam detection and message moderation
                 "cogs.enhanced_server_management",  # Enhanced server management with AI companion
                 "cogs.ai_companion",  # Sophisticated AI buddy and companion features
             ],

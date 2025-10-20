@@ -96,14 +96,14 @@ class HighPerformanceCoordinator(commands.Cog):
         """Get references to other cogs for direct handler access"""
         self.security_manager = self.bot.get_cog("SecurityManager")
         self.ai_companion = self.bot.get_cog("AICompanion")
-        self.ai_moderation = self.bot.get_cog("AIModerationCog")
+        self.ai_moderation = self.bot.get_cog("AIModeration")
         self.analytics = self.bot.get_cog("Analytics")
         self.advanced_ai = self.bot.get_cog("AdvancedAICog")
 
         cog_status = {
             "SecurityManager": "✅" if self.security_manager else "❌",
             "AICompanion": "✅" if self.ai_companion else "❌",
-            "AIModerationCog": "✅" if self.ai_moderation else "❌",
+            "AIModeration": "✅" if self.ai_moderation else "❌",
             "Analytics": "✅" if self.analytics else "❌",
             "AdvancedAICog": "✅" if self.advanced_ai else "❌",
         }

@@ -1,0 +1,15 @@
+{
+  "total_selections": 0,
+  "popular_empires": {},
+  "user_engagement": {},
+  "daily_stats": {},
+  "created_at": "2025-10-20T10:41:18.892378+00:00",
+  "performance_metrics": {
+    "command_calls": {},
+    "response_times": {},
+    "cache_hits": 0,
+    "cache_misses": 0,
+    "total_requests": 0
+  },
+  "last_updated": "2025-10-20T16:34:20.355183+00:00"
+}
