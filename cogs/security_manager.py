@@ -56,9 +56,11 @@ class UserProfile:
     def __init__(self, user_id: int):
         self.user_id = user_id
         self.violations = []
+        self.violation_history = []  # Added for trust_manage compatibility
         self.trust_score = 50.0  # Default trust score (0-100)
         self.is_trusted = True  # Default trusted status
         self.is_quarantined = False  # Default not quarantined
+        self.punishment_level = 0  # Added for trust_manage compatibility
 
 
 class ViolationRecord:
@@ -778,7 +780,7 @@ class SecurityManager(commands.Cog):
         # Apply trust score penalties
         if trust_penalty > 0:
             profile.trust_score = max(0, profile.trust_score - trust_penalty)
-            await self.security_system._save_user_profile(profile)
+            # Profile is automatically saved since it's a reference to the stored object
 
             # Notify moderators of suspicious join
             if suspicion_reasons:
@@ -1459,9 +1461,7 @@ class SecurityManager(commands.Cog):
 
         try:
             # Get user profile
-            profile = await self.security_system.get_user_profile(
-                user.id, interaction.guild.id
-            )
+            profile = await self.get_user_profile(user.id)
             old_score = profile.trust_score
 
             # Apply the action
@@ -1480,8 +1480,7 @@ class SecurityManager(commands.Cog):
             profile.is_trusted = profile.trust_score >= 70
             profile.is_quarantined = profile.trust_score <= 25
 
-            # Save profile
-            await self.security_system._save_user_profile(profile)
+            # Profile is automatically saved since it's a reference to the stored object
 
             # Create response
             embed = discord.Embed(
