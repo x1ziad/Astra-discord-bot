@@ -492,6 +492,11 @@ class AstraBot(commands.Bot):
                 "cogs.security_manager",  # 🛡️ UNIFIED security system (replaces all old security cogs)
                 "cogs.personality_manager",  # 🧠 Advanced personality management system
             ],
+            # Moderation systems (load before AI features)
+            [
+                "cogs.comprehensive_moderation",  # 🛡️ COMPLETE moderation system with 21 commands
+                "cogs.auto_moderation",  # 🤖 Automated spam/raid/toxicity detection
+            ],
             # AI and enhanced features (depend on core)
             [
                 "cogs.advanced_ai",

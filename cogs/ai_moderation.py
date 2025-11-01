@@ -92,6 +92,7 @@ class UserProfile:
         "_performance_cache",
         "_last_analysis",
         "_prediction_cache",
+        "__weakref__",  # Enable weak references
     )
 
     def __init__(self, user_id: int):
