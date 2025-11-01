@@ -1303,6 +1303,7 @@ class ComprehensiveModeration(commands.Cog):
                 logger.warning(f"Timeout failed during quarantine: {e}")
 
             # Store quarantine data in database
+            expires_at = datetime.now(timezone.utc) + timedelta(hours=duration_hours)
             case = await self.create_case(
                 guild_id=interaction.guild_id,
                 user_id=user.id,
@@ -1310,7 +1311,8 @@ class ComprehensiveModeration(commands.Cog):
                 action=ActionType.QUARANTINE,
                 violation=ViolationType.OTHER,
                 reason=reason,
-                duration=duration_hours * 3600,
+                severity=SeverityLevel.HIGH,
+                expires_at=expires_at,
                 evidence=[],
                 notes=json.dumps(
                     {
@@ -1795,7 +1797,8 @@ class ComprehensiveModeration(commands.Cog):
             timeout_duration = timedelta(minutes=duration_minutes)
             await user.timeout(timeout_duration, reason=reason)
 
-            # Create case
+            # Create case with expires_at
+            expires_at = datetime.now(timezone.utc) + timeout_duration
             case = await self.create_case(
                 guild_id=interaction.guild_id,
                 user_id=user.id,
@@ -1803,7 +1806,8 @@ class ComprehensiveModeration(commands.Cog):
                 action=ActionType.TIMEOUT,
                 violation=ViolationType.OTHER,
                 reason=reason,
-                duration=duration_minutes * 60,
+                severity=SeverityLevel.MEDIUM,
+                expires_at=expires_at,
                 evidence=[],
                 notes=json.dumps(
                     {
@@ -2292,9 +2296,10 @@ class ComprehensiveModeration(commands.Cog):
         action: ActionType,
         violation: ViolationType,
         reason: str,
-        severity: SeverityLevel,
+        severity: SeverityLevel = SeverityLevel.MEDIUM,
         expires_at: Optional[datetime] = None,
         evidence: List[str] = None,
+        notes: str = "",
     ) -> ModerationCase:
         """Create a new moderation case"""
         case_id = self.case_counter[guild_id] + 1
