@@ -506,9 +506,18 @@ class AIModeration(commands.Cog):
 
     async def get_user_profile(self, user_id: int) -> UserProfile:
         """Get or create user profile for personalization"""
-        if user_id not in self.user_profiles:
-            self.user_profiles[user_id] = UserProfile(user_id)
-        return self.user_profiles[user_id]
+        try:
+            # Try to get existing profile
+            profile = self.user_profiles.get(user_id)
+            if profile is not None:
+                return profile
+        except KeyError:
+            pass
+        
+        # Create new profile if doesn't exist or was garbage collected
+        profile = UserProfile(user_id)
+        self.user_profiles[user_id] = profile
+        return profile
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
