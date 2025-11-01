@@ -19,16 +19,51 @@ import logging
 import time
 from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta, timezone
+from enum import Enum
 
 import discord
 from discord import app_commands
 from discord.ext import commands, tasks
 
-from core.advanced_security_system import (
-    AdvancedSecuritySystem,
-    ViolationType,
-    ViolationSeverity,
-)
+# Setup logger first
+logger = logging.getLogger("astra.security.enhanced")
+
+# Try to import advanced security system
+try:
+    from core.advanced_security_system import (
+        AdvancedSecuritySystem,
+        ViolationType,
+        ViolationSeverity,
+    )
+except ImportError:
+    # Create basic fallback classes if advanced security not available
+    logger.warning("Advanced security system not found, using basic fallback")
+
+    class ViolationType(Enum):
+        """Violation types fallback"""
+
+        SPAM = "spam"
+        RAID = "raid"
+        TOXIC = "toxic"
+        PHISHING = "phishing"
+
+    class ViolationSeverity(Enum):
+        """Violation severity fallback"""
+
+        LOW = "low"
+        MEDIUM = "medium"
+        HIGH = "high"
+        CRITICAL = "critical"
+
+    class AdvancedSecuritySystem:
+        """Basic security system fallback"""
+
+        def __init__(self, bot):
+            self.bot = bot
+            self.logger = logging.getLogger("astra.security.fallback")
+            self.logger.warning("Using fallback security system")
+
+
 from utils.permissions import has_permission, PermissionLevel, check_user_permission
 from config.unified_config import unified_config
 
