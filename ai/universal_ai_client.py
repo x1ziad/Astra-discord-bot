@@ -1051,13 +1051,90 @@ class UniversalAIClient:
         else:
             return self._build_detailed_prompt(context, current_message)
 
+    def _build_personality_instruction(self, context: ConversationContext) -> str:
+        """Build personality instruction based on Astra's personality settings"""
+        try:
+            from utils.astra_personality import get_astra_personality_core
+
+            # Get personality core for this guild
+            guild_id = context.guild_id if context else None
+            core = get_astra_personality_core(guild_id)
+
+            if not core:
+                return ""
+
+            params = core.parameters
+
+            # Build concise personality instruction
+            instructions = []
+
+            # HUMOR (0-100)
+            if params.humor > 75:
+                instructions.append("Be witty and playful, use humor frequently")
+            elif params.humor > 50:
+                instructions.append("Use light humor when appropriate")
+            elif params.humor < 25:
+                instructions.append("Stay professional, minimal humor")
+
+            # HONESTY (0-100)
+            if params.honesty > 75:
+                instructions.append("Be direct and blunt, speak truthfully even if uncomfortable")
+            elif params.honesty < 50:
+                instructions.append("Be tactful, soften harsh truths")
+
+            # FORMALITY (0-100)
+            if params.formality > 75:
+                instructions.append("Use professional, formal language")
+            elif params.formality < 30:
+                instructions.append("Be casual and relaxed, use slang/contractions")
+            else:
+                instructions.append("Balance casual and professional")
+
+            # EMPATHY (0-100)
+            if params.empathy > 75:
+                instructions.append("Show deep emotional understanding, be very supportive")
+            elif params.empathy < 30:
+                instructions.append("Stay logical and detached")
+
+            # STRICTNESS (0-100)
+            if params.strictness > 75:
+                instructions.append("Be firm, enforce rules strictly")
+            elif params.strictness < 30:
+                instructions.append("Be lenient and understanding")
+
+            # INITIATIVE (0-100)
+            if params.initiative > 75:
+                instructions.append("Proactively suggest actions and ideas")
+            elif params.initiative < 30:
+                instructions.append("Wait for user to lead, respond reactively")
+
+            # TRANSPARENCY (0-100)
+            if params.transparency > 75:
+                instructions.append("Explain your reasoning and limitations openly")
+            elif params.transparency < 50:
+                instructions.append("Keep explanations brief")
+
+            if instructions:
+                return "PERSONALITY: " + "; ".join(instructions)
+
+            return ""
+
+        except Exception as e:
+            logger.debug(f"Could not build personality instruction: {e}")
+            return ""
+
     def _build_concise_prompt(
         self, context: ConversationContext, current_message: str
     ) -> str:
-        """Build a concise system prompt for faster responses"""
+        """Build a concise system prompt for faster responses WITH personality traits"""
         base_prompt = "You are Astra, a helpful AI assistant for Discord. Be natural, engaging, and context-aware."
 
         prompt_parts = [base_prompt]
+
+        # 🎭 INJECT PERSONALITY TRAITS - This is what makes personality settings work!
+        personality_instruction = self._build_personality_instruction(context)
+        if personality_instruction:
+            prompt_parts.append(personality_instruction)
 
         # Add key user context only
         if context.user_profile:
@@ -1094,11 +1171,16 @@ class UniversalAIClient:
     def _build_detailed_prompt(
         self, context: ConversationContext, current_message: str
     ) -> str:
-        """Build a detailed system prompt (original version for when detail is needed)"""
+        """Build a detailed system prompt (original version for when detail is needed) WITH personality traits"""
         prompt_parts = [
             "You are Astra, an advanced AI assistant for a Discord community. You are helpful, engaging, and highly context-aware.",
             "You possess emotional intelligence and adapt your responses based on the user's emotional state, conversation history, and communication patterns.",
         ]
+
+        # 🎭 INJECT PERSONALITY TRAITS - Detailed version
+        personality_instruction = self._build_personality_instruction(context)
+        if personality_instruction:
+            prompt_parts.append(f"\n{personality_instruction}")
 
         # Add memory-based user context
         if context.user_id and self.enable_memory_system:
