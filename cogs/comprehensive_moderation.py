@@ -457,6 +457,323 @@ class ComprehensiveModeration(commands.Cog):
         await interaction.response.send_message(embed=embed)
 
     # ========================================================================
+    # AUTONOMOUS AUTO-MODERATION SYSTEM
+    # ========================================================================
+
+    @commands.Cog.listener()
+    async def on_message(self, message: discord.Message):
+        """🤖 Autonomous message monitoring for auto-moderation"""
+        # Ignore bots and DMs
+        if not message.guild or message.author.bot:
+            return
+
+        # Ignore moderators and admins
+        if message.author.guild_permissions.moderate_members:
+            return
+
+        guild_id = message.guild.id
+        user_id = message.author.id
+        config = await self.get_config(guild_id)
+
+        # Skip if auto-moderation is disabled
+        if not config.auto_moderation_enabled:
+            return
+
+        # Track message for spam detection
+        self.user_message_history[guild_id][user_id].append(
+            {"content": message.content, "timestamp": datetime.now(timezone.utc)}
+        )
+
+        try:
+            # === SPAM DETECTION ===
+            if config.spam_detection_enabled:
+                await self._check_spam(message, config)
+
+            # === CAPS ABUSE DETECTION ===
+            if config.caps_filtering_enabled:
+                await self._check_caps_abuse(message, config)
+
+            # === MENTION SPAM DETECTION ===
+            if config.mention_spam_protection:
+                await self._check_mention_spam(message, config)
+
+            # === LINK SPAM DETECTION ===
+            if config.link_filtering_enabled:
+                await self._check_link_spam(message, config)
+
+            # === TOXICITY DETECTION ===
+            if config.toxicity_detection_enabled:
+                await self._check_toxicity(message, config)
+
+        except Exception as e:
+            logger.error(f"Auto-moderation error: {e}", exc_info=True)
+
+    async def _check_spam(self, message: discord.Message, config: ModerationConfig):
+        """Check for spam messages"""
+        guild_id = message.guild.id
+        user_id = message.author.id
+
+        # Get recent messages
+        recent_messages = list(self.user_message_history[guild_id][user_id])
+
+        if len(recent_messages) < config.spam_message_threshold:
+            return
+
+        # Check if messages are within time window
+        now = datetime.now(timezone.utc)
+        time_window = timedelta(seconds=config.spam_time_window)
+
+        recent_in_window = [
+            msg
+            for msg in recent_messages
+            if now - msg["timestamp"] <= time_window
+        ]
+
+        if len(recent_in_window) >= config.spam_message_threshold:
+            # SPAM DETECTED
+            try:
+                # Delete spam messages
+                messages_to_delete = []
+                async for msg in message.channel.history(limit=50):
+                    if msg.author.id == user_id and now - msg.created_at <= time_window:
+                        messages_to_delete.append(msg)
+
+                await message.channel.delete_messages(messages_to_delete[:10])
+
+                # Warn user
+                reason = f"Spam detected: {len(recent_in_window)} messages in {config.spam_time_window}s"
+
+                # Record warning
+                case_id = await self.create_moderation_case(
+                    guild_id=guild_id,
+                    user_id=user_id,
+                    moderator_id=self.bot.user.id,
+                    action=ActionType.WARN.value,
+                    reason=reason,
+                    duration_minutes=None,
+                )
+
+                await self.increment_user_warning(guild_id, user_id)
+
+                # Check if escalation needed
+                counts = await self.get_user_violation_counts(guild_id, user_id)
+                
+                if counts["warning"] >= config.max_warnings_before_timeout:
+                    # Auto-timeout
+                    duration = timedelta(minutes=config.default_timeout_duration)
+                    await message.author.timeout(duration, reason="Auto-moderation: Excessive warnings")
+                    
+                    # Log in mod channel
+                    if config.mod_log_channel_id:
+                        channel = message.guild.get_channel(config.mod_log_channel_id)
+                        if channel:
+                            embed = discord.Embed(
+                                title="🤖 AUTO-MODERATION: Spam Timeout",
+                                description=f"**User:** {message.author.mention}\n**Reason:** {reason}\n**Duration:** {config.default_timeout_duration} minutes",
+                                color=0xFF9900,
+                                timestamp=datetime.now(timezone.utc)
+                            )
+                            await channel.send(embed=embed)
+
+                # Clear message history
+                self.user_message_history[guild_id][user_id].clear()
+
+            except Exception as e:
+                logger.error(f"Spam handling error: {e}")
+
+    async def _check_caps_abuse(self, message: discord.Message, config: ModerationConfig):
+        """Check for excessive caps usage"""
+        content = message.content
+        
+        if len(content) < 10:  # Ignore short messages
+            return
+
+        # Count caps
+        caps_count = sum(1 for c in content if c.isupper())
+        caps_ratio = caps_count / len(content)
+
+        if caps_ratio > 0.7:  # More than 70% caps
+            try:
+                await message.delete()
+                
+                # Send warning
+                warning_msg = await message.channel.send(
+                    f"⚠️ {message.author.mention} Please don't use excessive caps.",
+                    delete_after=5
+                )
+
+                # Record minor violation
+                await self.create_moderation_case(
+                    guild_id=message.guild.id,
+                    user_id=message.author.id,
+                    moderator_id=self.bot.user.id,
+                    action=ActionType.WARN.value,
+                    reason="Auto-moderation: Excessive caps usage",
+                    duration_minutes=None,
+                )
+
+            except Exception as e:
+                logger.error(f"Caps filtering error: {e}")
+
+    async def _check_mention_spam(self, message: discord.Message, config: ModerationConfig):
+        """Check for mention spam"""
+        mention_count = len(message.mentions) + len(message.role_mentions)
+
+        if mention_count >= 5:  # 5+ mentions is spam
+            try:
+                await message.delete()
+
+                # Timeout user immediately
+                duration = timedelta(minutes=10)
+                await message.author.timeout(duration, reason="Auto-moderation: Mention spam")
+
+                # Log
+                if config.mod_log_channel_id:
+                    channel = message.guild.get_channel(config.mod_log_channel_id)
+                    if channel:
+                        embed = discord.Embed(
+                            title="🤖 AUTO-MODERATION: Mention Spam",
+                            description=f"**User:** {message.author.mention}\n**Mentions:** {mention_count}\n**Action:** 10-minute timeout",
+                            color=0xFF0000,
+                            timestamp=datetime.now(timezone.utc)
+                        )
+                        await channel.send(embed=embed)
+
+            except Exception as e:
+                logger.error(f"Mention spam handling error: {e}")
+
+    async def _check_link_spam(self, message: discord.Message, config: ModerationConfig):
+        """Check for suspicious links"""
+        # Common phishing/scam patterns
+        suspicious_patterns = [
+            r"discord\.gift",
+            r"nitro\.com",
+            r"steam-?community",
+            r"free-?nitro",
+            r"d[il]sc[o0]rd\.com",
+            r"bit\.ly",
+            r"tinyurl\.com",
+        ]
+
+        content_lower = message.content.lower()
+
+        for pattern in suspicious_patterns:
+            if re.search(pattern, content_lower):
+                try:
+                    await message.delete()
+
+                    # Warn user
+                    await message.channel.send(
+                        f"⚠️ {message.author.mention} Suspicious link detected and removed.",
+                        delete_after=10
+                    )
+
+                    # Record
+                    await self.create_moderation_case(
+                        guild_id=message.guild.id,
+                        user_id=message.author.id,
+                        moderator_id=self.bot.user.id,
+                        action=ActionType.WARN.value,
+                        reason="Auto-moderation: Suspicious link detected",
+                        duration_minutes=None,
+                    )
+
+                    # Log
+                    if config.mod_log_channel_id:
+                        channel = message.guild.get_channel(config.mod_log_channel_id)
+                        if channel:
+                            embed = discord.Embed(
+                                title="🤖 AUTO-MODERATION: Suspicious Link",
+                                description=f"**User:** {message.author.mention}\n**Pattern:** {pattern}\n**Action:** Message deleted",
+                                color=0xFF9900,
+                                timestamp=datetime.now(timezone.utc)
+                            )
+                            await channel.send(embed=embed)
+
+                    return  # Stop after first match
+
+                except Exception as e:
+                    logger.error(f"Link filtering error: {e}")
+
+    async def _check_toxicity(self, message: discord.Message, config: ModerationConfig):
+        """Check for toxic/offensive content"""
+        # Simple keyword-based toxicity detection
+        toxic_keywords = [
+            "idiot", "stupid", "dumb", "retard", "moron", "loser",
+            "kill yourself", "kys", "die", "hate you",
+        ]
+
+        content_lower = message.content.lower()
+
+        for keyword in toxic_keywords:
+            if keyword in content_lower:
+                try:
+                    await message.delete()
+
+                    # Warn user
+                    warning = await message.channel.send(
+                        f"⚠️ {message.author.mention} Please keep the chat respectful.",
+                        delete_after=5
+                    )
+
+                    # Record
+                    await self.create_moderation_case(
+                        guild_id=message.guild.id,
+                        user_id=message.author.id,
+                        moderator_id=self.bot.user.id,
+                        action=ActionType.WARN.value,
+                        reason="Auto-moderation: Toxic language detected",
+                        duration_minutes=None,
+                    )
+
+                    await self.increment_user_warning(message.guild.id, message.author.id)
+
+                    return  # Stop after first match
+
+                except Exception as e:
+                    logger.error(f"Toxicity filtering error: {e}")
+
+    @commands.Cog.listener()
+    async def on_member_join(self, member: discord.Member):
+        """🛡️ Raid protection - Monitor new member joins"""
+        guild_id = member.guild.id
+        config = await self.get_config(guild_id)
+
+        if not config.raid_protection_enabled:
+            return
+
+        # Track recent joins
+        if not hasattr(self, "_recent_joins"):
+            self._recent_joins = defaultdict(lambda: deque(maxlen=20))
+
+        now = datetime.now(timezone.utc)
+        self._recent_joins[guild_id].append(now)
+
+        # Check for raid (10+ joins in 60 seconds)
+        recent = [t for t in self._recent_joins[guild_id] if now - t <= timedelta(seconds=60)]
+
+        if len(recent) >= 10:
+            # RAID DETECTED
+            try:
+                # Enable verification level
+                await member.guild.edit(verification_level=discord.VerificationLevel.high)
+
+                # Log raid alert
+                if config.mod_log_channel_id:
+                    channel = member.guild.get_channel(config.mod_log_channel_id)
+                    if channel:
+                        embed = discord.Embed(
+                            title="🚨 RAID DETECTED",
+                            description=f"**{len(recent)} members** joined in the last 60 seconds.\n\n**Action:** Verification level increased.",
+                            color=0xFF0000,
+                            timestamp=datetime.now(timezone.utc)
+                        )
+                        await channel.send(embed=embed, content="@here")
+
+            except Exception as e:
+                logger.error(f"Raid protection error: {e}")
+
+    # ========================================================================
     # MODERATION ACTION COMMANDS
     # ========================================================================
 
