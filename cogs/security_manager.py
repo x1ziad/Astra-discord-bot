@@ -32,7 +32,26 @@ import discord
 from discord import app_commands
 from discord.ext import commands, tasks
 
-from cogs.ai_moderation import ViolationType
+# Import ViolationType from comprehensive_moderation instead
+try:
+    from cogs.comprehensive_moderation import ViolationType
+except ImportError:
+    # Fallback: Define ViolationType locally if import fails
+    from enum import Enum
+
+    class ViolationType(Enum):
+        """Types of violations"""
+
+        SPAM = "spam"
+        TOXICITY = "toxicity"
+        MENTION_SPAM = "mention_spam"
+        RAID = "raid"
+        PHISHING = "phishing"
+        MALICIOUS_LINK = "malicious_link"
+        IMPERSONATION = "impersonation"
+        HARASSMENT = "harassment"
+
+
 from core.security_integration import SecuritySystemIntegration
 
 

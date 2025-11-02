@@ -494,13 +494,11 @@ class AstraBot(commands.Bot):
             ],
             # Moderation systems (load before AI features)
             [
-                "cogs.comprehensive_moderation",  # 🛡️ COMPLETE moderation system with 21 commands
-                "cogs.auto_moderation",  # 🤖 Automated spam/raid/toxicity detection
+                "cogs.comprehensive_moderation",  # 🛡️ COMPLETE moderation system with 21 commands + auto-moderation
             ],
             # AI and enhanced features (depend on core)
             [
                 "cogs.advanced_ai",
-                "cogs.ai_moderation",  # 🤖 AI-powered spam detection and message moderation
                 "cogs.enhanced_server_management",  # Enhanced server management with AI companion
                 "cogs.ai_companion",  # Sophisticated AI buddy and companion features
             ],

@@ -513,7 +513,7 @@ class AIModeration(commands.Cog):
                 return profile
         except KeyError:
             pass
-        
+
         # Create new profile if doesn't exist or was garbage collected
         profile = UserProfile(user_id)
         self.user_profiles[user_id] = profile

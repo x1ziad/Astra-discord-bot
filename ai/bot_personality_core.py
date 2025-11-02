@@ -71,7 +71,9 @@ class PersonalityTraits:
     # Dynamic traits (adjusted based on context)
     formality: float = 0.5  # Current formality level
     expressiveness: float = 0.7  # Emoji and expressive language use
-    verbosity: float = 0.4  # Response length tendency (0.4 = concise, 0.6 = moderate, 0.8 = detailed)
+    verbosity: float = (
+        0.4  # Response length tendency (0.4 = concise, 0.6 = moderate, 0.8 = detailed)
+    )
     analytical_mode: float = 0.5  # Technical vs conversational balance
 
 
@@ -385,16 +387,20 @@ class AdaptiveResponseGenerator:
             # Remove extra phrases based on verbosity
             if personality.verbosity < 0.3:
                 # Ultra-concise: strip follow-up questions
-                adapted = adapted.split('?')[0] if '?' in adapted else adapted
-                adapted = adapted.split('!')[0] + '!' if '!' in adapted else adapted
-        
+                adapted = adapted.split("?")[0] if "?" in adapted else adapted
+                adapted = adapted.split("!")[0] + "!" if "!" in adapted else adapted
+
         # Add personal touches based on interaction history (only if verbosity allows)
         if context.interaction_history > 5 and personality.verbosity > 0.6:
             if "I'm" in adapted and random.random() < 0.3:
                 adapted = adapted.replace("I'm", "As you know, I'm", 1)
 
         # Adjust based on topic category (only add if verbosity > 0.6)
-        if context.topic_category == "science" and "science" not in adapted.lower() and personality.verbosity > 0.6:
+        if (
+            context.topic_category == "science"
+            and "science" not in adapted.lower()
+            and personality.verbosity > 0.6
+        ):
             science_additions = [
                 " Love scientific discussions!",
                 " Science is my favorite!",

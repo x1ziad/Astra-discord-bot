@@ -1,6 +1,6 @@
 {
   "parameters": {
-    "humor": 50,
+    "humor": 80,
     "honesty": 100,
     "formality": 70,
     "empathy": 75,
@@ -9,5 +9,5 @@
     "transparency": 100
   },
   "mode": "mission_control",
-  "last_updated": "2025-11-01T09:33:23.631313+00:00"
+  "last_updated": "2025-11-01T14:41:47.930498+00:00"
 }

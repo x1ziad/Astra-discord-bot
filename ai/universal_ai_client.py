@@ -1078,7 +1078,9 @@ class UniversalAIClient:
 
             # HONESTY (0-100)
             if params.honesty > 75:
-                instructions.append("Be direct and blunt, speak truthfully even if uncomfortable")
+                instructions.append(
+                    "Be direct and blunt, speak truthfully even if uncomfortable"
+                )
             elif params.honesty < 50:
                 instructions.append("Be tactful, soften harsh truths")
 
@@ -1092,7 +1094,9 @@ class UniversalAIClient:
 
             # EMPATHY (0-100)
             if params.empathy > 75:
-                instructions.append("Show deep emotional understanding, be very supportive")
+                instructions.append(
+                    "Show deep emotional understanding, be very supportive"
+                )
             elif params.empathy < 30:
                 instructions.append("Stay logical and detached")
 
