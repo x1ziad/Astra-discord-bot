@@ -921,6 +921,26 @@ class ComprehensiveModeration(commands.Cog):
         await interaction.response.defer()
 
         try:
+            # Check bot permissions before attempting timeout
+            bot_member = interaction.guild.get_member(self.bot.user.id)
+            if not bot_member.guild_permissions.moderate_members:
+                await interaction.followup.send(
+                    "❌ **Missing Permissions**: I need the `Moderate Members` permission to timeout users.\n"
+                    "Please ensure I have this permission and try again.",
+                    ephemeral=True
+                )
+                return
+            
+            # Check role hierarchy
+            if user.top_role >= bot_member.top_role:
+                await interaction.followup.send(
+                    f"❌ **Role Hierarchy Error**: I cannot timeout {user.mention} because their highest role "
+                    f"({user.top_role.mention}) is equal to or higher than my highest role ({bot_member.top_role.mention}).\n"
+                    "Please adjust role positions and try again.",
+                    ephemeral=True
+                )
+                return
+            
             await user.timeout(
                 timedelta(seconds=duration_seconds),
                 reason=f"{reason} | By: {interaction.user}",
@@ -989,11 +1009,18 @@ class ComprehensiveModeration(commands.Cog):
             await interaction.followup.send(embed=embed)
             await self.log_moderation_action(interaction.guild, embed)
 
-        except discord.Forbidden:
+        except discord.Forbidden as e:
+            logger.error(f"Permission error in timeout_user: {e}")
             await interaction.followup.send(
-                "❌ I don't have permission to timeout this user.", ephemeral=True
+                "❌ **Permission Error**: I don't have permission to timeout this user.\n"
+                "Please check:\n"
+                "• I have `Moderate Members` permission\n"
+                "• My role is higher than the target user's role\n"
+                "• The user is not the server owner or an admin",
+                ephemeral=True
             )
         except Exception as e:
+            logger.error(f"Timeout error: {e}", exc_info=True)
             await interaction.followup.send(f"❌ Error: {str(e)}", ephemeral=True)
 
     @app_commands.command(name="untimeout", description="🔓 Remove timeout from a user")
@@ -2134,7 +2161,40 @@ class ComprehensiveModeration(commands.Cog):
 
             # Apply timeout
             timeout_duration = timedelta(minutes=duration_minutes)
-            await user.timeout(timeout_duration, reason=reason)
+            
+            # Check bot permissions before attempting timeout
+            bot_member = interaction.guild.get_member(self.bot.user.id)
+            if not bot_member.guild_permissions.moderate_members:
+                await interaction.followup.send(
+                    "❌ **Missing Permissions**: I need the `Moderate Members` permission to timeout users.\n"
+                    "Please ensure I have this permission and try again.",
+                    ephemeral=True
+                )
+                return
+            
+            # Check role hierarchy
+            if user.top_role >= bot_member.top_role:
+                await interaction.followup.send(
+                    f"❌ **Role Hierarchy Error**: I cannot timeout {user.mention} because their highest role "
+                    f"({user.top_role.mention}) is equal to or higher than my highest role ({bot_member.top_role.mention}).\n"
+                    "Please adjust role positions and try again.",
+                    ephemeral=True
+                )
+                return
+            
+            try:
+                await user.timeout(timeout_duration, reason=reason)
+            except discord.Forbidden:
+                await interaction.followup.send(
+                    f"❌ **Permission Error**: I lack the necessary permissions to timeout {user.mention}.\n"
+                    "This could be due to:\n"
+                    "• Missing `Moderate Members` permission\n"
+                    "• Role hierarchy (their role is higher than mine)\n"
+                    "• Server owner cannot be timed out\n"
+                    "• User has admin permissions",
+                    ephemeral=True
+                )
+                return
 
             # Create case with expires_at
             expires_at = datetime.now(timezone.utc) + timeout_duration
@@ -2187,6 +2247,16 @@ class ComprehensiveModeration(commands.Cog):
             await interaction.followup.send(embed=embed)
             await self.log_moderation_action(interaction.guild, embed)
 
+        except discord.Forbidden as e:
+            logger.error(f"Permission error in smart_timeout: {e}")
+            await interaction.followup.send(
+                "❌ **Permission Error**: I don't have permission to timeout this user.\n"
+                "Please check:\n"
+                "• I have `Moderate Members` permission\n"
+                "• My role is higher than the target user's role\n"
+                "• The user is not the server owner or an admin",
+                ephemeral=True
+            )
         except Exception as e:
             logger.error(f"Smart timeout error: {e}", exc_info=True)
             await interaction.followup.send(
@@ -2645,11 +2715,11 @@ class ComprehensiveModeration(commands.Cog):
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.execute(
                 "SELECT MAX(case_id) FROM moderation_cases WHERE guild_id = ?",
-                (guild_id,)
+                (guild_id,),
             )
             max_case_id = cursor.fetchone()[0]
             case_id = (max_case_id or 0) + 1
-            
+
             # Update in-memory counter
             self.case_counter[guild_id] = case_id
 
