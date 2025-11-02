@@ -731,17 +731,17 @@ Generate ONLY the message text, no explanations or notes."""
     @app_commands.command(name="welcome_dm_bulk")
     @app_commands.describe(
         mode="Choose operation mode: preview, test_sample, or full_send",
-        sample_size="For test_sample mode: number of users to test (default: 10)"
+        sample_size="For test_sample mode: number of users to test (default: 10)",
     )
     async def bulk_welcome_dms(
-        self, 
-        interaction: discord.Interaction, 
+        self,
+        interaction: discord.Interaction,
         mode: str = "preview",
-        sample_size: int = 10
+        sample_size: int = 10,
     ):
         """
         📤 Send welcome DMs to all existing members across all servers
-        
+
         Modes:
         - preview: See statistics without sending
         - test_sample: Send to a small sample for testing
@@ -760,7 +760,7 @@ Generate ONLY the message text, no explanations or notes."""
         if self.bulk_operation_running:
             await interaction.followup.send(
                 "⚠️ A bulk operation is already in progress. Please wait for it to complete.",
-                ephemeral=True
+                ephemeral=True,
             )
             return
 
@@ -771,11 +771,13 @@ Generate ONLY the message text, no explanations or notes."""
         for guild in self.bot.guilds:
             guild_members = [m for m in guild.members if not m.bot]
             all_users.update([m.id for m in guild_members])
-            guild_stats.append({
-                "name": guild.name,
-                "total_members": guild.member_count,
-                "non_bot_members": len(guild_members)
-            })
+            guild_stats.append(
+                {
+                    "name": guild.name,
+                    "total_members": guild.member_count,
+                    "non_bot_members": len(guild_members),
+                }
+            )
 
         # Filter out users who already received DMs
         eligible_users = []
@@ -783,10 +785,10 @@ Generate ONLY the message text, no explanations or notes."""
             for user_id in all_users:
                 cursor = conn.execute(
                     "SELECT user_id, opt_out FROM welcome_dms WHERE user_id = ?",
-                    (user_id,)
+                    (user_id,),
                 )
                 result = cursor.fetchone()
-                
+
                 # User is eligible if they haven't received a DM and haven't opted out
                 if not result or result[1] == 0:
                     user = self.bot.get_user(user_id)
@@ -798,46 +800,42 @@ Generate ONLY the message text, no explanations or notes."""
             title="📊 Bulk Welcome DM Operation - Statistics",
             description=f"**Mode:** `{mode}`",
             color=0x00FFD4,
-            timestamp=datetime.now(timezone.utc)
+            timestamp=datetime.now(timezone.utc),
         )
 
         stats_embed.add_field(
-            name="🏰 Total Servers",
-            value=f"**{len(self.bot.guilds)}**",
-            inline=True
+            name="🏰 Total Servers", value=f"**{len(self.bot.guilds)}**", inline=True
         )
 
         stats_embed.add_field(
-            name="👥 Total Unique Users",
-            value=f"**{len(all_users):,}**",
-            inline=True
+            name="👥 Total Unique Users", value=f"**{len(all_users):,}**", inline=True
         )
 
         stats_embed.add_field(
-            name="✅ Eligible for DM",
-            value=f"**{len(eligible_users):,}**",
-            inline=True
+            name="✅ Eligible for DM", value=f"**{len(eligible_users):,}**", inline=True
         )
 
         stats_embed.add_field(
             name="⏭️ Already Received",
             value=f"**{len(all_users) - len(eligible_users):,}**",
-            inline=True
+            inline=True,
         )
 
         # Add guild breakdown (top 10)
-        guild_breakdown = "\n".join([
-            f"• **{g['name']}**: {g['non_bot_members']} members"
-            for g in sorted(guild_stats, key=lambda x: x['non_bot_members'], reverse=True)[:10]
-        ])
-        
+        guild_breakdown = "\n".join(
+            [
+                f"• **{g['name']}**: {g['non_bot_members']} members"
+                for g in sorted(
+                    guild_stats, key=lambda x: x["non_bot_members"], reverse=True
+                )[:10]
+            ]
+        )
+
         if len(guild_stats) > 10:
             guild_breakdown += f"\n• *...and {len(guild_stats) - 10} more servers*"
 
         stats_embed.add_field(
-            name="📋 Server Breakdown (Top 10)",
-            value=guild_breakdown,
-            inline=False
+            name="📋 Server Breakdown (Top 10)", value=guild_breakdown, inline=False
         )
 
         # PREVIEW MODE
@@ -849,10 +847,12 @@ Generate ONLY the message text, no explanations or notes."""
             stats_embed.add_field(
                 name="⏱️ Estimated Time",
                 value=f"**{hours}h {minutes}m** at 1 DM per 1.2 seconds",
-                inline=False
+                inline=False,
             )
 
-            stats_embed.set_footer(text="Run with mode='test_sample' to test on a small sample first")
+            stats_embed.set_footer(
+                text="Run with mode='test_sample' to test on a small sample first"
+            )
 
             await interaction.followup.send(embed=stats_embed, ephemeral=True)
             return
@@ -865,13 +865,13 @@ Generate ONLY the message text, no explanations or notes."""
             confirm_embed = discord.Embed(
                 title="🧪 Test Sample Mode",
                 description=f"Ready to send welcome DMs to **{sample_size}** users for testing.",
-                color=0xFFAA00
+                color=0xFFAA00,
             )
 
             confirm_embed.add_field(
                 name="⚠️ Confirmation Required",
                 value=f"React with ✅ to proceed or ❌ to cancel.",
-                inline=False
+                inline=False,
             )
 
             await interaction.followup.send(embed=confirm_embed, ephemeral=True)
@@ -882,7 +882,7 @@ Generate ONLY the message text, no explanations or notes."""
                     interaction.user,
                     test_users,
                     f"test_sample_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}",
-                    is_test=True
+                    is_test=True,
                 )
             )
 
@@ -890,15 +890,14 @@ Generate ONLY the message text, no explanations or notes."""
         elif mode == "full_send":
             if len(eligible_users) == 0:
                 await interaction.followup.send(
-                    "✅ All users have already received welcome DMs!",
-                    ephemeral=True
+                    "✅ All users have already received welcome DMs!", ephemeral=True
                 )
                 return
 
             confirm_embed = discord.Embed(
                 title="🚨 FULL BULK OPERATION - CONFIRMATION REQUIRED",
                 description=f"You are about to send welcome DMs to **{len(eligible_users):,}** users across **{len(self.bot.guilds)}** servers.",
-                color=0xFF0000
+                color=0xFF0000,
             )
 
             estimated_time = len(eligible_users) * 1.2
@@ -908,28 +907,28 @@ Generate ONLY the message text, no explanations or notes."""
             confirm_embed.add_field(
                 name="⏱️ Estimated Duration",
                 value=f"**{hours}h {minutes}m**",
-                inline=True
+                inline=True,
             )
 
             confirm_embed.add_field(
-                name="⚡ Rate",
-                value="**1 DM per 1.2s**",
-                inline=True
+                name="⚡ Rate", value="**1 DM per 1.2s**", inline=True
             )
 
             confirm_embed.add_field(
                 name="⚠️ IMPORTANT",
                 value="• This operation cannot be easily stopped once started\n• Users with DMs disabled will be skipped\n• Progress will be logged in real-time\n• You'll receive updates every 100 DMs",
-                inline=False
+                inline=False,
             )
 
             confirm_embed.add_field(
                 name="✅ To Proceed",
                 value="Type exactly: `CONFIRM BULK SEND` in your next message within 60 seconds",
-                inline=False
+                inline=False,
             )
 
-            confirm_embed.set_footer(text="⚠️ This is a one-time operation for all existing members")
+            confirm_embed.set_footer(
+                text="⚠️ This is a one-time operation for all existing members"
+            )
 
             await interaction.followup.send(embed=confirm_embed, ephemeral=True)
 
@@ -947,7 +946,7 @@ Generate ONLY the message text, no explanations or notes."""
                 # Confirmation received - start bulk operation
                 await interaction.channel.send(
                     f"✅ {interaction.user.mention} Bulk operation confirmed! Starting...",
-                    delete_after=10
+                    delete_after=10,
                 )
 
                 asyncio.create_task(
@@ -955,20 +954,20 @@ Generate ONLY the message text, no explanations or notes."""
                         interaction.user,
                         eligible_users,
                         f"bulk_full_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}",
-                        is_test=False
+                        is_test=False,
                     )
                 )
 
             except asyncio.TimeoutError:
                 await interaction.channel.send(
                     f"⏱️ {interaction.user.mention} Bulk operation timed out - no confirmation received.",
-                    delete_after=10
+                    delete_after=10,
                 )
 
         else:
             await interaction.followup.send(
                 f"❌ Invalid mode: `{mode}`. Use: preview, test_sample, or full_send",
-                ephemeral=True
+                ephemeral=True,
             )
 
     async def _run_bulk_operation(
@@ -976,11 +975,11 @@ Generate ONLY the message text, no explanations or notes."""
         initiator: discord.User,
         users: List[discord.User],
         operation_id: str,
-        is_test: bool = False
+        is_test: bool = False,
     ):
         """
         Execute bulk DM operation with progress tracking
-        
+
         Args:
             initiator: User who started the operation
             users: List of users to send DMs to
@@ -1002,14 +1001,12 @@ Generate ONLY the message text, no explanations or notes."""
                     operation_id,
                     datetime.now(timezone.utc).isoformat(),
                     len(users),
-                    "running"
-                )
+                    "running",
+                ),
             )
             conn.commit()
 
-        logger.info(
-            f"🚀 Starting bulk operation {operation_id} - {len(users)} users"
-        )
+        logger.info(f"🚀 Starting bulk operation {operation_id} - {len(users)} users")
 
         # Send initial progress message to initiator
         try:
@@ -1017,7 +1014,7 @@ Generate ONLY the message text, no explanations or notes."""
                 title="📤 Bulk Welcome DM Operation Started",
                 description=f"**Operation ID:** `{operation_id}`\n**Target Users:** {len(users):,}\n**Mode:** {'Test Sample' if is_test else 'Full Send'}",
                 color=0x00FFD4,
-                timestamp=datetime.now(timezone.utc)
+                timestamp=datetime.now(timezone.utc),
             )
             await initiator.send(embed=progress_embed)
         except:
@@ -1095,8 +1092,8 @@ Generate ONLY the message text, no explanations or notes."""
                     successful,
                     failed,
                     "completed",
-                    operation_id
-                )
+                    operation_id,
+                ),
             )
             conn.commit()
 
@@ -1106,7 +1103,7 @@ Generate ONLY the message text, no explanations or notes."""
                 title="✅ Bulk Welcome DM Operation Complete!",
                 description=f"**Operation ID:** `{operation_id}`",
                 color=0x00FF00,
-                timestamp=datetime.now(timezone.utc)
+                timestamp=datetime.now(timezone.utc),
             )
 
             completion_embed.add_field(
@@ -1117,14 +1114,12 @@ Generate ONLY the message text, no explanations or notes."""
                     f"**❌ Failed:** {failed:,}\n"
                     f"**🚫 DMs Disabled:** {dms_disabled:,}"
                 ),
-                inline=False
+                inline=False,
             )
 
             success_rate = (successful / len(users) * 100) if len(users) > 0 else 0
             completion_embed.add_field(
-                name="📈 Success Rate",
-                value=f"**{success_rate:.1f}%**",
-                inline=True
+                name="📈 Success Rate", value=f"**{success_rate:.1f}%**", inline=True
             )
 
             hours = int(duration // 3600)
@@ -1134,7 +1129,7 @@ Generate ONLY the message text, no explanations or notes."""
             completion_embed.add_field(
                 name="⏱️ Duration",
                 value=f"**{hours}h {minutes}m {seconds}s**",
-                inline=True
+                inline=True,
             )
 
             completion_embed.set_footer(text="Bulk operation completed successfully")
