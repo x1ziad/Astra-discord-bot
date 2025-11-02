@@ -1539,7 +1539,7 @@ class SecurityManager(commands.Cog):
     # APPEALS SYSTEM - Human-in-the-loop moderation
     # ═══════════════════════════════════════════════════════════════════════════════
 
-    @app_commands.command(name="appeal", description="📝 Appeal a security violation")
+    @app_commands.command(name="security_appeal", description="📝 Appeal a security violation")
     @app_commands.describe(
         violation_id="ID of the violation to appeal (from security log)",
         reason="Reason for your appeal",
