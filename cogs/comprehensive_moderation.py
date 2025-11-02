@@ -443,10 +443,10 @@ class ComprehensiveModeration(commands.Cog):
         # Get recent stats
         stats = await self.get_moderation_stats(interaction.guild_id, days=7)
         stats_text = []
-        stats_text.append(f"⚠️ Warnings: {stats['warnings']}")
-        stats_text.append(f"⏰ Timeouts: {stats['timeouts']}")
-        stats_text.append(f"👢 Kicks: {stats['kicks']}")
-        stats_text.append(f"🔨 Bans: {stats['bans']}")
+        stats_text.append(f"⚠️ Warnings: {stats.get('warns', 0)}")
+        stats_text.append(f"⏰ Timeouts: {stats.get('timeouts', 0)}")
+        stats_text.append(f"👢 Kicks: {stats.get('kicks', 0)}")
+        stats_text.append(f"🔨 Bans: {stats.get('bans', 0)}")
 
         embed.add_field(
             name="📈 Last 7 Days", value="\n".join(stats_text), inline=False
@@ -524,9 +524,7 @@ class ComprehensiveModeration(commands.Cog):
         time_window = timedelta(seconds=config.spam_time_window)
 
         recent_in_window = [
-            msg
-            for msg in recent_messages
-            if now - msg["timestamp"] <= time_window
+            msg for msg in recent_messages if now - msg["timestamp"] <= time_window
         ]
 
         if len(recent_in_window) >= config.spam_message_threshold:
@@ -557,12 +555,14 @@ class ComprehensiveModeration(commands.Cog):
 
                 # Check if escalation needed
                 counts = await self.get_user_violation_counts(guild_id, user_id)
-                
+
                 if counts["warning"] >= config.max_warnings_before_timeout:
                     # Auto-timeout
                     duration = timedelta(minutes=config.default_timeout_duration)
-                    await message.author.timeout(duration, reason="Auto-moderation: Excessive warnings")
-                    
+                    await message.author.timeout(
+                        duration, reason="Auto-moderation: Excessive warnings"
+                    )
+
                     # Log in mod channel
                     if config.mod_log_channel_id:
                         channel = message.guild.get_channel(config.mod_log_channel_id)
@@ -571,7 +571,7 @@ class ComprehensiveModeration(commands.Cog):
                                 title="🤖 AUTO-MODERATION: Spam Timeout",
                                 description=f"**User:** {message.author.mention}\n**Reason:** {reason}\n**Duration:** {config.default_timeout_duration} minutes",
                                 color=0xFF9900,
-                                timestamp=datetime.now(timezone.utc)
+                                timestamp=datetime.now(timezone.utc),
                             )
                             await channel.send(embed=embed)
 
@@ -581,10 +581,12 @@ class ComprehensiveModeration(commands.Cog):
             except Exception as e:
                 logger.error(f"Spam handling error: {e}")
 
-    async def _check_caps_abuse(self, message: discord.Message, config: ModerationConfig):
+    async def _check_caps_abuse(
+        self, message: discord.Message, config: ModerationConfig
+    ):
         """Check for excessive caps usage"""
         content = message.content
-        
+
         if len(content) < 10:  # Ignore short messages
             return
 
@@ -595,11 +597,11 @@ class ComprehensiveModeration(commands.Cog):
         if caps_ratio > 0.7:  # More than 70% caps
             try:
                 await message.delete()
-                
+
                 # Send warning
                 warning_msg = await message.channel.send(
                     f"⚠️ {message.author.mention} Please don't use excessive caps.",
-                    delete_after=5
+                    delete_after=5,
                 )
 
                 # Record minor violation
@@ -615,7 +617,9 @@ class ComprehensiveModeration(commands.Cog):
             except Exception as e:
                 logger.error(f"Caps filtering error: {e}")
 
-    async def _check_mention_spam(self, message: discord.Message, config: ModerationConfig):
+    async def _check_mention_spam(
+        self, message: discord.Message, config: ModerationConfig
+    ):
         """Check for mention spam"""
         mention_count = len(message.mentions) + len(message.role_mentions)
 
@@ -625,7 +629,9 @@ class ComprehensiveModeration(commands.Cog):
 
                 # Timeout user immediately
                 duration = timedelta(minutes=10)
-                await message.author.timeout(duration, reason="Auto-moderation: Mention spam")
+                await message.author.timeout(
+                    duration, reason="Auto-moderation: Mention spam"
+                )
 
                 # Log
                 if config.mod_log_channel_id:
@@ -635,14 +641,16 @@ class ComprehensiveModeration(commands.Cog):
                             title="🤖 AUTO-MODERATION: Mention Spam",
                             description=f"**User:** {message.author.mention}\n**Mentions:** {mention_count}\n**Action:** 10-minute timeout",
                             color=0xFF0000,
-                            timestamp=datetime.now(timezone.utc)
+                            timestamp=datetime.now(timezone.utc),
                         )
                         await channel.send(embed=embed)
 
             except Exception as e:
                 logger.error(f"Mention spam handling error: {e}")
 
-    async def _check_link_spam(self, message: discord.Message, config: ModerationConfig):
+    async def _check_link_spam(
+        self, message: discord.Message, config: ModerationConfig
+    ):
         """Check for suspicious links"""
         # Common phishing/scam patterns
         suspicious_patterns = [
@@ -665,7 +673,7 @@ class ComprehensiveModeration(commands.Cog):
                     # Warn user
                     await message.channel.send(
                         f"⚠️ {message.author.mention} Suspicious link detected and removed.",
-                        delete_after=10
+                        delete_after=10,
                     )
 
                     # Record
@@ -686,7 +694,7 @@ class ComprehensiveModeration(commands.Cog):
                                 title="🤖 AUTO-MODERATION: Suspicious Link",
                                 description=f"**User:** {message.author.mention}\n**Pattern:** {pattern}\n**Action:** Message deleted",
                                 color=0xFF9900,
-                                timestamp=datetime.now(timezone.utc)
+                                timestamp=datetime.now(timezone.utc),
                             )
                             await channel.send(embed=embed)
 
@@ -699,8 +707,16 @@ class ComprehensiveModeration(commands.Cog):
         """Check for toxic/offensive content"""
         # Simple keyword-based toxicity detection
         toxic_keywords = [
-            "idiot", "stupid", "dumb", "retard", "moron", "loser",
-            "kill yourself", "kys", "die", "hate you",
+            "idiot",
+            "stupid",
+            "dumb",
+            "retard",
+            "moron",
+            "loser",
+            "kill yourself",
+            "kys",
+            "die",
+            "hate you",
         ]
 
         content_lower = message.content.lower()
@@ -713,7 +729,7 @@ class ComprehensiveModeration(commands.Cog):
                     # Warn user
                     warning = await message.channel.send(
                         f"⚠️ {message.author.mention} Please keep the chat respectful.",
-                        delete_after=5
+                        delete_after=5,
                     )
 
                     # Record
@@ -726,7 +742,9 @@ class ComprehensiveModeration(commands.Cog):
                         duration_minutes=None,
                     )
 
-                    await self.increment_user_warning(message.guild.id, message.author.id)
+                    await self.increment_user_warning(
+                        message.guild.id, message.author.id
+                    )
 
                     return  # Stop after first match
 
@@ -750,13 +768,17 @@ class ComprehensiveModeration(commands.Cog):
         self._recent_joins[guild_id].append(now)
 
         # Check for raid (10+ joins in 60 seconds)
-        recent = [t for t in self._recent_joins[guild_id] if now - t <= timedelta(seconds=60)]
+        recent = [
+            t for t in self._recent_joins[guild_id] if now - t <= timedelta(seconds=60)
+        ]
 
         if len(recent) >= 10:
             # RAID DETECTED
             try:
                 # Enable verification level
-                await member.guild.edit(verification_level=discord.VerificationLevel.high)
+                await member.guild.edit(
+                    verification_level=discord.VerificationLevel.high
+                )
 
                 # Log raid alert
                 if config.mod_log_channel_id:
@@ -766,7 +788,7 @@ class ComprehensiveModeration(commands.Cog):
                             title="🚨 RAID DETECTED",
                             description=f"**{len(recent)} members** joined in the last 60 seconds.\n\n**Action:** Verification level increased.",
                             color=0xFF0000,
-                            timestamp=datetime.now(timezone.utc)
+                            timestamp=datetime.now(timezone.utc),
                         )
                         await channel.send(embed=embed, content="@here")
 
