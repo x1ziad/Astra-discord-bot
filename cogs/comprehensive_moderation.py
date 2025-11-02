@@ -2610,8 +2610,7 @@ class ComprehensiveModeration(commands.Cog):
     # ========================================================================
 
     @app_commands.command(
-        name="my_violations",
-        description="📋 View your own violation history"
+        name="my_violations", description="📋 View your own violation history"
     )
     @performance_monitor
     async def my_violations(self, interaction: discord.Interaction):
@@ -2646,24 +2645,26 @@ class ComprehensiveModeration(commands.Cog):
                     status = "🔴 Active"
                     if case.appealed:
                         status = f"⚖️ Appealed ({case.appeal_status or 'Pending'})"
-                    
+
                     active_text.append(
                         f"**Case #{case.case_id}** - {case.action.value.title()}\n"
                         f"└ {status} | {case.violation.value}\n"
-                        f"└ *{case.reason[:50]}...*" if len(case.reason) > 50 else f"└ *{case.reason}*"
+                        f"└ *{case.reason[:50]}...*"
+                        if len(case.reason) > 50
+                        else f"└ *{case.reason}*"
                     )
-                
+
                 embed.add_field(
                     name=f"🔴 Active Cases ({len(active_cases)})",
                     value="\n\n".join(active_text) or "None",
-                    inline=False
+                    inline=False,
                 )
 
             if inactive_cases:
                 embed.add_field(
                     name=f"📁 Resolved Cases ({len(inactive_cases)})",
                     value=f"{len(inactive_cases)} case(s) - use `/case <id>` to view details",
-                    inline=False
+                    inline=False,
                 )
 
             embed.add_field(
@@ -2673,7 +2674,7 @@ class ComprehensiveModeration(commands.Cog):
                     "• Use `/appeal <case_id> <reason>` to appeal a case\n"
                     "• Contact staff if you have questions"
                 ),
-                inline=False
+                inline=False,
             )
 
             embed.set_footer(text=f"User ID: {interaction.user.id}")
@@ -2686,20 +2687,13 @@ class ComprehensiveModeration(commands.Cog):
                 f"❌ Error retrieving violations: {str(e)}", ephemeral=True
             )
 
-    @app_commands.command(
-        name="appeal",
-        description="⚖️ Appeal a moderation case"
-    )
+    @app_commands.command(name="appeal", description="⚖️ Appeal a moderation case")
     @app_commands.describe(
-        case_id="Case ID to appeal",
-        reason="Detailed reason for your appeal"
+        case_id="Case ID to appeal", reason="Detailed reason for your appeal"
     )
     @performance_monitor
     async def appeal_case(
-        self, 
-        interaction: discord.Interaction, 
-        case_id: int, 
-        reason: str
+        self, interaction: discord.Interaction, case_id: int, reason: str
     ):
         """Allow users to appeal their own cases"""
         await interaction.response.defer(ephemeral=True)
@@ -2707,7 +2701,7 @@ class ComprehensiveModeration(commands.Cog):
         try:
             # Get the case
             case = await self.get_case(interaction.guild_id, case_id)
-            
+
             if not case:
                 await interaction.followup.send(
                     f"❌ Case #{case_id} not found.", ephemeral=True
@@ -2727,15 +2721,19 @@ class ComprehensiveModeration(commands.Cog):
                 await interaction.followup.send(
                     f"❌ This case has already been appealed.\n"
                     f"Status: **{case.appeal_status or 'Pending'}**",
-                    ephemeral=True
+                    ephemeral=True,
                 )
                 return
 
             # Check if case is still active or appealable
-            if not case.active and case.action not in [ActionType.WARN, ActionType.TIMEOUT, ActionType.KICK]:
+            if not case.active and case.action not in [
+                ActionType.WARN,
+                ActionType.TIMEOUT,
+                ActionType.KICK,
+            ]:
                 await interaction.followup.send(
                     "❌ This case cannot be appealed (inactive or permanent action).",
-                    ephemeral=True
+                    ephemeral=True,
                 )
                 return
 
@@ -2745,8 +2743,7 @@ class ComprehensiveModeration(commands.Cog):
             # Check if appeals are enabled
             if not config.allow_appeals:
                 await interaction.followup.send(
-                    "❌ Appeals are currently disabled in this server.",
-                    ephemeral=True
+                    "❌ Appeals are currently disabled in this server.", ephemeral=True
                 )
                 return
 
@@ -2756,19 +2753,21 @@ class ComprehensiveModeration(commands.Cog):
                     """SELECT created_at FROM case_appeals 
                     WHERE guild_id = ? AND user_id = ? 
                     ORDER BY created_at DESC LIMIT 1""",
-                    (interaction.guild_id, case.user_id)
+                    (interaction.guild_id, case.user_id),
                 )
                 last_appeal = cursor.fetchone()
-                
+
                 if last_appeal:
                     last_appeal_time = datetime.fromisoformat(last_appeal[0])
                     cooldown = timedelta(hours=config.appeal_cooldown_hours)
                     if datetime.now(timezone.utc) - last_appeal_time < cooldown:
-                        remaining = cooldown - (datetime.now(timezone.utc) - last_appeal_time)
+                        remaining = cooldown - (
+                            datetime.now(timezone.utc) - last_appeal_time
+                        )
                         hours = int(remaining.total_seconds() / 3600)
                         await interaction.followup.send(
                             f"❌ Appeal cooldown active. Try again in {hours} hours.",
-                            ephemeral=True
+                            ephemeral=True,
                         )
                         return
 
@@ -2792,17 +2791,21 @@ class ComprehensiveModeration(commands.Cog):
                         datetime.now(timezone.utc).isoformat(),
                         1 if requires_multi_admin else 0,
                         "[]",
-                        "[]"
-                    )
+                        "[]",
+                    ),
                 )
                 appeal_id = cursor.lastrowid
-                
+
                 # Update case
                 conn.execute(
                     """UPDATE moderation_cases 
                     SET appealed = 1, appeal_status = ? 
                     WHERE guild_id = ? AND case_id = ?""",
-                    ("pending_multi_admin" if requires_multi_admin else "pending", interaction.guild_id, case_id)
+                    (
+                        "pending_multi_admin" if requires_multi_admin else "pending",
+                        interaction.guild_id,
+                        case_id,
+                    ),
                 )
                 conn.commit()
 
@@ -2813,18 +2816,14 @@ class ComprehensiveModeration(commands.Cog):
                 color=0x3498DB,
                 timestamp=datetime.now(timezone.utc),
             )
-            
+
             embed.add_field(
                 name="📋 Case Details",
                 value=f"**Action:** {case.action.value.title()}\n**Violation:** {case.violation.value}\n**Reason:** {case.reason}",
-                inline=False
+                inline=False,
             )
-            
-            embed.add_field(
-                name="📝 Your Appeal",
-                value=reason[:500],
-                inline=False
-            )
+
+            embed.add_field(name="📝 Your Appeal", value=reason[:500], inline=False)
 
             if requires_multi_admin:
                 embed.add_field(
@@ -2834,13 +2833,13 @@ class ComprehensiveModeration(commands.Cog):
                         "approval from **3 administrators** to be accepted.\n\n"
                         "Administrators can review using `/review_appeal`."
                     ),
-                    inline=False
+                    inline=False,
                 )
             else:
                 embed.add_field(
                     name="👥 Review Process",
                     value="An administrator will review your appeal shortly.\nAdministrators can review using `/review_appeal`.",
-                    inline=False
+                    inline=False,
                 )
 
             embed.set_footer(text=f"Appeal ID: {appeal_id}")
@@ -2858,7 +2857,9 @@ class ComprehensiveModeration(commands.Cog):
                         timestamp=datetime.now(timezone.utc),
                     )
                     notify_embed.add_field(
-                        name="Case", value=f"#{case_id} - {case.action.value.title()}", inline=True
+                        name="Case",
+                        value=f"#{case_id} - {case.action.value.title()}",
+                        inline=True,
                     )
                     notify_embed.add_field(
                         name="User", value=interaction.user.mention, inline=True
@@ -2869,16 +2870,18 @@ class ComprehensiveModeration(commands.Cog):
                     notify_embed.add_field(
                         name="Appeal Reason", value=reason[:500], inline=False
                     )
-                    
+
                     if requires_multi_admin:
                         notify_embed.add_field(
                             name="⚠️ Multi-Admin Review",
                             value="Requires 3 admin approvals",
-                            inline=False
+                            inline=False,
                         )
-                    
-                    notify_embed.set_footer(text=f"Appeal ID: {appeal_id} | Use /review_appeal {appeal_id}")
-                    
+
+                    notify_embed.set_footer(
+                        text=f"Appeal ID: {appeal_id} | Use /review_appeal {appeal_id}"
+                    )
+
                     try:
                         await channel.send(embed=notify_embed)
                     except:
@@ -2892,17 +2895,19 @@ class ComprehensiveModeration(commands.Cog):
 
     @app_commands.command(
         name="review_appeal",
-        description="👨‍⚖️ Review and decide on a case appeal (Admin only)"
+        description="👨‍⚖️ Review and decide on a case appeal (Admin only)",
     )
     @app_commands.describe(
         appeal_id="Appeal ID to review",
         decision="Your decision (approve/deny)",
-        reason="Reason for your decision"
+        reason="Reason for your decision",
     )
-    @app_commands.choices(decision=[
-        app_commands.Choice(name="✅ Approve", value="approve"),
-        app_commands.Choice(name="❌ Deny", value="deny")
-    ])
+    @app_commands.choices(
+        decision=[
+            app_commands.Choice(name="✅ Approve", value="approve"),
+            app_commands.Choice(name="❌ Deny", value="deny"),
+        ]
+    )
     @app_commands.default_permissions(administrator=True)
     @performance_monitor
     async def review_appeal(
@@ -2910,7 +2915,7 @@ class ComprehensiveModeration(commands.Cog):
         interaction: discord.Interaction,
         appeal_id: int,
         decision: str,
-        reason: str
+        reason: str,
     ):
         """Allow admins to review appeals with multi-admin support"""
         await interaction.response.defer()
@@ -2922,7 +2927,7 @@ class ComprehensiveModeration(commands.Cog):
                     """SELECT case_id, guild_id, user_id, reason as appeal_reason, status, 
                     requires_multi_admin, admin_approvals, admin_denials
                     FROM case_appeals WHERE appeal_id = ? AND guild_id = ?""",
-                    (appeal_id, interaction.guild_id)
+                    (appeal_id, interaction.guild_id),
                 )
                 appeal = cursor.fetchone()
 
@@ -2932,7 +2937,16 @@ class ComprehensiveModeration(commands.Cog):
                 )
                 return
 
-            case_id, guild_id, user_id, appeal_reason, status, requires_multi_admin, admin_approvals_json, admin_denials_json = appeal
+            (
+                case_id,
+                guild_id,
+                user_id,
+                appeal_reason,
+                status,
+                requires_multi_admin,
+                admin_approvals_json,
+                admin_denials_json,
+            ) = appeal
 
             # Check if appeal is already decided
             if status in ["approved", "denied"]:
@@ -2994,10 +3008,10 @@ class ComprehensiveModeration(commands.Cog):
                             admin_id,
                             datetime.now(timezone.utc).isoformat(),
                             reason,
-                            appeal_id
-                        )
+                            appeal_id,
+                        ),
                     )
-                    
+
                     # Update case
                     new_status = final_decision
                     if final_decision == "approved":
@@ -3006,14 +3020,14 @@ class ComprehensiveModeration(commands.Cog):
                             """UPDATE moderation_cases 
                             SET active = 0, appeal_status = ? 
                             WHERE guild_id = ? AND case_id = ?""",
-                            (new_status, guild_id, case_id)
+                            (new_status, guild_id, case_id),
                         )
                     else:
                         conn.execute(
                             """UPDATE moderation_cases 
                             SET appeal_status = ? 
                             WHERE guild_id = ? AND case_id = ?""",
-                            (new_status, guild_id, case_id)
+                            (new_status, guild_id, case_id),
                         )
                 else:
                     # Just update votes, not final yet
@@ -3024,65 +3038,71 @@ class ComprehensiveModeration(commands.Cog):
                         (
                             json.dumps(admin_approvals),
                             json.dumps(admin_denials),
-                            appeal_id
-                        )
+                            appeal_id,
+                        ),
                     )
-                
+
                 conn.commit()
 
             # Create response embed
-            user = interaction.guild.get_member(user_id) or await interaction.guild.fetch_member(user_id)
-            
+            user = interaction.guild.get_member(
+                user_id
+            ) or await interaction.guild.fetch_member(user_id)
+
             embed = discord.Embed(
                 title="⚖️ Appeal Review",
                 description=f"Review recorded for Appeal #{appeal_id}",
-                color=0x2ECC71 if final_decision == "approved" else 0xE74C3C if final_decision == "denied" else 0xF39C12,
+                color=(
+                    0x2ECC71
+                    if final_decision == "approved"
+                    else 0xE74C3C if final_decision == "denied" else 0xF39C12
+                ),
                 timestamp=datetime.now(timezone.utc),
             )
 
             embed.add_field(
                 name="📋 Appeal Details",
                 value=f"**Case:** #{case_id}\n**User:** {user.mention}\n**Appeal:** {appeal_reason[:100]}...",
-                inline=False
+                inline=False,
             )
 
             embed.add_field(
                 name=f"{'✅' if decision == 'approve' else '❌'} Your Decision",
                 value=f"**{decision.title()}**\n{reason}",
-                inline=False
+                inline=False,
             )
 
             if requires_multi_admin:
                 embed.add_field(
                     name="📊 Voting Status",
                     value=f"✅ Approvals: {len(admin_approvals)}/3\n❌ Denials: {len(admin_denials)}",
-                    inline=True
+                    inline=True,
                 )
 
             if final_decision:
                 embed.add_field(
                     name="⚖️ Final Decision",
                     value=f"**{final_decision.upper()}**",
-                    inline=True
+                    inline=True,
                 )
-                
+
                 if final_decision == "approved":
                     embed.add_field(
                         name="✅ Appeal Approved",
                         value=f"Case #{case_id} has been **overridden** and is now inactive.\nThe user has been notified.",
-                        inline=False
+                        inline=False,
                     )
                 else:
                     embed.add_field(
                         name="❌ Appeal Denied",
                         value=f"Case #{case_id} remains active.\nThe user has been notified.",
-                        inline=False
+                        inline=False,
                     )
             else:
                 embed.add_field(
                     name="⏳ Pending",
                     value=f"Waiting for {3 - len(admin_approvals)} more approval(s)",
-                    inline=False
+                    inline=False,
                 )
 
             embed.set_footer(text=f"Reviewed by {interaction.user}")
@@ -3098,37 +3118,37 @@ class ComprehensiveModeration(commands.Cog):
                         color=0x2ECC71 if final_decision == "approved" else 0xE74C3C,
                         timestamp=datetime.now(timezone.utc),
                     )
-                    
+
                     dm_embed.add_field(
                         name="Original Case",
                         value=f"**Action:** {case.action.value.title()}\n**Reason:** {case.reason}",
-                        inline=False
+                        inline=False,
                     )
-                    
+
                     dm_embed.add_field(
-                        name="Decision Reason",
-                        value=reason,
-                        inline=False
+                        name="Decision Reason", value=reason, inline=False
                     )
 
                     if final_decision == "approved":
                         dm_embed.add_field(
                             name="✅ What This Means",
                             value="Your case has been overridden and removed from your record.",
-                            inline=False
+                            inline=False,
                         )
                     else:
                         dm_embed.add_field(
                             name="❌ What This Means",
                             value="Your case remains active and on your record.",
-                            inline=False
+                            inline=False,
                         )
 
                     await user.send(embed=dm_embed)
                 except:
                     pass
 
-            logger.info(f"Appeal {appeal_id} {'decided' if final_decision else 'reviewed'} by {interaction.user}: {decision}")
+            logger.info(
+                f"Appeal {appeal_id} {'decided' if final_decision else 'reviewed'} by {interaction.user}: {decision}"
+            )
 
         except Exception as e:
             logger.error(f"Review appeal error: {e}", exc_info=True)
@@ -3137,24 +3157,23 @@ class ComprehensiveModeration(commands.Cog):
             )
 
     @app_commands.command(
-        name="list_appeals",
-        description="📜 List all pending appeals (Admin only)"
+        name="list_appeals", description="📜 List all pending appeals (Admin only)"
     )
-    @app_commands.describe(
-        status="Filter by status (optional)"
+    @app_commands.describe(status="Filter by status (optional)")
+    @app_commands.choices(
+        status=[
+            app_commands.Choice(name="⏳ Pending", value="pending"),
+            app_commands.Choice(
+                name="🔒 Pending Multi-Admin", value="pending_multi_admin"
+            ),
+            app_commands.Choice(name="✅ Approved", value="approved"),
+            app_commands.Choice(name="❌ Denied", value="denied"),
+        ]
     )
-    @app_commands.choices(status=[
-        app_commands.Choice(name="⏳ Pending", value="pending"),
-        app_commands.Choice(name="🔒 Pending Multi-Admin", value="pending_multi_admin"),
-        app_commands.Choice(name="✅ Approved", value="approved"),
-        app_commands.Choice(name="❌ Denied", value="denied")
-    ])
     @app_commands.default_permissions(administrator=True)
     @performance_monitor
     async def list_appeals(
-        self,
-        interaction: discord.Interaction,
-        status: Optional[str] = None
+        self, interaction: discord.Interaction, status: Optional[str] = None
     ):
         """List all appeals, filtered by status"""
         await interaction.response.defer()
@@ -3168,7 +3187,7 @@ class ComprehensiveModeration(commands.Cog):
                         FROM case_appeals 
                         WHERE guild_id = ? AND status LIKE ?
                         ORDER BY created_at DESC LIMIT 20""",
-                        (interaction.guild_id, f"%{status}%")
+                        (interaction.guild_id, f"%{status}%"),
                     )
                 else:
                     cursor = conn.execute(
@@ -3177,15 +3196,15 @@ class ComprehensiveModeration(commands.Cog):
                         FROM case_appeals 
                         WHERE guild_id = ?
                         ORDER BY created_at DESC LIMIT 20""",
-                        (interaction.guild_id,)
+                        (interaction.guild_id,),
                     )
-                
+
                 appeals = cursor.fetchall()
 
             if not appeals:
                 await interaction.followup.send(
                     f"📭 No appeals found{' with status: ' + status if status else ''}.",
-                    ephemeral=True
+                    ephemeral=True,
                 )
                 return
 
@@ -3197,34 +3216,40 @@ class ComprehensiveModeration(commands.Cog):
             )
 
             for appeal in appeals[:10]:  # Show first 10
-                appeal_id, case_id, user_id, reason, appeal_status, created_at, requires_multi, approvals_json, denials_json = appeal
-                
+                (
+                    appeal_id,
+                    case_id,
+                    user_id,
+                    reason,
+                    appeal_status,
+                    created_at,
+                    requires_multi,
+                    approvals_json,
+                    denials_json,
+                ) = appeal
+
                 approvals = json.loads(approvals_json)
                 denials = json.loads(denials_json)
-                
+
                 user = interaction.guild.get_member(user_id)
                 user_str = user.mention if user else f"User {user_id}"
-                
+
                 status_emoji = {
                     "pending": "⏳",
                     "pending_multi_admin": "🔒",
                     "approved": "✅",
-                    "denied": "❌"
+                    "denied": "❌",
                 }.get(appeal_status, "❓")
 
                 value = f"**Case:** #{case_id} | **User:** {user_str}\n"
                 value += f"**Status:** {status_emoji} {appeal_status.replace('_', ' ').title()}\n"
-                
+
                 if requires_multi:
                     value += f"**Votes:** ✅{len(approvals)}/3 | ❌{len(denials)}\n"
-                
+
                 value += f"**Reason:** {reason[:80]}..."
-                
-                embed.add_field(
-                    name=f"Appeal #{appeal_id}",
-                    value=value,
-                    inline=False
-                )
+
+                embed.add_field(name=f"Appeal #{appeal_id}", value=value, inline=False)
 
             embed.set_footer(text="Use /review_appeal <id> to review")
 
