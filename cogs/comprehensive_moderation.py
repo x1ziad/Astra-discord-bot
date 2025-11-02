@@ -270,6 +270,28 @@ class ComprehensiveModeration(commands.Cog):
             """
             )
 
+            # Appeals table with multi-admin approval
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS case_appeals (
+                    appeal_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    case_id INTEGER,
+                    guild_id INTEGER,
+                    user_id INTEGER,
+                    reason TEXT,
+                    status TEXT DEFAULT 'pending',
+                    created_at TEXT,
+                    requires_multi_admin INTEGER DEFAULT 0,
+                    admin_approvals TEXT DEFAULT '[]',
+                    admin_denials TEXT DEFAULT '[]',
+                    final_decision_by INTEGER,
+                    final_decision_at TEXT,
+                    final_decision_reason TEXT,
+                    FOREIGN KEY (guild_id, case_id) REFERENCES moderation_cases(guild_id, case_id)
+                )
+            """
+            )
+
             # Create indices for performance
             conn.execute(
                 """
@@ -927,20 +949,20 @@ class ComprehensiveModeration(commands.Cog):
                 await interaction.followup.send(
                     "❌ **Missing Permissions**: I need the `Moderate Members` permission to timeout users.\n"
                     "Please ensure I have this permission and try again.",
-                    ephemeral=True
+                    ephemeral=True,
                 )
                 return
-            
+
             # Check role hierarchy
             if user.top_role >= bot_member.top_role:
                 await interaction.followup.send(
                     f"❌ **Role Hierarchy Error**: I cannot timeout {user.mention} because their highest role "
                     f"({user.top_role.mention}) is equal to or higher than my highest role ({bot_member.top_role.mention}).\n"
                     "Please adjust role positions and try again.",
-                    ephemeral=True
+                    ephemeral=True,
                 )
                 return
-            
+
             await user.timeout(
                 timedelta(seconds=duration_seconds),
                 reason=f"{reason} | By: {interaction.user}",
@@ -1017,7 +1039,7 @@ class ComprehensiveModeration(commands.Cog):
                 "• I have `Moderate Members` permission\n"
                 "• My role is higher than the target user's role\n"
                 "• The user is not the server owner or an admin",
-                ephemeral=True
+                ephemeral=True,
             )
         except Exception as e:
             logger.error(f"Timeout error: {e}", exc_info=True)
@@ -2161,27 +2183,27 @@ class ComprehensiveModeration(commands.Cog):
 
             # Apply timeout
             timeout_duration = timedelta(minutes=duration_minutes)
-            
+
             # Check bot permissions before attempting timeout
             bot_member = interaction.guild.get_member(self.bot.user.id)
             if not bot_member.guild_permissions.moderate_members:
                 await interaction.followup.send(
                     "❌ **Missing Permissions**: I need the `Moderate Members` permission to timeout users.\n"
                     "Please ensure I have this permission and try again.",
-                    ephemeral=True
+                    ephemeral=True,
                 )
                 return
-            
+
             # Check role hierarchy
             if user.top_role >= bot_member.top_role:
                 await interaction.followup.send(
                     f"❌ **Role Hierarchy Error**: I cannot timeout {user.mention} because their highest role "
                     f"({user.top_role.mention}) is equal to or higher than my highest role ({bot_member.top_role.mention}).\n"
                     "Please adjust role positions and try again.",
-                    ephemeral=True
+                    ephemeral=True,
                 )
                 return
-            
+
             try:
                 await user.timeout(timeout_duration, reason=reason)
             except discord.Forbidden:
@@ -2192,7 +2214,7 @@ class ComprehensiveModeration(commands.Cog):
                     "• Role hierarchy (their role is higher than mine)\n"
                     "• Server owner cannot be timed out\n"
                     "• User has admin permissions",
-                    ephemeral=True
+                    ephemeral=True,
                 )
                 return
 
@@ -2255,7 +2277,7 @@ class ComprehensiveModeration(commands.Cog):
                 "• I have `Moderate Members` permission\n"
                 "• My role is higher than the target user's role\n"
                 "• The user is not the server owner or an admin",
-                ephemeral=True
+                ephemeral=True,
             )
         except Exception as e:
             logger.error(f"Smart timeout error: {e}", exc_info=True)
@@ -2581,6 +2603,637 @@ class ComprehensiveModeration(commands.Cog):
             logger.error(f"Trust score error: {e}", exc_info=True)
             await interaction.followup.send(
                 f"❌ Error managing trust score: {str(e)}", ephemeral=True
+            )
+
+    # ========================================================================
+    # APPEAL SYSTEM COMMANDS
+    # ========================================================================
+
+    @app_commands.command(
+        name="my_violations",
+        description="📋 View your own violation history"
+    )
+    @performance_monitor
+    async def my_violations(self, interaction: discord.Interaction):
+        """Allow users to view their own violations"""
+        await interaction.response.defer(ephemeral=True)
+
+        try:
+            cases = await self.get_user_cases(
+                interaction.guild_id, interaction.user.id, limit=50
+            )
+
+            if not cases:
+                await interaction.followup.send(
+                    "✅ You have no violations on record!", ephemeral=True
+                )
+                return
+
+            embed = discord.Embed(
+                title="📋 Your Violation History",
+                description=f"Found {len(cases)} case(s) on record",
+                color=0x3498DB,
+                timestamp=datetime.now(timezone.utc),
+            )
+
+            # Organize by status
+            active_cases = [c for c in cases if c.active]
+            inactive_cases = [c for c in cases if not c.active]
+
+            if active_cases:
+                active_text = []
+                for case in active_cases[:5]:
+                    status = "🔴 Active"
+                    if case.appealed:
+                        status = f"⚖️ Appealed ({case.appeal_status or 'Pending'})"
+                    
+                    active_text.append(
+                        f"**Case #{case.case_id}** - {case.action.value.title()}\n"
+                        f"└ {status} | {case.violation.value}\n"
+                        f"└ *{case.reason[:50]}...*" if len(case.reason) > 50 else f"└ *{case.reason}*"
+                    )
+                
+                embed.add_field(
+                    name=f"🔴 Active Cases ({len(active_cases)})",
+                    value="\n\n".join(active_text) or "None",
+                    inline=False
+                )
+
+            if inactive_cases:
+                embed.add_field(
+                    name=f"📁 Resolved Cases ({len(inactive_cases)})",
+                    value=f"{len(inactive_cases)} case(s) - use `/case <id>` to view details",
+                    inline=False
+                )
+
+            embed.add_field(
+                name="💡 Actions You Can Take",
+                value=(
+                    "• Use `/case <id>` to view full details\n"
+                    "• Use `/appeal <case_id> <reason>` to appeal a case\n"
+                    "• Contact staff if you have questions"
+                ),
+                inline=False
+            )
+
+            embed.set_footer(text=f"User ID: {interaction.user.id}")
+
+            await interaction.followup.send(embed=embed, ephemeral=True)
+
+        except Exception as e:
+            logger.error(f"My violations error: {e}", exc_info=True)
+            await interaction.followup.send(
+                f"❌ Error retrieving violations: {str(e)}", ephemeral=True
+            )
+
+    @app_commands.command(
+        name="appeal",
+        description="⚖️ Appeal a moderation case"
+    )
+    @app_commands.describe(
+        case_id="Case ID to appeal",
+        reason="Detailed reason for your appeal"
+    )
+    @performance_monitor
+    async def appeal_case(
+        self, 
+        interaction: discord.Interaction, 
+        case_id: int, 
+        reason: str
+    ):
+        """Allow users to appeal their own cases"""
+        await interaction.response.defer(ephemeral=True)
+
+        try:
+            # Get the case
+            case = await self.get_case(interaction.guild_id, case_id)
+            
+            if not case:
+                await interaction.followup.send(
+                    f"❌ Case #{case_id} not found.", ephemeral=True
+                )
+                return
+
+            # Check if user can appeal this case
+            is_admin = interaction.user.guild_permissions.administrator
+            if case.user_id != interaction.user.id and not is_admin:
+                await interaction.followup.send(
+                    "❌ You can only appeal your own cases!", ephemeral=True
+                )
+                return
+
+            # Check if case is already appealed
+            if case.appealed and case.appeal_status != "denied":
+                await interaction.followup.send(
+                    f"❌ This case has already been appealed.\n"
+                    f"Status: **{case.appeal_status or 'Pending'}**",
+                    ephemeral=True
+                )
+                return
+
+            # Check if case is still active or appealable
+            if not case.active and case.action not in [ActionType.WARN, ActionType.TIMEOUT, ActionType.KICK]:
+                await interaction.followup.send(
+                    "❌ This case cannot be appealed (inactive or permanent action).",
+                    ephemeral=True
+                )
+                return
+
+            # Get config for cooldown check
+            config = await self.get_config(interaction.guild_id)
+
+            # Check if appeals are enabled
+            if not config.allow_appeals:
+                await interaction.followup.send(
+                    "❌ Appeals are currently disabled in this server.",
+                    ephemeral=True
+                )
+                return
+
+            # Check for recent appeals (cooldown)
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.execute(
+                    """SELECT created_at FROM case_appeals 
+                    WHERE guild_id = ? AND user_id = ? 
+                    ORDER BY created_at DESC LIMIT 1""",
+                    (interaction.guild_id, case.user_id)
+                )
+                last_appeal = cursor.fetchone()
+                
+                if last_appeal:
+                    last_appeal_time = datetime.fromisoformat(last_appeal[0])
+                    cooldown = timedelta(hours=config.appeal_cooldown_hours)
+                    if datetime.now(timezone.utc) - last_appeal_time < cooldown:
+                        remaining = cooldown - (datetime.now(timezone.utc) - last_appeal_time)
+                        hours = int(remaining.total_seconds() / 3600)
+                        await interaction.followup.send(
+                            f"❌ Appeal cooldown active. Try again in {hours} hours.",
+                            ephemeral=True
+                        )
+                        return
+
+            # Check if user has 4+ violations for multi-admin requirement
+            user_cases = await self.get_user_cases(interaction.guild_id, case.user_id)
+            violation_count = len(user_cases)
+            requires_multi_admin = violation_count >= 4
+
+            # Create appeal
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.execute(
+                    """INSERT INTO case_appeals 
+                    (case_id, guild_id, user_id, reason, status, created_at, requires_multi_admin, admin_approvals, admin_denials)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (
+                        case_id,
+                        interaction.guild_id,
+                        case.user_id,
+                        reason,
+                        "pending",
+                        datetime.now(timezone.utc).isoformat(),
+                        1 if requires_multi_admin else 0,
+                        "[]",
+                        "[]"
+                    )
+                )
+                appeal_id = cursor.lastrowid
+                
+                # Update case
+                conn.execute(
+                    """UPDATE moderation_cases 
+                    SET appealed = 1, appeal_status = ? 
+                    WHERE guild_id = ? AND case_id = ?""",
+                    ("pending_multi_admin" if requires_multi_admin else "pending", interaction.guild_id, case_id)
+                )
+                conn.commit()
+
+            # Create response embed
+            embed = discord.Embed(
+                title="⚖️ Appeal Submitted",
+                description=f"Your appeal for Case #{case_id} has been submitted.",
+                color=0x3498DB,
+                timestamp=datetime.now(timezone.utc),
+            )
+            
+            embed.add_field(
+                name="📋 Case Details",
+                value=f"**Action:** {case.action.value.title()}\n**Violation:** {case.violation.value}\n**Reason:** {case.reason}",
+                inline=False
+            )
+            
+            embed.add_field(
+                name="📝 Your Appeal",
+                value=reason[:500],
+                inline=False
+            )
+
+            if requires_multi_admin:
+                embed.add_field(
+                    name="🔒 Multi-Admin Review Required",
+                    value=(
+                        f"Because you have **{violation_count} violations**, this appeal requires "
+                        "approval from **3 administrators** to be accepted.\n\n"
+                        "Administrators can review using `/review_appeal`."
+                    ),
+                    inline=False
+                )
+            else:
+                embed.add_field(
+                    name="👥 Review Process",
+                    value="An administrator will review your appeal shortly.\nAdministrators can review using `/review_appeal`.",
+                    inline=False
+                )
+
+            embed.set_footer(text=f"Appeal ID: {appeal_id}")
+
+            await interaction.followup.send(embed=embed, ephemeral=True)
+
+            # Notify in appeals channel if configured
+            if config.appeals_channel_id:
+                channel = interaction.guild.get_channel(config.appeals_channel_id)
+                if channel:
+                    notify_embed = discord.Embed(
+                        title="🔔 New Appeal Submitted",
+                        description=f"{interaction.user.mention} has appealed Case #{case_id}",
+                        color=0xF39C12,
+                        timestamp=datetime.now(timezone.utc),
+                    )
+                    notify_embed.add_field(
+                        name="Case", value=f"#{case_id} - {case.action.value.title()}", inline=True
+                    )
+                    notify_embed.add_field(
+                        name="User", value=interaction.user.mention, inline=True
+                    )
+                    notify_embed.add_field(
+                        name="Violations", value=str(violation_count), inline=True
+                    )
+                    notify_embed.add_field(
+                        name="Appeal Reason", value=reason[:500], inline=False
+                    )
+                    
+                    if requires_multi_admin:
+                        notify_embed.add_field(
+                            name="⚠️ Multi-Admin Review",
+                            value="Requires 3 admin approvals",
+                            inline=False
+                        )
+                    
+                    notify_embed.set_footer(text=f"Appeal ID: {appeal_id} | Use /review_appeal {appeal_id}")
+                    
+                    try:
+                        await channel.send(embed=notify_embed)
+                    except:
+                        pass
+
+        except Exception as e:
+            logger.error(f"Appeal case error: {e}", exc_info=True)
+            await interaction.followup.send(
+                f"❌ Error submitting appeal: {str(e)}", ephemeral=True
+            )
+
+    @app_commands.command(
+        name="review_appeal",
+        description="👨‍⚖️ Review and decide on a case appeal (Admin only)"
+    )
+    @app_commands.describe(
+        appeal_id="Appeal ID to review",
+        decision="Your decision (approve/deny)",
+        reason="Reason for your decision"
+    )
+    @app_commands.choices(decision=[
+        app_commands.Choice(name="✅ Approve", value="approve"),
+        app_commands.Choice(name="❌ Deny", value="deny")
+    ])
+    @app_commands.default_permissions(administrator=True)
+    @performance_monitor
+    async def review_appeal(
+        self,
+        interaction: discord.Interaction,
+        appeal_id: int,
+        decision: str,
+        reason: str
+    ):
+        """Allow admins to review appeals with multi-admin support"""
+        await interaction.response.defer()
+
+        try:
+            # Get appeal details
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.execute(
+                    """SELECT case_id, guild_id, user_id, reason as appeal_reason, status, 
+                    requires_multi_admin, admin_approvals, admin_denials
+                    FROM case_appeals WHERE appeal_id = ? AND guild_id = ?""",
+                    (appeal_id, interaction.guild_id)
+                )
+                appeal = cursor.fetchone()
+
+            if not appeal:
+                await interaction.followup.send(
+                    f"❌ Appeal #{appeal_id} not found.", ephemeral=True
+                )
+                return
+
+            case_id, guild_id, user_id, appeal_reason, status, requires_multi_admin, admin_approvals_json, admin_denials_json = appeal
+
+            # Check if appeal is already decided
+            if status in ["approved", "denied"]:
+                await interaction.followup.send(
+                    f"❌ This appeal has already been {status}.", ephemeral=True
+                )
+                return
+
+            admin_approvals = json.loads(admin_approvals_json)
+            admin_denials = json.loads(admin_denials_json)
+
+            # Check if admin has already voted
+            admin_id = interaction.user.id
+            if admin_id in admin_approvals or admin_id in admin_denials:
+                await interaction.followup.send(
+                    "❌ You have already reviewed this appeal.", ephemeral=True
+                )
+                return
+
+            # Get the case
+            case = await self.get_case(guild_id, case_id)
+            if not case:
+                await interaction.followup.send(
+                    f"❌ Associated case #{case_id} not found.", ephemeral=True
+                )
+                return
+
+            # Update votes
+            if decision == "approve":
+                admin_approvals.append(admin_id)
+            else:
+                admin_denials.append(admin_id)
+
+            # Check if decision is final
+            final_decision = None
+            if requires_multi_admin:
+                # Need 3 approvals or any denial for final decision
+                if len(admin_approvals) >= 3:
+                    final_decision = "approved"
+                elif len(admin_denials) >= 1:
+                    final_decision = "denied"
+            else:
+                # Single admin decision
+                final_decision = decision + "d"
+
+            # Update database
+            with sqlite3.connect(self.db_path) as conn:
+                if final_decision:
+                    # Final decision made
+                    conn.execute(
+                        """UPDATE case_appeals 
+                        SET admin_approvals = ?, admin_denials = ?, status = ?, 
+                        final_decision_by = ?, final_decision_at = ?, final_decision_reason = ?
+                        WHERE appeal_id = ?""",
+                        (
+                            json.dumps(admin_approvals),
+                            json.dumps(admin_denials),
+                            final_decision,
+                            admin_id,
+                            datetime.now(timezone.utc).isoformat(),
+                            reason,
+                            appeal_id
+                        )
+                    )
+                    
+                    # Update case
+                    new_status = final_decision
+                    if final_decision == "approved":
+                        # Deactivate the case
+                        conn.execute(
+                            """UPDATE moderation_cases 
+                            SET active = 0, appeal_status = ? 
+                            WHERE guild_id = ? AND case_id = ?""",
+                            (new_status, guild_id, case_id)
+                        )
+                    else:
+                        conn.execute(
+                            """UPDATE moderation_cases 
+                            SET appeal_status = ? 
+                            WHERE guild_id = ? AND case_id = ?""",
+                            (new_status, guild_id, case_id)
+                        )
+                else:
+                    # Just update votes, not final yet
+                    conn.execute(
+                        """UPDATE case_appeals 
+                        SET admin_approvals = ?, admin_denials = ?
+                        WHERE appeal_id = ?""",
+                        (
+                            json.dumps(admin_approvals),
+                            json.dumps(admin_denials),
+                            appeal_id
+                        )
+                    )
+                
+                conn.commit()
+
+            # Create response embed
+            user = interaction.guild.get_member(user_id) or await interaction.guild.fetch_member(user_id)
+            
+            embed = discord.Embed(
+                title="⚖️ Appeal Review",
+                description=f"Review recorded for Appeal #{appeal_id}",
+                color=0x2ECC71 if final_decision == "approved" else 0xE74C3C if final_decision == "denied" else 0xF39C12,
+                timestamp=datetime.now(timezone.utc),
+            )
+
+            embed.add_field(
+                name="📋 Appeal Details",
+                value=f"**Case:** #{case_id}\n**User:** {user.mention}\n**Appeal:** {appeal_reason[:100]}...",
+                inline=False
+            )
+
+            embed.add_field(
+                name=f"{'✅' if decision == 'approve' else '❌'} Your Decision",
+                value=f"**{decision.title()}**\n{reason}",
+                inline=False
+            )
+
+            if requires_multi_admin:
+                embed.add_field(
+                    name="📊 Voting Status",
+                    value=f"✅ Approvals: {len(admin_approvals)}/3\n❌ Denials: {len(admin_denials)}",
+                    inline=True
+                )
+
+            if final_decision:
+                embed.add_field(
+                    name="⚖️ Final Decision",
+                    value=f"**{final_decision.upper()}**",
+                    inline=True
+                )
+                
+                if final_decision == "approved":
+                    embed.add_field(
+                        name="✅ Appeal Approved",
+                        value=f"Case #{case_id} has been **overridden** and is now inactive.\nThe user has been notified.",
+                        inline=False
+                    )
+                else:
+                    embed.add_field(
+                        name="❌ Appeal Denied",
+                        value=f"Case #{case_id} remains active.\nThe user has been notified.",
+                        inline=False
+                    )
+            else:
+                embed.add_field(
+                    name="⏳ Pending",
+                    value=f"Waiting for {3 - len(admin_approvals)} more approval(s)",
+                    inline=False
+                )
+
+            embed.set_footer(text=f"Reviewed by {interaction.user}")
+
+            await interaction.followup.send(embed=embed)
+
+            # Notify user via DM
+            if final_decision:
+                try:
+                    dm_embed = discord.Embed(
+                        title=f"⚖️ Appeal {'Approved' if final_decision == 'approved' else 'Denied'}",
+                        description=f"Your appeal for Case #{case_id} in **{interaction.guild.name}** has been **{final_decision}**.",
+                        color=0x2ECC71 if final_decision == "approved" else 0xE74C3C,
+                        timestamp=datetime.now(timezone.utc),
+                    )
+                    
+                    dm_embed.add_field(
+                        name="Original Case",
+                        value=f"**Action:** {case.action.value.title()}\n**Reason:** {case.reason}",
+                        inline=False
+                    )
+                    
+                    dm_embed.add_field(
+                        name="Decision Reason",
+                        value=reason,
+                        inline=False
+                    )
+
+                    if final_decision == "approved":
+                        dm_embed.add_field(
+                            name="✅ What This Means",
+                            value="Your case has been overridden and removed from your record.",
+                            inline=False
+                        )
+                    else:
+                        dm_embed.add_field(
+                            name="❌ What This Means",
+                            value="Your case remains active and on your record.",
+                            inline=False
+                        )
+
+                    await user.send(embed=dm_embed)
+                except:
+                    pass
+
+            logger.info(f"Appeal {appeal_id} {'decided' if final_decision else 'reviewed'} by {interaction.user}: {decision}")
+
+        except Exception as e:
+            logger.error(f"Review appeal error: {e}", exc_info=True)
+            await interaction.followup.send(
+                f"❌ Error reviewing appeal: {str(e)}", ephemeral=True
+            )
+
+    @app_commands.command(
+        name="list_appeals",
+        description="📜 List all pending appeals (Admin only)"
+    )
+    @app_commands.describe(
+        status="Filter by status (optional)"
+    )
+    @app_commands.choices(status=[
+        app_commands.Choice(name="⏳ Pending", value="pending"),
+        app_commands.Choice(name="🔒 Pending Multi-Admin", value="pending_multi_admin"),
+        app_commands.Choice(name="✅ Approved", value="approved"),
+        app_commands.Choice(name="❌ Denied", value="denied")
+    ])
+    @app_commands.default_permissions(administrator=True)
+    @performance_monitor
+    async def list_appeals(
+        self,
+        interaction: discord.Interaction,
+        status: Optional[str] = None
+    ):
+        """List all appeals, filtered by status"""
+        await interaction.response.defer()
+
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                if status:
+                    cursor = conn.execute(
+                        """SELECT appeal_id, case_id, user_id, reason, status, created_at, 
+                        requires_multi_admin, admin_approvals, admin_denials
+                        FROM case_appeals 
+                        WHERE guild_id = ? AND status LIKE ?
+                        ORDER BY created_at DESC LIMIT 20""",
+                        (interaction.guild_id, f"%{status}%")
+                    )
+                else:
+                    cursor = conn.execute(
+                        """SELECT appeal_id, case_id, user_id, reason, status, created_at,
+                        requires_multi_admin, admin_approvals, admin_denials
+                        FROM case_appeals 
+                        WHERE guild_id = ?
+                        ORDER BY created_at DESC LIMIT 20""",
+                        (interaction.guild_id,)
+                    )
+                
+                appeals = cursor.fetchall()
+
+            if not appeals:
+                await interaction.followup.send(
+                    f"📭 No appeals found{' with status: ' + status if status else ''}.",
+                    ephemeral=True
+                )
+                return
+
+            embed = discord.Embed(
+                title="📜 Appeal List",
+                description=f"Found {len(appeals)} appeal(s)",
+                color=0x3498DB,
+                timestamp=datetime.now(timezone.utc),
+            )
+
+            for appeal in appeals[:10]:  # Show first 10
+                appeal_id, case_id, user_id, reason, appeal_status, created_at, requires_multi, approvals_json, denials_json = appeal
+                
+                approvals = json.loads(approvals_json)
+                denials = json.loads(denials_json)
+                
+                user = interaction.guild.get_member(user_id)
+                user_str = user.mention if user else f"User {user_id}"
+                
+                status_emoji = {
+                    "pending": "⏳",
+                    "pending_multi_admin": "🔒",
+                    "approved": "✅",
+                    "denied": "❌"
+                }.get(appeal_status, "❓")
+
+                value = f"**Case:** #{case_id} | **User:** {user_str}\n"
+                value += f"**Status:** {status_emoji} {appeal_status.replace('_', ' ').title()}\n"
+                
+                if requires_multi:
+                    value += f"**Votes:** ✅{len(approvals)}/3 | ❌{len(denials)}\n"
+                
+                value += f"**Reason:** {reason[:80]}..."
+                
+                embed.add_field(
+                    name=f"Appeal #{appeal_id}",
+                    value=value,
+                    inline=False
+                )
+
+            embed.set_footer(text="Use /review_appeal <id> to review")
+
+            await interaction.followup.send(embed=embed)
+
+        except Exception as e:
+            logger.error(f"List appeals error: {e}", exc_info=True)
+            await interaction.followup.send(
+                f"❌ Error listing appeals: {str(e)}", ephemeral=True
             )
 
     # ========================================================================
