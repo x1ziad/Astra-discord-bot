@@ -491,6 +491,7 @@ class AstraBot(commands.Bot):
                 "cogs.nexus",  # Advanced diagnostic interface with enhanced commands
                 "cogs.security_manager",  # 🛡️ UNIFIED security system (replaces all old security cogs)
                 "cogs.personality_manager",  # 🧠 Advanced personality management system
+                "cogs.welcome_dm_system",  # 🌟 Personalized welcome DM system with AI
             ],
             # Moderation systems (load before AI features)
             [
