@@ -2641,8 +2641,17 @@ class ComprehensiveModeration(commands.Cog):
         notes: str = "",
     ) -> ModerationCase:
         """Create a new moderation case"""
-        case_id = self.case_counter[guild_id] + 1
-        self.case_counter[guild_id] = case_id
+        # Get the highest case_id for this guild from the database
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.execute(
+                "SELECT MAX(case_id) FROM moderation_cases WHERE guild_id = ?",
+                (guild_id,)
+            )
+            max_case_id = cursor.fetchone()[0]
+            case_id = (max_case_id or 0) + 1
+            
+            # Update in-memory counter
+            self.case_counter[guild_id] = case_id
 
         case = ModerationCase(
             case_id=case_id,
