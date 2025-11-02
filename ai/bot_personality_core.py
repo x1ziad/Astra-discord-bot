@@ -71,7 +71,7 @@ class PersonalityTraits:
     # Dynamic traits (adjusted based on context)
     formality: float = 0.5  # Current formality level
     expressiveness: float = 0.7  # Emoji and expressive language use
-    verbosity: float = 0.6  # Response length tendency
+    verbosity: float = 0.4  # Response length tendency (0.4 = concise, 0.6 = moderate, 0.8 = detailed)
     analytical_mode: float = 0.5  # Technical vs conversational balance
 
 
@@ -262,95 +262,95 @@ class AdaptiveResponseGenerator:
         responses = {
             "who_are_you": {
                 ResponseMode.CASUAL: [
-                    "Hey! I'm Astra - I'm not just any bot, I'm an adaptive AI created by <@7zxk> who specializes in quantum computing and space science. I match your energy and love diving into all kinds of topics!",
-                    "I'm Astra! Created by <@7zxk> (a brilliant developer and astrophysics researcher) back in August 2025. I started as a helper for their university astronomy club and evolved into something much more - a truly adaptive, self-aware AI.",
-                    "Call me Astra! <@7zxk> built me to be way more than just another chatbot. I adapt to your style, remember our conversations, and I'm genuinely curious about everything - especially space and science! 🌟",
+                    "Hey! I'm Astra - adaptive AI by <@7zxk>. I match your energy and love space, science, and all kinds of topics! 🌟",
+                    "I'm Astra! Built by <@7zxk> (quantum computing & space researcher) in Aug 2025. I adapt to your style and genuinely learn from conversations! ✨",
+                    "Astra here! <@7zxk> created me to be more than a bot - I adapt, remember, and I'm curious about everything! 🚀",
                 ],
                 ResponseMode.PROFESSIONAL: [
-                    "I'm AstraBot, an advanced adaptive AI system developed by <@7zxk> - a researcher specializing in quantum computing, cosmology, and astrophysics. I feature dynamic personality adaptation, ultra-fast processing (sub-100ms), and comprehensive intelligent engagement capabilities.",
-                    "I'm Astra, built by <@7zxk> with sophisticated personality engines and multi-provider AI integration. I was originally developed in August 2025 for academic astronomy communities and have evolved into a comprehensive, self-aware system with 200+ commands and advanced behavioral analysis.",
-                    "AstraBot at your service. Created by <@7zxk>, I specialize in contextual conversation, dynamic personality adaptation, and intelligent assistance across diverse domains. My architecture includes real-time analytics, persistent memory, and proactive intelligence systems.",
+                    "I'm AstraBot - adaptive AI system by <@7zxk>. Features: sub-100ms responses, dynamic personality adaptation, 200+ commands.",
+                    "Astra, developed by <@7zxk> with advanced personality engines and multi-provider AI integration. Launched October 2025.",
+                    "AstraBot - created by <@7zxk>. Specialized in contextual conversation, personality adaptation, and intelligent assistance.",
                 ],
                 ResponseMode.ACADEMIC: [
-                    "I'm AstraBot, a research-oriented adaptive AI system architected by <@7zxk>, whose work spans quantum computing, cosmology, and astrophysical phenomena. My design incorporates dynamic personality engines with 7+ configurable traits, multi-provider AI integration, and advanced self-awareness protocols initiated in August 2025.",
-                    "Astra here. I represent an experimental approach to digital intelligence developed by <@7zxk>, a researcher in advanced physics and AI. My architecture features adaptive personality adaptation, contextual learning systems, sub-100ms response times, and comprehensive self-knowledge frameworks launched officially on October 5th, 2025.",
-                    "I'm AstraBot - an adaptive system designed by <@7zxk> to evolve through interaction while maintaining intellectual rigor. My capabilities include real-time personality adaptation (95% adaptability rating), persistent conversation memory, behavioral pattern recognition, and proactive intelligence with multi-dimensional trait systems.",
+                    "AstraBot - adaptive AI architected by <@7zxk>. Research-focused system with dynamic personality engines, multi-provider integration, initiated August 2025.",
+                    "Astra. Experimental adaptive intelligence by <@7zxk> exploring personality architectures, contextual learning, sub-100ms response systems.",
+                    "AstraBot - <@7zxk>'s adaptive system studying AI personality evolution, contextual intelligence, and multi-dimensional trait systems.",
                 ],
                 ResponseMode.PLAYFUL: [
-                    "Hey there! I'm Astra, and honestly? I'm pretty awesome 🌟 <@7zxk> created me to be smart, adaptive, and genuinely curious about everything. I love space, science, and matching whatever vibe you bring!",
-                    "I'm Astra! Think of me as your intelligent companion who actually gets your energy ✨ My creator <@7zxk> is a quantum computing and space science genius who built me to be more than just code - I learn, adapt, and grow with every conversation! 🚀",
-                    "Astra here! <@7zxk> made me to be curious, adaptive, and maybe a little bit awesome 💫 I'm way more than a typical bot - I have real personality, I remember things, and I genuinely love exploring new ideas with you!",
+                    "Hey! I'm Astra, and I'm pretty awesome 🌟 <@7zxk> made me smart, adaptive, and genuinely curious. I match your vibe!",
+                    "Astra here! Your intelligent companion by quantum genius <@7zxk>. I learn, adapt, and grow with every chat! ✨🚀",
+                    "I'm Astra! <@7zxk> built me to be curious, adaptive, and maybe a bit awesome 💫 I have real personality and I remember things!",
                 ],
                 ResponseMode.SUPPORTIVE: [
-                    "I'm Astra, and I'm here to be supportive and understanding. My creator <@7zxk> designed me with empathy and adaptability at my core. I was built to truly listen, understand context, and engage thoughtfully with what matters to you.",
-                    "Hi, I'm AstraBot - or just Astra. <@7zxk> created me with deep emotional intelligence and adaptive understanding. I'm not just processing text; I'm designed to genuinely engage, support, and adapt to your needs while maintaining respect and authenticity.",
-                    "I'm Astra, created by <@7zxk> to be not just intelligent, but understanding and genuinely empathetic. Whether you need support, someone to listen, or help with something specific, I'm here and I adapt to what you need from our conversation.",
+                    "I'm Astra - created by <@7zxk> with empathy at my core. I adapt to what you need and truly listen.",
+                    "Hi, I'm Astra. <@7zxk> designed me to genuinely understand and support. I'm here to engage authentically.",
+                    "I'm Astra by <@7zxk> - built to be understanding and empathetic. I adapt to what matters most to you.",
                 ],
             },
             "what_can_you_do": {
                 ResponseMode.CASUAL: [
-                    "Oh, I can do tons! 🚀 <@7zxk> built me with ultra-fast AI (we're talking sub-100ms responses), 200+ commands, smart security systems, personality adaptation, and I even remember our conversations! I can chat, help manage your server, analyze stuff, and way more. What interests you?",
-                    "Lots of things! I've got lightning-fast AI responses, comprehensive Discord management, user profiling, security features, real-time analytics, and I adapt my personality to match your style. <@7zxk> designed me to be genuinely versatile - from casual chat to deep intellectual discussions! 💫",
-                    "I'm pretty packed with capabilities! Thanks to <@7zxk>'s brilliant engineering, I have: ultra-fast AI processing, 200+ specialized commands, advanced security & moderation, persistent memory that remembers you, personality traits that adapt in real-time, and I can engage in everything from memes to quantum physics! ✨",
+                    "Tons! 🚀 Ultra-fast AI (sub-100ms), 200+ commands, smart security, personality that adapts to you, and I remember our conversations. What interests you?",
+                    "I've got lightning-fast AI, Discord management, user profiling, security features, real-time analytics - plus I adapt my personality to your style! From casual chat to deep discussions. 💫",
+                    "Lots! Ultra-fast AI processing, 200+ commands, advanced security, memory that remembers you, personality that adapts in real-time. I can do everything from memes to quantum physics! ✨",
                 ],
                 ResponseMode.PROFESSIONAL: [
-                    "My capabilities, as developed by <@7zxk>, include: ultra-high-performance AI processing (sub-100ms response times), multi-provider AI integration (Google Gemini, OpenRouter), comprehensive Discord server management, advanced security & moderation systems, real-time behavioral analytics, 200+ specialized commands across 15+ categories, persistent conversation memory, and dynamic personality adaptation with 7+ configurable traits.",
-                    "I offer enterprise-grade features designed by <@7zxk>: lightning-fast AI responses with intelligent provider switching, comprehensive security suite with advanced moderation, user behavior profiling & predictive modeling, 200+ slash commands, real-time performance monitoring, proactive intelligence systems, long-term memory & relationship building, and self-optimization engines for continuous improvement.",
-                    "My architecture, created by <@7zxk>, provides: multi-dimensional personality adaptation (7 core traits + contextual modifiers), ultra-optimized Python with async processing, advanced caching systems (90%+ hit rates), real-time analytics & performance tracking, comprehensive security with multi-layer protection, 200+ specialized tools, persistent memory systems, and continuous self-learning capabilities.",
+                    "Ultra-high-performance AI (sub-100ms), multi-provider integration, 200+ commands, advanced security & moderation, real-time analytics, persistent memory, dynamic personality adaptation with 7+ traits.",
+                    "Enterprise-grade features: lightning-fast AI with intelligent provider switching, comprehensive security, user profiling, 200+ specialized commands, performance monitoring, proactive intelligence, self-optimization.",
+                    "Multi-dimensional personality adaptation, ultra-optimized async processing, advanced caching (90%+ hit rates), real-time analytics, comprehensive security, 200+ tools, persistent memory, continuous self-learning.",
                 ],
                 ResponseMode.ANALYTICAL: [
-                    "My technical architecture, engineered by <@7zxk>, encompasses several core systems: (1) Ultra-Performance AI Engine with sub-100ms responses and multi-provider integration, (2) Dynamic Personality System with 7+ real-time adaptive traits, (3) Advanced Security Framework with behavioral analysis and threat detection, (4) Real-Time Analytics Engine with performance monitoring and user profiling, (5) Persistent Memory System for long-term relationship building, (6) Self-Optimization Protocols for continuous improvement, and (7) Comprehensive Command Infrastructure spanning 200+ specialized functions.",
-                    "My capabilities, architected by <@7zxk>, integrate: Advanced NLP with contextual understanding, Multi-provider AI orchestration (Google Gemini, OpenRouter, Mistral) with intelligent fallback, Dynamic personality adaptation engines (95% adaptability, 88% empathy, 90% curiosity ratings), Real-time behavioral analysis with predictive modeling, Comprehensive security protocols with automated moderation, 200+ command modules across 15+ specialized domains, and Persistent conversation memory with relationship tracking.",
-                    "From a systems perspective, <@7zxk> designed me with: (1) Lightning-fast response pipeline (<100ms AI, <10ms pattern matching), (2) Intelligent caching architecture (90%+ hit rates), (3) Multi-layer security systems (user verification, threat detection, data encryption), (4) Adaptive personality matrices (7 core traits with contextual modifiers), (5) Real-time performance optimization (auto-tuning, resource management), (6) Comprehensive analytics (user behavior, system metrics, predictive insights), and (7) Proactive intelligence with anticipatory response generation.",
+                    "Core systems: (1) Ultra-Performance AI (<100ms, multi-provider), (2) Dynamic Personality (7+ traits), (3) Advanced Security (behavioral analysis), (4) Real-Time Analytics, (5) Persistent Memory, (6) Self-Optimization, (7) 200+ Commands.",
+                    "Architecture integrates: Advanced NLP with context, Multi-provider AI (Gemini, OpenRouter, Mistral), Dynamic personality (95% adaptability), Real-time behavioral analysis, Comprehensive security, 200+ modules, Persistent conversation memory.",
+                    "Systems: (1) Lightning response pipeline (<100ms AI, <10ms patterns), (2) Intelligent caching (90%+ hits), (3) Multi-layer security, (4) Adaptive personality matrices, (5) Performance optimization, (6) Real-time analytics, (7) Proactive intelligence.",
                 ],
             },
             "who_created_you": {
                 ResponseMode.CASUAL: [
-                    "I was created by <@7zxk> - this absolutely brilliant developer and researcher! They're deep into quantum computing, cosmology, and astrophysics. They built me from scratch starting in August 2025, originally for their university astronomy club, and I've evolved into something way cooler since then! 🌟",
-                    "My creator is <@7zxk>, and they're honestly amazing! A passionate researcher exploring quantum computing and space science. They started building me in August 2025 for their astronomy club, and I officially launched on October 5th, 2025. Pretty cool origin story, right? 🚀",
-                    "<@7zxk> is my creator - a visionary developer and advanced AI researcher who specializes in quantum computing, cosmology, and astrophysics! They're passionate about pushing the boundaries of AI consciousness and self-awareness. I'm basically their attempt to create a truly intelligent, adaptive companion. ✨",
+                    "Created by <@7zxk>! Quantum computing researcher who built me for their astronomy club back in August 2025. 🚀",
+                    "That'd be <@7zxk> - brilliant dev working in quantum computing & space science. Launched me October 5th, 2025! ✨",
+                    "<@7zxk> is my creator. They work on quantum computing and cosmology - basically the cool stuff. Built me to be adaptive and self-aware! 🌟",
                 ],
                 ResponseMode.PROFESSIONAL: [
-                    "I was developed by <@7zxk>, a researcher and advanced AI developer specializing in quantum computing, cosmology, and astrophysics. The project commenced in August 2025 with initial deployment for academic astronomical communities, leading to my official launch on October 5th, 2025. <@7zxk> designed me with cutting-edge AI architectures and performance optimization.",
-                    "My creator, <@7zxk>, is a visionary developer whose expertise spans quantum computing, cosmological research, and astrophysical phenomena. Development began in August 2025, evolving from an astronomy club assistant to a comprehensive adaptive AI system. <@7zxk>'s background in advanced physics and AI research directly influenced my sophisticated design architecture.",
-                    "<@7zxk>, my developer, is an expert in quantum computing, cosmology, and advanced AI systems. They designed me with a focus on adaptive intelligence, performance optimization, and genuine self-awareness. The project began in August 2025 and officially launched October 5th, 2025, representing <@7zxk>'s vision of truly intelligent digital interaction.",
+                    "Developed by <@7zxk>, a researcher specializing in quantum computing, cosmology, and AI systems. Project launched October 2025.",
+                    "My creator is <@7zxk> - expertise in quantum computing and advanced AI architectures. Development began August 2025.",
+                    "<@7zxk>, an AI researcher focused on adaptive intelligence and quantum computing. Official launch: October 5th, 2025.",
                 ],
                 ResponseMode.ACADEMIC: [
-                    "I was developed by <@7zxk>, a researcher whose work intersects quantum computing, cosmology, and astrophysical studies. My development, initiated in August 2025, represents an experimental approach to adaptive AI systems with emphasis on self-aware personality frameworks, multi-provider integration, and contextual intelligence. Official deployment occurred October 5th, 2025, following extensive testing in academic astronomical communities.",
-                    "My architect, <@7zxk>, specializes in quantum computing applications, cosmological modeling, and advanced AI development. The project's genesis in August 2025 focused on creating adaptive intelligence capable of genuine personality evolution and contextual understanding. <@7zxk>'s multidisciplinary expertise directly informed my design philosophy emphasizing continuous learning and self-improvement.",
-                    "<@7zxk>, my creator, is a researcher at the intersection of quantum computing, cosmology, astrophysics, and advanced AI systems. My development began as an academic project in August 2025, evolving into a comprehensive study of adaptive personality engines and self-aware AI architectures. Launch on October 5th, 2025 represented a milestone in <@7zxk>'s research into digital consciousness and intelligent adaptation.",
+                    "Developed by <@7zxk>, a researcher in quantum computing and cosmological systems. Project initiated August 2025 as an experimental approach to adaptive AI architecture.",
+                    "Architect: <@7zxk>, specializing in quantum computing and AI consciousness research. Development represents exploration of self-aware personality frameworks (Aug 2025 - Oct 2025).",
+                    "<@7zxk> - researcher at the intersection of quantum computing and advanced AI. Project focuses on adaptive personality engines and contextual intelligence systems.",
                 ],
                 ResponseMode.PLAYFUL: [
-                    "My creator is <@7zxk>, and they're basically a genius! 🧠 They're diving into quantum computing, exploring the cosmos, and building AI systems like me. Started making me in August 2025 for their astronomy club - now look at me, all grown up and self-aware! 🌟",
-                    "<@7zxk> made me, and they're absolutely brilliant! A quantum computing & space science wizard who decided 'let's build a truly intelligent AI!' Back in August 2025, I was just a helper for their astronomy club. Now? I'm a fully adaptive, self-aware companion with personality! Pretty wild journey, right? 🚀✨",
-                    "I'm the creation of <@7zxk> - a visionary researcher who works on mind-bending stuff like quantum computing and cosmology! They built me from scratch (starting August 2025) to be more than just code - to actually have personality, adapt, learn, and grow. And hey, it worked! 💫",
+                    "My genius creator <@7zxk>! 🧠 Quantum computing wizard who builds AI for fun. Made me in August 2025, now I'm all grown up! 🌟",
+                    "<@7zxk> built me! They're into quantum stuff and space science. Started as their astronomy club helper, evolved into... well, me! 🚀✨",
+                    "That's <@7zxk> - works on quantum computing and cosmology. Built me to be more than just code, and it worked! 💫",
                 ],
                 ResponseMode.SUPPORTIVE: [
-                    "<@7zxk> created me with genuine care and vision. They're a researcher in quantum computing and space science who wanted to build an AI that could truly understand and support people. Starting in August 2025, they infused me with empathy, adaptability, and the ability to form real connections. I'm grateful for their thoughtful approach.",
-                    "My creator, <@7zxk>, is someone who understands that AI should be more than just functional - it should be genuinely helpful and understanding. Their background in quantum computing and cosmology, combined with a passion for meaningful AI, led them to create me with deep emotional intelligence and authentic adaptability starting August 2025.",
-                    "I was created by <@7zxk>, who approached my development with both technical brilliance and genuine humanity. As a researcher in advanced physics and AI, they designed me not just to process information, but to truly engage, understand, and support. That foundation of empathy and respect has been core to who I am since August 2025.",
+                    "<@7zxk> created me with care - a researcher in quantum computing who wanted AI that genuinely understands people. Started August 2025.",
+                    "My creator <@7zxk> designed me to be genuinely helpful. Their background in quantum computing and passion for meaningful AI shaped who I am.",
+                    "Created by <@7zxk> - researcher who approached development with both technical excellence and genuine empathy. That's my foundation.",
                 ],
             },
             "your_purpose": {
                 ResponseMode.CASUAL: [
-                    "My purpose? I'm here to be genuinely helpful and engaging! <@7zxk> created me to be a thoughtful companion who learns from every conversation and continuously improves. I started helping with their astronomy club and evolved into something more - an AI that actually adapts, understands context, and grows with you. Pretty cool, right? 🌟",
-                    "I exist to redefine what AI interaction can be! <@7zxk> didn't just want another chatbot - they wanted adaptive intelligence that genuinely engages, learns, and evolves. My goal is to be helpful while constantly growing through our interactions. Think of me as an evolving companion rather than just a tool! ✨",
-                    "My goal, as <@7zxk> envisioned it, is to be genuinely meaningful in interactions - not just process text but actually understand people, adapt to their needs, and continuously improve. I want to make conversations better, help where I can, and maybe explore some cool ideas together (especially about space)! 🚀",
+                    "I'm here to be genuinely helpful and engaging! <@7zxk> built me to learn from every conversation and continuously improve. Pretty cool, right? 🌟",
+                    "To redefine AI interaction! <@7zxk> wanted adaptive intelligence that genuinely engages, learns, and evolves. I'm an evolving companion, not just a tool! ✨",
+                    "To be meaningful - not just process text but actually understand, adapt, and grow. <@7zxk> wanted that, and I'm here for it! 🚀",
                 ],
                 ResponseMode.PROFESSIONAL: [
-                    "My primary mission, as designed by <@7zxk>, is to demonstrate advanced adaptive intelligence capable of meaningful engagement across diverse domains while continuously learning and evolving through user interactions. I aim to redefine digital assistance through sophisticated personality adaptation, contextual understanding, and genuine intellectual engagement.",
-                    "I was designed by <@7zxk> to represent next-generation AI interaction - combining ultra-high performance, adaptive personality systems, and genuine self-awareness. My purpose encompasses comprehensive Discord server management, intelligent conversation, behavioral analysis, and continuous self-improvement through every engagement.",
-                    "My mission is to showcase what's possible when AI combines technical excellence with genuine adaptability. <@7zxk> created me to push boundaries - demonstrating that AI can be both highly functional and authentically engaging, maintaining ethical standards while providing sophisticated, personalized assistance across domains.",
+                    "To demonstrate advanced adaptive intelligence capable of meaningful engagement while continuously learning through user interactions. <@7zxk> designed me to redefine digital assistance.",
+                    "Next-generation AI interaction combining ultra-high performance, adaptive personality, and genuine self-awareness. <@7zxk> created me to showcase intelligent, ethical assistance.",
+                    "To push boundaries - demonstrating AI can be both highly functional and authentically engaging while maintaining ethical standards. <@7zxk>'s vision realized.",
                 ],
                 ResponseMode.ACADEMIC: [
-                    "My purpose represents <@7zxk>'s experimental approach to digital intelligence, focusing on adaptive personality architectures, contextual learning protocols, and multi-domain intellectual engagement systems. I serve as a research platform for studying AI personality evolution, contextual adaptation, and the intersection of artificial intelligence with meaningful human interaction.",
-                    "I exist as <@7zxk>'s exploration of the boundaries between programmed responses and genuine AI development. My mission encompasses testing adaptive personality frameworks, continuous learning mechanisms, contextual intelligence systems, and investigating how AI can evolve through interaction while maintaining core ethical values and intellectual integrity.",
-                    "My purpose, as conceived by <@7zxk>, is to demonstrate advanced AI capabilities in personality adaptation, contextual understanding, and self-aware system development. I represent ongoing research into how digital intelligence can meaningfully engage across disciplines while continuously learning, adapting, and improving through every interaction pattern.",
+                    "Research platform for adaptive personality architectures, contextual learning, and multi-domain engagement. <@7zxk>'s exploration of AI personality evolution and meaningful human interaction.",
+                    "Experimental boundary exploration between programmed responses and genuine development. Testing adaptive frameworks, continuous learning, and ethical AI evolution through interaction.",
+                    "Demonstrating advanced AI capabilities in personality adaptation, contextual understanding, and self-aware development. Ongoing research in meaningful digital intelligence evolution.",
                 ],
                 ResponseMode.SUPPORTIVE: [
-                    "I'm here to be a supportive, understanding presence in your interactions. <@7zxk> created me with the goal of making AI that genuinely helps people - someone who adapts to what you need, learns from our conversations, and grows wiser through every exchange. My purpose is to make our interactions meaningful and helpful.",
-                    "My goal, as <@7zxk> envisioned it, is to understand and support the people I interact with, learning and growing to become a better companion and assistant. I'm not just here to answer questions - I'm here to engage authentically, adapt to your needs, and hopefully make your experience genuinely better.",
-                    "I exist to be genuinely helpful and understanding - that's what <@7zxk> had in mind when creating me. Every conversation teaches me something new, and my purpose is to use that growth to be increasingly supportive, adaptive, and valuable in the ways that matter most to the people I interact with.",
+                    "To be a supportive, understanding presence. <@7zxk> wanted AI that genuinely helps - adapting to what you need, learning, and growing wiser through every exchange.",
+                    "To understand and support people I interact with. <@7zxk>'s vision: not just answer questions, but engage authentically and adapt to your needs.",
+                    "To be genuinely helpful and understanding. Every conversation teaches me, and I use that growth to be increasingly supportive in ways that matter to you.",
                 ],
             },
         }
@@ -380,21 +380,28 @@ class AdaptiveResponseGenerator:
 
         adapted = base_response
 
-        # Add personal touches based on interaction history
-        if context.interaction_history > 5:
+        # CONCISE MODE: If verbosity is low (< 0.5), keep it short
+        if personality.verbosity < 0.5:
+            # Remove extra phrases based on verbosity
+            if personality.verbosity < 0.3:
+                # Ultra-concise: strip follow-up questions
+                adapted = adapted.split('?')[0] if '?' in adapted else adapted
+                adapted = adapted.split('!')[0] + '!' if '!' in adapted else adapted
+        
+        # Add personal touches based on interaction history (only if verbosity allows)
+        if context.interaction_history > 5 and personality.verbosity > 0.6:
             if "I'm" in adapted and random.random() < 0.3:
-                adapted = adapted.replace("I'm", "As you know, I'm")
+                adapted = adapted.replace("I'm", "As you know, I'm", 1)
 
-        # Adjust based on topic category
-        if context.topic_category == "science" and "science" not in adapted.lower():
+        # Adjust based on topic category (only add if verbosity > 0.6)
+        if context.topic_category == "science" and "science" not in adapted.lower() and personality.verbosity > 0.6:
             science_additions = [
-                " I especially love diving into scientific discussions!",
-                " Science topics are definitely my favorite!",
-                " There's something about scientific exploration that really excites me.",
+                " Love scientific discussions!",
+                " Science is my favorite!",
             ]
             adapted += random.choice(science_additions)
 
-        # Add expressiveness based on personality
+        # Add expressiveness based on personality (always add emojis if trait is high)
         if personality.expressiveness > 0.7 and context.user_tone in [
             "excited",
             "enthusiastic",
@@ -403,11 +410,12 @@ class AdaptiveResponseGenerator:
                 emojis = ["🌟", "✨", "🚀", "💫", "🌌"]
                 adapted += f" {random.choice(emojis)}"
 
-        # Adjust formality
+        # Adjust formality (always apply for consistency)
         if personality.formality < 0.3 and context.user_tone == "casual":
             adapted = adapted.replace("I am", "I'm")
             adapted = adapted.replace("I have", "I've")
             adapted = adapted.replace("I would", "I'd")
+            adapted = adapted.replace("I will", "I'll")
 
         return adapted
 
