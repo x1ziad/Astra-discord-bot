@@ -573,6 +573,15 @@ Generate ONLY the message text, no explanations or notes."""
     ):
         """🧪 Send a test welcome DM to a specific user"""
         # Check if user is bot owner
+        logger.info(
+            f"🔍 Owner check - Your ID: {interaction.user.id}, Bot owner_id: {self.bot.owner_id}"
+        )
+        if self.bot.owner_id is None:
+            await interaction.response.send_message(
+                "⚠️ Bot owner ID not configured! Please set OWNER_ID in .env file.",
+                ephemeral=True,
+            )
+            return
         if interaction.user.id != self.bot.owner_id:
             await interaction.response.send_message(
                 "❌ Only the bot owner can use this command.", ephemeral=True
@@ -709,6 +718,15 @@ Generate ONLY the message text, no explanations or notes."""
     async def toggle_welcome_dms(self, interaction: discord.Interaction, enabled: bool):
         """⚙️ Enable or disable automatic welcome DMs"""
         # Check if user is bot owner
+        logger.info(
+            f"🔍 Toggle - Your ID: {interaction.user.id}, Bot owner_id: {self.bot.owner_id}"
+        )
+        if self.bot.owner_id is None:
+            await interaction.response.send_message(
+                "⚠️ Bot owner ID not configured! Please set OWNER_ID in .env file.",
+                ephemeral=True,
+            )
+            return
         if interaction.user.id != self.bot.owner_id:
             await interaction.response.send_message(
                 "❌ Only the bot owner can toggle this system.", ephemeral=True
@@ -748,6 +766,15 @@ Generate ONLY the message text, no explanations or notes."""
         - full_send: Send to all eligible users (requires confirmation)
         """
         # Check if user is bot owner
+        logger.info(
+            f"🔍 Bulk DM - Your ID: {interaction.user.id}, Bot owner_id: {self.bot.owner_id}"
+        )
+        if self.bot.owner_id is None:
+            await interaction.response.send_message(
+                "⚠️ Bot owner ID not configured! Please set OWNER_ID in .env file.",
+                ephemeral=True,
+            )
+            return
         if interaction.user.id != self.bot.owner_id:
             await interaction.response.send_message(
                 "❌ Only the bot owner can run bulk operations.", ephemeral=True

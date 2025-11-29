@@ -12,6 +12,14 @@ from pathlib import Path
 import discord
 from datetime import datetime
 
+# Load environment variables early
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv()
+except ImportError:
+    pass
+
 logger = logging.getLogger("astra.unified_config")
 
 
@@ -192,12 +200,20 @@ class UnifiedConfigManager:
         if token := os.getenv("DISCORD_TOKEN"):
             self.bot_token = token
 
-        # Bot owner ID
+        # Bot owner ID - with explicit fallback
         if owner_id := os.getenv("OWNER_ID"):
             try:
                 self.bot_config.owner_id = int(owner_id)
+                logger.info(
+                    f"✅ Owner ID loaded from environment: {self.bot_config.owner_id}"
+                )
             except ValueError:
                 logger.warning(f"Invalid OWNER_ID value: {owner_id}")
+
+        # Explicit fallback - if no owner ID set, use the known owner
+        if self.bot_config.owner_id is None:
+            self.bot_config.owner_id = 1115739214148026469
+            logger.info(f"✅ Owner ID set to default: {self.bot_config.owner_id}")
 
         # AI configuration
         if api_key := os.getenv("AI_API_KEY", os.getenv("OPENROUTER_API_KEY")):

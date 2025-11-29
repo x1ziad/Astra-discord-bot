@@ -465,11 +465,15 @@ class AstraBot(commands.Bot):
             # Ensure owner ID is properly configured
             owner_id = unified_config.get_owner_id()
             if owner_id:
+                self.owner_id = owner_id  # Set the bot's owner_id attribute
                 self.logger.info(f"🔐 Bot owner configured: {owner_id}")
+                self.logger.info(f"🔐 Bot owner_id attribute set to: {self.owner_id}")
             else:
                 self.logger.warning(
                     "⚠️ No bot owner configured - some commands may be restricted"
                 )
+                self.logger.warning(f"🔍 OWNER_ID from env: {os.getenv('OWNER_ID')}")
+                self.logger.warning(f"🔍 bot_config.owner_id: {self.config.owner_id}")
 
             self.logger.info("🛡️ Permission system initialized successfully")
 
@@ -492,6 +496,7 @@ class AstraBot(commands.Bot):
                 "cogs.security_manager",  # 🛡️ UNIFIED security system (replaces all old security cogs)
                 "cogs.personality_manager",  # 🧠 Advanced personality management system
                 "cogs.welcome_dm_system",  # 🌟 Personalized welcome DM system with AI
+                "cogs.ai_announcements",  # 🔊 AI-powered announcement system with Q&A
             ],
             # Moderation systems (load before AI features)
             [

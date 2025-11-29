@@ -151,6 +151,12 @@ class AstraAICompanion(commands.Cog):
         self.response_times = []
         self.interaction_count = 0
 
+        # Rate limiting for typing indicators to prevent 429 errors
+        self.last_typing_time: Dict[int, float] = {}  # channel_id: timestamp
+        self.typing_cooldown = (
+            3.0  # Minimum seconds between typing indicators per channel
+        )
+
         # Pre-compiled regex patterns for admin commands (performance optimization)
         self._admin_patterns = self._compile_admin_patterns()
 
@@ -2093,111 +2099,62 @@ class AstraAICompanion(commands.Cog):
         try:
             start_time = time.perf_counter()
 
-            # Show typing indicator for better UX
-            async with message.channel.typing():
-                self.logger.debug(
-                    f"💬 Processing message from {message.author.display_name}"
-                )
+            # Rate-limited typing indicator to prevent 429 errors
+            channel_id = message.channel.id
+            current_time = time.time()
+            last_typing = self.last_typing_time.get(channel_id, 0)
 
-                # Get user personality profile (cached for performance)
+            # Only show typing if enough time has passed since last typing in this channel
+            show_typing = (current_time - last_typing) >= self.typing_cooldown
+
+            if show_typing:
                 try:
-                    profile = await self.get_personality_profile(
-                        message.author.id, message.guild.id if message.guild else 0
-                    )
-                except Exception as e:
-                    self.logger.error(f"Error getting personality profile: {e}")
-                    # Use default profile on error
-                    profile = PersonalityProfile()
-
-                # Quick context analysis (optimized)
-                try:
-                    context = await self._analyze_message_context(message)
-                except Exception as e:
-                    self.logger.error(f"Error analyzing message context: {e}")
-                    # Use minimal context on error
-                    context = {
-                        "channel_type": "guild" if message.guild else "dm",
-                        "message_length": len(message.content),
-                        "complexity": 0.5,
-                        "urgency": 0.2,
-                        "sentiment": "neutral",
-                        "user_mood": 0.5,
-                        "has_questions": "?" in message.content,
-                        "conversation_tone": 0.5,
-                        "time_of_day": 0.5,
-                    }
-
-                # Update personality with minimal processing
-                try:
-                    profile.modifiers.user_mood = context["user_mood"]
-                    profile.modifiers.conversation_tone = context["conversation_tone"]
-                    profile.modifiers.interaction_history += 1
-                except Exception as e:
-                    self.logger.error(f"Error updating personality modifiers: {e}")
-
-                # Store conversation context for continuity (inline for performance)
-                try:
-                    if message.author.id not in self.conversation_contexts:
-                        self.conversation_contexts[message.author.id] = []
-
-                    # Store minimal conversation context (last 5 for performance)
-                    self.conversation_contexts[message.author.id].append(
-                        {
-                            "message": message.content[
-                                :100
-                            ],  # Truncated for memory efficiency
-                            "timestamp": datetime.now().isoformat(),
-                            "sentiment": context.get("sentiment", "neutral"),
-                        }
-                    )
-
-                    # Keep only last 5 interactions for memory efficiency
-                    if len(self.conversation_contexts[message.author.id]) > 5:
-                        self.conversation_contexts[message.author.id].pop(0)
-                except Exception as e:
-                    self.logger.error(f"Error updating conversation context: {e}")
-
-                # Generate Astra's response with comprehensive error handling
-                try:
-                    response = await self.generate_astra_response(
-                        message, profile, context
-                    )
-                except Exception as e:
-                    self.logger.error(f"Error generating AI response: {e}")
-                    # Use emergency fallback
-                    response = "I'm having some technical difficulties, but I'm still here for you! 🤖"
-
-                # Send response with error handling
-                try:
-                    # Ensure response isn't empty and fits Discord limits
-                    if response and len(response.strip()) > 0:
-                        truncated_response = self.truncate_response(response)
-                        await message.reply(truncated_response, mention_author=False)
-                    else:
-                        await message.reply(
-                            "I'm here! Let me know what you need. ✨",
-                            mention_author=False,
-                        )
-                except discord.errors.Forbidden:
-                    self.logger.warning(f"No permission to reply in {message.channel}")
+                    async with message.channel.typing():
+                        self.last_typing_time[channel_id] = current_time
+                        response = await self._process_message(message)
                 except discord.errors.HTTPException as e:
-                    self.logger.error(f"Discord API error: {e}")
-                except Exception as e:
-                    self.logger.error(f"Error sending response: {e}")
+                    if e.status == 429:  # Rate limited
+                        self.logger.warning(
+                            f"Rate limited on typing indicator, skipping..."
+                        )
+                        # Process without typing indicator
+                        response = await self._process_message(message)
+                    else:
+                        raise
+            else:
+                # Skip typing indicator if too soon
+                response = await self._process_message(message)
 
-                # Performance tracking
-                total_time = time.perf_counter() - start_time
-                self.response_times.append(total_time)
-                self.interaction_count += 1
-
-                # Keep only last 100 response times for memory efficiency
-                if len(self.response_times) > 100:
-                    self.response_times = self.response_times[-50:]
-
-                if total_time > 5.0:
-                    self.logger.warning(f"⚠️ Slow response: {total_time:.2f}s")
+            # Send response with error handling
+            try:
+                if response and len(response.strip()) > 0:
+                    truncated_response = self.truncate_response(response)
+                    await message.reply(truncated_response, mention_author=False)
                 else:
-                    self.logger.debug(f"⚡ Response completed in {total_time:.2f}s")
+                    await message.reply(
+                        "I'm here! Let me know what you need. ✨",
+                        mention_author=False,
+                    )
+            except discord.errors.Forbidden:
+                self.logger.warning(f"No permission to reply in {message.channel}")
+            except discord.errors.HTTPException as e:
+                self.logger.error(f"Discord API error: {e}")
+            except Exception as e:
+                self.logger.error(f"Error sending response: {e}")
+
+            # Performance tracking
+            total_time = time.perf_counter() - start_time
+            self.response_times.append(total_time)
+            self.interaction_count += 1
+
+            # Keep only last 100 response times for memory efficiency
+            if len(self.response_times) > 100:
+                self.response_times = self.response_times[-50:]
+
+            if total_time > 5.0:
+                self.logger.warning(f"⚠️ Slow response: {total_time:.2f}s")
+            else:
+                self.logger.debug(f"⚡ Response completed in {total_time:.2f}s")
 
         except Exception as e:
             self.logger.error(f"❌ Critical error in companion interaction: {e}")
@@ -2208,70 +2165,77 @@ class AstraAICompanion(commands.Cog):
             except:
                 pass  # If we can't even send this fallback, just log it
 
-                # Generate response with enhanced Astra personality
-                response = await self.generate_astra_response(message, profile, context)
+    async def _process_message(self, message: discord.Message) -> str:
+        """Process message and generate response (extracted for reuse)"""
+        self.logger.debug(f"💬 Processing message from {message.author.display_name}")
 
-                if response:
-                    # Enhanced conversation tracking (lightweight)
-                    if message.author.id not in self.conversation_contexts:
-                        self.conversation_contexts[message.author.id] = []
-
-                    # Store minimal conversation context (last 5 for performance)
-                    self.conversation_contexts[message.author.id].append(
-                        {
-                            "message": message.content[
-                                :100
-                            ],  # Truncated for memory efficiency
-                            "response": response[:100],
-                            "timestamp": datetime.now().isoformat(),
-                        }
-                    )
-
-                    # Keep only last 5 interactions (reduced from 10 for better performance)
-                    if len(self.conversation_contexts[message.author.id]) > 5:
-                        self.conversation_contexts[message.author.id].pop(0)
-
-                    # Smart response handling - prefer single message
-                    if len(response) > 1950:
-                        # Split only if absolutely necessary
-                        response_parts = await self.split_long_response(response)
-                        await message.reply(response_parts[0], mention_author=False)
-
-                        # Send remaining parts with minimal delay
-                        for part in response_parts[1:]:
-                            await asyncio.sleep(
-                                0.5
-                            )  # Reduced delay for faster delivery
-                            await message.channel.send(part)
-                    else:
-                        # Direct reply for optimal user experience
-                        await message.reply(response, mention_author=False)
-
-                    # Performance logging (only for slow responses)
-                    total_time = time.perf_counter() - start_time
-                    if total_time > 2.0:  # Only log if slower than 2 seconds
-                        self.logger.info(f"⏱️ Response time: {total_time:.2f}s")
-
-                else:
-                    # Fallback response for better UX
-                    fallback_responses = [
-                        "I'm here! Though my thoughts are a bit scattered right now. 🤖",
-                        "Hi there! Give me a moment to gather my digital thoughts! ✨",
-                        "Hey! I'm processing... sometimes my circuits need a quick refresh! 🔄",
-                    ]
-                    await message.reply(
-                        random.choice(fallback_responses), mention_author=False
-                    )
-
-        except Exception as e:
-            self.logger.error(f"❌ Error in companion interaction: {e}")
-            import traceback
-
-            self.logger.error(f"📋 Full traceback: {traceback.format_exc()}")
-            await message.reply(
-                "I'm having a moment of confusion, but I'm here for you! 🤖",
-                mention_author=False,
+        # Get user personality profile (cached for performance)
+        try:
+            profile = await self.get_personality_profile(
+                message.author.id, message.guild.id if message.guild else 0
             )
+        except Exception as e:
+            self.logger.error(f"Error getting personality profile: {e}")
+            # Use default profile on error
+            profile = PersonalityProfile()
+
+        # Quick context analysis (optimized)
+        try:
+            context = await self._analyze_message_context(message)
+        except Exception as e:
+            self.logger.error(f"Error analyzing message context: {e}")
+            # Use minimal context on error
+            context = {
+                "channel_type": "guild" if message.guild else "dm",
+                "message_length": len(message.content),
+                "complexity": 0.5,
+                "urgency": 0.2,
+                "sentiment": "neutral",
+                "user_mood": 0.5,
+                "has_questions": "?" in message.content,
+                "conversation_tone": 0.5,
+                "time_of_day": 0.5,
+            }
+
+        # Update personality with minimal processing
+        try:
+            profile.modifiers.user_mood = context["user_mood"]
+            profile.modifiers.conversation_tone = context["conversation_tone"]
+            profile.modifiers.interaction_history += 1
+        except Exception as e:
+            self.logger.error(f"Error updating personality modifiers: {e}")
+
+        # Store conversation context for continuity (inline for performance)
+        try:
+            if message.author.id not in self.conversation_contexts:
+                self.conversation_contexts[message.author.id] = []
+
+            # Store minimal conversation context (last 5 for performance)
+            self.conversation_contexts[message.author.id].append(
+                {
+                    "message": message.content[:100],  # Truncated for memory efficiency
+                    "timestamp": datetime.now().isoformat(),
+                    "sentiment": context.get("sentiment", "neutral"),
+                }
+            )
+
+            # Keep only last 5 interactions for memory efficiency
+            if len(self.conversation_contexts[message.author.id]) > 5:
+                self.conversation_contexts[message.author.id].pop(0)
+        except Exception as e:
+            self.logger.error(f"Error updating conversation context: {e}")
+
+        # Generate Astra's response with comprehensive error handling
+        try:
+            response = await self.generate_astra_response(message, profile, context)
+        except Exception as e:
+            self.logger.error(f"Error generating AI response: {e}")
+            # Use emergency fallback
+            response = (
+                "I'm having some technical difficulties, but I'm still here for you! 🤖"
+            )
+
+        return response
 
     @tasks.loop(minutes=30)
     async def personality_sync_task(self):

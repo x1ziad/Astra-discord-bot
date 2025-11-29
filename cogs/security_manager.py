@@ -1539,7 +1539,9 @@ class SecurityManager(commands.Cog):
     # APPEALS SYSTEM - Human-in-the-loop moderation
     # ═══════════════════════════════════════════════════════════════════════════════
 
-    @app_commands.command(name="security_appeal", description="📝 Appeal a security violation")
+    @app_commands.command(
+        name="security_appeal", description="📝 Appeal a security violation"
+    )
     @app_commands.describe(
         violation_id="ID of the violation to appeal (from security log)",
         reason="Reason for your appeal",
@@ -1645,11 +1647,11 @@ class SecurityManager(commands.Cog):
         await mod_channel.send(embed=embed)
 
     @app_commands.command(
-        name="review_appeal",
-        description="👨‍⚖️ Review and decide on user appeals (Staff only)",
+        name="review_security_appeal",
+        description="👨‍⚖️ Review and decide on security violation appeals (Staff only)",
     )
     @app_commands.describe(
-        appeal_id="ID of the appeal to review",
+        appeal_id="ID of the security appeal to review",
         decision="Decision on the appeal",
         notes="Additional notes for the decision",
     )
@@ -1663,14 +1665,14 @@ class SecurityManager(commands.Cog):
         ]
     )
     @app_commands.default_permissions(manage_messages=True)
-    async def review_appeal(
+    async def review_security_appeal(
         self,
         interaction: discord.Interaction,
         appeal_id: str,
         decision: str,
         notes: str = "",
     ):
-        """Review and decide on user appeals (Staff only)"""
+        """Review and decide on security violation appeals (Staff only)"""
         if not await check_user_permission(
             interaction.user, PermissionLevel.MODERATOR, interaction.guild
         ):
