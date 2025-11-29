@@ -168,7 +168,13 @@ class AIAnnouncements(commands.Cog):
             )
 
             if response:
-                return response.strip()
+                # Handle both string and AIResponse object
+                if hasattr(response, 'content'):
+                    return response.content.strip() if response.content else ""
+                elif isinstance(response, str):
+                    return response.strip()
+                else:
+                    return str(response).strip()
 
             self.logger.warning("AI returned empty response")
             return ""
@@ -239,41 +245,49 @@ Return ONLY valid JSON. No explanation, no markdown formatting."""
     async def answer_question_with_ai(
         self, announcement: AnnouncementData, question: str, user_name: str = "User"
     ) -> str:
-        """Use AI to answer questions about the announcement with optimized context"""
+        """Use AI to answer questions about the announcement with full context and stored details"""
 
-        # Build optimized context with only recent relevant Q&A
+        # Build comprehensive context with ALL announcement details
+        faq_text = ""
+        if announcement.faq:
+            if isinstance(announcement.faq, dict):
+                faq_text = "\n".join([f"Q: {q}\nA: {a}" for q, a in list(announcement.faq.items())[:3]])
+            elif isinstance(announcement.faq, list):
+                faq_text = "\n".join([f"Q: {item.get('q', '')}\nA: {item.get('a', '')}" for item in announcement.faq[:3]])
+        
         context_parts = [
-            f"ANNOUNCEMENT: {announcement.title}",
-            f"\nCONTENT:\n{announcement.content[:800]}...",  # Limit content to 800 chars
-            f"\n\nKEY POINTS:\n"
-            + "\n".join(f"• {point}" for point in announcement.key_points[:5]),
+            f"You are Astra, an intelligent AI assistant. A user is asking about this announcement:\n",
+            f"TITLE: {announcement.title}\n",
+            f"FULL CONTENT:\n{announcement.content}\n",
+            f"\nKEY POINTS EXTRACTED:\n" + "\n".join(f"• {point}" for point in announcement.key_points) if announcement.key_points else "",
+            f"\n\nSUMMARY: {announcement.summary}\n" if announcement.summary else "",
+            f"\nFREQUENTLY ASKED:\n{faq_text}\n" if faq_text else "",
+            f"\nTAGS: {', '.join(announcement.tags)}\n" if announcement.tags else "",
         ]
 
-        # Add only last 2 Q&A pairs for context efficiency
+        # Add previous Q&A for continuity
         if announcement.announcement_id in self.announcement_questions:
-            recent_qa = self.announcement_questions[announcement.announcement_id][-2:]
+            recent_qa = self.announcement_questions[announcement.announcement_id][-3:]
             if recent_qa:
-                context_parts.append("\n\nRECENT Q&A:")
+                context_parts.append("\n\nPREVIOUS QUESTIONS ABOUT THIS ANNOUNCEMENT:")
                 for qa in recent_qa:
-                    context_parts.append(
-                        f"Q: {qa['question'][:150]}\nA: {qa['answer'][:200]}"
-                    )
+                    context_parts.append(f"Q: {qa['question']}\nA: {qa['answer']}\n")
 
-        # Optimized prompt - clearer instructions, less tokens
+        # Enhanced prompt with all details
         qa_prompt = f"""{''.join(context_parts)}
 
-QUESTION from {user_name}: {question}
+NEW QUESTION from {user_name}: {question}
 
-As Astra, provide a concise, accurate answer (2-3 sentences max) based on the announcement content. If the answer isn't in the content, acknowledge that and offer what you do know. Be helpful and friendly."""
+Provide a detailed, accurate answer based on ALL the announcement information above. Reference specific details like prices, dates, locations, requirements, or any other relevant information mentioned in the content. If the exact answer isn't explicitly stated, use the context to provide the most helpful response possible. Be conversational and friendly as Astra."""
 
         try:
-            answer = await self._generate_with_ai(qa_prompt, max_tokens=800)
+            answer = await self._generate_with_ai(qa_prompt, max_tokens=1200)
             if answer:
                 return answer
         except Exception as e:
             self.logger.error(f"Error generating answer: {e}")
 
-        return "I'm having trouble processing that question right now, but you can check the full announcement for details! 🤖"
+        return f"I'm having trouble processing that question right now. Please check the full announcement titled '{announcement.title}' for details! 🤖"
 
     # ============================================================================
     # SLASH COMMANDS
@@ -358,7 +372,7 @@ As Astra, provide a concise, accurate answer (2-3 sentences max) based on the an
             )
 
             # Save to database
-            self._save_announcement(announcement)
+            await self._save_announcement(announcement)
 
             # Cache announcement
             self.announcements[announcement_id] = announcement
@@ -491,11 +505,11 @@ As Astra, provide a concise, accurate answer (2-3 sentences max) based on the an
             )
 
             # Save Q&A
-            self._save_question(announcement_id, interaction.user.id, question, answer)
+            await self._save_question(announcement_id, interaction.user.id, question, answer)
 
             # Update stats
             announcement.questions_asked += 1
-            self._update_announcement_stats(announcement)
+            await self._update_announcement_stats(announcement)
 
             # Create response embed
             embed = discord.Embed(
@@ -741,7 +755,7 @@ As Astra, provide a concise, accurate answer (2-3 sentences max) based on the an
             )
 
             # Save to database
-            self._save_announcement(announcement)
+            await self._save_announcement(announcement)
 
             # Cache announcement
             self.announcements[announcement_id] = announcement
@@ -890,10 +904,10 @@ As Astra, provide a concise, accurate answer (2-3 sentences max) based on the an
 
         return embed
 
-    def _save_announcement(self, announcement: AnnouncementData):
+    async def _save_announcement(self, announcement: AnnouncementData):
         """Save announcement to database"""
         try:
-            self.db.execute(
+            await self.db.execute(
                 """
                 INSERT OR REPLACE INTO announcements VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
@@ -953,12 +967,12 @@ As Astra, provide a concise, accurate answer (2-3 sentences max) based on the an
 
         return None
 
-    def _update_announcement_stats(self, announcement: AnnouncementData):
+    async def _update_announcement_stats(self, announcement: AnnouncementData):
         """Update announcement statistics in database"""
         try:
-            self.db.execute(
+            await self.db.execute(
                 """
-                UPDATE announcements 
+                UPDATE announcements
                 SET views = ?, reactions = ?, questions_asked = ?, dm_sent = ?, dm_failed = ?
                 WHERE announcement_id = ?
             """,
@@ -974,12 +988,12 @@ As Astra, provide a concise, accurate answer (2-3 sentences max) based on the an
         except Exception as e:
             self.logger.error(f"Error updating stats: {e}")
 
-    def _save_question(
+    async def _save_question(
         self, announcement_id: str, user_id: int, question: str, answer: str
     ):
         """Save Q&A to database"""
         try:
-            self.db.execute(
+            await self.db.execute(
                 """
                 INSERT INTO announcement_questions (announcement_id, user_id, question, answer, asked_at)
                 VALUES (?, ?, ?, ?, ?)
@@ -1070,7 +1084,7 @@ As Astra, provide a concise, accurate answer (2-3 sentences max) based on the an
                     if announcement_id in self.announcements:
                         announcement = self.announcements[announcement_id]
                         announcement.dm_sent += 1
-                        self._update_announcement_stats(announcement)
+                        await self._update_announcement_stats(announcement)
 
                     self.logger.debug(
                         f"✅ DM sent to {member.display_name} ({len(queue)} remaining in queue)"
@@ -1081,14 +1095,14 @@ As Astra, provide a concise, accurate answer (2-3 sentences max) based on the an
                     if announcement_id in self.announcements:
                         announcement = self.announcements[announcement_id]
                         announcement.dm_failed += 1
-                        self._update_announcement_stats(announcement)
+                        await self._update_announcement_stats(announcement)
                     self.logger.debug(f"Cannot DM {member.display_name} (DMs disabled)")
 
                 except Exception as e:
                     if announcement_id in self.announcements:
                         announcement = self.announcements[announcement_id]
                         announcement.dm_failed += 1
-                        self._update_announcement_stats(announcement)
+                        await self._update_announcement_stats(announcement)
                     self.logger.error(f"❌ DM error for {member.display_name}: {e}")
 
                 # Small delay between DMs (rate limiting)
