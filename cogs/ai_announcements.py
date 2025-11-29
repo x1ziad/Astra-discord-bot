@@ -169,7 +169,7 @@ class AIAnnouncements(commands.Cog):
 
             if response:
                 # Handle both string and AIResponse object
-                if hasattr(response, 'content'):
+                if hasattr(response, "content"):
                     return response.content.strip() if response.content else ""
                 elif isinstance(response, str):
                     return response.strip()
@@ -192,28 +192,39 @@ class AIAnnouncements(commands.Cog):
     async def analyze_announcement_with_ai(
         self, title: str, content: str
     ) -> Dict[str, Any]:
-        """Use AI to analyze announcement and extract key information with optimized prompt"""
+        """Use AI to analyze announcement and extract ALL structured data with neutral rephrasing"""
 
-        # Optimized prompt - clearer, more concise, better JSON structure
-        analysis_prompt = f"""You are analyzing a Discord server announcement. Extract key information and format as valid JSON.
+        # Enhanced prompt - extract ALL details: dates, prices, locations, requirements, etc.
+        analysis_prompt = f"""You are Astra, an intelligent AI assistant analyzing a Discord server announcement. Extract ALL important details and neutrally rephrase for clarity.
 
 ANNOUNCEMENT:
 Title: {title}
 Content: {content}
 
-REQUIRED OUTPUT (valid JSON only, no markdown):
+EXTRACT ALL STRUCTURED DATA and format as valid JSON:
 {{
-    "key_points": ["3-5 concise bullet points of critical information"],
-    "summary": "1-2 sentence overview capturing the essence",
+    "key_points": ["List ALL important details: dates, times, prices, locations, requirements, deadlines, etc."],
+    "summary": "Neutral, clear 2-3 sentence summary capturing the complete message",
+    "rephrased_content": "Professionally rephrased version of the announcement maintaining all facts and details in neutral, clear language",
+    "structured_data": {{
+        "dates": ["Any dates mentioned"],
+        "times": ["Any times mentioned"],
+        "prices": ["Any prices/costs mentioned"],
+        "locations": ["Any locations mentioned"],
+        "requirements": ["Any requirements mentioned"],
+        "deadlines": ["Any deadlines mentioned"],
+        "links": ["Any URLs mentioned"],
+        "contacts": ["Any contact info mentioned"]
+    }},
     "faq": [
-        {{"q": "Common question 1?", "a": "Clear answer based on content"}},
-        {{"q": "Common question 2?", "a": "Clear answer based on content"}},
-        {{"q": "Common question 3?", "a": "Clear answer based on content"}}
+        {{"q": "Relevant question?", "a": "Specific answer with exact details from announcement"}},
+        {{"q": "Another question?", "a": "Answer with precise information"}},
+        {{"q": "Common concern?", "a": "Clear response addressing the concern"}}
     ],
-    "tags": ["3-5 relevant keywords"]
+    "tags": ["Relevant keywords for categorization"]
 }}
 
-Return ONLY valid JSON. No explanation, no markdown formatting."""
+Extract EVERY detail. If dates/prices/locations exist, capture them exactly. Return ONLY valid JSON."""
 
         try:
             response = await self._generate_with_ai(analysis_prompt, max_tokens=1500)
@@ -251,15 +262,27 @@ Return ONLY valid JSON. No explanation, no markdown formatting."""
         faq_text = ""
         if announcement.faq:
             if isinstance(announcement.faq, dict):
-                faq_text = "\n".join([f"Q: {q}\nA: {a}" for q, a in list(announcement.faq.items())[:3]])
+                faq_text = "\n".join(
+                    [f"Q: {q}\nA: {a}" for q, a in list(announcement.faq.items())[:3]]
+                )
             elif isinstance(announcement.faq, list):
-                faq_text = "\n".join([f"Q: {item.get('q', '')}\nA: {item.get('a', '')}" for item in announcement.faq[:3]])
-        
+                faq_text = "\n".join(
+                    [
+                        f"Q: {item.get('q', '')}\nA: {item.get('a', '')}"
+                        for item in announcement.faq[:3]
+                    ]
+                )
+
         context_parts = [
             f"You are Astra, an intelligent AI assistant. A user is asking about this announcement:\n",
             f"TITLE: {announcement.title}\n",
             f"FULL CONTENT:\n{announcement.content}\n",
-            f"\nKEY POINTS EXTRACTED:\n" + "\n".join(f"• {point}" for point in announcement.key_points) if announcement.key_points else "",
+            (
+                f"\nKEY POINTS EXTRACTED:\n"
+                + "\n".join(f"• {point}" for point in announcement.key_points)
+                if announcement.key_points
+                else ""
+            ),
             f"\n\nSUMMARY: {announcement.summary}\n" if announcement.summary else "",
             f"\nFREQUENTLY ASKED:\n{faq_text}\n" if faq_text else "",
             f"\nTAGS: {', '.join(announcement.tags)}\n" if announcement.tags else "",
@@ -353,11 +376,23 @@ Provide a detailed, accurate answer based on ALL the announcement information ab
 
             analysis = await self.analyze_announcement_with_ai(title, content)
 
-            # Create announcement object
+            # Create announcement object with full structured data
+            # Store rephrased content and structured data for better AI understanding
+            rephrased_content = analysis.get("rephrased_content", content)
+            structured_data = analysis.get("structured_data", {})
+            
+            # Merge structured data into summary for storage
+            enhanced_summary = analysis.get("summary", "")
+            if structured_data:
+                data_str = "\n".join([f"{k}: {', '.join(v) if isinstance(v, list) else v}" 
+                                       for k, v in structured_data.items() if v])
+                if data_str:
+                    enhanced_summary += f"\n\nExtracted Data:\n{data_str}"
+            
             announcement = AnnouncementData(
                 announcement_id=announcement_id,
                 title=title,
-                content=content,
+                content=rephrased_content,  # Store rephrased version
                 author_id=interaction.user.id,
                 guild_id=interaction.guild_id,
                 created_at=datetime.now().isoformat(),
@@ -366,13 +401,16 @@ Provide a detailed, accurate answer based on ALL the announcement information ab
                     target_channel.id if delivery in ["public", "both"] else None
                 ),
                 key_points=analysis.get("key_points", []),
-                summary=analysis.get("summary", ""),
+                summary=enhanced_summary,  # Enhanced with structured data
                 faq=analysis.get("faq", {}),
                 tags=analysis.get("tags", []),
             )
 
             # Save to database
             await self._save_announcement(announcement)
+            
+            # Create backup file for announcement history
+            await self._backup_announcement(announcement, content, structured_data)
 
             # Cache announcement
             self.announcements[announcement_id] = announcement
@@ -387,10 +425,17 @@ Provide a detailed, accurate answer based on ALL the announcement information ab
             sent_messages = []
 
             if delivery in ["public", "both"]:
-                # Send to channel
+                # Send to channel with @everyone mention
                 try:
-                    msg = await target_channel.send(embed=embed)
-                    sent_messages.append(f"✅ Posted in {target_channel.mention}")
+                    # Create mention content for @everyone
+                    mention_content = f"@everyone **New Announcement:** {title}"
+                    
+                    msg = await target_channel.send(
+                        content=mention_content,
+                        embed=embed,
+                        allowed_mentions=discord.AllowedMentions(everyone=True)
+                    )
+                    sent_messages.append(f"✅ Posted in {target_channel.mention} (@everyone notified)")
 
                     # Add reaction for questions
                     await msg.add_reaction("❓")
@@ -505,7 +550,9 @@ Provide a detailed, accurate answer based on ALL the announcement information ab
             )
 
             # Save Q&A
-            await self._save_question(announcement_id, interaction.user.id, question, answer)
+            await self._save_question(
+                announcement_id, interaction.user.id, question, answer
+            )
 
             # Update stats
             announcement.questions_asked += 1
@@ -737,25 +784,40 @@ Provide a detailed, accurate answer based on ALL the announcement information ab
 
             # Determine delivery mode
             delivery_mode = "both" if send_to_all else "public"
+            
+            # Extract structured data
+            rephrased_content = analysis.get("rephrased_content", content)
+            structured_data = analysis.get("structured_data", {})
+            
+            # Merge structured data into summary
+            enhanced_summary = analysis.get("summary", "")
+            if structured_data:
+                data_str = "\n".join([f"{k}: {', '.join(v) if isinstance(v, list) else v}" 
+                                       for k, v in structured_data.items() if v])
+                if data_str:
+                    enhanced_summary += f"\n\nExtracted Data:\n{data_str}"
 
             # Create announcement object
             announcement = AnnouncementData(
                 announcement_id=announcement_id,
                 title=title,
-                content=content,
+                content=rephrased_content,  # Store rephrased version
                 author_id=interaction.user.id,
                 guild_id=interaction.guild_id,
                 created_at=datetime.now().isoformat(),
                 delivery_mode=delivery_mode,
                 channel_id=mod_channel.id,
                 key_points=analysis.get("key_points", []),
-                summary=analysis.get("summary", ""),
+                summary=enhanced_summary,  # Enhanced with structured data
                 faq=analysis.get("faq", {}),
                 tags=analysis.get("tags", []),
             )
 
             # Save to database
             await self._save_announcement(announcement)
+            
+            # Create backup file
+            await self._backup_announcement(announcement, content, structured_data)
 
             # Cache announcement
             self.announcements[announcement_id] = announcement
@@ -767,11 +829,18 @@ Provide a detailed, accurate answer based on ALL the announcement information ab
             embed = self._create_announcement_embed(announcement, interaction.user)
             embed.color = discord.Color.gold()  # Gold color for mod announcements
 
-            # Send to mod channel
+            # Send to mod channel with @everyone mention
             sent_messages = []
             try:
-                msg = await mod_channel.send(embed=embed)
-                sent_messages.append(f"✅ Posted in {mod_channel.mention}")
+                # Add @everyone mention for mod announcements
+                mention_content = f"@everyone **Moderator Update:** {title}"
+                
+                msg = await mod_channel.send(
+                    content=mention_content,
+                    embed=embed,
+                    allowed_mentions=discord.AllowedMentions(everyone=True)
+                )
+                sent_messages.append(f"✅ Posted in {mod_channel.mention} (@everyone notified)")
                 await msg.add_reaction("❓")
                 await msg.add_reaction("📌")
             except Exception as e:
@@ -1050,6 +1119,56 @@ Provide a detailed, accurate answer based on ALL the announcement information ab
         except Exception as e:
             self.logger.error(f"Error fetching questions: {e}")
             return []
+
+    async def _backup_announcement(
+        self, announcement: AnnouncementData, original_content: str, structured_data: Dict
+    ):
+        """Create backup file for announcement history with all extracted data"""
+        try:
+            import os
+            
+            # Create backup directory if it doesn't exist
+            backup_dir = "data/announcement_backups"
+            os.makedirs(backup_dir, exist_ok=True)
+            
+            # Create backup file with timestamp
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            backup_file = f"{backup_dir}/announcement_{announcement.announcement_id}_{timestamp}.json"
+            
+            # Prepare comprehensive backup data
+            backup_data = {
+                "announcement_id": announcement.announcement_id,
+                "title": announcement.title,
+                "original_content": original_content,
+                "rephrased_content": announcement.content,
+                "author_id": announcement.author_id,
+                "guild_id": announcement.guild_id,
+                "channel_id": announcement.channel_id,
+                "created_at": announcement.created_at,
+                "delivery_mode": announcement.delivery_mode,
+                "key_points": announcement.key_points,
+                "summary": announcement.summary,
+                "faq": announcement.faq,
+                "tags": announcement.tags,
+                "structured_data": structured_data,
+                "stats": {
+                    "views": announcement.views,
+                    "reactions": announcement.reactions,
+                    "questions_asked": announcement.questions_asked,
+                    "dm_sent": announcement.dm_sent,
+                    "dm_failed": announcement.dm_failed
+                },
+                "backup_created_at": datetime.now().isoformat()
+            }
+            
+            # Write to backup file
+            with open(backup_file, 'w', encoding='utf-8') as f:
+                json.dump(backup_data, f, indent=2, ensure_ascii=False)
+            
+            self.logger.info(f"✅ Announcement backup created: {backup_file}")
+            
+        except Exception as e:
+            self.logger.error(f"Error creating announcement backup: {e}")
 
     # ============================================================================
     # BACKGROUND TASKS
