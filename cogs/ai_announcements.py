@@ -380,15 +380,20 @@ Provide a detailed, accurate answer based on ALL the announcement information ab
             # Store rephrased content and structured data for better AI understanding
             rephrased_content = analysis.get("rephrased_content", content)
             structured_data = analysis.get("structured_data", {})
-            
+
             # Merge structured data into summary for storage
             enhanced_summary = analysis.get("summary", "")
             if structured_data:
-                data_str = "\n".join([f"{k}: {', '.join(v) if isinstance(v, list) else v}" 
-                                       for k, v in structured_data.items() if v])
+                data_str = "\n".join(
+                    [
+                        f"{k}: {', '.join(v) if isinstance(v, list) else v}"
+                        for k, v in structured_data.items()
+                        if v
+                    ]
+                )
                 if data_str:
                     enhanced_summary += f"\n\nExtracted Data:\n{data_str}"
-            
+
             announcement = AnnouncementData(
                 announcement_id=announcement_id,
                 title=title,
@@ -408,7 +413,7 @@ Provide a detailed, accurate answer based on ALL the announcement information ab
 
             # Save to database
             await self._save_announcement(announcement)
-            
+
             # Create backup file for announcement history
             await self._backup_announcement(announcement, content, structured_data)
 
@@ -429,13 +434,15 @@ Provide a detailed, accurate answer based on ALL the announcement information ab
                 try:
                     # Create mention content for @everyone
                     mention_content = f"@everyone **New Announcement:** {title}"
-                    
+
                     msg = await target_channel.send(
                         content=mention_content,
                         embed=embed,
-                        allowed_mentions=discord.AllowedMentions(everyone=True)
+                        allowed_mentions=discord.AllowedMentions(everyone=True),
                     )
-                    sent_messages.append(f"✅ Posted in {target_channel.mention} (@everyone notified)")
+                    sent_messages.append(
+                        f"✅ Posted in {target_channel.mention} (@everyone notified)"
+                    )
 
                     # Add reaction for questions
                     await msg.add_reaction("❓")
@@ -784,16 +791,21 @@ Provide a detailed, accurate answer based on ALL the announcement information ab
 
             # Determine delivery mode
             delivery_mode = "both" if send_to_all else "public"
-            
+
             # Extract structured data
             rephrased_content = analysis.get("rephrased_content", content)
             structured_data = analysis.get("structured_data", {})
-            
+
             # Merge structured data into summary
             enhanced_summary = analysis.get("summary", "")
             if structured_data:
-                data_str = "\n".join([f"{k}: {', '.join(v) if isinstance(v, list) else v}" 
-                                       for k, v in structured_data.items() if v])
+                data_str = "\n".join(
+                    [
+                        f"{k}: {', '.join(v) if isinstance(v, list) else v}"
+                        for k, v in structured_data.items()
+                        if v
+                    ]
+                )
                 if data_str:
                     enhanced_summary += f"\n\nExtracted Data:\n{data_str}"
 
@@ -815,7 +827,7 @@ Provide a detailed, accurate answer based on ALL the announcement information ab
 
             # Save to database
             await self._save_announcement(announcement)
-            
+
             # Create backup file
             await self._backup_announcement(announcement, content, structured_data)
 
@@ -834,13 +846,15 @@ Provide a detailed, accurate answer based on ALL the announcement information ab
             try:
                 # Add @everyone mention for mod announcements
                 mention_content = f"@everyone **Moderator Update:** {title}"
-                
+
                 msg = await mod_channel.send(
                     content=mention_content,
                     embed=embed,
-                    allowed_mentions=discord.AllowedMentions(everyone=True)
+                    allowed_mentions=discord.AllowedMentions(everyone=True),
                 )
-                sent_messages.append(f"✅ Posted in {mod_channel.mention} (@everyone notified)")
+                sent_messages.append(
+                    f"✅ Posted in {mod_channel.mention} (@everyone notified)"
+                )
                 await msg.add_reaction("❓")
                 await msg.add_reaction("📌")
             except Exception as e:
@@ -1121,20 +1135,23 @@ Provide a detailed, accurate answer based on ALL the announcement information ab
             return []
 
     async def _backup_announcement(
-        self, announcement: AnnouncementData, original_content: str, structured_data: Dict
+        self,
+        announcement: AnnouncementData,
+        original_content: str,
+        structured_data: Dict,
     ):
         """Create backup file for announcement history with all extracted data"""
         try:
             import os
-            
+
             # Create backup directory if it doesn't exist
             backup_dir = "data/announcement_backups"
             os.makedirs(backup_dir, exist_ok=True)
-            
+
             # Create backup file with timestamp
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             backup_file = f"{backup_dir}/announcement_{announcement.announcement_id}_{timestamp}.json"
-            
+
             # Prepare comprehensive backup data
             backup_data = {
                 "announcement_id": announcement.announcement_id,
@@ -1156,17 +1173,17 @@ Provide a detailed, accurate answer based on ALL the announcement information ab
                     "reactions": announcement.reactions,
                     "questions_asked": announcement.questions_asked,
                     "dm_sent": announcement.dm_sent,
-                    "dm_failed": announcement.dm_failed
+                    "dm_failed": announcement.dm_failed,
                 },
-                "backup_created_at": datetime.now().isoformat()
+                "backup_created_at": datetime.now().isoformat(),
             }
-            
+
             # Write to backup file
-            with open(backup_file, 'w', encoding='utf-8') as f:
+            with open(backup_file, "w", encoding="utf-8") as f:
                 json.dump(backup_data, f, indent=2, ensure_ascii=False)
-            
+
             self.logger.info(f"✅ Announcement backup created: {backup_file}")
-            
+
         except Exception as e:
             self.logger.error(f"Error creating announcement backup: {e}")
 
