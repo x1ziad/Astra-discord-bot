@@ -48,6 +48,12 @@ backup_*
 temp/
 tmp/
 
+# Local documentation and guides (not pushed to repo)
+OPTIMIZATION_REPORT.md
+DEPLOYMENT.md
+PERFORMANCE.md
+UPGRADE_SUMMARY.md
+
 # Analysis and cleanup reports (temporary)
 *_CLEANUP_REPORT.md
 *_ANALYSIS_REPORT.md
