@@ -31,7 +31,7 @@ from discord.ext import commands, tasks
 from discord import app_commands
 
 # Core AI and personality components
-from utils.database import db
+from utils.database import db, sanitize_prompt_input
 from utils.astra_personality import AstraPersonalityCore
 from config.unified_config import unified_config
 
@@ -585,7 +585,8 @@ class AstraAICompanion(commands.Cog):
                 )
             ):
 
-                enhanced_message = f"{personality_prompt}\n\nUser: {message.content}"
+                safe_message = sanitize_prompt_input(message.content)
+                enhanced_message = f"{personality_prompt}\n\nUser: {safe_message}"
 
                 # Add conversation context for established conversations
                 if enhanced_context["conversation_flow"] in [
@@ -593,7 +594,7 @@ class AstraAICompanion(commands.Cog):
                     "established",
                 ]:
                     context_summary = enhanced_context["context_summary"]
-                    enhanced_message = f"{personality_prompt}\n\n{context_summary}\n\nUser: {message.content}"
+                    enhanced_message = f"{personality_prompt}\n\n{context_summary}\n\nUser: {safe_message}"
 
             # Adaptive token allocation based on message complexity
             max_tokens = self._calculate_optimal_tokens(

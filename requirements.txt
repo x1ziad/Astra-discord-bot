@@ -1,53 +1,54 @@
 # Core Discord.py
-discord.py>=2.3.0
+# 🔧 PINNED: discord.py 2.3.x - stable with known compatibility
+discord.py>=2.3.0,<2.4.0
 
 # Database
-aiosqlite>=0.19.0
+# 🔧 PINNED: aiosqlite for stable async SQLite
+aiosqlite>=0.19.0,<0.20.0
 
 # AI Services
-openai>=1.30.0  # Keep for backward compatibility
-azure-ai-inference>=1.0.0b4  # GitHub Models support
-google-genai>=0.8.0  # Google Gemini AI for image generation
-google-generativeai>=0.3.0  # Google Generative AI for text/image
-mistralai>=1.9.11  # Mistral AI direct integration
-
-# Optional AI services (commented for basic deployment)
-# azure-cognitiveservices-speech>=1.30.0
-# azure-identity>=1.15.0
-# anthropic>=0.7.0
+# 🔧 PINNED versions for stability and security
+openai>=1.30.0,<2.0.0  # Keep for backward compatibility
+# 🔒 SECURITY: Avoid beta versions - use stable release
+azure-ai-inference>=1.0.0,<2.0.0  # GitHub Models support
+google-genai>=0.8.0,<1.0.0  # Google Gemini AI
+google-generativeai>=0.3.0,<1.0.0  # Google Generative AI
+mistralai>=1.9.11,<2.0.0  # Mistral AI
+groq>=0.4.0,<1.0.0  # Groq API support
 
 # HTTP and async
-aiohttp>=3.9.0
-aiofiles>=23.0.0
-requests>=2.31.0
+# 🔧 PINNED for stable async operations
+aiohttp>=3.9.0,<4.0.0
+aiofiles>=23.0.0,<24.0.0
+requests>=2.31.0,<3.0.0
 
 # Data processing (essential only)
-matplotlib>=3.7.0
-numpy>=1.24.0
-pandas>=2.0.0
-
-# Optional ML (can be removed if not needed)
-# scikit-learn>=1.3.0
-# joblib>=1.3.0
+matplotlib>=3.7.0,<4.0.0
+numpy>=1.24.0,<2.0.0
+pandas>=2.0.0,<3.0.0
 
 # Configuration and environment
-python-dotenv>=1.0.0
-pydantic>=2.0.0
+python-dotenv>=1.0.0,<2.0.0
+pydantic>=2.0.0,<3.0.0
 
 # Logging and monitoring
-colorlog>=6.7.0
-psutil>=5.9.0
+colorlog>=6.7.0,<7.0.0
+psutil>=5.9.0,<6.0.0
 
 # Image processing
-Pillow>=10.0.0
+Pillow>=10.0.0,<11.0.0
 
 # Performance JSON
-orjson>=3.9.0
+orjson>=3.9.0,<4.0.0
 
 # Utilities
-python-dateutil>=2.8.0
-cachetools>=5.3.0
+python-dateutil>=2.8.0,<3.0.0
+cachetools>=5.3.0,<6.0.0
+
+# SSL/TLS Certificates
+# 🔒 SECURITY: Explicit certificate management
+certifi>=2023.7.22,<2025.0.0
 
 # Railway deployment essentials
-gunicorn>=21.2.0
-uvloop>=0.19.0
+gunicorn>=21.2.0,<22.0.0
+uvloop>=0.19.0,<0.20.0

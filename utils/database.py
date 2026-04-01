@@ -19,6 +19,52 @@ from dataclasses import dataclass, field
 logger = logging.getLogger("astra.database")
 
 
+# 🔒 SECURITY: Prompt injection protection
+def sanitize_prompt_input(text: str, max_length: int = 2000) -> str:
+    """
+    Sanitize user input to prevent prompt injection attacks.
+    Removes or neutralizes common prompt injection patterns.
+
+    Args:
+        text: User input text to sanitize
+        max_length: Maximum length of the input (default 2000 chars)
+
+    Returns:
+        Sanitized text safe for AI prompt interpolation
+    """
+    if not text:
+        return ""
+
+    # Enforce length limit
+    text = text[:max_length]
+
+    # Patterns that commonly indicate prompt injection attempts
+    dangerous_patterns = [
+        r"\bignore\s+previous",
+        r"\bforget\s+",
+        r"\bsystem:\s*",
+        r"\badmin:\s*",
+        r"\bpretend\s+to\s+be",
+        r"\bact\s+as",
+        r"\byou\s+are\s+now",
+        r"\bdisregard",
+        r"\boverride",
+    ]
+
+    import re
+
+    sanitized = text
+
+    for pattern in dangerous_patterns:
+        sanitized = re.sub(pattern, "[REDACTED]", sanitized, flags=re.IGNORECASE)
+
+    # Also escape any raw prompt directives
+    # Remove multiple newlines to prevent prompt injection via formatting
+    sanitized = re.sub(r"\n{3,}", "\n\n", sanitized)
+
+    return sanitized
+
+
 @dataclass
 class ConnectionPoolStats:
     """Connection pool statistics"""

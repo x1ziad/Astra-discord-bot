@@ -359,7 +359,8 @@ class AstraBot(commands.Bot):
             keepalive_timeout=30,  # Reduced keepalive for better resource management
             enable_cleanup_closed=True,
             force_close=False,  # Keep connections alive
-            ssl=False,  # Disable SSL verification for performance (Discord handles HTTPS)
+            # 🔒 SECURITY FIX: SSL verification ENABLED (default True)
+            # ssl=False is a security vulnerability - removed
         )
 
         # 🚀 Optimized timeout settings
@@ -1507,3 +1508,6 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"❌ Fatal error: {e}")
         sys.exit(1)
+
+
+# ahmed
